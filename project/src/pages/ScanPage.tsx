@@ -1,71 +1,79 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, Loader2, ShoppingBag, Package } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useLanguage } from '../context/LanguageContext';
+import React, { useEffect, useState } from 'react'
+import { CheckCircle, XCircle, Loader2, ShoppingBag, Package } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useLanguage } from '../context/LanguageContext'
+import { parseQRPayload } from '../lib/qrParser'
 
 interface UserProfile {
-  id: string;
-  name: string;
-  short_code: string;
-  role: string;
-  profile_picture_url: string | null;
+  id: string
+  name: string
+  short_code: string
+  role: string
+  profile_picture_url: string | null
 }
 
 export function ScanPage() {
-  const [status, setStatus] = useState<'loading' | 'found' | 'not_found' | 'error'>('loading');
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const { language } = useLanguage();
+  const [status, setStatus] = useState<'loading' | 'found' | 'not_found' | 'error'>('loading')
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
+  const { language } = useLanguage()
 
   useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/\/scan\/([A-Za-z0-9]+)/);
-    const shortCode = match ? match[1].trim() : null;
+    const raw = window.location.href
+    const parsed = parseQRPayload(raw)
 
-    if (!shortCode) {
-      setStatus('not_found');
-      setErrorMessage(language === 'th' ? 'ไม่พบรหัส' : 'No code provided');
-      return;
+    let shortCode: string | null = null
+
+    if (parsed.kind === 'short_code') {
+      shortCode = parsed.short_code
+    } else if (parsed.kind === 'url') {
+      const parts = parsed.url.split('/')
+      shortCode = parts[parts.length - 1]?.toUpperCase() || null
     }
 
-    lookupUser(shortCode);
-  }, [language]);
+    if (!shortCode) {
+      setStatus('not_found')
+      setErrorMessage(language === 'th' ? 'ไม่พบรหัส' : 'No valid QR code')
+      return
+    }
+
+    lookupUser(shortCode)
+  }, [language])
 
   const lookupUser = async (shortCode: string) => {
     try {
-      // DEBUG: Log scan attempt and Supabase URL
-      console.log('🔍 SCAN Lookup - short_code:', shortCode);
-      console.log('   Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('🔍 SCAN Lookup - short_code:', shortCode)
+      console.log('   Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
 
       const { data, error } = await supabase
         .from('user_profiles')
         .select('id, name, short_code, role, profile_picture_url')
         .eq('short_code', shortCode.trim())
-        .maybeSingle();
+        .maybeSingle()
 
       if (error) {
-        setStatus('error');
-        setErrorMessage(error.message);
-        return;
+        setStatus('error')
+        setErrorMessage(error.message)
+        return
       }
 
       if (!data) {
-        setStatus('not_found');
-        setErrorMessage(language === 'th' ? 'ไม่พบสมาชิก' : 'Member not found');
-        return;
+        setStatus('not_found')
+        setErrorMessage(language === 'th' ? 'ไม่พบสมาชิก' : 'Member not found')
+        return
       }
 
-      setUserProfile(data);
-      setStatus('found');
+      setUserProfile(data)
+      setStatus('found')
     } catch (err) {
-      setStatus('error');
-      setErrorMessage(language === 'th' ? 'เกิดข้อผิดพลาด' : 'An error occurred');
+      setStatus('error')
+      setErrorMessage(language === 'th' ? 'เกิดข้อผิดพลาด' : 'An error occurred')
     }
-  };
+  }
 
   const navigateTo = (path: string) => {
-    window.location.href = path;
-  };
+    window.location.href = path
+  }
 
   if (status === 'loading') {
     return (
@@ -77,7 +85,7 @@ export function ScanPage() {
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   if (status === 'not_found' || status === 'error') {
@@ -97,7 +105,7 @@ export function ScanPage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -108,12 +116,8 @@ export function ScanPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {language === 'th' ? 'ยินดีต้อนรับ!' : 'Welcome!'}
           </h1>
-          <p className="text-xl font-semibold text-amber-700">
-            {userProfile?.name}
-          </p>
-          <p className="text-amber-600 font-mono text-lg mt-1">
-            {userProfile?.short_code}
-          </p>
+          <p className="text-xl font-semibold text-amber-700">{userProfile?.name}</p>
+          <p className="text-amber-600 font-mono text-lg mt-1">{userProfile?.short_code}</p>
         </div>
 
         <div className="space-y-3">
@@ -142,5 +146,5 @@ export function ScanPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
