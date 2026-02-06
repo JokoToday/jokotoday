@@ -8,24 +8,45 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleAuth = async () => {
-      const { data, error } = await supabase.auth.getSession()
+      try {
+        const url = new URL(window.location.href)
+        const shortCode = url.searchParams.get('short_code')
+        const qrToken = url.searchParams.get('qr_token')
 
-      if (error) {
-        console.error('Auth callback error:', error)
-        navigate('/')
-        return
+        console.log('🔐 Auth callback params:', { shortCode, qrToken })
+
+        const { data, error } = await supabase.auth.getSession()
+
+        if (error) throw error
+        if (!data.session) throw new Error('No session found')
+
+        const user = data.session.user
+        console.log('✅ Auth session user:', user.email)
+
+        // If QR login → attach short_code / qr_token to profile
+        if (shortCode || qrToken) {
+          const updates: Record<string, any> = {}
+          if (shortCode) updates.short_code = shortCode
+          if (qrToken) updates.qr_token = qrToken
+
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .update(updates)
+            .eq('id', user.id)
+
+          if (profileError) {
+            console.error('Profile update failed:', profileError)
+          } else {
+            console.log('✅ Profile updated from QR login')
+          }
+        }
+
+        // Redirect after auth
+        navigate(buildUrl('/'))
+      } catch (err) {
+        console.error('Auth callback failed:', err)
+        navigate(buildUrl('/'))
       }
-
-      if (!data.session) {
-        console.warn('No session found after auth callback')
-        navigate('/')
-        return
-      }
-
-      console.log('✅ Auth session established:', data.session.user.email)
-
-      // After login / confirm → go home or dashboard
-      navigate('/')
     }
 
     handleAuth()
