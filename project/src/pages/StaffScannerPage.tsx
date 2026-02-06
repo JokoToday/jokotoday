@@ -4,12 +4,6 @@ import { QRScanner } from '../components/QRScanner'
 import {
   Camera,
   User,
-  Phone,
-  MessageCircle,
-  Package,
-  Award,
-  Check,
-  Loader2,
   AlertCircle,
 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
@@ -49,7 +43,6 @@ export function StaffScannerPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null)
 
   const handleScan = async (decodedText: string) => {
     try {
@@ -64,8 +57,26 @@ export function StaffScannerPage() {
 
       if (parsed.kind === 'short_code') {
         shortCode = parsed.short_code
-      } else if (parsed.kind === 'url') {
-        const parts = parsed.url.split('/')
+      }
+
+      if (parsed.kind === 'qr_token') {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('short_code')
+          .eq('qr_token', parsed.qr_token)
+          .maybeSingle()
+
+        if (error || !data) {
+          setError(language === 'en' ? 'Invalid QR token' : 'โค้ดไม่ถูกต้อง')
+          return
+        }
+
+        shortCode = data.short_code
+      }
+
+      if (parsed.kind === 'url') {
+        const url = new URL(parsed.url)
+        const parts = url.pathname.split('/')
         shortCode = parts[parts.length - 1]?.toUpperCase() || null
       }
 
@@ -82,9 +93,7 @@ export function StaffScannerPage() {
         .eq('short_code', shortCode)
         .maybeSingle()
 
-      if (profileError) throw profileError
-
-      if (!profile) {
+      if (profileError || !profile) {
         setError(language === 'en' ? 'Member not found' : 'ไม่พบสมาชิก')
         return
       }
@@ -93,14 +102,12 @@ export function StaffScannerPage() {
 
       const today = new Date().toISOString().split('T')[0]
 
-      const { data: ordersData, error: ordersError } = await supabase
+      const { data: ordersData } = await supabase
         .from('orders')
         .select('*')
         .eq('customer_id', profile.id)
         .eq('pickup_date', today)
         .order('created_at', { ascending: false })
-
-      if (ordersError) throw ordersError
 
       setOrders(ordersData || [])
     } catch (err) {
@@ -137,11 +144,6 @@ export function StaffScannerPage() {
             <h1 className="text-3xl font-bold text-white mb-2">
               {language === 'en' ? 'Staff Scanner' : 'แสกน QR ลูกค้า'}
             </h1>
-            <p className="text-slate-300">
-              {language === 'en'
-                ? 'Scan customer QR codes to manage orders'
-                : 'สแกน QR โค้ดลูกค้าเพื่อจัดการคำสั่งซื้อ'}
-            </p>
           </div>
 
           <div className="p-8">
@@ -152,35 +154,16 @@ export function StaffScannerPage() {
                 </div>
                 <button
                   onClick={() => setShowScanner(true)}
-                  className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-amber-700 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl"
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold"
                 >
                   {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
                 </button>
                 {error && <p className="mt-4 text-red-600 font-medium">{error}</p>}
               </div>
             ) : (
-              <div className="border-b border-gray-200 pb-6 mb-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
-                      <User className="w-8 h-8 text-amber-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{customer.name}</h2>
-                      <p className="text-amber-600 font-mono">{customer.short_code}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setCustomer(null)
-                      setOrders([])
-                      setError(null)
-                    }}
-                    className="text-gray-500 hover:text-gray-700 text-sm font-medium"
-                  >
-                    {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
-                  </button>
-                </div>
+              <div className="pb-6">
+                <h2 className="text-2xl font-bold">{customer.name}</h2>
+                <p className="text-amber-600 font-mono">{customer.short_code}</p>
               </div>
             )}
           </div>
