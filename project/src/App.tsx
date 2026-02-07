@@ -21,37 +21,42 @@ import { MyOrdersPage } from './pages/MyOrdersPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ScanPage } from './pages/ScanPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
+import QRResolverPage from './pages/QRResolverPage'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const path = window.location.pathname;
-    const qrMatch = path.match(/^\/c\/([^/]+)$/);
-    const scanMatch = path.match(/^\/scan\/([A-Za-z0-9]+)$/);
+  const path = window.location.pathname;
 
-    if (path === '/auth/callback') {
-      setCurrentPage('auth-callback');
-      return;
-    }
+  const qrResolveMatch = path.match(/^\/q\/([^/]+)$/);
+  const scanMatch = path.match(/^\/scan\/([^/]+)$/);
 
-    if (scanMatch) {
-      setCurrentPage('scan');
-      return;
-    }
+  if (path === '/auth/callback') {
+    setCurrentPage('auth-callback');
+    return;
+  }
 
-    if (qrMatch) {
-      setQrToken(qrMatch[1]);
-      setCurrentPage('customer-account');
-      return;
-    }
+  if (qrResolveMatch) {
+    setQrToken(qrResolveMatch[1]);
+    setCurrentPage('qr-resolver');
+    return;
+  }
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('line_user_id') && params.has('code')) {
-      setCurrentPage('line-callback');
-    }
-  }, []);
+  if (scanMatch) {
+    setQrToken(scanMatch[1]);
+    setCurrentPage('qr-resolver');
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('line_user_id') && params.has('code')) {
+    setCurrentPage('line-callback');
+    return;
+  }
+}, []);
+
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -76,7 +81,9 @@ function App() {
     if (currentPage === 'line-callback') {
       return <LineCallback onNavigate={handleNavigate} />;
     }
-
+    if (currentPage === 'qr-resolver' && qrToken) {
+  return <QRResolverPage qrToken={qrToken} />
+}
     if (currentPage === 'customer-account' && qrToken) {
       return <CustomerAccountPage qrToken={qrToken} />;
     }
@@ -108,9 +115,7 @@ function App() {
         return <MyOrdersPage onNavigate={handleNavigate} />;
       case 'reset-password':
         return <ResetPasswordPage onNavigate={handleNavigate} />;
-      case 'scan':
-        return <ScanPage />;
-      default:
+           default:
         return <HomePage onNavigate={handleNavigate} />;
     }
   };
