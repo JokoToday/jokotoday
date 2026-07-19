@@ -1,8 +1,10 @@
-import { ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, CheckCircle, Loader2, RefreshCw, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { BrandedQRCard } from '../components/BrandedQRCard';
+import { supabase } from '../lib/supabase';
 
 interface MyQRPageProps {
   onNavigate: (page: string) => void;
@@ -49,20 +51,131 @@ const pageText = {
     th: 'คุณสามารถค้นหา QR นี้ได้ตลอดเวลาในบัญชีของคุณ',
     zh: '您随时可以在账户中找到此二维码。',
   },
+  regenerate: {
+    en: 'Regenerate My QR',
+    th: 'สร้าง QR ของฉันใหม่',
+    zh: '重新生成我的二维码',
+  },
+  regenerateTitle: {
+    en: 'Regenerate your QR code?',
+    th: 'สร้างรหัส QR ของคุณใหม่หรือไม่?',
+    zh: '重新生成您的二维码？',
+  },
+  regenerateBody: {
+    en: 'Your current QR code will stop working immediately. Any previously downloaded or printed cards must be replaced.',
+    th: 'รหัส QR ปัจจุบันของคุณจะหยุดใช้งานทันที บัตรที่เคยดาวน์โหลดหรือพิมพ์ไว้ทั้งหมดจะต้องเปลี่ยนใหม่',
+    zh: '您当前的二维码将立即失效。之前下载或打印的所有卡片都必须更换。',
+  },
+  cancel: {
+    en: 'Cancel',
+    th: 'ยกเลิก',
+    zh: '取消',
+  },
+  regenerateConfirm: {
+    en: 'Regenerate QR',
+    th: 'สร้าง QR ใหม่',
+    zh: '重新生成二维码',
+  },
+  regenerateSuccess: {
+    en: 'Your new QR code is ready. Please download or print the new card.',
+    th: 'รหัส QR ใหม่ของคุณพร้อมแล้ว กรุณาดาวน์โหลดหรือพิมพ์บัตรใหม่',
+    zh: '您的新二维码已准备就绪。请下载或打印新卡片。',
+  },
+  regenerateError: {
+    en: 'We could not regenerate your QR code. Please try again.',
+    th: 'ไม่สามารถสร้างรหัส QR ใหม่ได้ กรุณาลองอีกครั้ง',
+    zh: '无法重新生成您的二维码，请重试。',
+  },
+  sessionExpired: {
+    en: 'Your session has expired. Please sign in again before regenerating your QR code.',
+    th: 'เซสชันของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบอีกครั้งก่อนสร้างรหัส QR ใหม่',
+    zh: '您的会话已过期。请重新登录后再生成新的二维码。',
+  },
 };
 
 export function MyQRPage({ onNavigate }: MyQRPageProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, refreshProfile } = useAuth();
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
 
   const lang = language as 'en' | 'th' | 'zh';
+  const [activeQrToken, setActiveQrToken] = useState(userProfile?.qr_token || '');
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateSuccess, setRegenerateSuccess] = useState('');
+  const [regenerateError, setRegenerateError] = useState('');
 
-  const qrToken = userProfile?.qr_token || '';
+  useEffect(() => {
+    setActiveQrToken(userProfile?.qr_token || '');
+  }, [userProfile?.qr_token]);
+
+  const qrToken = activeQrToken;
   const shortCode = String(userProfile?.short_code || '').trim();
   const qrValue = qrToken
     ? `${window.location.origin}/q/${encodeURIComponent(qrToken)}`
     : '';
+
+  const handleRegenerateQr = async () => {
+    if (regenerating) return;
+
+    setRegenerating(true);
+    setRegenerateError('');
+    setRegenerateSuccess('');
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        const error = new Error(sessionError?.message || 'No active session');
+        error.name = 'SessionExpiredError';
+        throw error;
+      }
+
+      const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+      const refreshedSession = refreshedData.session;
+      if (refreshError || !refreshedSession?.access_token) {
+        const error = new Error(refreshError?.message || 'Session refresh returned no session');
+        error.name = 'SessionExpiredError';
+        throw error;
+      }
+
+      const { data, error } = await supabase.functions.invoke('regenerate-qr', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${refreshedSession.access_token}`,
+        },
+      });
+      const newToken = typeof data?.qr_token === 'string' ? data.qr_token : '';
+
+      if (error || !newToken) throw error ?? new Error('Missing QR token');
+
+      setActiveQrToken(newToken);
+      setShowRegenerateConfirm(false);
+      setRegenerateSuccess(pageText.regenerateSuccess[lang]);
+      await refreshProfile();
+    } catch (error) {
+      let diagnostic = error instanceof Error ? error.message : 'Unknown error';
+      const response = typeof error === 'object' && error !== null && 'context' in error
+        ? (error as { context?: Response }).context
+        : undefined;
+
+      if (response) {
+        try {
+          const payload = await response.clone().json() as { code?: string; message?: string };
+          diagnostic = [payload.code, payload.message].filter(Boolean).join(': ') || diagnostic;
+        } catch {
+          diagnostic = `${diagnostic} (HTTP ${response.status})`;
+        }
+      }
+
+      console.error('[MyQRPage] QR regeneration failed:', diagnostic);
+      const localizedError = error instanceof Error && error.name === 'SessionExpiredError'
+        ? pageText.sessionExpired[lang]
+        : pageText.regenerateError[lang];
+      setRegenerateError(import.meta.env.DEV ? `${localizedError} (${diagnostic})` : localizedError);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -120,6 +233,35 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
             qrValue={qrValue}
             customerName={userProfile?.name || 'JOKO Member'}
             shortCode={shortCode}
+            secondaryAction={
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegenerateError('');
+                    setShowRegenerateConfirm(true);
+                  }}
+                  disabled={regenerating}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white py-3 font-semibold text-slate-700 transition-colors duration-200 hover:border-red-600 hover:bg-red-600 hover:text-white active:border-red-700 active:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-slate-300 disabled:hover:bg-white disabled:hover:text-slate-700"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                  {pageText.regenerate[lang]}
+                </button>
+
+                {regenerateSuccess && (
+                  <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{regenerateSuccess}</span>
+                  </div>
+                )}
+
+                {regenerateError && !showRegenerateConfirm && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-700" role="alert">
+                    {regenerateError}
+                  </div>
+                )}
+              </>
+            }
           />
 
           <p className="text-xs text-gray-500 text-center mt-6">
@@ -127,6 +269,57 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
           </p>
         </div>
       </div>
+
+      {showRegenerateConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="regenerate-qr-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="regenerate-qr-title" className="text-xl font-bold text-slate-900">
+                {pageText.regenerateTitle[lang]}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowRegenerateConfirm(false)}
+                disabled={regenerating}
+                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                aria-label={pageText.cancel[lang]}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mt-3 leading-relaxed text-slate-600">
+              {pageText.regenerateBody[lang]}
+            </p>
+
+            {regenerateError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                {regenerateError}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRegenerateConfirm(false)}
+                disabled={regenerating}
+                className="rounded-lg border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pageText.cancel[lang]}
+              </button>
+              <button
+                type="button"
+                onClick={handleRegenerateQr}
+                disabled={regenerating}
+                className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {regenerating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {pageText.regenerateConfirm[lang]}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

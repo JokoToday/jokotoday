@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Croissant, Download, Heart } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,12 +10,13 @@ interface BrandedQRCardProps {
   qrValue: string;
   customerName: string;
   shortCode?: string;
+  secondaryAction?: ReactNode;
 }
 
 const QR_DOWNLOAD_BUTTON_CLASS =
   'w-full border border-amber-500 bg-white text-amber-700 font-semibold py-3 rounded-lg hover:border-amber-600 hover:bg-amber-600 hover:text-white hover:shadow-md focus-visible:border-amber-600 focus-visible:bg-amber-600 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 flex items-center justify-center gap-2';
 
-export function BrandedQRCard({ qrValue, customerName, shortCode }: BrandedQRCardProps) {
+export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryAction }: BrandedQRCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const { language } = useLanguage();
@@ -298,6 +299,8 @@ export function BrandedQRCard({ qrValue, customerName, shortCode }: BrandedQRCar
             language === 'th' ? 'ดาวน์โหลดรูป QR' : 'Download QR Image'
           )}
         </button>
+
+        {secondaryAction}
       </div>
 
       <p className="text-xs text-gray-600 text-center">
