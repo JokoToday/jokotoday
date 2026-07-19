@@ -69,6 +69,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
             .eq('id', userId);
         }
 
+        window.history.replaceState({}, '', '/');
         onNavigate('home');
       } catch {
         setErrorMsg('Something went wrong. Redirecting...');
