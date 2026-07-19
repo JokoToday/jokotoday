@@ -24,6 +24,17 @@ import { ScanPage } from './pages/ScanPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import QRResolverPage from './pages/QRResolverPage';
 
+const ACCOUNT_PAGE_PATHS: Record<string, string> = {
+  profile: '/my-profile',
+  orders: '/my-orders',
+  'my-qr': '/my-qr',
+  favorites: '/my-likes',
+};
+
+const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(ACCOUNT_PAGE_PATHS).map(([page, path]) => [path, page])
+);
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -32,63 +43,82 @@ function AppContent() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const qrCustomerMatch = path.match(/^\/c\/([^/]+)$/);
-    const qrResolverMatch = path.match(/^\/q\/([^/]+)$/);
-    const scanMatch = path.match(/^\/scan\/([A-Za-z0-9]+)$/);
-    const productMatch = path.match(/^\/product\/([^/]+)$/);
+    const syncPageFromLocation = () => {
+      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      const qrCustomerMatch = path.match(/^\/c\/([^/]+)$/);
+      const qrResolverMatch = path.match(/^\/q\/([^/]+)$/);
+      const scanMatch = path.match(/^\/scan\/([A-Za-z0-9]+)$/);
+      const productMatch = path.match(/^\/product\/([^/]+)$/);
 
-    if (path === '/auth/callback') {
-      setCurrentPage('auth-callback');
-      return;
-    }
-
-    if (scanMatch) {
-      setCurrentPage('scan');
-      return;
-    }
-
-    if (productMatch) {
-      const slug = productMatch[1];
-      const source = params.get('source');
-      setProductSlug(slug);
-      if (source) setQrSource(source);
-      setCurrentPage('products');
-      window.history.replaceState({}, '', '/');
-      return;
-    }
-
-    if (qrResolverMatch) {
-      setQrToken(qrResolverMatch[1]);
-      setCurrentPage('qr-resolve');
-      return;
-    }
-
-    if (qrCustomerMatch) {
-      setQrToken(qrCustomerMatch[1]);
-      setCurrentPage('customer-account');
-      return;
-    }
-
-    if (params.has('line_user_id') && params.has('code')) {
-      setCurrentPage('line-callback');
-      return;
-    }
-
-    if (params.has('code')) {
-      const code = params.get('code');
-      if (code) {
-        const isAuthCode = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
-        if (isAuthCode) {
-          setCurrentPage('auth-callback');
-        } else {
-          setQrToken(code);
-          setCurrentPage('customer-account');
-        }
+      if (path === '/auth/callback') {
+        setCurrentPage('auth-callback');
         return;
       }
-    }
+
+      if (scanMatch) {
+        setCurrentPage('scan');
+        return;
+      }
+
+      if (productMatch) {
+        const slug = productMatch[1];
+        const source = params.get('source');
+        setProductSlug(slug);
+        if (source) setQrSource(source);
+        setCurrentPage('products');
+        window.history.replaceState({}, '', '/');
+        return;
+      }
+
+      if (qrResolverMatch) {
+        setQrToken(qrResolverMatch[1]);
+        setCurrentPage('qr-resolve');
+        return;
+      }
+
+      if (qrCustomerMatch) {
+        setQrToken(qrCustomerMatch[1]);
+        setCurrentPage('customer-account');
+        return;
+      }
+
+      if (params.has('line_user_id') && params.has('code')) {
+        setCurrentPage('line-callback');
+        return;
+      }
+
+      if (params.has('code')) {
+        const code = params.get('code');
+        if (code) {
+          const isAuthCode = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+          if (isAuthCode) {
+            setCurrentPage('auth-callback');
+          } else {
+            setQrToken(code);
+            setCurrentPage('customer-account');
+          }
+          return;
+        }
+      }
+
+      const accountPage = ACCOUNT_PATH_PAGES[path];
+      if (accountPage) {
+        setCurrentPage(accountPage);
+        return;
+      }
+
+      if (path === '/') {
+        setCurrentPage('home');
+      }
+    };
+
+    syncPageFromLocation();
+    window.addEventListener('popstate', syncPageFromLocation);
+
+    return () => {
+      window.removeEventListener('popstate', syncPageFromLocation);
+    };
   }, []);
 
   useEffect(() => {
@@ -103,12 +133,23 @@ function AppContent() {
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
+    const accountPath = ACCOUNT_PAGE_PATHS[page];
+    const isLeavingAccountPath =
+      !accountPath && Boolean(ACCOUNT_PATH_PAGES[window.location.pathname]);
+
+    if (accountPath && window.location.pathname !== accountPath) {
+      window.history.pushState({}, '', accountPath);
+    } else if (isLeavingAccountPath) {
+      window.history.pushState({}, '', '/');
+    }
+
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
       setProductSlug(productNavMatch[1]);
       setCurrentPage('products');
       return;
     }
+
     setCurrentPage(page);
   };
 
