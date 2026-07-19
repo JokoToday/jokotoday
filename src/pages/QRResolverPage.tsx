@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
 type Props = {
@@ -6,11 +6,15 @@ type Props = {
 }
 
 export default function QRResolverPage({ qrToken }: Props) {
+  const loginStartedRef = useRef(false)
   const { signInWithQR } = useAuth()
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [message, setMessage] = useState('')
 
   useEffect(() => {
+    if (loginStartedRef.current) return
+    loginStartedRef.current = true
+
     const resolveQR = async () => {
       try {
         if (!qrToken) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,6 +14,7 @@ interface UserProfile {
 }
 
 export function ScanPage() {
+  const loginStartedRef = useRef(false);
   const [status, setStatus] = useState<'loading' | 'found' | 'not_found' | 'error'>('loading');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -31,6 +32,8 @@ export function ScanPage() {
       return;
     }
 
+    if (loginStartedRef.current) return;
+    loginStartedRef.current = true;
     lookupUser(shortCode);
   }, [language]);
 

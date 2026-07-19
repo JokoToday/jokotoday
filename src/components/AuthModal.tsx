@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { QRScanner } from './QRScanner';
 import jsQR from 'jsqr';
+import { normalizeQrLoginTarget } from '../lib/qrNavigation';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -63,24 +64,11 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setLoading(true);
 
     try {
-      let shortCode = '';
-      const trimmedValue = rawValue.trim();
-
-      if (trimmedValue.includes('/scan/')) {
-        const parts = trimmedValue.split('/scan/');
-        shortCode = parts[1].split(/[?#]/)[0];
-      } else if (trimmedValue.includes('/verify/')) {
-        const parts = trimmedValue.split('/verify/');
-        shortCode = parts[1].split(/[?#]/)[0];
-      } else {
-        shortCode = trimmedValue;
-      }
-
-      if (!shortCode) {
-        throw new Error(t.auth.errorGeneric);
-      }
-
-      window.location.href = `/scan/${shortCode}`;
+      const target = normalizeQrLoginTarget(
+        rawValue,
+        window.location.origin
+      );
+      window.location.href = target;
     } catch (err) {
       setError(err instanceof Error ? err.message : t.auth.errorGeneric);
       setLoading(false);

@@ -334,7 +334,7 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
       const onSuccess = (decodedText: string) => {
         if (!scannedRef.current && mountedRef.current) {
           scannedRef.current = true;
-          log(`QR Code decoded: ${decodedText}`, 'success');
+          log('QR Code decoded successfully', 'success');
           onScan(decodedText);
         }
       };
