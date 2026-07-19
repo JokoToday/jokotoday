@@ -88,6 +88,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       selecting_camera: 'Detecting cameras...',
       preparing_ui: 'Preparing camera view...',
       starting: 'Starting camera...',
+      pleaseWait: 'Please wait…',
       permission_denied: 'Camera access was denied. Please allow camera access in your browser settings, then tap "Retry".',
       permission_dismissed: 'Camera permission prompt was dismissed. Please tap "Retry" and allow camera access.',
       no_camera: 'No camera found on this device. Use manual entry instead.',
@@ -130,6 +131,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       selecting_camera: 'กำลังตรวจหากล้อง...',
       preparing_ui: 'กำลังเตรียมกล้อง กรุณารอสักครู่...',
       starting: 'กำลังเปิดกล้อง...',
+      pleaseWait: 'กรุณารอสักครู่…',
       permission_denied: 'การเข้าถึงกล้องถูกปฏิเสธ กรุณาอนุญาตการใช้กล้องในการตั้งค่าเบราว์เซอร์ แล้วกด "ลองใหม่"',
       permission_dismissed: 'ปิดหน้าต่างขออนุญาตกล้องแล้ว กรุณากด "ลองใหม่" และอนุญาตการใช้กล้อง',
       no_camera: 'ไม่พบกล้องในอุปกรณ์นี้ กรุณาใช้การกรอกรหัสแทน',
@@ -172,6 +174,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       selecting_camera: '正在检测摄像头...',
       preparing_ui: '正在准备摄像头画面...',
       starting: '正在启动摄像头...',
+      pleaseWait: '请稍候…',
       permission_denied: '摄像头权限被拒绝。',
       permission_dismissed: '摄像头权限请求已关闭。',
       no_camera: '此设备上未找到摄像头。',
@@ -828,7 +831,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
               <Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto mb-4" />
               <p className="text-white font-medium">{getStatusMessage()}</p>
               <p className="text-gray-400 text-sm mt-2">
-                {language === 'en' ? 'Please wait...' : 'กรุณารอสักครู่...'}
+                {msg.pleaseWait}
               </p>
             </div>
           </div>

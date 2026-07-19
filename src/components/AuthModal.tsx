@@ -17,6 +17,24 @@ type AuthAction = 'signin' | 'signup';
 const QR_AUTH_ACTION_BUTTON_CLASS =
   'w-full border-2 border-slate-800 bg-white text-slate-800 py-3.5 rounded-xl font-semibold hover:border-slate-800 hover:bg-slate-800 hover:text-white hover:shadow-md active:bg-slate-900 focus-visible:border-slate-800 focus-visible:bg-slate-800 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-800 disabled:hover:shadow-none flex items-center justify-center gap-2.5';
 
+const qrAuthText = {
+  en: {
+    validating: 'Validating your QR code…',
+    invalid: "Hmm, we couldn't recognize that QR code. Please try again or log in with email.",
+    imageInvalid: 'We could not find a valid QR code in that image. Please choose another image.',
+  },
+  th: {
+    validating: 'กำลังตรวจสอบคิวอาร์โค้ด…',
+    invalid: 'ขออภัย เราไม่สามารถตรวจสอบคิวอาร์โค้ดนี้ได้ โปรดลองอีกครั้งหรือเข้าสู่ระบบด้วยอีเมล',
+    imageInvalid: 'ไม่พบคิวอาร์โค้ดที่ถูกต้องในรูปภาพนี้ กรุณาเลือกรูปภาพอื่น',
+  },
+  zh: {
+    validating: '正在验证二维码…',
+    invalid: '抱歉，我们无法识别此二维码。请重试或使用电子邮件登录。',
+    imageInvalid: '无法在该图片中找到有效的二维码。请选择其他图片。',
+  },
+};
+
 export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthModalProps) {
   const { signInWithMagicLink } = useAuth();
   const { t, language, setLanguage } = useLanguage();
@@ -24,11 +42,14 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [qrProcessing, setQrProcessing] = useState(false);
   const [linkSent, setLinkSent] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const qrCopy = qrAuthText[language];
 
   const handleClose = () => {
     setEmail('');
@@ -36,12 +57,14 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setAction('signin');
     setLinkSent(false);
     setLoading(false);
+    setQrProcessing(false);
     onClose();
   };
 
   const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setQrProcessing(false);
     setLoading(true);
 
     try {
@@ -64,6 +87,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
 
   const handleQrResult = async (rawValue: string) => {
     setError('');
+    setQrProcessing(true);
     setLoading(true);
 
     try {
@@ -73,7 +97,9 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
       );
       window.location.href = target;
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.auth.errorGeneric);
+      console.error('QR result validation failed:', err);
+      setError(qrCopy.invalid);
+      setQrProcessing(false);
       setLoading(false);
     }
   };
@@ -88,6 +114,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     if (!file) return;
 
     setError('');
+    setQrProcessing(true);
     setLoading(true);
 
     try {
@@ -100,7 +127,8 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
           const context = canvas.getContext('2d');
 
           if (!context) {
-            setError(t.auth.errorGeneric);
+            setError(qrCopy.imageInvalid);
+            setQrProcessing(false);
             setLoading(false);
             return;
           }
@@ -115,7 +143,8 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
           if (code && code.data) {
             await handleQrResult(code.data);
           } else {
-            setError(t.auth.errorGeneric);
+            setError(qrCopy.imageInvalid);
+            setQrProcessing(false);
             setLoading(false);
           }
         };
@@ -124,13 +153,15 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
       };
 
       reader.onerror = () => {
-        setError(t.auth.errorGeneric);
+        setError(qrCopy.imageInvalid);
+        setQrProcessing(false);
         setLoading(false);
       };
 
       reader.readAsDataURL(file);
     } catch {
-      setError(t.auth.errorGeneric);
+      setError(qrCopy.imageInvalid);
+      setQrProcessing(false);
       setLoading(false);
     }
 
@@ -236,7 +267,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                   {loading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      {t.auth.loading}
+                      {qrProcessing ? qrCopy.validating : t.auth.loading}
                     </>
                   ) : (
                     t.auth.sendLink

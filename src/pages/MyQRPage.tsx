@@ -77,9 +77,14 @@ const pageText = {
     zh: '重新生成二维码',
   },
   regenerateSuccess: {
-    en: 'Your new QR code is ready. Please download or print the new card.',
-    th: 'รหัส QR ใหม่ของคุณพร้อมแล้ว กรุณาดาวน์โหลดหรือพิมพ์บัตรใหม่',
-    zh: '您的新二维码已准备就绪。请下载或打印新卡片。',
+    en: 'QR code regenerated successfully. Please download or print the new card.',
+    th: 'สร้างคิวอาร์โค้ดใหม่สำเร็จ กรุณาดาวน์โหลดหรือพิมพ์บัตรใหม่',
+    zh: '二维码已成功重新生成。请下载或打印新卡片。',
+  },
+  regenerating: {
+    en: 'Regenerating your QR code…',
+    th: 'กำลังสร้างคิวอาร์โค้ดใหม่…',
+    zh: '正在重新生成您的二维码…',
   },
   regenerateError: {
     en: 'We could not regenerate your QR code. Please try again.',
@@ -102,8 +107,11 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
   const [activeQrToken, setActiveQrToken] = useState(userProfile?.qr_token || '');
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [regenerateSuccess, setRegenerateSuccess] = useState('');
-  const [regenerateError, setRegenerateError] = useState('');
+  const [regenerateSucceeded, setRegenerateSucceeded] = useState(false);
+  const [regenerateFailure, setRegenerateFailure] = useState<{
+    kind: 'session' | 'generic';
+    diagnostic: string;
+  } | null>(null);
 
   useEffect(() => {
     setActiveQrToken(userProfile?.qr_token || '');
@@ -114,13 +122,18 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
   const qrValue = qrToken
     ? `${window.location.origin}/q/${encodeURIComponent(qrToken)}`
     : '';
+  const regenerateErrorMessage = regenerateFailure
+    ? `${regenerateFailure.kind === 'session' ? pageText.sessionExpired[lang] : pageText.regenerateError[lang]}${
+      import.meta.env.DEV ? ` (${regenerateFailure.diagnostic})` : ''
+    }`
+    : '';
 
   const handleRegenerateQr = async () => {
     if (regenerating) return;
 
     setRegenerating(true);
-    setRegenerateError('');
-    setRegenerateSuccess('');
+    setRegenerateFailure(null);
+    setRegenerateSucceeded(false);
 
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -150,7 +163,7 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
 
       setActiveQrToken(newToken);
       setShowRegenerateConfirm(false);
-      setRegenerateSuccess(pageText.regenerateSuccess[lang]);
+      setRegenerateSucceeded(true);
       await refreshProfile();
     } catch (error) {
       let diagnostic = error instanceof Error ? error.message : 'Unknown error';
@@ -168,10 +181,10 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
       }
 
       console.error('[MyQRPage] QR regeneration failed:', diagnostic);
-      const localizedError = error instanceof Error && error.name === 'SessionExpiredError'
-        ? pageText.sessionExpired[lang]
-        : pageText.regenerateError[lang];
-      setRegenerateError(import.meta.env.DEV ? `${localizedError} (${diagnostic})` : localizedError);
+      setRegenerateFailure({
+        kind: error instanceof Error && error.name === 'SessionExpiredError' ? 'session' : 'generic',
+        diagnostic,
+      });
     } finally {
       setRegenerating(false);
     }
@@ -238,7 +251,7 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    setRegenerateError('');
+                    setRegenerateFailure(null);
                     setShowRegenerateConfirm(true);
                   }}
                   disabled={regenerating}
@@ -248,16 +261,16 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
                   {pageText.regenerate[lang]}
                 </button>
 
-                {regenerateSuccess && (
+                {regenerateSucceeded && (
                   <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
                     <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{regenerateSuccess}</span>
+                    <span>{pageText.regenerateSuccess[lang]}</span>
                   </div>
                 )}
 
-                {regenerateError && !showRegenerateConfirm && (
+                {regenerateFailure && !showRegenerateConfirm && (
                   <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-700" role="alert">
-                    {regenerateError}
+                    {regenerateErrorMessage}
                   </div>
                 )}
               </>
@@ -292,9 +305,9 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
               {pageText.regenerateBody[lang]}
             </p>
 
-            {regenerateError && (
+            {regenerateFailure && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                {regenerateError}
+                {regenerateErrorMessage}
               </div>
             )}
 
@@ -314,7 +327,7 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
                 className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {regenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {pageText.regenerateConfirm[lang]}
+                {regenerating ? pageText.regenerating[lang] : pageText.regenerateConfirm[lang]}
               </button>
             </div>
           </div>

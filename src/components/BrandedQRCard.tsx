@@ -185,8 +185,19 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
       return canvas;
   };
 
-  const getSafeFileName = () =>
-    String(shortCode || 'card').trim().replace(/[^a-zA-Z0-9]/g, '');
+  const getDownloadFileName = (extension: 'png' | 'pdf') => {
+    const safeShortCode = String(shortCode || 'MEMBER')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '') || 'MEMBER';
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const timestamp = [
+      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      `${pad(now.getHours())}${pad(now.getMinutes())}`,
+    ].join('-');
+
+    return `JOKO-TODAY-${safeShortCode}-QR-${timestamp}.${extension}`;
+  };
 
   const handleDownloadCard = async () => {
     try {
@@ -201,7 +212,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
       const imageY = (pageHeight - imageHeight) / 2;
 
       pdf.addImage(cardImageData, 'PNG', imageX, imageY, imageWidth, imageHeight);
-      pdf.save(`joko-qr-${getSafeFileName()}.pdf`);
+      pdf.save(getDownloadFileName('pdf'));
     } catch (error) {
       console.error('Error generating PDF:', error);
     }
@@ -212,7 +223,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
       const canvas = await renderMemberCardCanvas();
       const link = document.createElement('a');
       link.href = canvas.toDataURL('image/png');
-      link.download = `joko-qr-${getSafeFileName()}.png`;
+      link.download = getDownloadFileName('png');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
