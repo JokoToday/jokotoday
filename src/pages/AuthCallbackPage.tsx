@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { generateQRToken } from '../lib/qrTokenGenerator';
+import { useLanguage } from '../context/LanguageContext';
 
 function logSupabaseError(context: string, error: unknown) {
   if (!error) return;
@@ -36,25 +37,71 @@ interface AuthCallbackPageProps {
   onNavigate: (page: string) => void;
 }
 
+const callbackText = {
+  en: {
+    signingIn: 'Signing you in…',
+    failed: 'Sign-in failed. Please try again.',
+    unexpected: 'Something went wrong. Redirecting…',
+  },
+  th: {
+    signingIn: 'กำลังเข้าสู่ระบบ…',
+    failed: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง',
+    unexpected: 'เกิดข้อผิดพลาด กำลังเปลี่ยนเส้นทาง…',
+  },
+  zh: {
+    signingIn: '正在为您登录…',
+    failed: '登录失败，请重试。',
+    unexpected: '出现问题，正在跳转…',
+  },
+};
+
 export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<'failed' | 'unexpected' | null>(null);
+  const { language } = useLanguage();
+  const text = callbackText[language];
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken || refreshToken) {
+          window.history.replaceState({}, document.title, '/auth/callback');
+
+          if (!accessToken || !refreshToken) {
+            setErrorKind('failed');
+            setTimeout(() => onNavigate('home'), 3000);
+            return;
+          }
+
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          logSupabaseError('implicit callback setSession failed', setSessionError);
+
+          if (setSessionError) {
+            setErrorKind('failed');
+            setTimeout(() => onNavigate('home'), 3000);
+            return;
+          }
+        }
+
         const sessionResult = await supabase.auth.getSession();
         const session = sessionResult.data?.session ?? null;
         const error = sessionResult.error;
         logSupabaseError('getSession failed', sessionResult.error);
 
         if (error) {
-          setErrorMsg('Sign-in failed. Please try again.');
+          setErrorKind('failed');
           setTimeout(() => onNavigate('home'), 3000);
           return;
         }
 
         if (!session?.user) {
-          setErrorMsg('Sign-in failed. Please try again.');
+          setErrorKind('failed');
           setTimeout(() => onNavigate('home'), 3000);
           return;
         }
@@ -97,7 +144,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
         onNavigate('home');
       } catch (error) {
         logSupabaseError('unexpected callback failure', error);
-        setErrorMsg('Something went wrong. Redirecting...');
+        setErrorKind('unexpected');
         setTimeout(() => onNavigate('home'), 3000);
       }
     };
@@ -107,10 +154,10 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
-      {errorMsg ? (
-        <p className="text-red-600 text-lg">{errorMsg}</p>
+      {errorKind ? (
+        <p className="text-red-600 text-lg">{text[errorKind]}</p>
       ) : (
-        <p className="text-gray-600 text-lg">Signing you in...</p>
+        <p className="text-gray-600 text-lg">{text.signingIn}</p>
       )}
     </div>
   );
