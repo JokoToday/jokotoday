@@ -14,6 +14,9 @@ interface AuthModalProps {
 
 type AuthAction = 'signin' | 'signup';
 
+const QR_AUTH_ACTION_BUTTON_CLASS =
+  'w-full border-2 border-slate-800 bg-white text-slate-800 py-3.5 rounded-xl font-semibold hover:border-slate-800 hover:bg-slate-800 hover:text-white hover:shadow-md active:bg-slate-900 focus-visible:border-slate-800 focus-visible:bg-slate-800 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-800 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-800 disabled:hover:shadow-none flex items-center justify-center gap-2.5';
+
 export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthModalProps) {
   const { signInWithMagicLink } = useAuth();
   const { t, language, setLanguage } = useLanguage();
@@ -255,7 +258,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                     <button
                       onClick={() => setShowQRScanner(true)}
                       disabled={loading}
-                      className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+                      className={QR_AUTH_ACTION_BUTTON_CLASS}
                     >
                       <QrCode className="w-5 h-5" />
                       {t.auth.qrLogin}
@@ -271,7 +274,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={loading}
-                      className="w-full border-2 border-gray-200 text-gray-700 py-3.5 rounded-xl font-semibold hover:border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
+                      className={QR_AUTH_ACTION_BUTTON_CLASS}
                     >
                       <Upload className="w-5 h-5" />
                       {language === 'en' ? 'Upload QR from Gallery' : language === 'th' ? 'อัพโหลดภาพ QR จากแกลเลอรี' : '从相册上传二维码'}
@@ -304,7 +307,11 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
         <QRScanner
           onScan={handleQRScan}
           onClose={() => setShowQRScanner(false)}
-          language={language as 'en' | 'th'}
+          onUpload={() => {
+            setShowQRScanner(false);
+            fileInputRef.current?.click();
+          }}
+          language={language}
         />
       )}
 
