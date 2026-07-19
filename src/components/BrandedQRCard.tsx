@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Download } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,10 @@ interface BrandedQRCardProps {
   shortCode?: string;
 }
 
-export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: BrandedQRCardProps) {
+const QR_DOWNLOAD_BUTTON_CLASS =
+  'w-full border border-amber-500 bg-white text-amber-700 font-semibold py-3 rounded-lg hover:border-amber-600 hover:bg-amber-600 hover:text-white hover:shadow-md focus-visible:border-amber-600 focus-visible:bg-amber-600 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 flex items-center justify-center gap-2';
+
+export function BrandedQRCard({ qrValue, customerName, shortCode }: BrandedQRCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const { language } = useLanguage();
@@ -65,6 +68,29 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
         reject(new Error('Failed to load SVG image'));
       };
       img.src = url;
+    });
+  };
+
+  const svgToImage = (svg: SVGSVGElement, size: number): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute('width', String(size));
+      clone.setAttribute('height', String(size));
+
+      const svgData = new XMLSerializer().serializeToString(clone);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const image = new Image();
+
+      image.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(image);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load QR SVG'));
+      };
+      image.src = url;
     });
   };
 
@@ -124,10 +150,53 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
       const svg = qrRef.current?.querySelector('svg') as SVGSVGElement;
       if (!svg) return;
 
-      const dataUrl = await svgToDataUrl(svg);
+      const canvasSize = 1200;
+      const maxQrSize = 720;
+      const viewBoxSize = Math.max(1, Math.round(svg.viewBox.baseVal.width));
+      const moduleScale = Math.max(1, Math.floor(maxQrSize / viewBoxSize));
+      const qrSize = viewBoxSize * moduleScale;
+      const qrImage = await svgToImage(svg, qrSize);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No canvas context');
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillStyle = '#78350F';
+      ctx.font = '700 72px Arial, sans-serif';
+      ctx.fillText('JOKO TODAY', canvasSize / 2, 95);
+
+      const cleanName = String(customerName || 'JOKO Member').trim().slice(0, 40);
+      ctx.fillStyle = '#292524';
+      ctx.font = '600 48px Arial, sans-serif';
+      ctx.fillText(cleanName, canvasSize / 2, 185, 1000);
+
+      ctx.imageSmoothingEnabled = false;
+      const qrX = Math.round((canvasSize - qrSize) / 2);
+      const qrY = 250;
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      const cleanShortCode = String(shortCode || '')
+        .trim()
+        .slice(0, 32);
+
+      if (cleanShortCode) {
+        ctx.fillStyle = '#B45309';
+        ctx.font = '700 46px monospace';
+        ctx.fillText(cleanShortCode, canvasSize / 2, 1100);
+      }
+
       const safeFileName = String(shortCode || 'card').trim().replace(/[^a-zA-Z0-9]/g, '');
       const link = document.createElement('a');
-      link.href = dataUrl;
+      link.href = canvas.toDataURL('image/png');
       link.download = `joko-qr-${safeFileName}.png`;
       document.body.appendChild(link);
       link.click();
@@ -156,11 +225,12 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
             <div ref={qrRef} className="bg-white p-2 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
               <QRCodeSVG
                 value={String(qrValue).trim()}
-                size={100}
-                level="M"
-                includeMargin={false}
+                size={150}
+                level="H"
+                marginSize={4}
                 fgColor="#000000"
                 bgColor="#FFFFFF"
+                className="w-[120px] h-[120px] sm:w-[150px] sm:h-[150px]"
               />
             </div>
 
@@ -182,21 +252,21 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
       <div className="flex flex-col gap-3">
         <button
           onClick={handleDownloadCard}
-          className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md"
+          className={QR_DOWNLOAD_BUTTON_CLASS}
         >
           <Download className="w-5 h-5" />
           {getLabel('qr_page.download_card_button', language,
-            language === 'th' ? 'ดาวน์โหลดเป็นบัตร' : 'Download as Card'
+            language === 'th' ? 'ดาวน์โหลดบัตรสมาชิก' : 'Download Membership Card'
           )}
         </button>
 
         <button
           onClick={handleDownloadImage}
-          className="w-full bg-white hover:bg-gray-50 text-amber-600 font-semibold py-3 rounded-lg transition-all border border-amber-200 flex items-center justify-center gap-2"
+          className={QR_DOWNLOAD_BUTTON_CLASS}
         >
           <Download className="w-5 h-5" />
           {getLabel('qr_page.download_image_button', language,
-            language === 'th' ? 'ดาวน์โหลดเป็นรูปภาพ' : 'Download as Image'
+            language === 'th' ? 'ดาวน์โหลดรูป QR' : 'Download QR Image'
           )}
         </button>
       </div>

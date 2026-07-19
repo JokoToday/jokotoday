@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -61,8 +60,8 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
 
   const qrToken = userProfile?.qr_token || '';
   const shortCode = String(userProfile?.short_code || '').trim();
-  const qrValue = shortCode
-    ? `${window.location.origin}/scan/${shortCode}`
+  const qrValue = qrToken
+    ? `${window.location.origin}/q/${encodeURIComponent(qrToken)}`
     : '';
 
   if (!user) {
@@ -81,7 +80,7 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
     );
   }
 
-  if (!shortCode) {
+  if (!qrToken) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
         <div className="text-center">
