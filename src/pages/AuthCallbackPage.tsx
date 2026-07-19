@@ -2,6 +2,36 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { generateQRToken } from '../lib/qrTokenGenerator';
 
+function logSupabaseError(context: string, error: unknown) {
+  if (!error) return;
+
+  const err = error as {
+    name?: string;
+    message?: string;
+    code?: string;
+    status?: number;
+    details?: string;
+    hint?: string;
+  };
+
+  const safeDetails = {
+    name: err.name,
+    code: err.code,
+    status: err.status,
+  };
+
+  if (import.meta.env.DEV) {
+    console.error(`[auth-callback] ${context}`, {
+      ...safeDetails,
+      message: err.message,
+      details: err.details,
+      hint: err.hint,
+    });
+  } else {
+    console.error(`[auth-callback] ${context}`, safeDetails);
+  }
+}
+
 interface AuthCallbackPageProps {
   onNavigate: (page: string) => void;
 }
@@ -12,21 +42,10 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-
-        let session = null;
-        let error = null;
-
-        if (code) {
-          const result = await supabase.auth.exchangeCodeForSession(code);
-          session = result.data?.session ?? null;
-          error = result.error;
-        } else {
-          const result = await supabase.auth.getSession();
-          session = result.data?.session ?? null;
-          error = result.error;
-        }
+        const sessionResult = await supabase.auth.getSession();
+        const session = sessionResult.data?.session ?? null;
+        const error = sessionResult.error;
+        logSupabaseError('getSession failed', sessionResult.error);
 
         if (error) {
           setErrorMsg('Sign-in failed. Please try again.');
@@ -43,16 +62,19 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
         const userId = session.user.id;
         const userEmail = session.user.email ?? null;
 
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile, error: profileSelectError } = await supabase
           .from('user_profiles')
           .select('id, profile_completed')
           .eq('id', userId)
           .maybeSingle();
+        logSupabaseError('user_profiles select failed', profileSelectError);
 
         if (!existingProfile) {
           const qrToken = generateQRToken();
-          const { data: shortCodeData } = await supabase.rpc('generate_next_short_code');
-          await supabase.from('user_profiles').insert({
+          const { data: shortCodeData, error: shortCodeError } = await supabase.rpc('generate_next_short_code');
+          logSupabaseError('generate_next_short_code failed', shortCodeError);
+
+          const { error: profileInsertError } = await supabase.from('user_profiles').insert({
             id: userId,
             email: userEmail,
             name: session.user.user_metadata?.full_name ?? null,
@@ -62,16 +84,19 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
             qr_token: qrToken,
             short_code: shortCodeData ?? null,
           });
+          logSupabaseError('profile insert failed', profileInsertError);
         } else if (!existingProfile.profile_completed && userEmail) {
-          await supabase
+          const { error: profileUpdateError } = await supabase
             .from('user_profiles')
             .update({ email: userEmail })
             .eq('id', userId);
+          logSupabaseError('profile update failed', profileUpdateError);
         }
 
         window.history.replaceState({}, '', '/');
         onNavigate('home');
-      } catch {
+      } catch (error) {
+        logSupabaseError('unexpected callback failure', error);
         setErrorMsg('Something went wrong. Redirecting...');
         setTimeout(() => onNavigate('home'), 3000);
       }
