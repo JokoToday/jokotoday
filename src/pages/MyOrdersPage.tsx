@@ -108,15 +108,14 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#f6f1e7' }}>
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-stone-600 mb-4">
+          <p className="text-gray-600 mb-4">
             {language === 'zh' ? '请登录查看您的订单' : language === 'th' ? 'กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ' : 'Please sign in to view your orders.'}
           </p>
           <button
             onClick={() => onNavigate('home')}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
-            style={{ background: '#c6a75e' }}
+            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-semibold text-white transition-colors"
           >
             {language === 'zh' ? '返回首页' : language === 'th' ? 'กลับหน้าหลัก' : 'Go to Home'}
           </button>

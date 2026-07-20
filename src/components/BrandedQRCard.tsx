@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download } from 'lucide-react';
+import { Croissant, Download, Heart } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import jsPDF from 'jspdf';
@@ -10,110 +10,209 @@ interface BrandedQRCardProps {
   qrValue: string;
   customerName: string;
   shortCode?: string;
+  secondaryAction?: ReactNode;
 }
 
-export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: BrandedQRCardProps) {
+const QR_DOWNLOAD_BUTTON_CLASS =
+  'w-full border border-amber-500 bg-white text-amber-700 font-semibold py-3 rounded-lg hover:border-amber-600 hover:bg-amber-600 hover:text-white hover:shadow-md focus-visible:border-amber-600 focus-visible:bg-amber-600 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 flex items-center justify-center gap-2';
+
+export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryAction }: BrandedQRCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
 
-  const BakeryPattern = () => (
-    <svg className="absolute inset-0 w-full h-full opacity-8 pointer-events-none" preserveAspectRatio="none">
-      <defs>
-        <pattern id="bakeryPattern" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
-          <g stroke="#D97706" strokeWidth="0.3" fill="none" opacity="0.4">
-            <path d="M20,20 Q30,15 40,20 Q35,25 40,30 Q30,35 20,30 Q25,25 20,20" />
-            <path d="M70,30 L75,35 L70,40 L65,35 Z" />
-            <path d="M30,60 L60,60 L55,80 L35,80 Z" />
-            <path d="M80,70 Q85,65 90,70 Q85,75 80,70" />
-            <line x1="20" y1="50" x2="40" y2="50" />
-            <line x1="45" y1="50" x2="55" y2="45" />
-            <line x1="60" y1="50" x2="75" y2="55" />
-          </g>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#bakeryPattern)" />
-    </svg>
-  );
+  const drawCroissant = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    size: number
+  ) => {
+    const paths = [
+      'M4.6 13.11 10.39 9.9c1.89-1.05 4.79 1.78 3.71 3.71l-3.22 5.81C8.8 23.16.79 15.23 4.6 13.11Z',
+      'M10.5 9.5 9.5 7.21C9.2 6.48 8.8 6 8 6H4.5C2.79 6 2 6.5 2 8.5a7.71 7.71 0 0 0 2 4.83',
+      'M8 6c0-1.55.24-4-2-4-2 0-2.5 2.17-2.5 4',
+      'M14.5 13.5 16.79 14.5c.73.3 1.21.7 1.21 1.5v3.5c0 1.71-.5 2.5-2.5 2.5a7.71 7.71 0 0 1-4.83-2',
+      'M18 16c1.55 0 4-.24 4 2 0 2-2.17 2.5-4 2.5',
+    ];
 
-  const svgToDataUrl = (svg: SVGSVGElement): Promise<string> => {
+    ctx.save();
+    ctx.translate(centerX - size / 2, centerY - size / 2);
+    ctx.scale(size / 24, size / 24);
+    ctx.strokeStyle = '#B6843E';
+    ctx.lineWidth = 1.7;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    paths.forEach(path => ctx.stroke(new Path2D(path)));
+    ctx.restore();
+  };
+
+  const roundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ) => {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+  };
+
+  const svgToImage = (svg: SVGSVGElement, size: number): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
-      const size = 200;
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return reject(new Error('No canvas context'));
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute('width', String(size));
+      clone.setAttribute('height', String(size));
 
-      svg.setAttribute('width', String(size));
-      svg.setAttribute('height', String(size));
-      const svgData = new XMLSerializer().serializeToString(svg);
+      const svgData = new XMLSerializer().serializeToString(clone);
       const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
       const url = URL.createObjectURL(svgBlob);
+      const image = new Image();
 
-      const img = new Image();
-      img.onload = () => {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
-        ctx.drawImage(img, 0, 0, size, size);
+      image.onload = () => {
         URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL('image/png'));
+        resolve(image);
       };
-      img.onerror = () => {
+      image.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error('Failed to load SVG image'));
+        reject(new Error('Failed to load QR SVG'));
       };
-      img.src = url;
+      image.src = url;
     });
+  };
+
+  const renderMemberCardCanvas = async () => {
+      const svg = qrRef.current?.querySelector('svg') as SVGSVGElement | undefined;
+      if (!svg) throw new Error('QR SVG not found');
+
+      const canvasWidth = 1650;
+      const canvasHeight = 2550;
+      const maxQrSize = 1000;
+      const viewBoxSize = Math.max(1, Math.round(svg.viewBox.baseVal.width));
+      const moduleScale = Math.max(1, Math.floor(maxQrSize / viewBoxSize));
+      const qrSize = viewBoxSize * moduleScale;
+      const qrImage = await svgToImage(svg, qrSize);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('No canvas context');
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      roundedRect(ctx, 30, 30, 1590, 2490, 88);
+      ctx.fillStyle = '#FBF7EE';
+      ctx.fill();
+
+      roundedRect(ctx, 66, 66, 1518, 2418, 60);
+      ctx.strokeStyle = '#C7A56A';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      drawCroissant(ctx, canvasWidth / 2, 178, 88);
+
+      ctx.fillStyle = '#17233C';
+      ctx.font = '700 88px Georgia, serif';
+      ctx.fillText('JOKO TODAY', canvasWidth / 2, 290);
+
+      ctx.strokeStyle = '#C7A56A';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(310, 378);
+      ctx.lineTo(570, 378);
+      ctx.moveTo(1080, 378);
+      ctx.lineTo(1340, 378);
+      ctx.stroke();
+
+      ctx.fillStyle = '#A87532';
+      ctx.font = '600 34px Arial, sans-serif';
+      ctx.fillText('BOUTIQUE BAKERY', canvasWidth / 2, 378);
+
+      roundedRect(ctx, 235, 480, 1180, 1180, 38);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+
+      ctx.imageSmoothingEnabled = false;
+      const qrX = Math.round((canvasWidth - qrSize) / 2);
+      const qrY = Math.round(480 + (1180 - qrSize) / 2);
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+      ctx.fillStyle = '#A87532';
+      ctx.font = 'italic 42px Georgia, serif';
+      ctx.fillText('Goodness for Every Soul', canvasWidth / 2, 1750);
+
+      ctx.strokeStyle = '#C7A56A';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(435, 1840);
+      ctx.lineTo(720, 1840);
+      ctx.moveTo(930, 1840);
+      ctx.lineTo(1215, 1840);
+      ctx.stroke();
+      ctx.fillStyle = '#B6843E';
+      ctx.font = '38px Georgia, serif';
+      ctx.fillText('♥', canvasWidth / 2, 1840);
+
+      const cleanName = String(customerName || 'JOKO Member').trim().slice(0, 40);
+      ctx.fillStyle = '#17233C';
+      ctx.font = '600 66px Georgia, serif';
+      ctx.fillText(cleanName, canvasWidth / 2, 1945, 1320);
+
+      const cleanShortCode = String(shortCode || '')
+        .trim()
+        .slice(0, 32);
+
+      if (cleanShortCode) {
+        ctx.font = '600 44px monospace';
+        const codeWidth = ctx.measureText(cleanShortCode).width;
+        const iconSize = 44;
+        const gap = 8;
+        const groupWidth = codeWidth + gap + iconSize;
+        const codeX = (canvasWidth - groupWidth) / 2;
+        ctx.fillStyle = '#A87532';
+        ctx.textAlign = 'left';
+        ctx.fillText(cleanShortCode, codeX, 2035);
+        drawCroissant(ctx, codeX + codeWidth + gap + iconSize / 2, 2035, iconSize);
+        ctx.textAlign = 'center';
+      }
+
+      return canvas;
+  };
+
+  const getDownloadFileName = (extension: 'png' | 'pdf') => {
+    const safeShortCode = String(shortCode || 'MEMBER')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '') || 'MEMBER';
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const timestamp = [
+      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      `${pad(now.getHours())}${pad(now.getMinutes())}`,
+    ].join('-');
+
+    return `JOKO-TODAY-${safeShortCode}-QR-${timestamp}.${extension}`;
   };
 
   const handleDownloadCard = async () => {
     try {
-      const svg = qrRef.current?.querySelector('svg') as SVGSVGElement;
-      if (!svg) return;
+      const canvas = await renderMemberCardCanvas();
+      const cardImageData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imageWidth = 55;
+      const imageHeight = 85;
+      const imageX = (pageWidth - imageWidth) / 2;
+      const imageY = (pageHeight - imageHeight) / 2;
 
-      const qrImageData = await svgToDataUrl(svg);
-
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: [85, 55],
-      });
-
-      const pageWidth = 85;
-      const pageHeight = 55;
-
-      pdf.setFillColor(251, 248, 243);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      pdf.setTextColor(120, 80, 20);
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('JOKO TODAY', pageWidth / 2, 8, { align: 'center' });
-
-      const qrSize = 28;
-      const qrX = (pageWidth - qrSize) / 2;
-      const qrY = 12;
-
-      pdf.addImage(qrImageData, 'PNG', qrX, qrY, qrSize, qrSize);
-
-      const cleanName = String(customerName || '').trim().slice(0, 24);
-      pdf.setTextColor(80, 60, 40);
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(cleanName, pageWidth / 2, pageHeight - 9, { align: 'center' });
-
-      if (shortCode) {
-        const cleanShortCode = String(shortCode).trim();
-        pdf.setTextColor(180, 100, 40);
-        pdf.setFontSize(7);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(cleanShortCode, pageWidth / 2, pageHeight - 4, { align: 'center' });
-      }
-
-      const safeFileName = String(shortCode || 'card').trim().replace(/[^a-zA-Z0-9]/g, '');
-      pdf.save(`joko-qr-${safeFileName}.pdf`);
+      pdf.addImage(cardImageData, 'PNG', imageX, imageY, imageWidth, imageHeight);
+      pdf.save(getDownloadFileName('pdf'));
     } catch (error) {
       console.error('Error generating PDF:', error);
     }
@@ -121,14 +220,10 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
 
   const handleDownloadImage = async () => {
     try {
-      const svg = qrRef.current?.querySelector('svg') as SVGSVGElement;
-      if (!svg) return;
-
-      const dataUrl = await svgToDataUrl(svg);
-      const safeFileName = String(shortCode || 'card').trim().replace(/[^a-zA-Z0-9]/g, '');
+      const canvas = await renderMemberCardCanvas();
       const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `joko-qr-${safeFileName}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.download = getDownloadFileName('png');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -142,37 +237,53 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
       <div className="flex flex-col items-center justify-center py-6">
         <div
           ref={cardRef}
-          className="relative w-full max-w-md bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 rounded-2xl shadow-2xl border-2 border-amber-200 overflow-hidden flex flex-col items-center justify-center text-center px-6 py-4"
-          style={{ aspectRatio: '1.586 / 1' }}
+          className="relative w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[#fbf7ee] p-3 shadow-2xl"
+          style={{ aspectRatio: '55 / 85' }}
         >
-          <BakeryPattern />
+          <div className="flex h-full flex-col items-center rounded-[20px] border border-[#c7a56a] px-5 py-5 text-center sm:px-7 sm:py-6">
+            <Croissant className="h-8 w-8 shrink-0 text-[#b6843e]" strokeWidth={1.5} />
+            <h2 className="mt-1 font-serif text-[1.35rem] font-bold tracking-[0.12em] text-[#17233c] sm:text-2xl">
+              JOKO TODAY
+            </h2>
+            <div className="mt-1 flex w-full items-center justify-center gap-2 text-[#a87532]">
+              <span className="h-px max-w-14 flex-1 bg-[#c7a56a]" />
+              <span className="whitespace-nowrap text-[0.58rem] font-semibold tracking-[0.2em] sm:text-[0.65rem]">
+                BOUTIQUE BAKERY
+              </span>
+              <span className="h-px max-w-14 flex-1 bg-[#c7a56a]" />
+            </div>
 
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-3 right-6 w-20 h-20 bg-yellow-200 rounded-full blur-3xl opacity-30"></div>
-            <div className="absolute bottom-3 left-6 w-16 h-16 bg-orange-200 rounded-full blur-3xl opacity-30"></div>
-          </div>
-
-          <div className="relative flex flex-row items-center justify-center gap-5 w-full h-full">
-            <div ref={qrRef} className="bg-white p-2 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+            <div ref={qrRef} className="mt-4 flex items-center justify-center rounded-xl bg-white p-2 shadow-sm sm:mt-5">
               <QRCodeSVG
                 value={String(qrValue).trim()}
-                size={100}
-                level="M"
-                includeMargin={false}
+                size={220}
+                level="H"
+                marginSize={4}
                 fgColor="#000000"
                 bgColor="#FFFFFF"
+                className="h-auto w-full max-w-[190px] sm:max-w-[220px]"
               />
             </div>
 
-            <div className="flex flex-col items-start justify-center text-left gap-1 min-w-0 flex-1">
-              <h2 className="text-sm font-bold text-amber-800 tracking-widest uppercase">JOKO TODAY</h2>
-              <p className="text-base font-semibold text-amber-950 break-words leading-snug w-full">
+            <p className="mt-3 font-serif text-xs italic text-[#a87532] sm:text-sm">
+              Goodness for Every Soul
+            </p>
+
+            <div className="mt-2 flex w-full items-center justify-center gap-2 text-[#b6843e]">
+              <span className="h-px max-w-16 flex-1 bg-[#c7a56a]" />
+              <Heart className="h-3.5 w-3.5 fill-current" strokeWidth={1.5} />
+              <span className="h-px max-w-16 flex-1 bg-[#c7a56a]" />
+            </div>
+
+            <div className="mt-2 min-w-0">
+              <p className="truncate font-serif text-lg font-semibold text-[#17233c] sm:text-[1.25rem]">
                 {customerName}
               </p>
               {shortCode && (
-                <p className="text-xs font-bold text-amber-700 tracking-wide font-mono opacity-80">
-                  {shortCode}
-                </p>
+                <div className="mt-0.5 flex items-center justify-center gap-1 text-[#a87532]">
+                  <span className="font-mono text-[0.825rem] font-semibold tracking-wide sm:text-[0.95rem]">{shortCode}</span>
+                  <Croissant className="h-4 w-4 shrink-0" strokeWidth={1.6} />
+                </div>
               )}
             </div>
           </div>
@@ -182,23 +293,25 @@ export function BrandedQRCard({ qrToken, qrValue, customerName, shortCode }: Bra
       <div className="flex flex-col gap-3">
         <button
           onClick={handleDownloadCard}
-          className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md"
+          className={QR_DOWNLOAD_BUTTON_CLASS}
         >
           <Download className="w-5 h-5" />
           {getLabel('qr_page.download_card_button', language,
-            language === 'th' ? 'ดาวน์โหลดเป็นบัตร' : 'Download as Card'
+            language === 'th' ? 'ดาวน์โหลดบัตรสมาชิก' : 'Download Membership Card'
           )}
         </button>
 
         <button
           onClick={handleDownloadImage}
-          className="w-full bg-white hover:bg-gray-50 text-amber-600 font-semibold py-3 rounded-lg transition-all border border-amber-200 flex items-center justify-center gap-2"
+          className={QR_DOWNLOAD_BUTTON_CLASS}
         >
           <Download className="w-5 h-5" />
           {getLabel('qr_page.download_image_button', language,
-            language === 'th' ? 'ดาวน์โหลดเป็นรูปภาพ' : 'Download as Image'
+            language === 'th' ? 'ดาวน์โหลดรูป QR' : 'Download QR Image'
           )}
         </button>
+
+        {secondaryAction}
       </div>
 
       <p className="text-xs text-gray-600 text-center">

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Camera, X, AlertCircle, Loader2, Check, RotateCcw, Keyboard, RefreshCw } from 'lucide-react';
+import { Camera, X, AlertCircle, Loader2, Check, RotateCcw, Keyboard, RefreshCw, Upload } from 'lucide-react';
 
 interface QRScannerProps {
   onScan: (decodedText: string) => void;
   onClose: () => void;
-  language?: 'en' | 'th';
+  onUpload?: () => void;
+  language?: 'en' | 'th' | 'zh';
 }
 
 type ScannerState = 'initializing' | 'requesting_permission' | 'selecting_camera' | 'preparing_ui' | 'starting' | 'scanning' | 'error';
@@ -14,6 +15,7 @@ type ErrorType = 'permission_denied' | 'permission_dismissed' | 'no_camera' | 'c
 interface CameraDevice {
   deviceId: string;
   label: string;
+  displayLabel: string | null;
   isRear: boolean;
   score: number;
 }
@@ -25,8 +27,23 @@ interface DebugLog {
 }
 
 const READER_ELEMENT_ID = 'qr-reader-container';
+const VIRTUAL_CAMERA_LABEL_TERMS = ['obs', 'virtual', 'snap camera', 'manycam', 'droidcam'];
 
-export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) {
+const isVirtualCameraLabel = (label: string) => {
+  const normalizedLabel = label.toLowerCase();
+  return VIRTUAL_CAMERA_LABEL_TERMS.some(term => normalizedLabel.includes(term));
+};
+
+const getResponsiveQrboxSize = (viewfinderWidth: number, viewfinderHeight: number) => {
+  const visibleDimension = Math.min(viewfinderWidth, viewfinderHeight);
+  const availableSize = Math.max(50, visibleDimension - 32);
+  const preferredSize = Math.max(200, Math.min(visibleDimension, 360) * 0.7);
+  const size = Math.round(Math.min(availableSize, preferredSize));
+
+  return { width: size, height: size };
+};
+
+export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScannerProps) {
   const [state, setState] = useState<ScannerState>('initializing');
   const [errorType, setErrorType] = useState<ErrorType | null>(null);
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -38,6 +55,7 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const [pendingCameraId, setPendingCameraId] = useState<string | null>(null);
+  const [scanBoxSize, setScanBoxSize] = useState(200);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannedRef = useRef(false);
@@ -64,11 +82,13 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
     en: {
       title: 'Scan Customer QR Code',
       positioning: 'Position the QR code within the frame',
+      distanceGuidance: 'Hold your QR code about 30–40 cm from the camera.\nScanning happens automatically — no button is needed.',
       initializing: 'Initializing scanner...',
       requesting_permission: 'Requesting camera permission...',
       selecting_camera: 'Detecting cameras...',
       preparing_ui: 'Preparing camera view...',
       starting: 'Starting camera...',
+      pleaseWait: 'Please wait…',
       permission_denied: 'Camera access was denied. Please allow camera access in your browser settings, then tap "Retry".',
       permission_dismissed: 'Camera permission prompt was dismissed. Please tap "Retry" and allow camera access.',
       no_camera: 'No camera found on this device. Use manual entry instead.',
@@ -88,18 +108,30 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
       showDebug: 'Show Debug Info',
       hideDebug: 'Hide Debug',
       cameraLabel: 'Camera:',
+      cameraActive: 'Camera active',
       rearCamera: 'Rear Camera',
       frontCamera: 'Front Camera',
       unknownCamera: 'Camera',
+      unavailableTitle: 'Camera unavailable',
+      unavailableIntro: "We couldn't access your camera.",
+      unavailableCauseHeading: 'This can happen if:',
+      unavailableCausePermission: 'Camera permission was denied.',
+      unavailableCauseBrowser: "Your browser doesn't have camera access.",
+      unavailableCauseDevice: "Your device doesn't have a camera.",
+      unavailableAlternative: 'You can still sign in by uploading your QR image or entering your VIP code.',
+      uploadQrImage: 'Upload QR Image',
+      enterVipCode: 'Enter VIP Code',
     },
     th: {
       title: 'สแกน QR Code ลูกค้า',
       positioning: 'วาง QR Code ภายในกรอบ',
+      distanceGuidance: 'ถือรหัส QR ให้ห่างจากกล้องประมาณ 30–40 ซม.\nระบบจะสแกนอัตโนมัติ ไม่ต้องกดปุ่ม',
       initializing: 'กำลังเริ่มต้น...',
       requesting_permission: 'กำลังขออนุญาตใช้กล้อง...',
       selecting_camera: 'กำลังตรวจหากล้อง...',
       preparing_ui: 'กำลังเตรียมกล้อง กรุณารอสักครู่...',
       starting: 'กำลังเปิดกล้อง...',
+      pleaseWait: 'กรุณารอสักครู่…',
       permission_denied: 'การเข้าถึงกล้องถูกปฏิเสธ กรุณาอนุญาตการใช้กล้องในการตั้งค่าเบราว์เซอร์ แล้วกด "ลองใหม่"',
       permission_dismissed: 'ปิดหน้าต่างขออนุญาตกล้องแล้ว กรุณากด "ลองใหม่" และอนุญาตการใช้กล้อง',
       no_camera: 'ไม่พบกล้องในอุปกรณ์นี้ กรุณาใช้การกรอกรหัสแทน',
@@ -119,10 +151,63 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
       showDebug: 'แสดงข้อมูลดีบัก',
       hideDebug: 'ซ่อนดีบัก',
       cameraLabel: 'กล้อง:',
+      cameraActive: 'กล้องกำลังทำงาน',
       rearCamera: 'กล้องหลัง',
       frontCamera: 'กล้องหน้า',
       unknownCamera: 'กล้อง',
-    }
+      unavailableTitle: 'ไม่สามารถใช้กล้องได้',
+      unavailableIntro: 'เราไม่สามารถเข้าถึงกล้องของคุณได้',
+      unavailableCauseHeading: 'สาเหตุอาจเป็นเพราะ:',
+      unavailableCausePermission: 'ไม่ได้อนุญาตให้ใช้กล้อง',
+      unavailableCauseBrowser: 'เบราว์เซอร์ของคุณไม่มีสิทธิ์เข้าถึงกล้อง',
+      unavailableCauseDevice: 'อุปกรณ์ของคุณไม่มีกล้อง',
+      unavailableAlternative: 'คุณยังสามารถเข้าสู่ระบบได้โดยอัปโหลดรูป QR หรือกรอกรหัส VIP',
+      uploadQrImage: 'อัปโหลดรูป QR',
+      enterVipCode: 'กรอกรหัส VIP',
+    },
+    zh: {
+      title: '扫描客户二维码',
+      positioning: '将二维码放入扫描框内',
+      distanceGuidance: '请将二维码放在距离摄像头约 30–40 厘米的位置。\n系统会自动扫描，无需点击任何按钮。',
+      initializing: '正在初始化...',
+      requesting_permission: '正在请求摄像头权限...',
+      selecting_camera: '正在检测摄像头...',
+      preparing_ui: '正在准备摄像头画面...',
+      starting: '正在启动摄像头...',
+      pleaseWait: '请稍候…',
+      permission_denied: '摄像头权限被拒绝。',
+      permission_dismissed: '摄像头权限请求已关闭。',
+      no_camera: '此设备上未找到摄像头。',
+      camera_in_use: '摄像头正被其他应用使用。',
+      not_supported: '此浏览器不支持摄像头。',
+      https_required: '摄像头需要安全的 HTTPS 连接。',
+      start_failed: '无法启动摄像头。',
+      ui_not_ready: '扫描界面尚未准备就绪。',
+      unknown: '发生未知错误，请重试。',
+      retry: '重试',
+      switchCamera: '切换摄像头',
+      manualEntry: '手动输入编号',
+      enterCode: '输入二维码或 VIP 编号',
+      submit: '查找',
+      cancel: '返回摄像头',
+      close: '关闭',
+      showDebug: '显示调试信息',
+      hideDebug: '隐藏调试信息',
+      cameraLabel: '摄像头：',
+      cameraActive: '摄像头已启用',
+      rearCamera: '后置摄像头',
+      frontCamera: '前置摄像头',
+      unknownCamera: '摄像头',
+      unavailableTitle: '无法使用摄像头',
+      unavailableIntro: '我们无法访问您的摄像头。',
+      unavailableCauseHeading: '可能的原因：',
+      unavailableCausePermission: '摄像头权限被拒绝。',
+      unavailableCauseBrowser: '浏览器没有摄像头访问权限。',
+      unavailableCauseDevice: '您的设备没有摄像头。',
+      unavailableAlternative: '您仍可通过上传二维码图片或输入 VIP 编号登录。',
+      uploadQrImage: '上传二维码图片',
+      enterVipCode: '输入 VIP 编号',
+    },
   };
 
   const msg = messages[language];
@@ -184,10 +269,12 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
       log(`Found ${videoDevices.length} video input device(s)`);
 
       const cameraList: CameraDevice[] = videoDevices.map((device, index) => {
-        const { isRear, score } = detectRearCamera(device.label || `Camera ${index}`);
+        const displayLabel = device.label.trim() || null;
+        const { isRear, score } = detectRearCamera(displayLabel || `Camera ${index}`);
         const camera: CameraDevice = {
           deviceId: device.deviceId,
-          label: device.label || `Camera ${index + 1}`,
+          label: displayLabel || `Camera ${index + 1}`,
+          displayLabel,
           isRear,
           score
         };
@@ -323,8 +410,11 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
 
       const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const qrbox = getResponsiveQrboxSize(viewfinderWidth, viewfinderHeight);
+          setScanBoxSize(qrbox.width);
+          return qrbox;
+        },
         disableFlip: false,
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
@@ -334,7 +424,7 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
       const onSuccess = (decodedText: string) => {
         if (!scannedRef.current && mountedRef.current) {
           scannedRef.current = true;
-          log(`QR Code decoded: ${decodedText}`, 'success');
+          log('QR Code decoded successfully', 'success');
           onScan(decodedText);
         }
       };
@@ -448,11 +538,14 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
   }, [initialize, retryCount, log]);
 
   const handleSwitchCamera = useCallback(async () => {
-    if (cameras.length < 2) return;
+    const switchableCameras = cameras.filter(
+      camera => !camera.displayLabel || !isVirtualCameraLabel(camera.displayLabel)
+    );
+    if (switchableCameras.length < 2) return;
 
-    const currentIndex = cameras.findIndex(c => c.deviceId === selectedCamera);
-    const nextIndex = (currentIndex + 1) % cameras.length;
-    const nextCamera = cameras[nextIndex];
+    const currentIndex = switchableCameras.findIndex(c => c.deviceId === selectedCamera);
+    const nextIndex = (currentIndex + 1) % switchableCameras.length;
+    const nextCamera = switchableCameras[nextIndex];
 
     log(`Switching to camera: "${nextCamera.label}"`);
     setSelectedCamera(nextCamera.deviceId);
@@ -502,17 +595,19 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
     return msg[errorType] || msg.unknown;
   };
 
-  const getCurrentCameraLabel = () => {
+  const getCurrentCameraDisplay = () => {
     const camera = cameras.find(c => c.deviceId === selectedCamera);
-    if (!camera) return '';
-    if (camera.isRear) return msg.rearCamera;
-    return msg.frontCamera;
+    if (!camera?.displayLabel) return msg.cameraActive;
+    return `${msg.cameraLabel} ${camera.displayLabel}`;
   };
 
   const showVideoContainer = state === 'preparing_ui' || state === 'starting' || state === 'scanning';
+  const switchableCameras = cameras.filter(
+    camera => !camera.displayLabel || !isVirtualCameraLabel(camera.displayLabel)
+  );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black flex flex-col h-[100dvh] max-h-[100dvh]">
       <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Camera className="w-5 h-5 text-white" />
@@ -574,15 +669,31 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
             </div>
           </div>
         ) : state === 'error' ? (
-          <div className="flex-1 flex items-center justify-center p-6 bg-gray-900">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gray-900">
+            <div className="min-h-full flex items-start sm:items-center justify-center px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
-              <p className="text-red-700 font-semibold text-lg mb-2">
-                {language === 'en' ? 'Camera Error' : 'ข้อผิดพลาดกล้อง'}
+              <p className="text-gray-900 font-semibold text-lg mb-2">
+                {msg.unavailableTitle}
               </p>
-              <p className="text-gray-600 mb-6">{getErrorMessage()}</p>
+              <div className="text-gray-600 mb-6 text-left space-y-3">
+                <p>
+                  {msg.unavailableIntro}
+                </p>
+                <div>
+                  <p>{msg.unavailableCauseHeading}</p>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    <li>{msg.unavailableCausePermission}</li>
+                    <li>{msg.unavailableCauseBrowser}</li>
+                    <li>{msg.unavailableCauseDevice}</li>
+                  </ul>
+                </div>
+                <p>
+                  {msg.unavailableAlternative}
+                </p>
+              </div>
 
               <div className="space-y-3">
                 <button
@@ -593,16 +704,26 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
                   {msg.retry}
                 </button>
 
+                {onUpload && (
+                  <button
+                    onClick={onUpload}
+                    className="w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-amber-300 hover:bg-amber-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-5 h-5" />
+                    {msg.uploadQrImage}
+                  </button>
+                )}
+
                 <button
                   onClick={() => setShowManualInput(true)}
                   className="w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <Keyboard className="w-5 h-5" />
-                  {msg.manualEntry}
+                  {msg.enterVipCode}
                 </button>
               </div>
 
-              {errorDetail && (
+              {import.meta.env.DEV && errorDetail && (
                 <button
                   onClick={() => setShowDebug(!showDebug)}
                   className="mt-4 text-xs text-gray-400 hover:text-gray-600"
@@ -611,7 +732,7 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
                 </button>
               )}
 
-              {showDebug && (
+              {import.meta.env.DEV && showDebug && (
                 <div className="mt-4 p-3 bg-gray-100 rounded-lg text-left">
                   <p className="text-xs font-mono text-gray-600 break-all">{errorDetail}</p>
                   <div className="mt-2 max-h-32 overflow-y-auto">
@@ -628,15 +749,16 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
         ) : showVideoContainer ? (
           <>
-            <div className="flex-1 relative bg-black">
+            <div className="flex-1 min-h-0 relative overflow-hidden bg-black">
               <div
                 id={READER_ELEMENT_ID}
                 ref={readerContainerRef}
-                className="w-full h-full"
+                className="absolute inset-0 w-full h-full overflow-hidden"
               />
 
               {(state === 'preparing_ui' || state === 'starting') && (
@@ -650,7 +772,10 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
 
               {state === 'scanning' && (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-64 h-64 border-4 border-white/50 rounded-2xl relative">
+                  <div
+                    className="border-4 border-white/50 rounded-2xl relative"
+                    style={{ width: scanBoxSize, height: scanBoxSize, maxWidth: 'calc(100% - 32px)', maxHeight: 'calc(100% - 32px)' }}
+                  >
                     <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-xl" />
                     <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-xl" />
                     <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-xl" />
@@ -662,20 +787,25 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
 
             <div className="bg-gray-900 px-4 py-4 space-y-3 shrink-0">
               {state === 'scanning' && (
-                <div className="flex items-center justify-center gap-2 text-green-400">
-                  <Check className="w-4 h-4" />
-                  <span className="text-sm">{msg.positioning}</span>
+                <div className="space-y-1.5 text-center">
+                  <div className="flex items-center justify-center gap-2 text-green-400">
+                    <Check className="w-4 h-4" />
+                    <span className="text-sm">{msg.positioning}</span>
+                  </div>
+                  <p className="mx-auto max-w-md whitespace-pre-line text-xs leading-relaxed text-gray-400">
+                    {msg.distanceGuidance}
+                  </p>
                 </div>
               )}
 
               {selectedCamera && cameras.length > 0 && (
                 <div className="text-center text-xs text-gray-400">
-                  {msg.cameraLabel} {getCurrentCameraLabel()}
+                  {getCurrentCameraDisplay()}
                 </div>
               )}
 
               <div className="flex gap-3">
-                {cameras.length > 1 && (
+                {switchableCameras.length > 1 && (
                   <button
                     onClick={handleSwitchCamera}
                     disabled={state !== 'scanning'}
@@ -701,12 +831,24 @@ export function QRScanner({ onScan, onClose, language = 'en' }: QRScannerProps) 
               <Loader2 className="w-12 h-12 text-amber-500 animate-spin mx-auto mb-4" />
               <p className="text-white font-medium">{getStatusMessage()}</p>
               <p className="text-gray-400 text-sm mt-2">
-                {language === 'en' ? 'Please wait...' : 'กรุณารอสักครู่...'}
+                {msg.pleaseWait}
               </p>
             </div>
           </div>
         )}
       </div>
+
+      <style>{`
+        #${READER_ELEMENT_ID} video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover;
+        }
+
+        #${READER_ELEMENT_ID} #qr-shaded-region {
+          display: none !important;
+        }
+      `}</style>
     </div>
   );
 }
