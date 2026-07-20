@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
 
     const resend = new Resend(resendKey);
     const { error: emailError } = await resend.emails.send({
-      from: "JOKO TODAY <noreply@jokotoday.com>",
+      from: "JOKO TODAY <noreply@joko.today>",
       to: user.email,
       subject,
       html,
