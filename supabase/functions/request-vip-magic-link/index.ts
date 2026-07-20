@@ -22,7 +22,16 @@ const sha256 = async (value: string) => {
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 };
 
-const normalizeOrigin = (value: string) => value.replace(/\/+$/, "");
+const parseAppOrigin = (value: string | undefined) => {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -83,26 +92,23 @@ Deno.serve(async (req: Request) => {
     const email = authUserData.user?.email;
     if (authUserError || !email) return jsonResponse({ ok: true });
 
-    const productionOrigin = normalizeOrigin(
-      Deno.env.get("APP_URL") || "https://jokotoday.pages.dev",
-    );
-    const configuredOrigins = (Deno.env.get("ALLOWED_AUTH_REDIRECT_ORIGINS") || "")
+    const defaultAppOrigin = parseAppOrigin(Deno.env.get("APP_URL"));
+    if (!defaultAppOrigin) throw new Error("APP_URL is not configured correctly");
+
+    const configuredOrigins = (Deno.env.get("ALLOWED_APP_URLS") || "")
       .split(",")
-      .map(origin => normalizeOrigin(origin.trim()))
-      .filter(Boolean);
-    const allowedOrigins = new Set([
-      productionOrigin,
-      "http://localhost:5173",
-      "http://localhost:4173",
-      ...configuredOrigins,
-    ]);
-    const requestedOrigin = typeof payload.redirect_origin === "string"
-      ? normalizeOrigin(payload.redirect_origin)
-      : "";
-    const resolvedAppUrl = allowedOrigins.has(requestedOrigin) ? requestedOrigin : productionOrigin;
+      .map(origin => parseAppOrigin(origin))
+      .filter((origin): origin is string => Boolean(origin));
+    const allowedOrigins = new Set([defaultAppOrigin, ...configuredOrigins]);
+    const requestedOrigin = typeof payload.app_url === "string"
+      ? parseAppOrigin(payload.app_url)
+      : null;
+    const resolvedAppUrl = requestedOrigin && allowedOrigins.has(requestedOrigin)
+      ? requestedOrigin
+      : defaultAppOrigin;
 
     const authClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" },
     });
     const { error: otpError } = await authClient.auth.signInWithOtp({
       email,
@@ -114,8 +120,9 @@ Deno.serve(async (req: Request) => {
 
     if (otpError) throw otpError;
     return jsonResponse({ ok: true });
-  } catch {
-    console.error("VIP Magic Link request failed");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    console.error("VIP Magic Link request failed", { message });
     return jsonResponse({ ok: false, error: "request_failed" }, 500);
   }
 });

@@ -166,8 +166,7 @@ Deno.serve(async (req: Request) => {
 
     const { email_action_type, token_hash, redirect_to, site_url } = email_data;
 
-    console.log("Action type:", email_action_type, "| Email:", user.email);
-    console.log("Redirect to (from payload):", redirect_to, "| Site URL:", site_url);
+    console.log("Auth email request received", { actionType: email_action_type });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://xvhualoeboobulwgmkla.supabase.co";
     const redirectUrl = redirect_to || site_url || supabaseUrl;
@@ -193,22 +192,25 @@ Deno.serve(async (req: Request) => {
     });
 
     if (emailError) {
-      console.error("Resend error:", JSON.stringify(emailError));
+      console.error("Auth email delivery failed", {
+        name: emailError.name,
+        statusCode: emailError.statusCode,
+      });
       return new Response(
         JSON.stringify({ error: { http_code: 500, message: "Failed to send email" } }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Email sent successfully to:", user.email);
+    console.log("Auth email sent successfully", { actionType: email_action_type });
     return new Response(JSON.stringify({}), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Unhandled error:", String(err));
+  } catch {
+    console.error("Unhandled auth email error");
     return new Response(
-      JSON.stringify({ error: { http_code: 500, message: String(err) } }),
+      JSON.stringify({ error: { http_code: 500, message: "Unexpected auth email error" } }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
