@@ -3,6 +3,8 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
+import { useLanguage } from './LanguageContext';
+import type { Language } from '../translations';
 
 export interface UserProfile {
   id: string;
@@ -19,6 +21,11 @@ export interface UserProfile {
   updated_at: string;
   qr_token?: string;
   short_code?: string;
+  preferred_language?: Language | null;
+}
+
+function isSupportedLanguage(value: unknown): value is Language {
+  return value === 'en' || value === 'th' || value === 'zh';
 }
 
 interface AuthContextType {
@@ -40,6 +47,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { language, setLanguage } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(data);
       if (data) {
         setUserRole(data.role || 'staff');
+        if (isSupportedLanguage(data.preferred_language)) {
+          setLanguage(data.preferred_language);
+        }
       }
       return data;
     } catch (error) {
@@ -188,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         wechat_id: data.wechat_id || null,
         qr_token: qrToken,
         short_code: shortCodeData || null,
+        preferred_language: language,
         profile_completed: true,
         updated_at: new Date().toISOString(),
       })
