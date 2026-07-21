@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { getPickupLocations, CMSPickupLocation } from '../lib/cmsService';
+import type { Language } from '../translations';
 
 interface MyProfilePageProps {
   onNavigate: (page: string) => void;
@@ -69,6 +70,28 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleLanguageChange = async (preferredLanguage: Language) => {
+    if (!user || preferredLanguage === language) return;
+
+    const previousLanguage = language;
+    setLanguage(preferredLanguage);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ preferred_language: preferredLanguage })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Error updating language preference:', updateError);
+      setLanguage(previousLanguage);
+      setError('Failed to update language preference');
+      return;
+    }
+
+    await refreshProfile();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -472,7 +495,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setLanguage('en')}
+                      onClick={() => void handleLanguageChange('en')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
                         language === 'en'
                           ? 'bg-amber-600 text-white'
@@ -483,7 +506,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setLanguage('th')}
+                      onClick={() => void handleLanguageChange('th')}
                       className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
                         language === 'th'
                           ? 'bg-amber-600 text-white'
@@ -491,6 +514,17 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                       }`}
                     >
                       {getLabel('profile_page.language_th', language, 'ไทย')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleLanguageChange('zh')}
+                      className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
+                        language === 'zh'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      中文
                     </button>
                   </div>
                 </div>
