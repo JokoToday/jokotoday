@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Lock, LogOut, User, Phone, Mail, MessageCircle, Award, Check, Loader2, AlertCircle, ShoppingCart, DollarSign, Home } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Lock, LogOut, User, Phone, Mail, MessageCircle, Award, Check, Loader2, AlertCircle, ShoppingCart, DollarSign, Home, Upload, Keyboard } from 'lucide-react';
+import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
-import { lookupCustomerByQRToken } from '../lib/customerLookup';
+import {
+  CustomerLookupNetworkError,
+  CustomerLookupServiceError,
+  InvalidCustomerCodeError,
+  lookupCustomerByQRToken,
+} from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -9,9 +15,9 @@ const WALK_IN_DESK_PIN = '1234';
 
 interface Customer {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
   line_id: string | null;
   whatsapp: string | null;
   wechat_id: string | null;
@@ -19,14 +25,18 @@ interface Customer {
   loyalty_points: number;
 }
 
-interface LoyaltySettings {
-  purchase_type: string;
-  multiplier: number;
+interface PurchaseResult {
+  order_number: string;
+  amount: number;
+  points_earned: number;
+  updated_balance: number;
 }
 
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const { language } = useLanguage();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { language, setLanguage } = useLanguage();
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => sessionStorage.getItem('walkInDeskAuth') === 'true'
+  );
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -38,14 +48,15 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loyaltyMultiplier, setLoyaltyMultiplier] = useState(0.5);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem('walkInDeskAuth');
-    if (stored === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
+  const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const savingRef = useRef(false);
+  const purchaseReferenceRef = useRef<string | null>(null);
+  const parsedAmount = Number.parseFloat(amount);
+  const calculationAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
+  const currentBalance = customer?.loyalty_points ?? 0;
+  const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
+  const projectedNewBalance = currentBalance + projectedPointsEarned;
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,62 +78,63 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setCustomer(null);
     setAmount('');
     setShowScanner(false);
+    setShowManualEntry(false);
+    setManualCode('');
     setPin('');
     setError(null);
+    setPurchaseResult(null);
+    purchaseReferenceRef.current = null;
   };
 
-  const handleScan = async (decodedText: string) => {
+  const resetTransaction = () => {
+    setCustomer(null);
+    setAmount('');
+    setShowScanner(false);
+    setShowManualEntry(false);
+    setManualCode('');
+    setError(null);
+    setPurchaseResult(null);
+    purchaseReferenceRef.current = null;
+  };
+
+  const getLookupErrorMessage = (err: unknown, source: 'manual' | 'qr' = 'qr') => {
+    if (err instanceof InvalidCustomerCodeError) {
+      if (source === 'manual') {
+        return language === 'en'
+          ? 'Enter a valid member code, such as VIP103.'
+          : 'กรุณากรอกรหัสสมาชิกที่ถูกต้อง เช่น VIP103';
+      }
+      return language === 'en'
+        ? 'The QR code was decoded, but its content is not supported.'
+        : 'อ่าน QR Code ได้ แต่รูปแบบข้อมูลไม่รองรับ';
+    }
+    if (err instanceof CustomerLookupNetworkError) {
+      return language === 'en'
+        ? 'Unable to reach customer lookup. Check your connection and try again.'
+        : 'ไม่สามารถเชื่อมต่อระบบค้นหาลูกค้าได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
+    }
+    if (err instanceof CustomerLookupServiceError) {
+      return language === 'en'
+        ? 'Customer lookup is temporarily unavailable. Please try again.'
+        : 'ระบบค้นหาลูกค้าไม่พร้อมใช้งานชั่วคราว กรุณาลองอีกครั้ง';
+    }
+    return err instanceof Error
+      ? err.message
+      : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด');
+  };
+
+  const findCustomer = async (lookupValue: string, source: 'manual' | 'qr' = 'qr') => {
     try {
       setLoading(true);
       setError(null);
       setCustomer(null);
       setAmount('');
-      setSuccessMessage(null);
+      setPurchaseResult(null);
 
-      const qrToken = decodedText.includes('/c/') ? decodedText.split('/c/')[1] : decodedText;
-
-      const customerData = await lookupCustomerByQRToken(qrToken);
+      const customerData = await lookupCustomerByQRToken(lookupValue);
 
       if (!customerData) {
         setError(language === 'en' ? 'Customer not found' : 'ไม่พบลูกค้า');
-        return;
-      }
-
-      setCustomer(customerData);
-
-      const { data: loyaltyData } = await supabase
-        .from('loyalty_settings')
-        .select('multiplier')
-        .eq('purchase_type', 'walk_in')
-        .maybeSingle();
-
-      if (loyaltyData) {
-        setLoyaltyMultiplier(loyaltyData.multiplier);
-      }
-    } catch (err) {
-      console.error('Error loading customer:', err);
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManualCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualCode.trim()) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      setCustomer(null);
-      setAmount('');
-      setSuccessMessage(null);
-
-      const customerData = await lookupCustomerByQRToken(manualCode.trim());
-
-      if (!customerData) {
-        setError(language === 'en' ? 'No customer found with this code.' : 'ไม่พบลูกค้าด้วยรหัสนี้');
-        setManualCode('');
         return;
       }
 
@@ -141,18 +153,83 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       }
     } catch (err) {
       console.error('Error loading customer:', err);
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด'));
+      setError(getLookupErrorMessage(err, source));
     } finally {
       setLoading(false);
     }
   };
 
+  const handleScan = async (decodedText: string) => {
+    setShowScanner(false);
+    await findCustomer(decodedText);
+  };
+
+  const handleManualCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    await findCustomer(manualCode, 'manual');
+  };
+
+  const handleQrUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const supportedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!supportedTypes.includes(file.type)) {
+      setError(language === 'en' ? 'Choose a PNG, JPEG, or WebP image.' : 'กรุณาเลือกรูป PNG, JPEG หรือ WebP');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = async () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        context.drawImage(image, 0, 0);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const decoded = jsQR(imageData.data, imageData.width, imageData.height);
+        if (!decoded?.data) {
+          setError(language === 'en' ? 'No QR code was detected in this image.' : 'ไม่พบ QR Code ในรูปภาพนี้');
+          return;
+        }
+        if (import.meta.env.DEV) {
+          console.debug('[WalkInDesk] Decoded QR content:', decoded.data);
+        }
+        await findCustomer(decoded.data);
+      } catch (err) {
+        if (err instanceof InvalidCustomerCodeError) {
+          setError(getLookupErrorMessage(err));
+        } else {
+          setError(language === 'en' ? 'Could not read this image. Please choose another.' : 'ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกรูปอื่น');
+        }
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setLoading(false);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setLoading(false);
+      setError(language === 'en' ? 'Could not read this image. Please choose another.' : 'ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกรูปอื่น');
+    };
+    image.src = objectUrl;
+  };
+
   const handleSaveWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customer || !amount) return;
+    if (!customer || !amount || savingRef.current) return;
 
     try {
+      savingRef.current = true;
       setSaving(true);
+      setError(null);
       const amountNum = parseFloat(amount);
 
       if (isNaN(amountNum) || amountNum <= 0) {
@@ -160,58 +237,57 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         return;
       }
 
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData?.user?.id;
+      const orderNumber = purchaseReferenceRef.current
+        ?? `WI-${crypto.randomUUID()}`;
+      purchaseReferenceRef.current = orderNumber;
 
-      const { error: insertError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: customer.id,
-          purchase_type: 'walk_in',
-          walk_in_amount: amountNum,
-          staff_id: currentUserId || null,
-          order_number: `WI-${Date.now()}`,
-          order_items: [],
-          total_amount: amountNum,
-          status: 'completed',
-          payment_status: 'paid',
-          customer_name: customer.name,
-          customer_phone: customer.phone,
-          customer_email: customer.email,
-          loyalty_multiplier: loyaltyMultiplier,
-          created_at: new Date().toISOString(),
-        });
+      const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase', {
+        p_customer_id: customer.id,
+        p_amount: amountNum,
+        p_order_number: orderNumber,
+      });
 
-      if (insertError) throw insertError;
+      if (purchaseError) throw purchaseError;
+      if (
+        !data
+        || typeof data.amount !== 'number'
+        || typeof data.points_earned !== 'number'
+        || typeof data.updated_balance !== 'number'
+      ) {
+        throw new Error('Purchase was saved but the confirmation response was invalid.');
+      }
 
-      const pointsEarned = Math.round(amountNum * loyaltyMultiplier);
-      const newPoints = customer.loyalty_points + pointsEarned;
-
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update({ loyalty_points: newPoints })
-        .eq('id', customer.id);
-
-      if (updateError) throw updateError;
-
-      setSuccessMessage(
-        language === 'en'
-          ? `Walk-in purchase saved! ${pointsEarned} loyalty points awarded.`
-          : `บันทึกการซื้อหน้าร้านแล้ว! ได้รับ ${pointsEarned} แต้มสะสม`
-      );
-
-      setTimeout(() => {
-        setCustomer(null);
-        setAmount('');
-        setSuccessMessage(null);
-        setShowScanner(false);
-      }, 2000);
+      setCustomer({ ...customer, loyalty_points: data.updated_balance });
+      setPurchaseResult(data as PurchaseResult);
+      sessionStorage.setItem('walkInDeskAuth', 'true');
     } catch (err) {
       console.error('Error saving walk-in purchase:', err);
       setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาด'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
+  };
+
+  const handleAnotherPurchase = () => {
+    setAmount('');
+    setError(null);
+    setPurchaseResult(null);
+    purchaseReferenceRef.current = null;
+  };
+
+  const handleFinishAndGoHome = () => {
+    resetTransaction();
+    onNavigate('home');
+  };
+
+  const handleSignInAnotherCustomer = () => {
+    resetTransaction();
+  };
+
+  const handleFinishAndGoToPickup = () => {
+    resetTransaction();
+    onNavigate('pickup');
   };
 
   const getContactMethod = () => {
@@ -221,6 +297,26 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     if (customer.wechat_id) return { type: 'WeChat', value: customer.wechat_id };
     return null;
   };
+
+  const languageSwitch = (
+    <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
+      {(['en', 'th'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setLanguage(option)}
+          className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+            language === option
+              ? 'bg-white text-green-800'
+              : 'text-white hover:bg-white/10'
+          }`}
+          aria-pressed={language === option}
+        >
+          {option === 'en' ? 'EN' : 'ไทย'}
+        </button>
+      ))}
+    </div>
+  );
 
   if (!isAuthenticated) {
     return (
@@ -234,7 +330,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         </button>
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-8">
+            <div className="relative bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-8">
+              <div className="absolute right-4 top-4">{languageSwitch}</div>
               <div className="flex items-center justify-center mb-4">
                 <Lock className="w-12 h-12 text-white" />
               </div>
@@ -286,7 +383,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       <div className="max-w-2xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
@@ -295,13 +392,16 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   {language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก'}
                 </p>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
-              </button>
+              <div className="flex flex-col items-end gap-3">
+                {languageSwitch}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -362,15 +462,33 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     </div>
                     <button
                       onClick={() => setShowScanner(true)}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl mb-4"
+                      className="border-2 border-green-600 bg-white text-green-700 px-8 py-4 rounded-xl font-semibold hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl mb-4"
                     >
                       {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setShowManualEntry(true)}
-                      className="text-green-700 hover:text-green-900 font-medium text-sm"
+                      className="mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-green-600 bg-white text-green-700 rounded-lg font-medium hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200"
                     >
-                      {language === 'en' ? 'Or enter member code' : 'หรือกรอกรหัสสมาชิก'}
+                      <Keyboard className="w-4 h-4" />
+                      {language === 'en' ? 'Enter member code' : 'กรอกรหัสสมาชิก'}
+                    </button>
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleQrUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => uploadInputRef.current?.click()}
+                      disabled={loading}
+                      className="mt-4 mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-green-600 bg-white text-green-700 rounded-lg font-medium hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {language === 'en' ? 'Upload QR Code' : 'อัปโหลด QR Code'}
                     </button>
                     {error && (
                       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
@@ -393,20 +511,24 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         <h2 className="text-2xl font-bold text-gray-900">{customer.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
                           <Award className="w-4 h-4 text-green-600" />
-                          <span className="text-green-600 font-semibold">{customer.loyalty_points} points</span>
+                          <span className="text-green-600 font-semibold">
+                            {customer.loyalty_points} {language === 'en' ? 'points' : 'แต้ม'}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setCustomer(null);
-                        setAmount('');
-                        setError(null);
-                      }}
-                      className="text-gray-500 hover:text-gray-700 text-sm font-medium"
-                    >
-                      {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
-                    </button>
+                    {!purchaseResult && (
+                      <button
+                        onClick={() => {
+                          setCustomer(null);
+                          setAmount('');
+                          setError(null);
+                        }}
+                        className="text-gray-500 hover:text-gray-700 text-sm font-medium"
+                      >
+                        {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4">
@@ -436,13 +558,80 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   </div>
                 </div>
 
-                {successMessage && (
-                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <p className="text-green-800 font-medium">{successMessage}</p>
-                  </div>
-                )}
+                {purchaseResult ? (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-green-50 border border-green-200 rounded-xl text-center">
+                      <div className="w-14 h-14 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Check className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-green-900">
+                        {language === 'en' ? 'Purchase saved successfully' : 'บันทึกรายการซื้อสำเร็จ'}
+                      </h3>
+                    </div>
 
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">
+                          {language === 'en' ? 'Purchase amount' : 'ยอดซื้อ'}
+                        </p>
+                        <p className="text-xl font-bold text-gray-900 mt-1">
+                          ฿{purchaseResult.amount.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">
+                          {language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}
+                        </p>
+                        <p className="text-xl font-bold text-green-700 mt-1">
+                          +{purchaseResult.points_earned}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">
+                          {language === 'en' ? 'Updated points balance' : 'ยอดแต้มสะสมล่าสุด'}
+                        </p>
+                        <p className="text-xl font-bold text-green-700 mt-1">
+                          {purchaseResult.updated_balance}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={handleAnotherPurchase}
+                        className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 active:bg-green-800 transition-colors duration-200"
+                      >
+                        {language === 'en' ? 'Make Another Purchase' : 'ทำรายการซื้ออีกครั้ง'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSignInAnotherCustomer}
+                        className="w-full border-2 border-green-600 bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-600 hover:text-white active:bg-green-700 transition-colors duration-200"
+                      >
+                        {language === 'en'
+                          ? 'Sign In Another Walk-In Customer'
+                          : 'เข้าสู่ระบบลูกค้าวอล์กอินรายอื่น'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleFinishAndGoToPickup}
+                        className="w-full border-2 border-green-600 bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-600 hover:text-white active:bg-green-700 transition-colors duration-200"
+                      >
+                        {language === 'en'
+                          ? 'Finish and Go to Pick-Up Desk'
+                          : 'เสร็จสิ้นและไปที่จุดรับสินค้า'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleFinishAndGoHome}
+                        className="w-full border-2 border-green-600 bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-600 hover:text-white active:bg-green-700 transition-colors duration-200"
+                      >
+                        {language === 'en' ? 'Finish and Go Home' : 'เสร็จสิ้นและกลับหน้าหลัก'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-green-600" />
@@ -483,21 +672,41 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     </div>
 
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-600 mb-2">
-                        {language === 'en' ? 'Loyalty Points Calculation' : 'การคำนวณแต้มสะสม'}
+                      <p className="text-sm font-semibold text-gray-700 mb-4">
+                        {language === 'en' ? 'Loyalty Points Calculation' : 'การคำนวณคะแนนสะสม'}
                       </p>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold text-green-600">
-                          {amount ? Math.round(parseFloat(amount) * loyaltyMultiplier) : 0}
-                        </span>
-                        <span className="text-gray-600">
-                          {language === 'en' ? 'points earned' : 'แต้ม'}
-                        </span>
+                      <div className="space-y-3">
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-sm text-gray-600">
+                            {language === 'en' ? 'Current Balance' : 'คะแนนปัจจุบัน'}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            {currentBalance} {language === 'en' ? 'points' : 'คะแนน'}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-sm text-gray-600">
+                            {language === 'en' ? 'Points Earned' : 'คะแนนที่ได้รับ'}
+                          </span>
+                          <span className="font-semibold text-green-700">
+                            {projectedPointsEarned > 0 ? '+' : ''}{projectedPointsEarned}{' '}
+                            {language === 'en' ? 'points' : 'คะแนน'}
+                          </span>
+                        </div>
+                        <div className="border-t border-green-200 pt-3 flex items-baseline justify-between gap-4">
+                          <span className="font-semibold text-gray-800">
+                            {language === 'en' ? 'New Balance' : 'คะแนนใหม่'}
+                          </span>
+                          <span className="text-3xl font-bold text-green-700">
+                            {projectedNewBalance}{' '}
+                            <span className="text-base font-semibold">
+                              {language === 'en' ? 'points' : 'คะแนน'}
+                            </span>
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        {language === 'en'
-                          ? `${amount ? parseFloat(amount).toFixed(2) : '0.00'} ฿ × ${loyaltyMultiplier}x`
-                          : `${amount ? parseFloat(amount).toFixed(2) : '0.00'} ฿ × ${loyaltyMultiplier}x`}
+                        {calculationAmount.toFixed(2)} ฿ × {loyaltyMultiplier}x
                       </p>
                     </div>
 
@@ -511,10 +720,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       ) : (
                         <Check className="w-5 h-5" />
                       )}
-                      {language === 'en' ? 'Save Walk-In Purchase' : 'บันทึกการซื้อหน้าร้าน'}
+                      {saving
+                        ? (language === 'en' ? 'Saving purchase…' : 'กำลังบันทึกรายการซื้อ…')
+                        : (language === 'en' ? 'Save Walk-In Purchase' : 'บันทึกการซื้อหน้าร้าน')}
                     </button>
                   </form>
                 </div>
+                )}
               </>
             )}
           </div>
