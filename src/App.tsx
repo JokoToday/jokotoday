@@ -35,6 +35,14 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
   Object.entries(ACCOUNT_PAGE_PATHS).map(([page, path]) => [path, page])
 );
 
+const STANDALONE_PAGE_PATHS: Record<string, string> = {
+  'walk-in': '/walk-in',
+};
+
+const STANDALONE_PATH_PAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(STANDALONE_PAGE_PATHS).map(([page, path]) => [path, page])
+);
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -108,6 +116,12 @@ function AppContent() {
         return;
       }
 
+      const standalonePage = STANDALONE_PATH_PAGES[path];
+      if (standalonePage) {
+        setCurrentPage(standalonePage);
+        return;
+      }
+
       if (path === '/') {
         setCurrentPage('home');
       }
@@ -134,12 +148,17 @@ function AppContent() {
 
   const handleNavigate = (page: string) => {
     const accountPath = ACCOUNT_PAGE_PATHS[page];
+    const standalonePath = STANDALONE_PAGE_PATHS[page];
     const isLeavingAccountPath =
       !accountPath && Boolean(ACCOUNT_PATH_PAGES[window.location.pathname]);
+    const isLeavingStandalonePath =
+      !standalonePath && Boolean(STANDALONE_PATH_PAGES[window.location.pathname]);
 
     if (accountPath && window.location.pathname !== accountPath) {
       window.history.pushState({}, '', accountPath);
-    } else if (isLeavingAccountPath) {
+    } else if (standalonePath && window.location.pathname !== standalonePath) {
+      window.history.pushState({}, '', standalonePath);
+    } else if (isLeavingAccountPath || isLeavingStandalonePath) {
       window.history.pushState({}, '', '/');
     }
 

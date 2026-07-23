@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export interface CustomerRecord {
   id: string;
   name: string | null;
@@ -11,89 +13,110 @@ export interface CustomerRecord {
   loyalty_points: number;
 }
 
-// 🔍 Extract token from QR / URL / raw string
-function extractToken(raw: string): string {
-  try {
-    const url = new URL(raw);
-
-    const scanMatch = url.pathname.match(/\/scan\/([A-Za-z0-9]+)/);
-    if (scanMatch) return scanMatch[1];
-
-    const cMatch = url.pathname.match(/\/c\/([^/]+)/);
-    if (cMatch) return cMatch[1];
-  } catch {
-    // not a valid URL → fallback below
+export class InvalidCustomerCodeError extends Error {
+  constructor() {
+    super('Invalid member code or unsupported QR code.');
+    this.name = 'InvalidCustomerCodeError';
   }
-
-  if (raw.includes('/scan/')) return raw.split('/scan/')[1].split('/')[0];
-  if (raw.includes('/c/')) return raw.split('/c/')[1].split('/')[0];
-
-  return raw.trim();
 }
 
-// 🌐 Call Supabase Edge Function
-async function fetchCustomerByToken(token: string): Promise<CustomerRecord | null> {
-  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+export class CustomerLookupNetworkError extends Error {
+  constructor() {
+    super('Unable to reach customer lookup. Check your connection and try again.');
+    this.name = 'CustomerLookupNetworkError';
+  }
+}
 
-  if (!baseUrl) {
-    throw new Error("Missing VITE_SUPABASE_URL in environment variables");
+export class CustomerLookupServiceError extends Error {
+  constructor(status: number) {
+    super(`Customer lookup service failed (${status}). Please try again.`);
+    this.name = 'CustomerLookupServiceError';
+  }
+}
+
+const MEMBER_CODE_PATTERN = /^VIP\d+$/i;
+const QR_TOKEN_PATTERN = /^[A-Za-z0-9_-]{8,}$/;
+const SUPPORTED_PATH_PATTERN = /\/(?:q|c|scan)\/([^/?#]+)\/?$/i;
+
+function safelyDecode(value: string): string {
+  let decoded = value;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    } catch {
+      throw new InvalidCustomerCodeError();
+    }
+  }
+  return decoded.trim();
+}
+
+function extractFromUrl(url: URL): string {
+  const pathMatch = url.pathname.match(SUPPORTED_PATH_PATTERN);
+  if (pathMatch) return safelyDecode(pathMatch[1]);
+
+  for (const key of ['code', 'token']) {
+    const queryValue = url.searchParams.get(key);
+    if (queryValue) return safelyDecode(queryValue);
   }
 
-  const url = `${baseUrl}/functions/v1/customer-lookup`;
+  throw new InvalidCustomerCodeError();
+}
 
-  console.log("🔎 Calling customer lookup:", url);
-  console.log("🔑 Token:", token);
+// Extract a supported member code/token from a QR URL or raw value.
+export function extractCustomerLookupToken(raw: string): string {
+  const value = raw.trim();
+  if (!value) throw new InvalidCustomerCodeError();
 
+  let token: string;
+
+  if (/^https?:\/\//i.test(value) || value.startsWith('/') || value.startsWith('?')) {
+    try {
+      token = extractFromUrl(new URL(value, 'https://qr.local'));
+    } catch (error) {
+      if (error instanceof InvalidCustomerCodeError) throw error;
+      throw new InvalidCustomerCodeError();
+    }
+  } else {
+    const relativePathMatch = value.match(SUPPORTED_PATH_PATTERN);
+    token = relativePathMatch ? safelyDecode(relativePathMatch[1]) : safelyDecode(value);
+  }
+
+  if (!MEMBER_CODE_PATTERN.test(token) && !QR_TOKEN_PATTERN.test(token)) {
+    throw new InvalidCustomerCodeError();
+  }
+
+  return MEMBER_CODE_PATTERN.test(token) ? token.toUpperCase() : token;
+}
+
+async function fetchCustomerByToken(token: string): Promise<CustomerRecord | null> {
   try {
-    const response = await fetch(url, {
+    const { data, error } = await supabase.functions.invoke<CustomerRecord | null>('customer-lookup', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ token }),
+      body: { token },
     });
 
-    // ✅ Not found = valid case
-    if (response.status === 404) {
-      console.warn("⚠️ Customer not found for token:", token);
-      return null;
+    if (error) {
+      const context = 'context' in error
+        ? error.context as { status?: unknown } | undefined
+        : undefined;
+      const status = typeof context?.status === 'number' ? context.status : undefined;
+      if (status === undefined) throw new CustomerLookupNetworkError();
+      throw new CustomerLookupServiceError(status);
     }
-
-    // ❌ Other errors
-    if (!response.ok) {
-      const body = await response.text();
-      let message = response.statusText;
-
-      try {
-        const json = JSON.parse(body);
-        message = json?.message ?? message;
-      } catch {}
-
-      console.error("❌ Function error:", body);
-      throw new Error(`Customer lookup failed: ${message}`);
-    }
-
-    const data = (await response.json()) as CustomerRecord | null;
-
-    console.log("✅ LOOKUP RESPONSE:", data);
 
     return data;
   } catch (err) {
-    console.error("❌ Network / fetch error:", err);
-    throw err instanceof Error ? err : new Error("Network error during customer lookup");
+    if (err instanceof CustomerLookupNetworkError || err instanceof CustomerLookupServiceError) {
+      throw err;
+    }
+    throw new CustomerLookupNetworkError();
   }
 }
 
-// 🧠 Main lookup (QR token)
 export async function lookupCustomerByQRToken(qrToken: string): Promise<CustomerRecord | null> {
-  const token = extractToken(qrToken);
-
-  try {
-    return await fetchCustomerByToken(token);
-  } catch (error) {
-    console.error("lookupCustomerByQRToken error:", error);
-    throw error instanceof Error ? error : new Error("Customer lookup failed");
-  }
+  return fetchCustomerByToken(extractCustomerLookupToken(qrToken));
 }
 
 // 🔁 Short code = same logic
