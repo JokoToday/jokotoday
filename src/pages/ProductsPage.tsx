@@ -7,7 +7,7 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { getCategories, getProducts, getProductBySlug, CMSCategory, CMSProduct } from '../lib/cmsService';
-import { getPickupDays, isDayOpenForOrdering, getCutoffDayAndTime, getPickupDayLabel, PickupDay } from '../lib/availabilityService';
+import { getPickupDays, getCutoffRules, isDayOpenForOrdering, getPickupDayLabel, PickupDay, CutoffRule } from '../lib/availabilityService';
 
 interface ProductsPageProps {
   initialProductSlug?: string | null;
@@ -21,6 +21,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  const [cutoffRules, setCutoffRules] = useState<CutoffRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CMSProduct | null>(null);
@@ -66,15 +67,17 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   async function loadData() {
     setLoading(true);
     try {
-      const [cmsCategories, cmsProducts, days] = await Promise.all([
+      const [cmsCategories, cmsProducts, days, rules] = await Promise.all([
         getCategories(),
         getProducts(),
         getPickupDays(),
+        getCutoffRules(),
       ]);
 
       setCategories(cmsCategories);
       setProducts(cmsProducts);
       setPickupDays(days);
+      setCutoffRules(rules);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -96,7 +99,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
   const getIsOpen = (label: string): boolean => {
     const day = pickupDays.find((d) => d.label === label);
-    return day ? isDayOpenForOrdering(day) : true;
+    const rule = cutoffRules.find((item) => item.day_key === day?.day_key);
+    return day ? isDayOpenForOrdering(day, rule) : false;
   };
 
   const getPickupDayObject = (label: string): PickupDay | undefined => {

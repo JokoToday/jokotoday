@@ -11,6 +11,7 @@ export function CutoffRulesManagement({ rules, onRefresh }: CutoffRulesManagemen
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CutoffRule | null>(null);
   const [formData, setFormData] = useState({
+    day_key: '',
     pickup_label_en: '',
     pickup_label_th: '',
     pickup_day: '',
@@ -25,6 +26,7 @@ export function CutoffRulesManagement({ rules, onRefresh }: CutoffRulesManagemen
 
   const handleNew = () => {
     setFormData({
+      day_key: '',
       pickup_label_en: '',
       pickup_label_th: '',
       pickup_day: '',
@@ -40,6 +42,7 @@ export function CutoffRulesManagement({ rules, onRefresh }: CutoffRulesManagemen
 
   const handleEdit = (rule: CutoffRule) => {
     setFormData({
+      day_key: rule.day_key,
       pickup_label_en: rule.pickup_label_en,
       pickup_label_th: rule.pickup_label_th,
       pickup_day: rule.pickup_day,
@@ -54,7 +57,7 @@ export function CutoffRulesManagement({ rules, onRefresh }: CutoffRulesManagemen
   };
 
   const handleSave = async () => {
-    if (!formData.pickup_label_en || !formData.pickup_day || !formData.cutoff_day) {
+    if (!formData.day_key || !formData.pickup_label_en || !formData.pickup_day || !formData.cutoff_day) {
       alert('Please fill in all required fields');
       return;
     }
@@ -120,6 +123,17 @@ export function CutoffRulesManagement({ rules, onRefresh }: CutoffRulesManagemen
           </h3>
 
           <div className="grid md:grid-cols-2 gap-4">
+            <select
+              value={formData.day_key}
+              onChange={(e) => setFormData({ ...formData, day_key: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+            >
+              <option value="">Select Stable Pickup Key</option>
+              <option value="friday_maerim">friday_maerim</option>
+              <option value="saturday_maerim">saturday_maerim</option>
+              <option value="sunday_intown">sunday_intown</option>
+            </select>
+
             <input
               type="text"
               placeholder="English Label (e.g., Friday – Mae Rim)"

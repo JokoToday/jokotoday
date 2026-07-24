@@ -682,6 +682,9 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                 <p>
                   {msg.unavailableIntro}
                 </p>
+                <p className="font-medium text-red-700">
+                  {getErrorMessage()}
+                </p>
                 <div>
                   <p>{msg.unavailableCauseHeading}</p>
                   <ul className="list-disc pl-5 mt-1 space-y-1">

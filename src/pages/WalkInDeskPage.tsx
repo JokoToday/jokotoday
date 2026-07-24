@@ -299,13 +299,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   };
 
   const languageSwitch = (
-    <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
+    <div className="flex w-full rounded-lg bg-white/15 p-1" aria-label="Language">
       {(['en', 'th'] as const).map((option) => (
         <button
           key={option}
           type="button"
           onClick={() => setLanguage(option)}
-          className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+          className={`flex-1 px-3 py-1.5 rounded-md text-sm font-semibold transition-colors duration-200 ${
             language === option
               ? 'bg-white text-green-800'
               : 'text-white hover:bg-white/10'
@@ -331,7 +331,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="relative bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-8">
-              <div className="absolute right-4 top-4">{languageSwitch}</div>
+              <div className="absolute right-4 top-4 w-48">{languageSwitch}</div>
               <div className="flex items-center justify-center mb-4">
                 <Lock className="w-12 h-12 text-white" />
               </div>
@@ -383,7 +383,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       <div className="max-w-2xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
@@ -392,11 +392,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   {language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก'}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-3">
+              <div className="flex w-full flex-col items-stretch gap-3 sm:w-48">
                 {languageSwitch}
                 <button
+                  onClick={() => onNavigate('pickup')}
+                  className="w-full min-h-10 px-3 py-2 text-sm font-medium text-white border border-white/30 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                >
+                  {language === 'en' ? 'Switch to Pickup Desk' : 'ไปที่จุดรับสินค้า'}
+                </button>
+                <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  className="flex w-full min-h-10 items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200"
                 >
                   <LogOut className="w-4 h-4" />
                   {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
@@ -460,20 +466,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                       <ShoppingCart className="w-10 h-10 text-green-600" />
                     </div>
-                    <button
-                      onClick={() => setShowScanner(true)}
-                      className="border-2 border-green-600 bg-white text-green-700 px-8 py-4 rounded-xl font-semibold hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl mb-4"
-                    >
-                      {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowManualEntry(true)}
-                      className="mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-green-600 bg-white text-green-700 rounded-lg font-medium hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200"
-                    >
-                      <Keyboard className="w-4 h-4" />
-                      {language === 'en' ? 'Enter member code' : 'กรอกรหัสสมาชิก'}
-                    </button>
                     <input
                       ref={uploadInputRef}
                       type="file"
@@ -481,15 +473,32 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       onChange={handleQrUpload}
                       className="hidden"
                     />
-                    <button
-                      type="button"
-                      onClick={() => uploadInputRef.current?.click()}
-                      disabled={loading}
-                      className="mt-4 mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-green-600 bg-white text-green-700 rounded-lg font-medium hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50"
-                    >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {language === 'en' ? 'Upload QR Code' : 'อัปโหลด QR Code'}
-                    </button>
+                    <div className="mx-auto flex w-full max-w-xs flex-col gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowScanner(true)}
+                        className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-green-600 bg-white px-5 font-semibold text-green-700 shadow-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white hover:shadow-xl active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+                      >
+                        {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowManualEntry(true)}
+                        className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-green-600 bg-white px-5 font-semibold text-green-700 shadow-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white hover:shadow-xl active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+                      >
+                        <Keyboard className="h-4 w-4" />
+                        {language === 'en' ? 'Enter member code' : 'กรอกรหัสสมาชิก'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => uploadInputRef.current?.click()}
+                        disabled={loading}
+                        className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-green-600 bg-white px-5 font-semibold text-green-700 shadow-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-green-600 hover:to-emerald-600 hover:text-white hover:shadow-xl active:from-green-700 active:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:opacity-50"
+                      >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        {language === 'en' ? 'Upload QR Code' : 'อัปโหลด QR Code'}
+                      </button>
+                    </div>
                     {error && (
                       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
                         <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />

@@ -9,7 +9,15 @@ import LocationMap from '../components/LocationMap';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { pickupLocations } from '../data/locations';
-import { getDayKey, getPickupDayLabel, getPickupDays, PickupDay } from '../lib/availabilityService';
+import {
+  getCutoffRules,
+  getNextPickupDate,
+  getPickupDayLabel,
+  getPickupDays,
+  isDayOpenForOrdering,
+  PickupDay,
+  CutoffRule,
+} from '../lib/availabilityService';
 
 type CheckoutPageProps = {
   onNavigate: (page: string) => void;
@@ -39,6 +47,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  const [cutoffRules, setCutoffRules] = useState<CutoffRule[]>([]);
 
   useEffect(() => {
     loadPickupDays();
@@ -56,8 +65,9 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   }, [user, userProfile, profileLoading]);
 
   const loadPickupDays = async () => {
-    const days = await getPickupDays();
+    const [days, rules] = await Promise.all([getPickupDays(), getCutoffRules()]);
     setPickupDays(days);
+    setCutoffRules(rules);
   };
 
   const [formData, setFormData] = useState({
@@ -106,6 +116,18 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       }));
 
       const selectedDay = pickupDays.find((d) => d.label === selectedPickupDay);
+      const cutoffRule = cutoffRules.find((rule) => rule.day_key === selectedDay?.day_key);
+      if (!selectedDay || !isDayOpenForOrdering(selectedDay, cutoffRule)) {
+        alert('This pickup day is no longer available. Please return to the catalog and select another day.');
+        return;
+      }
+
+      const pickupDate = getNextPickupDate(selectedDay, cutoffRule!);
+      if (!pickupDate) {
+        alert('A valid scheduled pickup date is required. Please select your pickup day again.');
+        return;
+      }
+
       const pickupLocationId = (selectedDay as PickupDay & { location_id?: string })?.location_id ?? null;
 
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -120,6 +142,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
           customer_phone: userProfile.phone || '',
           line_id: userProfile.line_id || '',
           pickup_day: selectedPickupDay || '',
+          pickup_date: pickupDate,
           pickup_location_id: pickupLocationId,
           total_amount: totalPrice,
           status: 'pending',
@@ -135,7 +158,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
         return;
       }
 
-      const dayKey = getDayKey(selectedPickupDay || '');
+      const dayKey = selectedDay.day_key;
       for (const item of items) {
         const product = item.product;
         const currentStockByDay = (product.stock_by_day as Record<string, number>) || {};
@@ -578,7 +601,8 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                 {pickupDays.map((day) => {
                   const displayLabel = getPickupDayLabel(day, language);
                   const isSelected = selectedPickupDay === day.label;
-                  const isOpen = day.is_open;
+                  const cutoffRule = cutoffRules.find((rule) => rule.day_key === day.day_key);
+                  const isOpen = isDayOpenForOrdering(day, cutoffRule);
 
                   return (
                     <div
@@ -609,7 +633,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                         )}
                         {!isOpen && (
                           <p className="text-xs text-red-600 mt-1">
-                            Cutoff passed ({day.cutoff_day} {day.cutoff_time})
+                            Pickup is currently unavailable
                           </p>
                         )}
                       </div>

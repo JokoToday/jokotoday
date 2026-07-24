@@ -1,13 +1,17 @@
 import { supabase } from './supabase';
+export { getNextPickupDate } from './pickupSchedule';
 
 export interface PickupDay {
   id: string;
   day_key: string;
+  pickup_weekday: number;
   label: string;
   label_en: string | null;
   label_th: string | null;
   label_zh?: string | null;
+  /** Deprecated configuration mirror. Cutoff calculations use pickup_cutoff_rules. */
   cutoff_time: string;
+  /** Deprecated configuration mirror. Cutoff calculations use pickup_cutoff_rules. */
   cutoff_day: string;
   is_open: boolean;
   sort_order: number;
@@ -22,6 +26,7 @@ export interface ProductAvailability {
 
 export interface CutoffRule {
   id: string;
+  day_key: string;
   pickup_label_en: string;
   pickup_label_th: string;
   pickup_label_zh?: string | null;
@@ -55,97 +60,6 @@ const DAY_KEY_MAP: Record<string, string> = {
   'Saturday - Mae Rim': 'saturday_maerim',
   'Sunday - In-Town': 'sunday_intown',
 };
-
-function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
-  const dayMap: Record<string, number> = {
-    'Sunday': 0,
-    'Monday': 1,
-    'Tuesday': 2,
-    'Wednesday': 3,
-    'Thursday': 4,
-    'Friday': 5,
-    'Saturday': 6,
-  };
-
-  const cutoffDayOfWeek = dayMap[cutoffDay];
-  if (cutoffDayOfWeek === undefined) {
-    console.warn(`[Cutoff] Unknown day: ${cutoffDay}`);
-    return true;
-  }
-
-  const [hours, minutes] = cutoffTime.split(':').map(Number);
-
-  // Get current time in Asia/Bangkok timezone
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(new Date());
-  const partsMap: Record<string, string> = {};
-  parts.forEach((part) => {
-    partsMap[part.type] = part.value;
-  });
-
-  const nowInBangkok = new Date(
-    parseInt(partsMap.year),
-    parseInt(partsMap.month) - 1,
-    parseInt(partsMap.day),
-    parseInt(partsMap.hour),
-    parseInt(partsMap.minute),
-    parseInt(partsMap.second)
-  );
-
-  const currentDayOfWeek = nowInBangkok.getDay();
-  let cutoffDate = new Date(nowInBangkok);
-
-  // Calculate the cutoff date for this week
-  if (cutoffDayOfWeek <= currentDayOfWeek) {
-    // Cutoff day was earlier in the week or is today
-    const daysBack = currentDayOfWeek - cutoffDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-  } else {
-    // Cutoff day is later in the week
-    const daysForward = cutoffDayOfWeek - currentDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() + daysForward);
-  }
-
-  // Set the cutoff time
-  cutoffDate.setHours(hours, minutes, 0, 0);
-
-  const isPassed = nowInBangkok > cutoffDate;
-
-  // Debug logging
-  const nowStr = nowInBangkok.toLocaleString('en-US', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'short',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const cutoffStr = cutoffDate.toLocaleString('en-US', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'short',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  console.log(
-    `[Cutoff Check] Pickup: ${cutoffDay} ${cutoffTime} | Now: ${nowStr} | Cutoff: ${cutoffStr} | Passed: ${isPassed}`
-  );
-
-  return isPassed;
-}
 
 export async function getPickupDays(): Promise<PickupDay[]> {
   const { data, error } = await supabase
@@ -259,11 +173,13 @@ export function getEffectiveCutoff(
   };
 }
 
-export function isDayOpenForOrdering(pickupDay: PickupDay): boolean {
-  if (!pickupDay.is_open) {
-    return false;
-  }
-  return !isCutoffPassed(pickupDay.cutoff_day, pickupDay.cutoff_time);
+export function isDayOpenForOrdering(
+  pickupDay: PickupDay,
+  cutoffRule: CutoffRule | undefined,
+): boolean {
+  return pickupDay.is_open
+    && cutoffRule?.is_active === true
+    && cutoffRule.day_key === pickupDay.day_key;
 }
 
 export function getDayKey(label: string): string {
@@ -283,8 +199,8 @@ export function getPickupDayLabel(pickupDay: PickupDay, language: 'en' | 'th' | 
   return pickupDay.label;
 }
 
-export function getCutoffDayAndTime(pickupDay: PickupDay): string {
-  return `${pickupDay.cutoff_day} at ${pickupDay.cutoff_time}`;
+export function getCutoffDayAndTime(cutoffRule: CutoffRule): string {
+  return `${cutoffRule.cutoff_day} at ${cutoffRule.cutoff_time}`;
 }
 
 export function getAvailabilityStatus(
