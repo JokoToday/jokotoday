@@ -141,19 +141,19 @@ export function AuthRequiredModal({
         }}
       >
         {/* Gold top accent bar */}
-        <div style={{ height: 4, background: 'linear-gradient(90deg,#c6a75e 0%,#e8c97a 50%,#c6a75e 100%)' }} />
+        <div className="h-1 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600" />
 
         {/* Header */}
         <div className="flex items-start justify-between px-8 pt-7 pb-0">
           <div className="flex items-center gap-3">
             <div
-              className="flex items-center justify-center rounded-xl"
-              style={{ width: 42, height: 42, background: 'linear-gradient(135deg,#c6a75e,#e8c97a)', flexShrink: 0 }}
+              className="flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-600 to-primary-500"
+              style={{ width: 42, height: 42, flexShrink: 0 }}
             >
               <ShoppingBag className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#c6a75e', letterSpacing: '0.12em' }}>
+              <div className="text-xs font-semibold tracking-widest uppercase text-primary-600" style={{ letterSpacing: '0.12em' }}>
                 JOKO TODAY
               </div>
               <h2
@@ -175,12 +175,16 @@ export function AuthRequiredModal({
                 <button
                   key={opt.key}
                   onClick={() => handleLanguageChange(opt.key)}
-                  className="text-xs font-semibold transition-all"
+                  className={`text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 ${
+                    lang === opt.key
+                      ? ''
+                      : 'hover:!bg-primary-100 hover:!text-primary-700 active:!bg-primary-200 active:!text-primary-800'
+                  }`}
                   style={{
                     padding: '4px 9px',
                     borderRadius: 6,
                     background: lang === opt.key ? '#c6a75e' : 'transparent',
-                    color: lang === opt.key ? '#fff' : '#7a6340',
+                    color: lang === opt.key ? '#fff' : '#5f4a2a',
                     border: 'none',
                     cursor: 'pointer',
                     lineHeight: 1.4,
@@ -194,7 +198,7 @@ export function AuthRequiredModal({
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="transition-colors rounded-full flex items-center justify-center"
+              className="transition-colors rounded-full flex items-center justify-center hover:!bg-primary-100 active:!bg-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               style={{ width: 32, height: 32, background: '#f5f0e8', border: 'none', cursor: 'pointer' }}
               aria-label="Close"
             >
@@ -217,13 +221,13 @@ export function AuthRequiredModal({
                 className="rounded-xl"
                 style={{ background: '#fffbf0', border: '1px solid #f0e4bc', padding: '14px 18px', marginBottom: 24 }}
               >
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#c6a75e', marginBottom: 10, letterSpacing: '0.1em' }}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary-600" style={{ marginBottom: 10, letterSpacing: '0.1em' }}>
                   {havingAccountTitle}
                 </p>
                 <ul className="space-y-2">
                   {benefits.map((b, i) => (
                     <li key={i} className="flex items-center gap-2.5 text-sm" style={{ color: '#3d2e12' }}>
-                      <Star className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#c6a75e', fill: '#c6a75e' }} />
+                      <Star className="w-3.5 h-3.5 flex-shrink-0 text-primary-600 fill-primary-600" />
                       {b}
                     </li>
                   ))}
@@ -233,18 +237,7 @@ export function AuthRequiredModal({
               {/* Primary button */}
               <button
                 onClick={() => handleOpenEmailForm('signin')}
-                className="w-full font-bold text-sm transition-all"
-                style={{
-                  background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '14px 0',
-                  cursor: 'pointer',
-                  letterSpacing: '0.03em',
-                  boxShadow: '0 4px 16px rgba(198,167,94,0.35)',
-                  marginBottom: 10,
-                }}
+                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               >
                 {g('sign_in_button', 'Sign In')}
               </button>
@@ -252,11 +245,8 @@ export function AuthRequiredModal({
               {/* Secondary button */}
               <button
                 onClick={() => handleOpenEmailForm('signup')}
-                className="w-full font-bold text-sm transition-all"
+                className="w-full border-[1.5px] border-primary-600 bg-transparent text-primary-600 font-bold text-sm transition-colors hover:bg-primary-50 hover:border-primary-700 hover:text-primary-700 active:bg-primary-100 active:border-primary-800 active:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                 style={{
-                  background: 'transparent',
-                  color: '#c6a75e',
-                  border: '1.5px solid #c6a75e',
                   borderRadius: 12,
                   padding: '13px 0',
                   cursor: 'pointer',
@@ -277,7 +267,7 @@ export function AuthRequiredModal({
             <>
               <button
                 onClick={() => { setView('landing'); setError(''); }}
-                className="flex items-center gap-1 text-xs font-semibold mb-5 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold mb-5 transition-colors hover:!text-primary-700 active:!text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                 style={{ color: '#c6a75e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
                 ← {g('back_button', 'Back')}
@@ -309,8 +299,8 @@ export function AuthRequiredModal({
                   </label>
                   <div className="relative">
                     <Mail
-                      className="absolute top-1/2 -translate-y-1/2 left-4 w-4 h-4"
-                      style={{ color: '#c6a75e', pointerEvents: 'none' }}
+                      className="absolute top-1/2 -translate-y-1/2 left-4 w-4 h-4 text-primary-600"
+                      style={{ pointerEvents: 'none' }}
                     />
                     <input
                       id="auth-email"
@@ -331,7 +321,7 @@ export function AuthRequiredModal({
                         outline: 'none',
                         transition: 'border-color 0.2s',
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = '#c6a75e')}
+                      onFocus={(e) => (e.target.style.borderColor = '#d97706')}
                       onBlur={(e) => (e.target.style.borderColor = '#e8dcc4')}
                     />
                   </div>
@@ -340,9 +330,8 @@ export function AuthRequiredModal({
                 <button
                   type="submit"
                   disabled={loading || !email}
-                  className="w-full font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                  className="w-full bg-gradient-to-br from-primary-600 to-primary-500 font-bold text-sm flex items-center justify-center gap-2 transition-all enabled:hover:brightness-95 enabled:active:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                   style={{
-                    background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 12,
@@ -390,13 +379,13 @@ export function AuthRequiredModal({
               <p className="text-sm leading-relaxed mb-2" style={{ color: '#4a3d28' }}>
                 {g('email_sent_body', 'We sent a secure sign-in link to your email address. Click the link to continue.')}
               </p>
-              <p className="text-xs font-mono mt-3" style={{ color: '#c6a75e', background: '#fffbf0', borderRadius: 8, padding: '6px 12px', display: 'inline-block' }}>
+              <p className="text-xs font-mono mt-3 text-primary-600" style={{ background: '#fffbf0', borderRadius: 8, padding: '6px 12px', display: 'inline-block' }}>
                 {email}
               </p>
               <div className="mt-6">
                 <button
                   onClick={handleClose}
-                  className="text-sm font-semibold transition-colors"
+                  className="text-sm font-semibold transition-colors hover:!text-primary-700 active:!text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                   style={{ color: '#c6a75e', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   {lang === 'th' ? 'ปิด' : lang === 'zh' ? '关闭' : 'Close'}

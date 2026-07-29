@@ -136,17 +136,7 @@ export default function CartSidebar({ onCheckout }: CartSidebarProps) {
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="w-full font-bold text-sm transition-all"
-                style={{
-                  background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '14px 0',
-                  cursor: 'pointer',
-                  letterSpacing: '0.03em',
-                  boxShadow: '0 4px 16px rgba(198,167,94,0.32)',
-                }}
+                className="w-full rounded-lg bg-gradient-to-r from-amber-700 to-yellow-600 py-3 font-semibold text-white transition-colors hover:from-amber-800 hover:to-yellow-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 active:from-amber-900 active:to-yellow-800"
               >
                 {t.auth.signIn}
               </button>
