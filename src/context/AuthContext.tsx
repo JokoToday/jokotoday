@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       setUserProfile(data);
       if (data) {
-        setUserRole(data.role || 'staff');
+        setUserRole(data.role === 'admin' || data.role === 'staff' ? data.role : null);
         if (isSupportedLanguage(data.preferred_language)) {
           setLanguage(data.preferred_language);
         }

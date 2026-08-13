@@ -10,8 +10,8 @@ import {
 } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
-const WALK_IN_DESK_PIN = '1234';
 
 interface Customer {
   id: string;
@@ -34,11 +34,8 @@ interface PurchaseResult {
 
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => sessionStorage.getItem('walkInDeskAuth') === 'true'
-  );
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
+  const { user, userRole, signOut } = useAuth();
+  const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -58,29 +55,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
   const projectedNewBalance = currentBalance + projectedPointsEarned;
 
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPinError('');
 
-    if (pin === WALK_IN_DESK_PIN) {
-      sessionStorage.setItem('walkInDeskAuth', 'true');
-      setIsAuthenticated(true);
-      setPin('');
-    } else {
-      setPinError(language === 'en' ? 'Invalid PIN' : 'PIN ไม่ถูกต้อง');
-      setPin('');
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('walkInDeskAuth');
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    await signOut();
     setCustomer(null);
     setAmount('');
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
-    setPin('');
     setError(null);
     setPurchaseResult(null);
     purchaseReferenceRef.current = null;
@@ -259,7 +241,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
       setCustomer({ ...customer, loyalty_points: data.updated_balance });
       setPurchaseResult(data as PurchaseResult);
-      sessionStorage.setItem('walkInDeskAuth', 'true');
     } catch (err) {
       console.error('Error saving walk-in purchase:', err);
       setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาด'));
@@ -318,7 +299,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     </div>
   );
 
-  if (!isAuthenticated) {
+  if (!hasStaffAccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <button
@@ -344,26 +325,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             </div>
 
             <div className="p-8">
-              <form onSubmit={handlePinSubmit}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'en' ? 'Staff PIN' : 'PIN พนักงาน'}
-                </label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="••••"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-widest font-semibold focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-                  autoFocus
-                />
-                {pinError && <p className="mt-2 text-red-600 text-sm text-center font-medium">{pinError}</p>}
-                <button
-                  type="submit"
-                  className="w-full mt-6 bg-gradient-to-r from-green-700 to-emerald-900 text-white font-bold py-3 px-4 rounded-lg hover:from-green-800 hover:to-emerald-950 transition-all"
-                >
-                  {language === 'en' ? 'Login' : 'เข้าสู่ระบบ'}
-                </button>
-              </form>
+              <p className="text-center text-sm text-gray-600">{language === 'en' ? 'Staff account required. Sign in from the main site, then return to this page.' : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}</p>
             </div>
           </div>
         </div>

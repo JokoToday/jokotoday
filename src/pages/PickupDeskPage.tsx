@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Lock, LogOut, Package, User, Phone, Mail, MessageCircle, Award, Check, Loader2, Home, QrCode, Banknote, ToggleLeft, ToggleRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { lookupCustomerByQRToken } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
-const PICKUP_DESK_PIN = '1234';
 
 interface Customer {
   id: string;
@@ -35,9 +35,8 @@ interface Order {
 
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language } = useLanguage();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
+  const { user, userRole, signOut } = useAuth();
+  const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -47,33 +46,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [error, setError] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
-  useEffect(() => {
-    const stored = sessionStorage.getItem('pickupDeskAuth');
-    if (stored === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPinError('');
-    if (pin === PICKUP_DESK_PIN) {
-      sessionStorage.setItem('pickupDeskAuth', 'true');
-      setIsAuthenticated(true);
-      setPin('');
-    } else {
-      setPinError(language === 'en' ? 'Invalid PIN' : 'PIN ไม่ถูกต้อง');
-      setPin('');
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('pickupDeskAuth');
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    await signOut();
     setCustomer(null);
     setOrders([]);
     setShowScanner(false);
-    setPin('');
   };
 
   const loadOrders = async (customerId: string) => {
@@ -193,7 +171,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const totalLoyaltyEarned = orders.reduce((sum, o) => sum + (o.loyalty_points_earned ?? 0), 0);
 
-  if (!isAuthenticated) {
+  if (!hasStaffAccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <button
@@ -217,26 +195,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </p>
             </div>
             <div className="p-8">
-              <form onSubmit={handlePinSubmit}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {language === 'en' ? 'Staff PIN' : 'PIN พนักงาน'}
-                </label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="••••"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-widest font-semibold focus:outline-none focus:ring-2 focus:ring-slate-600 focus:border-transparent"
-                  autoFocus
-                />
-                {pinError && <p className="mt-2 text-red-600 text-sm text-center font-medium">{pinError}</p>}
-                <button
-                  type="submit"
-                  className="w-full mt-6 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-3 px-4 rounded-lg hover:from-slate-800 hover:to-slate-950 transition-all"
-                >
-                  {language === 'en' ? 'Login' : 'เข้าสู่ระบบ'}
-                </button>
-              </form>
+              <p className="text-center text-sm text-gray-600">{language === 'en' ? 'Staff account required. Sign in from the main site, then return to this page.' : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}</p>
             </div>
           </div>
         </div>
