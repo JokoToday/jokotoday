@@ -21,80 +21,6 @@ function clearCallbackParameters() {
   window.history.replaceState({}, document.title, '/auth/callback');
 }
 
-function waitForPkceSession(signal: AbortSignal, timeoutMs = 8000): Promise<Session | null> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let checkingSession = false;
-    const timers: { poll?: number; timeout?: number } = {};
-    let unsubscribe = () => {};
-    let handleAbort = () => {};
-
-    const cleanup = () => {
-      if (timers.poll !== undefined) window.clearInterval(timers.poll);
-      if (timers.timeout !== undefined) window.clearTimeout(timers.timeout);
-      unsubscribe();
-      signal.removeEventListener('abort', handleAbort);
-    };
-
-    const settle = (session: Session | null) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(session);
-    };
-
-    const fail = (error: Error) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(error);
-    };
-
-    handleAbort = () => fail(new DOMException('PKCE session wait aborted', 'AbortError'));
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) settle(session);
-    });
-    unsubscribe = () => subscription.unsubscribe();
-
-    if (settled) {
-      unsubscribe();
-      return;
-    }
-
-    const checkSession = async () => {
-      if (settled || checkingSession) return;
-      checkingSession = true;
-
-      try {
-        const result = await supabase.auth.getSession();
-        if (result.error) {
-          logSupabaseError('PKCE session check failed', result.error);
-        } else if (result.data.session?.user) {
-          settle(result.data.session);
-        }
-      } finally {
-        checkingSession = false;
-      }
-    };
-
-    timers.poll = window.setInterval(() => void checkSession(), 250);
-    timers.timeout = window.setTimeout(() => {
-      console.error(`[auth-callback] PKCE session was not available after ${timeoutMs}ms`);
-      settle(null);
-    }, timeoutMs);
-
-    signal.addEventListener('abort', handleAbort, { once: true });
-
-    if (signal.aborted) {
-      handleAbort();
-      return;
-    }
-
-    void checkSession();
-  });
-}
-
 interface AuthCallbackPageProps {
   onNavigate: (page: string) => void;
 }
@@ -176,8 +102,13 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           }
           session = result.data.session;
         } else if (callbackType === 'pkce' && code) {
-          // detectSessionInUrl owns the single-use authorization-code exchange.
-          session = await waitForPkceSession(abortController.signal);
+          const result = await supabase.auth.exchangeCodeForSession(code);
+          logSupabaseError('PKCE code exchange failed', result.error);
+          if (result.error) {
+            failAndRedirect('failed');
+            return;
+          }
+          session = result.data.session;
         } else {
           const existing = await supabase.auth.getSession();
           logSupabaseError('callback getSession failed', existing.error);
@@ -229,7 +160,6 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           logSupabaseError('profile update failed', profileUpdateError);
         }
 
-        // The automatic PKCE exchange or setSession has emitted the auth event consumed by AuthContext.
         window.history.replaceState({}, document.title, '/');
         navigateRef.current('home');
       } catch (error) {
