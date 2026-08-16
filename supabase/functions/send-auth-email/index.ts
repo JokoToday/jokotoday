@@ -31,6 +31,7 @@ function buildEmailHtml(
   confirmUrl: string
 ): { subject: string; html: string } {
   const isRecovery = actionType === "recovery";
+  const isOtpFlow = actionType === "signup" || actionType === "magiclink";
 
   const headerLabel = isRecovery
     ? "Password Reset"
@@ -40,32 +41,42 @@ function buildEmailHtml(
 
   const heading = isRecovery
     ? "Reset your password"
-    : "Your JOKO TODAY verification code";
+    : isOtpFlow
+    ? "Your JOKO TODAY verification code"
+    : "Your magic link is ready";
 
   const body = isRecovery
     ? "Click the button below to reset your password. This link expires in 1 hour."
-    : "Enter this one-time code on JOKO TODAY to continue. During our transition to code-based sign-in, the secure sign-in link below remains available as a fallback.";
+    : isOtpFlow
+    ? "Enter this one-time code on JOKO TODAY to continue. During our transition to code-based sign-in, the secure sign-in link below remains available as a fallback."
+    : "Click the button below to sign in to JOKO TODAY. This link expires in 1 hour and can only be used once.";
 
   const buttonText = isRecovery
     ? "Reset Password"
-    : actionType === "signup"
-    ? "Confirm Email with Link"
-    : "Sign In with Link";
+    : isOtpFlow
+    ? actionType === "signup"
+      ? "Confirm Email with Link"
+      : "Sign In with Link"
+    : "Sign In to JOKO TODAY";
 
   const subject = isRecovery
     ? "Reset your JOKO TODAY password"
-    : `${token} is your JOKO TODAY verification code`;
+    : isOtpFlow
+    ? "Your JOKO TODAY verification code"
+    : "Your JOKO TODAY sign-in link";
 
-  const otpBlock = isRecovery
-    ? ""
-    : `
+  const otpBlock = isOtpFlow
+    ? `
             <div style="background:#fffaf0;border:1px solid #fcd34d;border-radius:14px;padding:24px 18px;margin:0 0 28px;text-align:center;">
               <p style="font-size:12px;color:#92400e;margin:0 0 10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">Verification code</p>
               <div style="font-size:36px;line-height:1.1;font-weight:800;letter-spacing:8px;color:#1f2937;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;">${token}</div>
               <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">Use this code only on joko.today.</p>
-            </div>`;
+            </div>`
+    : "";
 
-  const fallbackLabel = isRecovery ? "Or copy this link:" : "Prefer the link? You can still use it during this transition:";
+  const fallbackLabel = isOtpFlow
+    ? "Prefer the link? You can still use it during this transition:"
+    : "Or copy this link:";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -169,9 +180,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const { email_action_type, token, token_hash, redirect_to, site_url } = email_data;
+    const isOtpFlow = email_action_type === "signup" || email_action_type === "magiclink";
 
-    if (!token || !token_hash) {
-      console.error("Missing token or token_hash in auth email payload");
+    if (!token_hash || (isOtpFlow && !token)) {
+      console.error("Missing required auth email token data");
       return new Response(
         JSON.stringify({ error: { http_code: 400, message: "Invalid auth email payload" } }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
