@@ -114,10 +114,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sendEmailOtp = async (email: string) => {
+    const callbackUrl = new URL(`${getPublicAppUrl()}/auth/callback`);
+    callbackUrl.searchParams.set('lang', language);
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${getPublicAppUrl()}/auth/callback`,
+        emailRedirectTo: callbackUrl.toString(),
       },
     });
     if (error) throw error;
