@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Mail, QrCode, Upload, Loader2, CheckCircle } from 'lucide-react';
+import { X, Mail, QrCode, Upload, Loader2, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { QRScanner } from './QRScanner';
@@ -35,41 +35,99 @@ const qrAuthText = {
   },
 };
 
+const otpAuthText = {
+  en: {
+    sendCode: 'Send verification code',
+    sending: 'Sending code…',
+    title: 'Enter verification code',
+    instruction: 'We sent a 6-digit code to',
+    codeLabel: 'Verification code',
+    codePlaceholder: '000000',
+    verify: 'Verify & Sign In',
+    verifying: 'Verifying…',
+    invalidCode: 'Please enter the 6-digit verification code from your email.',
+    expiredCode: 'That code is invalid or has expired. Please request a new code and try again.',
+    resend: 'Resend code',
+    resent: 'A new verification code has been sent.',
+    changeEmail: 'Use a different email',
+    fallback: 'The email also contains a temporary sign-in link you can use if needed.',
+  },
+  th: {
+    sendCode: 'ส่งรหัสยืนยัน',
+    sending: 'กำลังส่งรหัส…',
+    title: 'กรอกรหัสยืนยัน',
+    instruction: 'เราได้ส่งรหัส 6 หลักไปที่',
+    codeLabel: 'รหัสยืนยัน',
+    codePlaceholder: '000000',
+    verify: 'ยืนยันและเข้าสู่ระบบ',
+    verifying: 'กำลังตรวจสอบ…',
+    invalidCode: 'กรุณากรอกรหัสยืนยัน 6 หลักจากอีเมลของคุณ',
+    expiredCode: 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอรหัสใหม่แล้วลองอีกครั้ง',
+    resend: 'ส่งรหัสอีกครั้ง',
+    resent: 'ส่งรหัสยืนยันใหม่แล้ว',
+    changeEmail: 'ใช้อีเมลอื่น',
+    fallback: 'ในอีเมลยังมีลิงก์เข้าสู่ระบบชั่วคราวให้ใช้ได้หากจำเป็น',
+  },
+  zh: {
+    sendCode: '发送验证码',
+    sending: '正在发送验证码…',
+    title: '输入验证码',
+    instruction: '我们已将 6 位验证码发送至',
+    codeLabel: '验证码',
+    codePlaceholder: '000000',
+    verify: '验证并登录',
+    verifying: '正在验证…',
+    invalidCode: '请输入邮件中的 6 位验证码。',
+    expiredCode: '验证码无效或已过期。请重新获取验证码后再试。',
+    resend: '重新发送验证码',
+    resent: '新的验证码已发送。',
+    changeEmail: '使用其他邮箱',
+    fallback: '邮件中仍保留临时登录链接，需要时也可使用。',
+  },
+};
+
 export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthModalProps) {
-  const { signInWithMagicLink } = useAuth();
+  const { sendEmailOtp, verifyEmailOtp } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const [action, setAction] = useState<AuthAction>(initialAction);
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
-  const [linkSent, setLinkSent] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const qrCopy = qrAuthText[language];
+  const otpCopy = otpAuthText[language];
 
   const handleClose = () => {
     setEmail('');
+    setOtp('');
     setError('');
+    setNotice('');
     setAction('signin');
-    setLinkSent(false);
+    setOtpSent(false);
     setLoading(false);
     setQrProcessing(false);
     onClose();
   };
 
-  const handleSendLink = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setQrProcessing(false);
     setLoading(true);
 
     try {
-      await signInWithMagicLink(email);
-      setLinkSent(true);
+      await sendEmailOtp(email.trim());
+      setOtp('');
+      setOtpSent(true);
     } catch (err) {
       if (err instanceof Error) {
         if (err.message.includes('Invalid email')) {
@@ -77,6 +135,48 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
         } else {
           setError(err.message || t.auth.errorGeneric);
         }
+      } else {
+        setError(t.auth.errorGeneric);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setNotice('');
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError(otpCopy.invalidCode);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyEmailOtp(email.trim(), otp);
+      handleClose();
+    } catch (err) {
+      console.error('OTP verification failed:', err);
+      setError(otpCopy.expiredCode);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError('');
+    setNotice('');
+    setLoading(true);
+
+    try {
+      await sendEmailOtp(email.trim());
+      setOtp('');
+      setNotice(otpCopy.resent);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || t.auth.errorGeneric);
       } else {
         setError(t.auth.errorGeneric);
       }
@@ -184,7 +284,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
       >
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl z-10">
           <h2 className="text-xl font-semibold text-gray-900">
-            {action === 'signup' ? t.auth.signUpTitle : t.auth.signInTitle}
+            {otpSent ? otpCopy.title : action === 'signup' ? t.auth.signUpTitle : t.auth.signInTitle}
           </h2>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
@@ -213,33 +313,101 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
         </div>
 
         <div className="p-6">
-          {linkSent ? (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+          {error && (
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+              {error}
+            </div>
+          )}
+
+          {notice && (
+            <div className="mb-5 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
+              {notice}
+            </div>
+          )}
+
+          {otpSent ? (
+            <form onSubmit={handleVerifyCode} className="space-y-5">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <KeyRound className="w-8 h-8 text-amber-600" />
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {otpCopy.instruction}
+                </p>
+                <p className="text-sm font-semibold text-gray-900 mt-1 break-all">{email}</p>
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-                <p className="text-gray-800 text-sm leading-relaxed">
-                  {t.auth.confirmationMessage}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+                  {otpCopy.codeLabel}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder={otpCopy.codePlaceholder}
+                  className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 text-center text-3xl font-semibold tracking-[0.45em] tabular-nums placeholder:text-gray-300 transition-shadow"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  aria-label={otpCopy.codeLabel}
+                  required
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="w-full bg-amber-600 text-white py-3.5 rounded-xl font-semibold hover:bg-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {otpCopy.verifying}
+                  </>
+                ) : (
+                  otpCopy.verify
+                )}
+              </button>
+
+              <div className="text-center space-y-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={loading}
+                  className="text-sm text-amber-600 hover:text-amber-700 font-semibold disabled:opacity-50"
+                >
+                  {otpCopy.resend}
+                </button>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtp('');
+                      setError('');
+                      setNotice('');
+                    }}
+                    disabled={loading}
+                    className="text-sm text-gray-500 hover:text-gray-700 font-medium disabled:opacity-50"
+                  >
+                    {otpCopy.changeEmail}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 leading-relaxed text-center">
+                  {otpCopy.fallback}
                 </p>
               </div>
-              <p className="text-xs text-gray-400 mt-4">{email}</p>
-              <button
-                onClick={handleClose}
-                className="mt-6 text-sm text-amber-600 hover:text-amber-700 font-medium"
-              >
-                {t.auth.signInTitle === 'Sign In' ? 'Close' : language === 'th' ? 'ปิด' : '关闭'}
-              </button>
-            </div>
+            </form>
           ) : (
             <>
-              {error && (
-                <div className="mb-5 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSendLink} className="space-y-4">
+              <form onSubmit={handleSendCode} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {t.auth.email}
@@ -267,10 +435,10 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                   {loading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      {qrProcessing ? qrCopy.validating : t.auth.loading}
+                      {qrProcessing ? qrCopy.validating : otpCopy.sending}
                     </>
                   ) : (
-                    t.auth.sendLink
+                    otpCopy.sendCode
                   )}
                 </button>
               </form>
@@ -321,6 +489,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                     onClick={() => {
                       setAction(action === 'signin' ? 'signup' : 'signin');
                       setError('');
+                      setNotice('');
                     }}
                     className="text-amber-600 hover:text-amber-700 font-semibold"
                     disabled={loading}
