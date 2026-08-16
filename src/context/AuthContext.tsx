@@ -35,6 +35,8 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   userRole: UserRole | null;
   profileLoading: boolean;
+  sendEmailOtp: (email: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string) => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signInWithMagicLink = async (email: string) => {
+  const sendEmailOtp = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -120,6 +122,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) throw error;
   };
+
+  const verifyEmailOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+    if (error) throw error;
+  };
+
+  const signInWithMagicLink = sendEmailOtp;
 
   const signInWithQR = async (qrToken: string) => {
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/qr-login`;
@@ -248,6 +261,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userProfile,
         userRole,
         profileLoading,
+        sendEmailOtp,
+        verifyEmailOtp,
         signInWithMagicLink,
         signInWithQR,
         signOut,
