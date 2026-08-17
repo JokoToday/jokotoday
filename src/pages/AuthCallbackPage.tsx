@@ -5,6 +5,13 @@ import { generateQRToken } from '../lib/qrTokenGenerator';
 import { useLanguage } from '../context/LanguageContext';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
+type CallbackLanguage = 'en' | 'th' | 'zh';
+
+const AUTH_LANGUAGE_STORAGE_KEY = 'jt_auth_language';
+
+function isSupportedLanguage(value: string | null): value is CallbackLanguage {
+  return value === 'en' || value === 'th' || value === 'zh';
+}
 
 function logSupabaseError(context: string, error: unknown) {
   if (!error) return;
@@ -47,7 +54,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
   const [errorKind, setErrorKind] = useState<'failed' | 'unexpected' | null>(null);
   const callbackStartedRef = useRef(false);
   const navigateRef = useRef(onNavigate);
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const text = callbackText[language];
 
   useEffect(() => {
@@ -62,6 +69,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
 
     const failAndRedirect = (kind: 'failed' | 'unexpected') => {
       if (abortController.signal.aborted) return;
+      sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
       clearCallbackParameters();
       setErrorKind(kind);
       redirectTimer = window.setTimeout(() => navigateRef.current('home'), 3000);
@@ -70,6 +78,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
     const handleCallback = async () => {
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const callbackLanguage = searchParams.get('lang');
       const code = searchParams.get('code');
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
@@ -78,6 +87,11 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
         : accessToken || refreshToken
           ? 'implicit'
           : 'none';
+
+      if (isSupportedLanguage(callbackLanguage)) {
+        sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, callbackLanguage);
+        setLanguage(callbackLanguage);
+      }
 
       console.info(`[auth-callback] callback type detected: ${callbackType}`);
 
@@ -150,6 +164,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
             role: 'customer',
             qr_token: qrToken,
             short_code: shortCodeData ?? null,
+            ...(isSupportedLanguage(callbackLanguage) ? { preferred_language: callbackLanguage } : {}),
           });
           logSupabaseError('profile insert failed', profileInsertError);
         } else if (!existingProfile.profile_completed && userEmail) {
