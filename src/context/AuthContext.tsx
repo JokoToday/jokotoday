@@ -28,6 +28,8 @@ function isSupportedLanguage(value: unknown): value is Language {
   return value === 'en' || value === 'th' || value === 'zh';
 }
 
+const AUTH_LANGUAGE_STORAGE_KEY = 'jt_auth_language';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -67,13 +69,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (error) throw error;
-      setUserProfile(data);
+
       if (data) {
         setUserRole(data.role === 'admin' || data.role === 'staff' ? data.role : null);
-        if (isSupportedLanguage(data.preferred_language)) {
+
+        const pendingAuthLanguage = sessionStorage.getItem(AUTH_LANGUAGE_STORAGE_KEY);
+        if (isSupportedLanguage(pendingAuthLanguage)) {
+          setLanguage(pendingAuthLanguage);
+
+          if (data.preferred_language !== pendingAuthLanguage) {
+            const { error: languageUpdateError } = await supabase
+              .from('user_profiles')
+              .update({
+                preferred_language: pendingAuthLanguage,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', userId);
+
+            if (languageUpdateError) {
+              console.error('Error updating preferred language after sign-in:', languageUpdateError);
+            } else {
+              data.preferred_language = pendingAuthLanguage;
+            }
+          }
+
+          sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+        } else if (isSupportedLanguage(data.preferred_language)) {
           setLanguage(data.preferred_language);
         }
       }
+
+      setUserProfile(data);
       return data;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -117,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const authLanguage = requestedLanguage ?? language;
     const callbackUrl = new URL(`${getPublicAppUrl()}/auth/callback`);
     callbackUrl.searchParams.set('lang', authLanguage);
+    sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, authLanguage);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -124,7 +151,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailRedirectTo: callbackUrl.toString(),
       },
     });
-    if (error) throw error;
+    if (error) {
+      sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      throw error;
+    }
   };
 
   const verifyEmailOtp = async (email: string, token: string) => {
@@ -169,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       console.error('Logout error:', error);
     }
+    sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
     setUser(null);
     setSession(null);
     setUserProfile(null);
