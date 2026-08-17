@@ -31,15 +31,11 @@ const copy = {
   en: {
     welcome: "Welcome",
     signIn: "Sign In",
-    passwordReset: "Password Reset",
+    secureAction: "Account Security",
     otpHeading: "Your JOKO TODAY verification code",
     otpBody: "Enter this one-time code on JOKO TODAY to continue.",
     verificationCode: "Verification code",
     codeOnlyOnSite: "Use this code only on joko.today.",
-    resetHeading: "Reset your password",
-    resetBody: "Click the button below to reset your password. This link expires in 1 hour.",
-    resetButton: "Reset Password",
-    resetSubject: "Reset your JOKO TODAY password",
     genericHeading: "Your secure link is ready",
     genericBody: "Click the button below to continue with JOKO TODAY. This link expires in 1 hour and can only be used once.",
     genericButton: "Continue to JOKO TODAY",
@@ -50,15 +46,11 @@ const copy = {
   th: {
     welcome: "ยินดีต้อนรับ",
     signIn: "เข้าสู่ระบบ",
-    passwordReset: "รีเซ็ตรหัสผ่าน",
+    secureAction: "ความปลอดภัยของบัญชี",
     otpHeading: "รหัสยืนยัน JOKO TODAY ของคุณ",
     otpBody: "กรอกรหัสใช้ครั้งเดียวนี้บน JOKO TODAY เพื่อดำเนินการต่อ",
     verificationCode: "รหัสยืนยัน",
     codeOnlyOnSite: "ใช้รหัสนี้เฉพาะบน joko.today เท่านั้น",
-    resetHeading: "รีเซ็ตรหัสผ่านของคุณ",
-    resetBody: "คลิกปุ่มด้านล่างเพื่อรีเซ็ตรหัสผ่าน ลิงก์นี้จะหมดอายุภายใน 1 ชั่วโมง",
-    resetButton: "รีเซ็ตรหัสผ่าน",
-    resetSubject: "รีเซ็ตรหัสผ่าน JOKO TODAY ของคุณ",
     genericHeading: "ลิงก์ที่ปลอดภัยของคุณพร้อมแล้ว",
     genericBody: "คลิกปุ่มด้านล่างเพื่อดำเนินการต่อกับ JOKO TODAY ลิงก์นี้จะหมดอายุภายใน 1 ชั่วโมงและใช้ได้เพียงครั้งเดียว",
     genericButton: "ดำเนินการต่อไปยัง JOKO TODAY",
@@ -69,15 +61,11 @@ const copy = {
   zh: {
     welcome: "欢迎",
     signIn: "登录",
-    passwordReset: "重置密码",
+    secureAction: "账户安全",
     otpHeading: "您的 JOKO TODAY 验证码",
     otpBody: "请在 JOKO TODAY 输入此一次性验证码以继续。",
     verificationCode: "验证码",
     codeOnlyOnSite: "请仅在 joko.today 使用此验证码。",
-    resetHeading: "重置您的密码",
-    resetBody: "点击下方按钮重置密码。此链接将在 1 小时后过期。",
-    resetButton: "重置密码",
-    resetSubject: "重置您的 JOKO TODAY 密码",
     genericHeading: "您的安全链接已准备好",
     genericBody: "点击下方按钮继续使用 JOKO TODAY。此链接将在 1 小时后过期，并且只能使用一次。",
     genericButton: "继续前往 JOKO TODAY",
@@ -103,34 +91,17 @@ function buildEmailHtml(
   language: Language
 ): { subject: string; html: string } {
   const c = copy[language];
-  const isRecovery = actionType === "recovery";
   const isOtpFlow = actionType === "signup" || actionType === "magiclink";
 
-  const headerLabel = isRecovery
-    ? c.passwordReset
-    : actionType === "signup"
+  const headerLabel = actionType === "signup"
     ? c.welcome
-    : c.signIn;
-
-  const heading = isRecovery
-    ? c.resetHeading
     : isOtpFlow
-    ? c.otpHeading
-    : c.genericHeading;
+    ? c.signIn
+    : c.secureAction;
 
-  const body = isRecovery
-    ? c.resetBody
-    : isOtpFlow
-    ? c.otpBody
-    : c.genericBody;
-
-  const buttonText = isRecovery ? c.resetButton : c.genericButton;
-
-  const subject = isRecovery
-    ? c.resetSubject
-    : isOtpFlow
-    ? c.otpHeading
-    : c.genericSubject;
+  const heading = isOtpFlow ? c.otpHeading : c.genericHeading;
+  const body = isOtpFlow ? c.otpBody : c.genericBody;
+  const subject = isOtpFlow ? c.otpHeading : c.genericSubject;
 
   const otpBlock = isOtpFlow
     ? `
@@ -147,7 +118,7 @@ function buildEmailHtml(
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
               <tr>
                 <td style="text-align:center;">
-                  <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,#92400e 0%,#b45309 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.3px;">${buttonText}</a>
+                  <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,#92400e 0%,#b45309 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.3px;">${c.genericButton}</a>
                 </td>
               </tr>
             </table>
@@ -248,6 +219,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const { email_action_type, token, token_hash, redirect_to, site_url } = email_data;
+
+    if (email_action_type === "recovery") {
+      console.warn("Password recovery email blocked because JOKO TODAY uses passwordless authentication");
+      return new Response(
+        JSON.stringify({ error: { http_code: 400, message: "Password recovery is not supported" } }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const isOtpFlow = email_action_type === "signup" || email_action_type === "magiclink";
 
     if (!token_hash || (isOtpFlow && !token)) {
