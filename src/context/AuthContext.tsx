@@ -35,7 +35,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   userRole: UserRole | null;
   profileLoading: boolean;
-  sendEmailOtp: (email: string) => Promise<void>;
+  sendEmailOtp: (email: string, requestedLanguage?: Language) => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithQR: (qrToken: string) => Promise<void>;
@@ -113,9 +113,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const sendEmailOtp = async (email: string) => {
+  const sendEmailOtp = async (email: string, requestedLanguage?: Language) => {
+    const authLanguage = requestedLanguage ?? language;
     const callbackUrl = new URL(`${getPublicAppUrl()}/auth/callback`);
-    callbackUrl.searchParams.set('lang', language);
+    callbackUrl.searchParams.set('lang', authLanguage);
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -135,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
-  const signInWithMagicLink = sendEmailOtp;
+  const signInWithMagicLink = (email: string) => sendEmailOtp(email);
 
   const signInWithQR = async (qrToken: string) => {
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/qr-login`;
