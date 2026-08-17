@@ -39,7 +39,6 @@ interface AuthContextType {
   profileLoading: boolean;
   sendEmailOtp: (email: string, requestedLanguage?: Language) => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
-  signInWithMagicLink: (email: string) => Promise<void>;
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithLINE: () => Promise<void>;
@@ -165,8 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) throw error;
   };
-
-  const signInWithMagicLink = (email: string) => sendEmailOtp(email);
 
   const signInWithQR = async (qrToken: string) => {
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/qr-login`;
@@ -298,7 +295,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileLoading,
         sendEmailOtp,
         verifyEmailOtp,
-        signInWithMagicLink,
         signInWithQR,
         signOut,
         signInWithLINE,

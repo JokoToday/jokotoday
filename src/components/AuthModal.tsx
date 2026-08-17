@@ -50,7 +50,6 @@ const otpAuthText = {
     resend: 'Resend code',
     resent: 'A new verification code has been sent.',
     changeEmail: 'Use a different email',
-    fallback: 'The email also contains a temporary sign-in link you can use if needed.',
   },
   th: {
     sendCode: 'ส่งรหัสยืนยัน',
@@ -66,7 +65,6 @@ const otpAuthText = {
     resend: 'ส่งรหัสอีกครั้ง',
     resent: 'ส่งรหัสยืนยันใหม่แล้ว',
     changeEmail: 'ใช้อีเมลอื่น',
-    fallback: 'ในอีเมลยังมีลิงก์เข้าสู่ระบบชั่วคราวให้ใช้ได้หากจำเป็น',
   },
   zh: {
     sendCode: '发送验证码',
@@ -82,7 +80,6 @@ const otpAuthText = {
     resend: '重新发送验证码',
     resent: '新的验证码已发送。',
     changeEmail: '使用其他邮箱',
-    fallback: '邮件中仍保留临时登录链接，需要时也可使用。',
   },
 };
 
@@ -397,12 +394,6 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                     {otpCopy.changeEmail}
                   </button>
                 </div>
-              </div>
-
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 leading-relaxed text-center">
-                  {otpCopy.fallback}
-                </p>
               </div>
             </form>
           ) : (

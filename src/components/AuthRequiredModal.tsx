@@ -35,7 +35,6 @@ const otpText: Record<ModalLanguage, {
   resend: string;
   resent: string;
   changeEmail: string;
-  fallback: string;
   genericError: string;
 }> = {
   en: {
@@ -52,7 +51,6 @@ const otpText: Record<ModalLanguage, {
     resend: 'Resend code',
     resent: 'A new verification code has been sent.',
     changeEmail: 'Use a different email',
-    fallback: 'The email also contains a temporary sign-in link you can use if needed.',
     genericError: 'Something went wrong. Please try again.',
   },
   th: {
@@ -69,7 +67,6 @@ const otpText: Record<ModalLanguage, {
     resend: 'ส่งรหัสอีกครั้ง',
     resent: 'ส่งรหัสยืนยันใหม่แล้ว',
     changeEmail: 'ใช้อีเมลอื่น',
-    fallback: 'ในอีเมลยังมีลิงก์เข้าสู่ระบบชั่วคราวให้ใช้ได้หากจำเป็น',
     genericError: 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง',
   },
   zh: {
@@ -86,7 +83,6 @@ const otpText: Record<ModalLanguage, {
     resend: '重新发送验证码',
     resent: '新的验证码已发送。',
     changeEmail: '使用其他邮箱',
-    fallback: '邮件中仍保留临时登录链接，需要时也可使用。',
     genericError: '出现问题，请重试。',
   },
 };
@@ -600,15 +596,6 @@ export function AuthRequiredModal({
                     {otpCopy.changeEmail}
                   </button>
                 </div>
-              </div>
-
-              <div
-                className="rounded-xl text-center"
-                style={{ background: '#fffbf0', border: '1px solid #f0e4bc', padding: '12px 14px' }}
-              >
-                <p className="text-xs leading-relaxed" style={{ color: '#8a7651' }}>
-                  {otpCopy.fallback}
-                </p>
               </div>
             </form>
           )}
