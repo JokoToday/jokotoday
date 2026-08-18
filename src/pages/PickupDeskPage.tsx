@@ -93,6 +93,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setShowManualEntry(false);
     setManualCode('');
     setError(null);
+    onNavigate('staff');
   };
 
   const loadOrders = async (customerId: string) => {
@@ -424,13 +425,23 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </div>
               <div className="flex flex-col items-end gap-3">
                 {languageSwitch}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
-                </button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('walk-in')}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors"
+                  >
+                    <Store className="w-4 h-4" />
+                    {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ Walk-In'}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

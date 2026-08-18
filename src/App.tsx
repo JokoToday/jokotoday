@@ -38,6 +38,7 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
   staff: '/staff',
+  pickup: '/pickup',
   'walk-in': '/walk-in',
 };
 

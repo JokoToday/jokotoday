@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Lock, LogOut, User, Phone, Mail, MessageCircle, Award, Check, Loader2, AlertCircle, ShoppingCart, DollarSign, Home, Upload, Keyboard } from 'lucide-react';
+import { Lock, LogOut, User, Phone, Mail, MessageCircle, Award, Check, Loader2, AlertCircle, ShoppingCart, DollarSign, Home, Package, Upload, Keyboard } from 'lucide-react';
 import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
 import {
@@ -66,6 +66,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     purchaseReferenceRef.current = null;
+    onNavigate('staff');
   };
 
   const resetTransaction = () => {
@@ -356,13 +357,23 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </div>
               <div className="flex flex-col items-end gap-3">
                 {languageSwitch}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
-                </button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('pickup')}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors"
+                  >
+                    <Package className="w-4 h-4" />
+                    {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -581,7 +592,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         className="w-full border-2 border-green-600 bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-green-600 hover:text-white active:bg-green-700 transition-colors duration-200"
                       >
                         {language === 'en'
-                          ? 'Finish and Go to Pick-Up Desk'
+                          ? 'Finish and Go to Pickup Desk'
                           : 'เสร็จสิ้นและไปที่จุดรับสินค้า'}
                       </button>
                       <button
