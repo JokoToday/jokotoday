@@ -65,40 +65,13 @@ const copy = {
     signOut: 'ออกจากระบบ',
     useDifferentAccount: 'ใช้บัญชีอื่น',
   },
-  zh: {
-    title: '员工登录',
-    subtitle: 'JOKO TODAY 运营访问',
-    emailLabel: '员工邮箱',
-    emailPlaceholder: 'name@example.com',
-    sendCode: '发送验证码',
-    sending: '正在发送验证码…',
-    codeTitle: '输入验证码',
-    codeInstruction: '我们已将 6 位验证码发送至',
-    codeLabel: '验证码',
-    verify: '验证并继续',
-    verifying: '正在验证…',
-    resend: '重新发送验证码',
-    changeEmail: '使用其他邮箱',
-    invalidCode: '请输入邮件中的 6 位验证码。',
-    expiredCode: '验证码无效或已过期。请重新获取验证码后再试。',
-    unauthorized: '此账户没有员工访问权限。',
-    unknownEmail: '此邮箱未注册员工访问权限。',
-    accessTitle: '员工运营',
-    accessSubtitle: '请选择要打开的工作台。',
-    pickupDesk: '取货工作台',
-    pickupDescription: '扫描客户二维码并管理预约取货。',
-    walkInDesk: '现场购买工作台',
-    walkInDescription: '创建和管理现场购买。',
-    backHome: '返回首页',
-    signOut: '退出登录',
-    useDifferentAccount: '使用其他账户',
-  },
 } as const;
 
 export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
+  const staffLanguage = language === 'th' ? 'th' : 'en';
   const { user, userRole, profileLoading, sendEmailOtp, verifyEmailOtp, signOut } = useAuth();
-  const text = copy[language];
+  const text = copy[staffLanguage];
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
 
   const [email, setEmail] = useState('');
@@ -111,13 +84,33 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
     if (user?.email && !email) setEmail(user.email);
   }, [user, email]);
 
+  const languageSwitch = (
+    <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
+      {(['en', 'th'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setLanguage(option)}
+          className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+            staffLanguage === option
+              ? 'bg-white text-slate-800'
+              : 'text-white hover:bg-white/10'
+          }`}
+          aria-pressed={staffLanguage === option}
+        >
+          {option === 'en' ? 'EN' : 'ไทย'}
+        </button>
+      ))}
+    </div>
+  );
+
   const handleSendCode = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await sendEmailOtp(email.trim(), language, false);
+      await sendEmailOtp(email.trim(), staffLanguage, false);
       setOtp('');
       setOtpSent(true);
     } catch (err) {
@@ -189,7 +182,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
             <button
               onClick={async () => {
                 await signOut();
-                onNavigate('home');
+                onNavigate('staff');
               }}
               className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
             >
@@ -199,7 +192,8 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+            <div className="relative bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+              <div className="absolute right-4 top-4">{languageSwitch}</div>
               <Lock className="w-12 h-12 text-white mx-auto mb-4" />
               <h1 className="text-3xl font-bold text-white mb-2">{text.accessTitle}</h1>
               <p className="text-slate-300">{text.accessSubtitle}</p>
@@ -241,7 +235,8 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
       </button>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+        <div className="relative bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+          <div className="absolute right-4 top-4">{languageSwitch}</div>
           <Lock className="w-12 h-12 text-white mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-white mb-2">{text.title}</h1>
           <p className="text-slate-300">{text.subtitle}</p>
@@ -337,7 +332,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
                     setError('');
                     setLoading(true);
                     try {
-                      await sendEmailOtp(email.trim(), language, false);
+                      await sendEmailOtp(email.trim(), staffLanguage, false);
                       setOtp('');
                     } catch {
                       setError(text.unknownEmail);
