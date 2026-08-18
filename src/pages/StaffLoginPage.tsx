@@ -21,10 +21,10 @@ const copy = {
     codeLabel: 'Verification code',
     verify: 'Verify & Continue',
     verifying: 'Verifying…',
-    resend: 'Resend code',
+    resend: 'Send me a fresh code',
     changeEmail: 'Use a different email',
     invalidCode: 'Please enter the 6-digit verification code from your email.',
-    expiredCode: 'That code is invalid or has expired. Please request a new code and try again.',
+    expiredCode: 'Oops — that code has had its moment. Grab a fresh one and try again.',
     unauthorized: 'This account does not have staff access.',
     unknownEmail: 'This email is not registered for staff access.',
     accessTitle: 'Staff Operations',
@@ -49,10 +49,10 @@ const copy = {
     codeLabel: 'รหัสยืนยัน',
     verify: 'ยืนยันและดำเนินการต่อ',
     verifying: 'กำลังตรวจสอบ…',
-    resend: 'ส่งรหัสอีกครั้ง',
+    resend: 'ส่งรหัสใหม่ให้หน่อย',
     changeEmail: 'ใช้อีเมลอื่น',
     invalidCode: 'กรุณากรอกรหัสยืนยัน 6 หลักจากอีเมลของคุณ',
-    expiredCode: 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอรหัสใหม่แล้วลองอีกครั้ง',
+    expiredCode: 'อุ๊ปส์ — รหัสนี้หมดเวลาของมันแล้ว ขอรหัสใหม่แล้วลองอีกครั้งนะ',
     unauthorized: 'บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบพนักงาน',
     unknownEmail: 'อีเมลนี้ไม่ได้ลงทะเบียนสำหรับการเข้าถึงของพนักงาน',
     accessTitle: 'ระบบปฏิบัติงานพนักงาน',
@@ -79,6 +79,9 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const displayedError = error === copy.en.expiredCode || error === copy.th.expiredCode
+    ? text.expiredCode
+    : error;
 
   useEffect(() => {
     if (user?.email && !email) setEmail(user.email);
@@ -261,7 +264,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
             </div>
           ) : !otpSent ? (
             <form onSubmit={handleSendCode} className="space-y-5">
-              {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
+              {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{displayedError}</div>}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">{text.emailLabel}</label>
                 <input
@@ -285,7 +288,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
             </form>
           ) : (
             <form onSubmit={handleVerifyCode} className="space-y-5">
-              {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{error}</div>}
+              {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{displayedError}</div>}
               <div className="text-center">
                 <h2 className="text-xl font-semibold text-slate-900 mb-2">{text.codeTitle}</h2>
                 <p className="text-sm text-slate-600">{text.codeInstruction}</p>

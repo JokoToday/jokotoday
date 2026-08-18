@@ -46,8 +46,8 @@ const otpAuthText = {
     verify: 'Verify & Sign In',
     verifying: 'Verifying…',
     invalidCode: 'Please enter the 6-digit verification code from your email.',
-    expiredCode: 'That code is invalid or has expired. Please request a new code and try again.',
-    resend: 'Resend code',
+    expiredCode: 'Oops — that code has had its moment. Grab a fresh one and try again.',
+    resend: 'Send me a fresh code',
     resent: 'A new verification code has been sent.',
     changeEmail: 'Use a different email',
   },
@@ -61,8 +61,8 @@ const otpAuthText = {
     verify: 'ยืนยันและเข้าสู่ระบบ',
     verifying: 'กำลังตรวจสอบ…',
     invalidCode: 'กรุณากรอกรหัสยืนยัน 6 หลักจากอีเมลของคุณ',
-    expiredCode: 'รหัสไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอรหัสใหม่แล้วลองอีกครั้ง',
-    resend: 'ส่งรหัสอีกครั้ง',
+    expiredCode: 'อุ๊ปส์ — รหัสนี้หมดเวลาของมันแล้ว ขอรหัสใหม่แล้วลองอีกครั้งนะ',
+    resend: 'ส่งรหัสใหม่ให้หน่อย',
     resent: 'ส่งรหัสยืนยันใหม่แล้ว',
     changeEmail: 'ใช้อีเมลอื่น',
   },
@@ -76,8 +76,8 @@ const otpAuthText = {
     verify: '验证并登录',
     verifying: '正在验证…',
     invalidCode: '请输入邮件中的 6 位验证码。',
-    expiredCode: '验证码无效或已过期。请重新获取验证码后再试。',
-    resend: '重新发送验证码',
+    expiredCode: '哎呀，这个验证码已经过了有效时间。重新获取一个新的，再试一次吧。',
+    resend: '给我发一个新验证码',
     resent: '新的验证码已发送。',
     changeEmail: '使用其他邮箱',
   },
@@ -101,6 +101,11 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
 
   const qrCopy = qrAuthText[language];
   const otpCopy = otpAuthText[language];
+  const displayedError = Object.values(otpAuthText).some((copy) => error === copy.expiredCode)
+    ? otpCopy.expiredCode
+    : Object.values(otpAuthText).some((copy) => error === copy.invalidCode)
+      ? otpCopy.invalidCode
+      : error;
 
   const handleClose = () => {
     setEmail('');
@@ -312,7 +317,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
         <div className="p-6">
           {error && (
             <div className="mb-5 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-              {error}
+              {displayedError}
             </div>
           )}
 
