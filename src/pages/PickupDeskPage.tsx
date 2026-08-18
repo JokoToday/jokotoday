@@ -518,7 +518,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <Package className="w-5 h-5 text-slate-600" />
-                      {language === 'en' ? "Today's Orders" : 'คำสั่งซื้อวันนี้'} ({orders.length})
+                      {language === 'en' ? 'Pickup Orders' : 'คำสั่งรับสินค้า'} ({orders.length})
                     </h3>
                     {totalLoyaltyEarned > 0 && (
                       <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
