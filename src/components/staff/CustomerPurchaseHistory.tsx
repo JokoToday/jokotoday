@@ -46,18 +46,10 @@ type HistoryOrder = {
   staff_id?: string | null;
 };
 
-type PickupLocation = {
-  id: string;
-  name_en: string;
-  name_th: string;
-};
+type PickupLocation = { id: string; name_en: string; name_th: string };
+type StaffProfile = { id: string; name: string | null };
 
-type StaffProfile = {
-  id: string;
-  name: string | null;
-};
-
-type CustomerPurchaseHistoryProps = {
+type Props = {
   customerId: string;
   language: StaffLanguage;
   refreshKey?: number;
@@ -68,11 +60,7 @@ const money = (value: unknown) => {
   return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
 };
 
-export function CustomerPurchaseHistory({
-  customerId,
-  language,
-  refreshKey = 0,
-}: CustomerPurchaseHistoryProps) {
+export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }: Props) {
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
@@ -85,9 +73,8 @@ export function CustomerPurchaseHistory({
     try {
       setLoading(true);
       setError(null);
-
       const today = new Date().toISOString().split('T')[0];
-      const { data: orderRows, error: orderError } = await supabase
+      const { data, error: orderError } = await supabase
         .from('orders')
         .select(
           'id, order_number, order_items, total_amount, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at, staff_id'
@@ -97,49 +84,49 @@ export function CustomerPurchaseHistory({
 
       if (orderError) throw orderError;
 
-      const historyRows = ((orderRows || []) as HistoryOrder[]).filter((order) => {
-        if (order.purchase_type === 'walk_in') return true;
-        return Boolean(order.pickup_date && order.pickup_date < today);
-      });
-
+      const historyRows = ((data || []) as HistoryOrder[]).filter((order) => (
+        order.purchase_type === 'walk_in' || Boolean(order.pickup_date && order.pickup_date < today)
+      ));
       setOrders(historyRows);
 
-      const locationIds = Array.from(
-        new Set(historyRows.map((order) => order.pickup_location_id).filter(Boolean) as string[])
-      );
-      if (locationIds.length > 0) {
+      const locationIds = Array.from(new Set(
+        historyRows.map((order) => order.pickup_location_id).filter(Boolean) as string[]
+      ));
+      if (locationIds.length) {
         const { data: locationRows, error: locationError } = await supabase
           .from('cms_pickup_locations')
           .select('id, name_en, name_th')
           .in('id', locationIds);
-        if (locationError) throw locationError;
-
-        setLocations(
-          ((locationRows || []) as PickupLocation[]).reduce<Record<string, PickupLocation>>((map, location) => {
-            map[location.id] = location;
+        if (locationError) {
+          console.warn('Could not enrich purchase history with pickup locations:', locationError);
+          setLocations({});
+        } else {
+          setLocations(((locationRows || []) as PickupLocation[]).reduce<Record<string, PickupLocation>>((map, row) => {
+            map[row.id] = row;
             return map;
-          }, {})
-        );
+          }, {}));
+        }
       } else {
         setLocations({});
       }
 
-      const staffIds = Array.from(
-        new Set(historyRows.map((order) => order.staff_id).filter(Boolean) as string[])
-      );
-      if (staffIds.length > 0) {
+      const staffIds = Array.from(new Set(
+        historyRows.map((order) => order.staff_id).filter(Boolean) as string[]
+      ));
+      if (staffIds.length) {
         const { data: staffRows, error: staffError } = await supabase
           .from('user_profiles')
           .select('id, name')
           .in('id', staffIds);
-        if (staffError) throw staffError;
-
-        setStaffNames(
-          ((staffRows || []) as StaffProfile[]).reduce<Record<string, string>>((map, profile) => {
-            if (profile.name) map[profile.id] = profile.name;
+        if (staffError) {
+          console.warn('Could not enrich purchase history with staff names:', staffError);
+          setStaffNames({});
+        } else {
+          setStaffNames(((staffRows || []) as StaffProfile[]).reduce<Record<string, string>>((map, row) => {
+            if (row.name) map[row.id] = row.name;
             return map;
-          }, {})
-        );
+          }, {}));
+        }
       } else {
         setStaffNames({});
       }
@@ -148,11 +135,9 @@ export function CustomerPurchaseHistory({
       setOrders([]);
       setLocations({});
       setStaffNames({});
-      setError(
-        language === 'en'
-          ? 'Purchase history is temporarily unavailable.'
-          : 'ไม่สามารถโหลดประวัติการซื้อได้ชั่วคราว'
-      );
+      setError(language === 'en'
+        ? 'Purchase history is temporarily unavailable.'
+        : 'ไม่สามารถโหลดประวัติการซื้อได้ชั่วคราว');
     } finally {
       setLoading(false);
     }
@@ -161,64 +146,52 @@ export function CustomerPurchaseHistory({
   useEffect(() => {
     setExpandedOrderId(null);
     void loadHistory();
-    // loadHistory intentionally follows customer/language/refresh changes only.
+    // Keep history synchronized only with the selected customer, language and explicit refreshes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, language, refreshKey]);
 
-  const pastPickupCount = useMemo(
+  const pickupCount = useMemo(
     () => orders.filter((order) => order.purchase_type !== 'walk_in').length,
     [orders]
   );
-  const walkInCount = orders.length - pastPickupCount;
+  const walkInCount = orders.length - pickupCount;
+  const notRecorded = language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก';
 
-  const formatDateTime = (dateValue: string | null | undefined) => {
-    if (!dateValue) return language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก';
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return dateValue;
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return notRecorded;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString(language === 'th' ? 'th-TH' : 'en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
   };
 
-  const formatPickupDate = (dateValue: string | null | undefined) => {
-    if (!dateValue) return language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก';
-    const date = new Date(`${dateValue}T00:00:00`);
-    if (Number.isNaN(date.getTime())) return dateValue;
+  const formatPickupDate = (value: string | null | undefined) => {
+    if (!value) return notRecorded;
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString(language === 'th' ? 'th-TH' : 'en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+      day: 'numeric', month: 'short', year: 'numeric',
     });
   };
 
-  const paymentMethodLabel = (method: string | null) => {
+  const paymentMethod = (method: string | null) => {
     if (method === 'cash') return language === 'en' ? 'Cash' : 'เงินสด';
     if (method === 'qr_code' || method === 'qr') return language === 'en' ? 'QR' : 'คิวอาร์';
-    return language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก';
+    return notRecorded;
   };
 
   const statusLabel = (status: string) => {
-    const en: Record<string, string> = {
-      pending: 'Pending',
-      confirmed: 'Confirmed',
-      ready: 'Ready',
-      picked_up: 'Picked up',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
+    const labels: Record<string, [string, string]> = {
+      pending: ['Pending', 'รอดำเนินการ'],
+      confirmed: ['Confirmed', 'ยืนยันแล้ว'],
+      ready: ['Ready', 'พร้อมรับ'],
+      picked_up: ['Picked up', 'รับแล้ว'],
+      completed: ['Completed', 'เสร็จสิ้น'],
+      cancelled: ['Cancelled', 'ยกเลิก'],
     };
-    const th: Record<string, string> = {
-      pending: 'รอดำเนินการ',
-      confirmed: 'ยืนยันแล้ว',
-      ready: 'พร้อมรับ',
-      picked_up: 'รับแล้ว',
-      completed: 'เสร็จสิ้น',
-      cancelled: 'ยกเลิก',
-    };
-    return (language === 'th' ? th : en)[status] || status.replaceAll('_', ' ');
+    const label = labels[status];
+    return label ? label[language === 'th' ? 1 : 0] : status;
   };
 
   const itemName = (item: OrderItem) => {
@@ -228,32 +201,27 @@ export function CustomerPurchaseHistory({
     return item.product_name || item.product_name_en || item.name || item.product_name_th || item.name_th || '—';
   };
 
-  const orderAmount = (order: HistoryOrder) =>
-    order.purchase_type === 'walk_in' ? order.walk_in_amount ?? order.total_amount : order.total_amount;
+  const orderAmount = (order: HistoryOrder) => (
+    order.purchase_type === 'walk_in' ? order.walk_in_amount ?? order.total_amount : order.total_amount
+  );
 
   return (
     <div className="mt-8 pt-6 border-t border-gray-200">
       <button
         type="button"
-        onClick={() => setShowHistory((current) => !current)}
+        onClick={() => setShowHistory((value) => !value)}
         className="w-full flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100 transition-colors"
         aria-expanded={showHistory}
       >
         <div>
-          <p className="font-bold text-gray-900">
-            {language === 'en' ? 'Purchase History' : 'ประวัติการซื้อ'}
-          </p>
+          <p className="font-bold text-gray-900">{language === 'en' ? 'Purchase History' : 'ประวัติการซื้อ'}</p>
           <p className="text-sm text-gray-500">
             {loading
               ? (language === 'en' ? 'Loading history…' : 'กำลังโหลดประวัติ…')
               : `${orders.length} ${language === 'en' ? 'previous transactions' : 'รายการก่อนหน้า'}`}
           </p>
         </div>
-        {showHistory ? (
-          <ChevronUp className="w-5 h-5 text-slate-600" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-slate-600" />
-        )}
+        {showHistory ? <ChevronUp className="w-5 h-5 text-slate-600" /> : <ChevronDown className="w-5 h-5 text-slate-600" />}
       </button>
 
       {showHistory && (
@@ -269,34 +237,20 @@ export function CustomerPurchaseHistory({
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <p className="font-medium">{error}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => void loadHistory()}
-                className="mt-3 text-sm font-semibold text-red-700 underline underline-offset-2"
-              >
+              <button type="button" onClick={() => void loadHistory()} className="mt-3 text-sm font-semibold text-red-700 underline underline-offset-2">
                 {language === 'en' ? 'Try again' : 'ลองอีกครั้ง'}
               </button>
             </div>
           ) : orders.length === 0 ? (
             <div className="text-center py-8 bg-slate-50 rounded-xl">
               <Package className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-              <p className="text-gray-500">
-                {language === 'en' ? 'No previous purchases recorded' : 'ยังไม่มีประวัติการซื้อ'}
-              </p>
+              <p className="text-gray-500">{language === 'en' ? 'No previous purchases recorded' : 'ยังไม่มีประวัติการซื้อ'}</p>
             </div>
           ) : (
             <>
               <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                {pastPickupCount > 0 && (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1">
-                    {language === 'en' ? 'Pickup' : 'รับสินค้า'}: {pastPickupCount}
-                  </span>
-                )}
-                {walkInCount > 0 && (
-                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">
-                    Walk-In: {walkInCount}
-                  </span>
-                )}
+                {pickupCount > 0 && <span className="rounded-full bg-slate-100 px-2.5 py-1">{language === 'en' ? 'Pickup' : 'รับสินค้า'}: {pickupCount}</span>}
+                {walkInCount > 0 && <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700">Walk-In: {walkInCount}</span>}
               </div>
 
               <div className="space-y-3">
@@ -329,121 +283,57 @@ export function CustomerPurchaseHistory({
                           </div>
                           <div className="flex items-center gap-3">
                             <p className="text-lg font-bold text-slate-800">฿{money(orderAmount(order))}</p>
-                            {expanded ? (
-                              <ChevronUp className="w-5 h-5 text-slate-500" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-slate-500" />
-                            )}
+                            {expanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
                           </div>
                         </div>
-
                         <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                          <span className={`rounded-full px-2.5 py-1 ${
-                            order.payment_status === 'paid'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {order.payment_status === 'paid'
-                              ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
-                              : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                          <span className={`rounded-full px-2.5 py-1 ${order.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {order.payment_status === 'paid' ? (language === 'en' ? 'Paid' : 'ชำระแล้ว') : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
                           </span>
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-                            {paymentMethodLabel(order.payment_method)}
-                          </span>
-                          <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">
-                            {statusLabel(order.status)}
-                          </span>
-                          {(order.loyalty_points_earned ?? 0) > 0 && (
-                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
-                              +{order.loyalty_points_earned} pts
-                            </span>
-                          )}
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">{paymentMethod(order.payment_method)}</span>
+                          <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">{statusLabel(order.status)}</span>
+                          {(order.loyalty_points_earned ?? 0) > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">+{order.loyalty_points_earned} pts</span>}
                         </div>
                       </button>
 
                       {expanded && (
                         <div className="border-t border-slate-200 bg-slate-50/70 p-4 space-y-4">
                           <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-lg bg-white p-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                {language === 'en' ? 'Payment' : 'การชำระเงิน'}
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-gray-800">
-                                {order.payment_status === 'paid'
-                                  ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
-                                  : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
-                                {' · '}{paymentMethodLabel(order.payment_method)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg bg-white p-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                {language === 'en' ? 'Status' : 'สถานะ'}
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-gray-800">{statusLabel(order.status)}</p>
-                            </div>
-                            <div className="rounded-lg bg-white p-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                                <Award className="w-3.5 h-3.5" />
-                                {language === 'en' ? 'Loyalty points earned' : 'แต้มสะสมที่ได้รับ'}
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-gray-800">
-                                +{order.loyalty_points_earned ?? 0} pts
-                              </p>
-                            </div>
-                            <div className="rounded-lg bg-white p-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                                <UserRoundCheck className="w-3.5 h-3.5" />
-                                {language === 'en' ? 'Handled by' : 'ผู้ดำเนินการ'}
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-gray-800">
-                                {handledBy || (language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก')}
-                              </p>
-                            </div>
+                            <Detail label={language === 'en' ? 'Payment' : 'การชำระเงิน'}>
+                              {order.payment_status === 'paid' ? (language === 'en' ? 'Paid' : 'ชำระแล้ว') : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')} · {paymentMethod(order.payment_method)}
+                            </Detail>
+                            <Detail label={language === 'en' ? 'Status' : 'สถานะ'}>{statusLabel(order.status)}</Detail>
+                            <Detail label={language === 'en' ? 'Loyalty points earned' : 'แต้มสะสมที่ได้รับ'} icon={<Award className="w-3.5 h-3.5" />}>
+                              +{order.loyalty_points_earned ?? 0} pts
+                            </Detail>
+                            <Detail label={language === 'en' ? 'Handled by' : 'ผู้ดำเนินการ'} icon={<UserRoundCheck className="w-3.5 h-3.5" />}>
+                              {handledBy || notRecorded}
+                            </Detail>
                           </div>
 
                           {!isWalkIn && (
                             <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="rounded-lg bg-white p-3 border border-slate-100">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  {language === 'en' ? 'Pickup date' : 'วันที่รับสินค้า'}
-                                </p>
-                                <p className="mt-1 text-sm font-medium text-gray-800">{formatPickupDate(order.pickup_date)}</p>
-                              </div>
-                              <div className="rounded-lg bg-white p-3 border border-slate-100">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5" />
-                                  {language === 'en' ? 'Pickup location' : 'สถานที่รับสินค้า'}
-                                </p>
-                                <p className="mt-1 text-sm font-medium text-gray-800">
-                                  {location
-                                    ? (language === 'th' ? location.name_th || location.name_en : location.name_en)
-                                    : (language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก')}
-                                </p>
-                              </div>
+                              <Detail label={language === 'en' ? 'Pickup date' : 'วันที่รับสินค้า'} icon={<Calendar className="w-3.5 h-3.5" />}>
+                                {formatPickupDate(order.pickup_date)}
+                              </Detail>
+                              <Detail label={language === 'en' ? 'Pickup location' : 'สถานที่รับสินค้า'} icon={<MapPin className="w-3.5 h-3.5" />}>
+                                {location ? (language === 'th' ? location.name_th || location.name_en : location.name_en) : notRecorded}
+                              </Detail>
                             </div>
                           )}
 
                           {order.picked_up_at && (
-                            <div className="rounded-lg bg-white p-3 border border-slate-100">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                {language === 'en' ? 'Picked up at' : 'เวลารับสินค้า'}
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-gray-800">{formatDateTime(order.picked_up_at)}</p>
-                            </div>
+                            <Detail label={language === 'en' ? 'Picked up at' : 'เวลารับสินค้า'} icon={<Clock className="w-3.5 h-3.5" />}>
+                              {formatDateTime(order.picked_up_at)}
+                            </Detail>
                           )}
 
                           <div className="rounded-lg bg-white p-3 border border-slate-100">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                              {language === 'en' ? 'Items' : 'รายการสินค้า'}
-                            </p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">{language === 'en' ? 'Items' : 'รายการสินค้า'}</p>
                             {items.length === 0 ? (
                               <p className="text-sm text-slate-500">
                                 {isWalkIn
-                                  ? (language === 'en'
-                                    ? 'Item details were not recorded for this walk-in purchase.'
-                                    : 'รายการสินค้าไม่ได้ถูกบันทึกสำหรับการซื้อ Walk-In นี้')
+                                  ? (language === 'en' ? 'Item details were not recorded for this walk-in purchase.' : 'รายการสินค้าไม่ได้ถูกบันทึกสำหรับการซื้อ Walk-In นี้')
                                   : (language === 'en' ? 'Item details not recorded.' : 'ไม่ได้บันทึกรายการสินค้า')}
                               </p>
                             ) : (
@@ -452,12 +342,10 @@ export function CustomerPurchaseHistory({
                                   const quantity = Number(item.quantity ?? item.qty ?? 0);
                                   const price = Number(item.price_at_order ?? item.price ?? 0);
                                   return (
-                                    <div key={`${order.id}-item-${index}`} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                                    <div key={`${order.id}-${index}`} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
                                       <div>
                                         <p className="text-sm font-medium text-gray-900">{itemName(item)}</p>
-                                        <p className="text-xs text-slate-500">
-                                          {quantity} × ฿{money(price)}
-                                        </p>
+                                        <p className="text-xs text-slate-500">{quantity} × ฿{money(price)}</p>
                                       </div>
                                       <p className="text-sm font-semibold text-gray-800">฿{money(quantity * price)}</p>
                                     </div>
@@ -466,9 +354,7 @@ export function CustomerPurchaseHistory({
                               </div>
                             )}
                             <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                              <span className="text-sm font-semibold text-gray-700">
-                                {language === 'en' ? 'Total' : 'รวม'}
-                              </span>
+                              <span className="text-sm font-semibold text-gray-700">{language === 'en' ? 'Total' : 'รวม'}</span>
                               <span className="text-base font-bold text-gray-900">฿{money(orderAmount(order))}</span>
                             </div>
                           </div>
@@ -482,6 +368,17 @@ export function CustomerPurchaseHistory({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function Detail({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-white p-3 border border-slate-100">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1">
+        {icon}{label}
+      </p>
+      <p className="mt-1 text-sm font-medium text-gray-800">{children}</p>
     </div>
   );
 }
