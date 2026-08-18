@@ -1,5 +1,5 @@
 import { pickupLocations } from '../data/locations';
-import { ExternalLink, Settings, Package, Facebook, MapPin, Twitter, Instagram, Youtube, Linkedin, Globe, Phone } from 'lucide-react';
+import { ExternalLink, Settings, Facebook, MapPin, Twitter, Instagram, Youtube, Linkedin, Globe, Phone, Lock } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSocialLinks } from '../hooks/useSocialLinks';
 
@@ -46,21 +46,19 @@ export default function Footer({ onNavigate }: { onNavigate?: (page: string) => 
     }
   };
 
-  const handlePickupDeskClick = () => {
+  const handleStaffClick = () => {
     if (onNavigate) {
-      onNavigate('pickup');
+      onNavigate('staff');
     } else {
-      window.location.hash = '#pickup';
+      window.location.href = '/staff';
     }
   };
 
-  const handleWalkInClick = () => {
-    if (onNavigate) {
-      onNavigate('walk-in');
-    } else {
-      window.location.hash = '#walk-in';
-    }
-  };
+  const staffLabel = language === 'th'
+    ? 'เข้าสู่ระบบพนักงาน'
+    : language === 'zh'
+    ? '员工登录'
+    : 'Staff Login';
 
   return (
     <footer className="bg-primary-900 text-primary-50 mt-auto">
@@ -140,18 +138,11 @@ export default function Footer({ onNavigate }: { onNavigate?: (page: string) => 
 
             <div className="flex gap-2">
               <button
-                onClick={handlePickupDeskClick}
+                onClick={handleStaffClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-primary-800 transition-colors text-primary-200 hover:text-primary-50"
               >
-                <Package className="w-4 h-4" />
-                {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
-              </button>
-              <button
-                onClick={handleWalkInClick}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-primary-800 transition-colors text-primary-200 hover:text-primary-50"
-              >
-                <Package className="w-4 h-4" />
-                {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
+                <Lock className="w-4 h-4" />
+                {staffLabel}
               </button>
               <button
                 onClick={handleAdminClick}
