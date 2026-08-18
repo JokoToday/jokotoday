@@ -1,17 +1,41 @@
-import { useState } from 'react';
-import { Lock, LogOut, Package, User, Phone, Mail, MessageCircle, Award, Check, Loader2, Home, QrCode, Banknote, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import {
+  AlertCircle,
+  Award,
+  Banknote,
+  Check,
+  Home,
+  Keyboard,
+  Loader2,
+  Lock,
+  LogOut,
+  Mail,
+  MessageCircle,
+  Package,
+  Phone,
+  QrCode,
+  ToggleLeft,
+  ToggleRight,
+  Upload,
+  User,
+} from 'lucide-react';
+import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
-import { lookupCustomerByQRToken } from '../lib/customerLookup';
+import {
+  CustomerLookupNetworkError,
+  CustomerLookupServiceError,
+  InvalidCustomerCodeError,
+  lookupCustomerByQRToken,
+} from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
-
 interface Customer {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
   line_id: string | null;
   whatsapp: string | null;
   wechat_id: string | null;
@@ -34,7 +58,7 @@ interface Order {
 }
 
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
@@ -45,13 +69,16 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
-
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
     await signOut();
     setCustomer(null);
     setOrders([]);
     setShowScanner(false);
+    setShowManualEntry(false);
+    setManualCode('');
+    setError(null);
   };
 
   const loadOrders = async (customerId: string) => {
@@ -66,49 +93,124 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setOrders(ordersData || []);
   };
 
-  const handleScan = async (decodedText: string) => {
+  const getLookupErrorMessage = (err: unknown, source: 'manual' | 'qr' = 'qr') => {
+    if (err instanceof InvalidCustomerCodeError) {
+      if (source === 'manual') {
+        return language === 'en'
+          ? 'Enter a valid member code, such as VIP103.'
+          : 'กรุณากรอกรหัสสมาชิกที่ถูกต้อง เช่น VIP103';
+      }
+      return language === 'en'
+        ? 'The QR code was decoded, but its content is not supported.'
+        : 'อ่าน QR Code ได้ แต่รูปแบบข้อมูลไม่รองรับ';
+    }
+    if (err instanceof CustomerLookupNetworkError) {
+      return language === 'en'
+        ? 'Unable to reach customer lookup. Check your connection and try again.'
+        : 'ไม่สามารถเชื่อมต่อระบบค้นหาลูกค้าได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
+    }
+    if (err instanceof CustomerLookupServiceError) {
+      return language === 'en'
+        ? 'Customer lookup is temporarily unavailable. Please try again.'
+        : 'ระบบค้นหาลูกค้าไม่พร้อมใช้งานชั่วคราว กรุณาลองอีกครั้ง';
+    }
+    return err instanceof Error
+      ? err.message
+      : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด');
+  };
+
+  const findCustomer = async (lookupValue: string, source: 'manual' | 'qr' = 'qr') => {
     try {
       setLoading(true);
       setError(null);
       setCustomer(null);
       setOrders([]);
-      const customerData = await lookupCustomerByQRToken(decodedText);
+
+      const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
         setError(language === 'en' ? 'Customer not found' : 'ไม่พบลูกค้า');
         return;
       }
-      setCustomer(customerData);
-      await loadOrders(customerData.id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleManualCodeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualCode.trim()) return;
-    try {
-      setLoading(true);
-      setError(null);
-      setCustomer(null);
-      setOrders([]);
-      const customerData = await lookupCustomerByQRToken(manualCode.trim());
-      if (!customerData) {
-        setError(language === 'en' ? 'No customer found with this code.' : 'ไม่พบลูกค้าด้วยรหัสนี้');
-        setManualCode('');
-        return;
-      }
       setCustomer(customerData);
       setShowManualEntry(false);
       setManualCode('');
       await loadOrders(customerData.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด'));
+      console.error('Error loading pickup customer:', err);
+      setError(getLookupErrorMessage(err, source));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleScan = async (decodedText: string) => {
+    setShowScanner(false);
+    await findCustomer(decodedText);
+  };
+
+  const handleManualCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    await findCustomer(manualCode, 'manual');
+  };
+
+  const handleQrUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const supportedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!supportedTypes.includes(file.type)) {
+      setError(language === 'en' ? 'Choose a PNG, JPEG, or WebP image.' : 'กรุณาเลือกรูป PNG, JPEG หรือ WebP');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = async () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('canvas');
+
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        context.drawImage(image, 0, 0);
+
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const decoded = jsQR(imageData.data, imageData.width, imageData.height);
+        if (!decoded?.data) {
+          setError(language === 'en' ? 'No QR code was detected in this image.' : 'ไม่พบ QR Code ในรูปภาพนี้');
+          return;
+        }
+
+        if (import.meta.env.DEV) {
+          console.debug('[PickupDesk] Decoded QR content:', decoded.data);
+        }
+        await findCustomer(decoded.data);
+      } catch (err) {
+        if (err instanceof InvalidCustomerCodeError) {
+          setError(getLookupErrorMessage(err));
+        } else {
+          setError(language === 'en' ? 'Could not read this image. Please choose another.' : 'ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกรูปอื่น');
+        }
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setLoading(false);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setLoading(false);
+      setError(language === 'en' ? 'Could not read this image. Please choose another.' : 'ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกรูปอื่น');
+    };
+
+    image.src = objectUrl;
   };
 
   const handleTogglePaid = async (order: Order) => {
@@ -171,6 +273,26 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const totalLoyaltyEarned = orders.reduce((sum, o) => sum + (o.loyalty_points_earned ?? 0), 0);
 
+  const languageSwitch = (
+    <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
+      {(['en', 'th'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => setLanguage(option)}
+          className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+            language === option
+              ? 'bg-white text-slate-800'
+              : 'text-white hover:bg-white/10'
+          }`}
+          aria-pressed={language === option}
+        >
+          {option === 'en' ? 'EN' : 'ไทย'}
+        </button>
+      ))}
+    </div>
+  );
+
   if (!hasStaffAccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -183,7 +305,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         </button>
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8">
+            <div className="relative bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8">
+              <div className="absolute right-4 top-4">{languageSwitch}</div>
               <div className="flex items-center justify-center mb-4">
                 <Lock className="w-12 h-12 text-white" />
               </div>
@@ -195,7 +318,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </p>
             </div>
             <div className="p-8">
-              <p className="text-center text-sm text-gray-600">{language === 'en' ? 'Staff account required. Sign in from the main site, then return to this page.' : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}</p>
+              <p className="text-center text-sm text-gray-600">
+                {language === 'en'
+                  ? 'Staff account required. Sign in from the main site, then return to this page.'
+                  : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}
+              </p>
             </div>
           </div>
         </div>
@@ -212,10 +339,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         <Home className="w-4 h-4" />
         {language === 'en' ? 'Back to Home' : 'กลับหน้าแรก'}
       </button>
+
       <div className="max-w-4xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
@@ -224,13 +352,16 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   {language === 'en' ? 'Scan customer QR codes to manage orders' : 'สแกน QR โค้ดลูกค้าเพื่อจัดการคำสั่งซื้อ'}
                 </p>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
-              </button>
+              <div className="flex flex-col items-end gap-3">
+                {languageSwitch}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -250,7 +381,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     <input
                       type="text"
                       value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
+                      onChange={(e) => setManualCode(e.target.value.toUpperCase())}
                       placeholder={language === 'en' ? 'e.g. VIP101' : 'เช่น VIP101'}
                       className="w-full px-4 py-3 text-lg font-semibold border-2 border-slate-300 rounded-lg focus:outline-none focus:border-slate-600 text-center tracking-widest"
                       autoFocus
@@ -260,7 +391,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={() => { setShowManualEntry(false); setManualCode(''); setError(null); }}
+                        onClick={() => {
+                          setShowManualEntry(false);
+                          setManualCode('');
+                          setError(null);
+                        }}
                         className="flex-1 px-4 py-3 text-slate-700 border-2 border-slate-300 rounded-lg font-medium hover:bg-slate-50 transition-colors"
                       >
                         {language === 'en' ? 'Cancel' : 'ยกเลิก'}
@@ -281,24 +416,45 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     </div>
                     <button
                       onClick={() => setShowScanner(true)}
-                      className="bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-xl font-semibold hover:from-amber-700 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl mb-4"
+                      className="border-2 border-slate-700 bg-white text-slate-800 px-8 py-4 rounded-xl font-semibold hover:bg-gradient-to-r hover:from-slate-700 hover:to-slate-900 hover:text-white active:from-slate-800 active:to-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl mb-4"
                     >
                       {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
                     </button>
-                    <br />
                     <button
+                      type="button"
                       onClick={() => setShowManualEntry(true)}
-                      className="text-slate-600 hover:text-slate-900 font-medium text-sm"
+                      className="mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-slate-700 bg-white text-slate-800 rounded-lg font-medium hover:bg-gradient-to-r hover:from-slate-700 hover:to-slate-900 hover:text-white active:from-slate-800 active:to-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 transition-all duration-200"
                     >
-                      {language === 'en' ? 'Or enter member code' : 'หรือกรอกรหัสสมาชิก'}
+                      <Keyboard className="w-4 h-4" />
+                      {language === 'en' ? 'Enter member code' : 'กรอกรหัสสมาชิก'}
                     </button>
-                    {error && <p className="mt-4 text-red-600 font-medium">{error}</p>}
+                    <input
+                      ref={uploadInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleQrUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => uploadInputRef.current?.click()}
+                      disabled={loading}
+                      className="mt-4 mx-auto flex items-center justify-center gap-2 px-5 py-3 border-2 border-slate-700 bg-white text-slate-800 rounded-lg font-medium hover:bg-gradient-to-r hover:from-slate-700 hover:to-slate-900 hover:text-white active:from-slate-800 active:to-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-700 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {language === 'en' ? 'Upload QR Code' : 'อัปโหลด QR Code'}
+                    </button>
+                    {error && (
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                        <p className="text-red-600 font-medium">{error}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
             ) : (
               <>
-                {/* Customer Header */}
                 <div className="border-b border-gray-200 pb-6 mb-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
@@ -314,7 +470,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </div>
                     </div>
                     <button
-                      onClick={() => { setCustomer(null); setOrders([]); setError(null); }}
+                      onClick={() => {
+                        setCustomer(null);
+                        setOrders([]);
+                        setError(null);
+                      }}
                       className="text-gray-500 hover:text-gray-700 text-sm font-medium"
                     >
                       {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
@@ -348,7 +508,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   </div>
                 </div>
 
-                {/* Today's Orders */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -376,7 +535,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     <div className="space-y-4">
                       {orders.map((order) => (
                         <div key={order.id} className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm">
-                          {/* Order Header */}
                           <div className="flex items-start justify-between mb-4">
                             <div>
                               <p className="font-bold text-gray-900 text-lg">#{order.order_number}</p>
@@ -395,7 +553,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           </div>
 
-                          {/* Loyalty Points Earned */}
                           {(order.loyalty_points_earned ?? 0) > 0 && (
                             <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
                               <Award className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -406,9 +563,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           )}
 
-                          {/* Payment Controls */}
                           <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                            {/* Paid Toggle */}
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-semibold text-gray-700">
                                 {language === 'en' ? 'Paid' : 'ชำระแล้ว'}
@@ -435,7 +590,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </button>
                             </div>
 
-                            {/* Payment Method Checkboxes */}
                             <div>
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                                 {language === 'en' ? 'Payment Method' : 'วิธีชำระเงิน'}
@@ -452,9 +606,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 >
                                   <QrCode className="w-4 h-4" />
                                   {language === 'en' ? 'QR Code' : 'คิวอาร์'}
-                                  {order.payment_method === 'qr_code' && (
-                                    <Check className="w-3.5 h-3.5" />
-                                  )}
+                                  {order.payment_method === 'qr_code' && <Check className="w-3.5 h-3.5" />}
                                 </button>
                                 <button
                                   onClick={() => handleSetPaymentMethod(order, 'cash')}
@@ -467,15 +619,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 >
                                   <Banknote className="w-4 h-4" />
                                   {language === 'en' ? 'Cash' : 'เงินสด'}
-                                  {order.payment_method === 'cash' && (
-                                    <Check className="w-3.5 h-3.5" />
-                                  )}
+                                  {order.payment_method === 'cash' && <Check className="w-3.5 h-3.5" />}
                                 </button>
                               </div>
                             </div>
                           </div>
 
-                          {/* Mark as Picked Up */}
                           {order.status !== 'picked_up' && (
                             <button
                               onClick={() => handleMarkAsPickedUp(order.id)}
@@ -501,7 +650,13 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         </div>
       </div>
 
-      {showScanner && <QRScanner onScan={handleScan} onClose={() => setShowScanner(false)} language={language as 'en' | 'th'} />}
+      {showScanner && (
+        <QRScanner
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+          language={language as 'en' | 'th'}
+        />
+      )}
     </div>
   );
 }
