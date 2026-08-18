@@ -3,7 +3,10 @@ import {
   AlertCircle,
   Award,
   Banknote,
+  Calendar,
   Check,
+  ChevronDown,
+  ChevronUp,
   Home,
   Keyboard,
   Loader2,
@@ -14,6 +17,7 @@ import {
   Package,
   Phone,
   QrCode,
+  Store,
   ToggleLeft,
   ToggleRight,
   Upload,
@@ -48,13 +52,16 @@ interface Order {
   order_number: string;
   order_items: any[];
   total_amount: number;
-  pickup_date: string;
+  pickup_date: string | null;
   status: string;
   payment_status: string;
   payment_method: string | null;
   customer_name: string;
   created_at: string;
   loyalty_points_earned: number | null;
+  purchase_type?: 'online' | 'walk_in' | null;
+  walk_in_amount?: number | null;
+  picked_up_at?: string | null;
 }
 
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -66,6 +73,10 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [manualCode, setManualCode] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [historyOrders, setHistoryOrders] = useState<Order[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
@@ -75,6 +86,9 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     await signOut();
     setCustomer(null);
     setOrders([]);
+    setHistoryOrders([]);
+    setShowHistory(false);
+    setHistoryError(null);
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -91,6 +105,41 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       .order('created_at', { ascending: false });
     if (ordersError) throw ordersError;
     setOrders(ordersData || []);
+  };
+
+  const loadPurchaseHistory = async (customerId: string) => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError(null);
+
+      const today = new Date().toISOString().split('T')[0];
+      const { data: historyData, error: historyQueryError } = await supabase
+        .from('orders')
+        .select(
+          'id, order_number, order_items, total_amount, pickup_date, status, payment_status, payment_method, customer_name, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at'
+        )
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+
+      if (historyQueryError) throw historyQueryError;
+
+      const pastTransactions = (historyData || []).filter((order) => {
+        if (order.purchase_type === 'walk_in') return true;
+        return Boolean(order.pickup_date && order.pickup_date < today);
+      });
+
+      setHistoryOrders(pastTransactions);
+    } catch (err) {
+      console.error('Error loading purchase history:', err);
+      setHistoryOrders([]);
+      setHistoryError(
+        language === 'en'
+          ? 'Purchase history is temporarily unavailable.'
+          : 'ไม่สามารถโหลดประวัติการซื้อได้ชั่วคราว'
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const getLookupErrorMessage = (err: unknown, source: 'manual' | 'qr' = 'qr') => {
@@ -125,6 +174,9 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setError(null);
       setCustomer(null);
       setOrders([]);
+      setHistoryOrders([]);
+      setShowHistory(false);
+      setHistoryError(null);
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -136,6 +188,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setShowManualEntry(false);
       setManualCode('');
       await loadOrders(customerData.id);
+      await loadPurchaseHistory(customerData.id);
     } catch (err) {
       console.error('Error loading pickup customer:', err);
       setError(getLookupErrorMessage(err, source));
@@ -271,7 +324,24 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     return null;
   };
 
+  const formatHistoryDate = (dateValue: string | null) => {
+    if (!dateValue) return '—';
+    return new Date(dateValue).toLocaleDateString(language === 'th' ? 'th-TH' : 'en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const getPaymentMethodLabel = (method: string | null) => {
+    if (method === 'qr_code') return language === 'en' ? 'QR Code' : 'คิวอาร์';
+    if (method === 'cash') return language === 'en' ? 'Cash' : 'เงินสด';
+    return language === 'en' ? 'Not recorded' : 'ไม่ได้บันทึก';
+  };
+
   const totalLoyaltyEarned = orders.reduce((sum, o) => sum + (o.loyalty_points_earned ?? 0), 0);
+  const pastPickupOrders = historyOrders.filter((order) => order.purchase_type !== 'walk_in');
+  const walkInPurchases = historyOrders.filter((order) => order.purchase_type === 'walk_in');
 
   const languageSwitch = (
     <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
@@ -473,6 +543,9 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       onClick={() => {
                         setCustomer(null);
                         setOrders([]);
+                        setHistoryOrders([]);
+                        setShowHistory(false);
+                        setHistoryError(null);
                         setError(null);
                       }}
                       className="text-gray-500 hover:text-gray-700 text-sm font-medium"
@@ -641,6 +714,168 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory((current) => !current)}
+                    className="w-full flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100 transition-colors"
+                    aria-expanded={showHistory}
+                  >
+                    <div>
+                      <p className="font-bold text-gray-900">
+                        {language === 'en' ? 'Purchase History' : 'ประวัติการซื้อ'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {historyLoading
+                          ? (language === 'en' ? 'Loading history…' : 'กำลังโหลดประวัติ…')
+                          : `${historyOrders.length} ${language === 'en' ? 'previous transactions' : 'รายการก่อนหน้า'}`}
+                      </p>
+                    </div>
+                    {showHistory ? (
+                      <ChevronUp className="w-5 h-5 text-slate-600" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-slate-600" />
+                    )}
+                  </button>
+
+                  {showHistory && (
+                    <div className="mt-4 space-y-6">
+                      {historyLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-slate-500">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>{language === 'en' ? 'Loading purchase history…' : 'กำลังโหลดประวัติการซื้อ…'}</span>
+                        </div>
+                      ) : historyError ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                          <div className="flex items-center gap-2 text-red-700">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <p className="font-medium">{historyError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => loadPurchaseHistory(customer.id)}
+                            className="mt-3 text-sm font-semibold text-red-700 underline underline-offset-2"
+                          >
+                            {language === 'en' ? 'Try again' : 'ลองอีกครั้ง'}
+                          </button>
+                        </div>
+                      ) : historyOrders.length === 0 ? (
+                        <div className="text-center py-8 bg-slate-50 rounded-xl">
+                          <Package className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                          <p className="text-gray-500">
+                            {language === 'en' ? 'No previous purchases recorded' : 'ยังไม่มีประวัติการซื้อ'}
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {pastPickupOrders.length > 0 && (
+                            <section>
+                              <h4 className="mb-3 flex items-center gap-2 font-bold text-gray-800">
+                                <Package className="w-4 h-4 text-slate-600" />
+                                {language === 'en' ? 'Past Pickup Orders' : 'คำสั่งซื้อที่รับแล้ว'} ({pastPickupOrders.length})
+                              </h4>
+                              <div className="space-y-3">
+                                {pastPickupOrders.map((order) => (
+                                  <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div>
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                          <Calendar className="w-4 h-4" />
+                                          <span>{formatHistoryDate(order.pickup_date || order.created_at)}</span>
+                                        </div>
+                                        <p className="mt-1 font-bold text-gray-900">#{order.order_number}</p>
+                                        <p className="text-sm text-gray-500">
+                                          {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'}
+                                        </p>
+                                      </div>
+                                      <p className="text-lg font-bold text-slate-800">฿{order.total_amount.toFixed(2)}</p>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                                      <span className={`rounded-full px-2.5 py-1 ${
+                                        order.payment_status === 'paid'
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        {order.payment_status === 'paid'
+                                          ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
+                                          : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                                      </span>
+                                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                                        {getPaymentMethodLabel(order.payment_method)}
+                                      </span>
+                                      <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">
+                                        {order.status}
+                                      </span>
+                                      {(order.loyalty_points_earned ?? 0) > 0 && (
+                                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+                                          +{order.loyalty_points_earned} pts
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+
+                          {walkInPurchases.length > 0 && (
+                            <section>
+                              <h4 className="mb-3 flex items-center gap-2 font-bold text-gray-800">
+                                <Store className="w-4 h-4 text-slate-600" />
+                                {language === 'en' ? 'Walk-In Purchases' : 'การซื้อหน้าร้าน'} ({walkInPurchases.length})
+                              </h4>
+                              <div className="space-y-3">
+                                {walkInPurchases.map((order) => (
+                                  <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div>
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                          <Calendar className="w-4 h-4" />
+                                          <span>{formatHistoryDate(order.created_at)}</span>
+                                        </div>
+                                        <div className="mt-1 flex items-center gap-2">
+                                          <Store className="w-4 h-4 text-slate-600" />
+                                          <p className="font-semibold text-gray-900">
+                                            {language === 'en' ? 'In-store purchase' : 'ซื้อหน้าร้าน'}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <p className="text-lg font-bold text-slate-800">
+                                        ฿{(order.walk_in_amount ?? order.total_amount).toFixed(2)}
+                                      </p>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                                      <span className={`rounded-full px-2.5 py-1 ${
+                                        order.payment_status === 'paid'
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        {order.payment_status === 'paid'
+                                          ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
+                                          : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                                      </span>
+                                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                                        {getPaymentMethodLabel(order.payment_method)}
+                                      </span>
+                                      {(order.loyalty_points_earned ?? 0) > 0 && (
+                                        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+                                          +{order.loyalty_points_earned} pts
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
