@@ -37,7 +37,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   userRole: UserRole | null;
   profileLoading: boolean;
-  sendEmailOtp: (email: string, requestedLanguage?: Language) => Promise<void>;
+  sendEmailOtp: (email: string, requestedLanguage?: Language, allowSignUp?: boolean) => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -138,7 +138,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const sendEmailOtp = async (email: string, requestedLanguage?: Language) => {
+  const sendEmailOtp = async (
+    email: string,
+    requestedLanguage?: Language,
+    allowSignUp = true
+  ) => {
     const authLanguage = requestedLanguage ?? language;
     const callbackUrl = new URL(`${getPublicAppUrl()}/auth/callback`);
     callbackUrl.searchParams.set('lang', authLanguage);
@@ -148,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       options: {
         emailRedirectTo: callbackUrl.toString(),
+        shouldCreateUser: allowSignUp,
       },
     });
     if (error) {
