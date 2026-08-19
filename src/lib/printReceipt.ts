@@ -134,8 +134,9 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
   </table>
   <div class="right total">${escapeHtml(labels.total)}: ฿${money(total)}</div>
   <div class="footer">${escapeHtml(labels.thanks)}</div>
-  <script>window.onload = () => { window.print(); };</script>
 </body>
 </html>`);
   printWindow.document.close();
+  printWindow.focus();
+  window.setTimeout(() => printWindow.print(), 150);
 }
