@@ -20,5 +20,16 @@ export const resetAdminAuthentication = (): void => {
 
 export const clearAdminAuthentication = (): void => {
   adminSessionAuthorized = false;
-  void supabase.auth.signOut();
+
+  void (async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      console.error('Admin logout failed:', error);
+    }
+
+    // Re-evaluate the authoritative Supabase session + database role gate.
+    // Success returns to admin sign-in; a failed sign-out restores the still-
+    // valid admin session instead of leaving the preserved CMS on a spinner.
+    window.location.reload();
+  })();
 };
