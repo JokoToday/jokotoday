@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Award,
+  Banknote,
   Calendar,
   ChevronDown,
   ChevronUp,
@@ -9,10 +10,13 @@ import {
   Loader2,
   MapPin,
   Package,
+  Printer,
+  QrCode,
   Store,
   UserRoundCheck,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { printOrderReceipt } from '../../lib/printReceipt';
 
 type StaffLanguage = 'en' | 'th';
 
@@ -51,6 +55,7 @@ type StaffProfile = { id: string; name: string | null };
 
 type Props = {
   customerId: string;
+  customerName?: string | null;
   language: StaffLanguage;
   refreshKey?: number;
 };
@@ -60,7 +65,15 @@ const money = (value: unknown) => {
   return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
 };
 
-export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }: Props) {
+const getBangkokToday = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+export function CustomerPurchaseHistory({ customerId, customerName, language, refreshKey = 0 }: Props) {
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
@@ -68,12 +81,14 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [paymentErrorId, setPaymentErrorId] = useState<string | null>(null);
 
   const loadHistory = async () => {
     try {
       setLoading(true);
       setError(null);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getBangkokToday();
       const { data, error: orderError } = await supabase
         .from('orders')
         .select(
@@ -85,7 +100,10 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
       if (orderError) throw orderError;
 
       const historyRows = ((data || []) as HistoryOrder[]).filter((order) => (
-        order.purchase_type === 'walk_in' || Boolean(order.pickup_date && order.pickup_date < today)
+        order.purchase_type === 'walk_in'
+        || Boolean(order.picked_up_at)
+        || ['picked_up', 'completed'].includes(order.status)
+        || Boolean(order.pickup_date && order.pickup_date < today)
       ));
       setOrders(historyRows);
 
@@ -146,7 +164,6 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
   useEffect(() => {
     setExpandedOrderId(null);
     void loadHistory();
-    // Keep history synchronized only with the selected customer, language and explicit refreshes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, language, refreshKey]);
 
@@ -162,16 +179,16 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString(language === 'th' ? 'th-TH' : 'en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
   };
 
   const formatPickupDate = (value: string | null | undefined) => {
     if (!value) return notRecorded;
-    const date = new Date(`${value}T00:00:00`);
+    const date = new Date(`${value}T00:00:00+07:00`);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString(language === 'th' ? 'th-TH' : 'en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
+      timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: 'numeric',
     });
   };
 
@@ -204,6 +221,35 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
   const orderAmount = (order: HistoryOrder) => (
     order.purchase_type === 'walk_in' ? order.walk_in_amount ?? order.total_amount : order.total_amount
   );
+
+  const recordPayment = async (order: HistoryOrder, method: 'qr_code' | 'cash') => {
+    try {
+      setUpdatingPaymentId(order.id);
+      setPaymentErrorId(null);
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ payment_method: method, payment_status: 'paid' })
+        .eq('id', order.id);
+      if (updateError) throw updateError;
+      setOrders((current) => current.map((item) => (
+        item.id === order.id ? { ...item, payment_method: method, payment_status: 'paid' } : item
+      )));
+    } catch (err) {
+      console.error('Error recording history payment:', err);
+      setPaymentErrorId(order.id);
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
+  const printReceipt = (order: HistoryOrder) => {
+    try {
+      printOrderReceipt({ order, customerName, language });
+    } catch (err) {
+      console.error('Could not open receipt print window:', err);
+      setPaymentErrorId(order.id);
+    }
+  };
 
   return (
     <div className="mt-8 pt-6 border-t border-gray-200">
@@ -260,6 +306,7 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
                   const location = order.pickup_location_id ? locations[order.pickup_location_id] : undefined;
                   const handledBy = order.staff_id ? staffNames[order.staff_id] : undefined;
                   const items = Array.isArray(order.order_items) ? order.order_items : [];
+                  const paymentComplete = order.payment_status === 'paid' && Boolean(order.payment_method);
 
                   return (
                     <div key={order.id} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -313,7 +360,7 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
 
                           {!isWalkIn && (
                             <div className="grid gap-3 sm:grid-cols-2">
-                              <Detail label={language === 'en' ? 'Pickup date' : 'วันที่รับสินค้า'} icon={<Calendar className="w-3.5 h-3.5" />}>
+                              <Detail label={language === 'en' ? 'Scheduled pickup' : 'วันที่รับสินค้าที่กำหนด'} icon={<Calendar className="w-3.5 h-3.5" />}>
                                 {formatPickupDate(order.pickup_date)}
                               </Detail>
                               <Detail label={language === 'en' ? 'Pickup location' : 'สถานที่รับสินค้า'} icon={<MapPin className="w-3.5 h-3.5" />}>
@@ -323,9 +370,47 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
                           )}
 
                           {order.picked_up_at && (
-                            <Detail label={language === 'en' ? 'Picked up at' : 'เวลารับสินค้า'} icon={<Clock className="w-3.5 h-3.5" />}>
+                            <Detail label={language === 'en' ? 'Actually picked up' : 'เวลารับสินค้าจริง'} icon={<Clock className="w-3.5 h-3.5" />}>
                               {formatDateTime(order.picked_up_at)}
                             </Detail>
+                          )}
+
+                          {!paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                              <p className="text-sm font-bold text-amber-900">
+                                {language === 'en' ? 'Complete payment record' : 'บันทึกการชำระเงินให้สมบูรณ์'}
+                              </p>
+                              <p className="mt-1 text-xs text-amber-800">
+                                {language === 'en'
+                                  ? 'This pickup was recorded without a complete payment method. Select how payment was received.'
+                                  : 'รายการรับสินค้านี้ยังไม่มีวิธีการชำระเงินที่สมบูรณ์ กรุณาเลือกวิธีที่รับชำระ'}
+                              </p>
+                              <div className="mt-3 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void recordPayment(order, 'qr_code')}
+                                  disabled={updatingPaymentId === order.id}
+                                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                  {updatingPaymentId === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                                  {language === 'en' ? 'QR received' : 'รับชำระ QR'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void recordPayment(order, 'cash')}
+                                  disabled={updatingPaymentId === order.id}
+                                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                  <Banknote className="w-4 h-4" />
+                                  {language === 'en' ? 'Cash received' : 'รับเงินสด'}
+                                </button>
+                              </div>
+                              {paymentErrorId === order.id && (
+                                <p className="mt-2 text-xs font-semibold text-red-700">
+                                  {language === 'en' ? 'Could not update the payment record.' : 'ไม่สามารถอัปเดตข้อมูลการชำระเงินได้'}
+                                </p>
+                              )}
+                            </div>
                           )}
 
                           <div className="rounded-lg bg-white p-3 border border-slate-100">
@@ -358,6 +443,17 @@ export function CustomerPurchaseHistory({ customerId, language, refreshKey = 0 }
                               <span className="text-base font-bold text-gray-900">฿{money(orderAmount(order))}</span>
                             </div>
                           </div>
+
+                          {paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
+                            <button
+                              type="button"
+                              onClick={() => printReceipt(order)}
+                              className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-slate-700 bg-white px-4 py-2.5 font-semibold text-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
+                            >
+                              <Printer className="w-4 h-4" />
+                              {language === 'en' ? 'Print Order Receipt' : 'พิมพ์ใบเสร็จรับเงิน'}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
