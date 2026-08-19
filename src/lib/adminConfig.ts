@@ -1,16 +1,24 @@
-export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+import { supabase } from './supabase';
 
-export const ADMIN_SESSION_KEY = 'admin_session_authorized';
+// Legacy compatibility shim for the preserved CMS component during the
+// Stage 1 admin-auth migration. Authorization is now decided by AdminPage
+// from the authenticated Supabase session + user_profiles.role === 'admin'.
+let adminSessionAuthorized = false;
 
-export const isAdminAuthenticated = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
-};
+// The browser password path is intentionally disabled.
+export const ADMIN_PASSWORD = '__ADMIN_PASSWORD_DISABLED__';
+
+export const isAdminAuthenticated = (): boolean => adminSessionAuthorized;
 
 export const setAdminAuthenticated = (): void => {
-  localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+  adminSessionAuthorized = true;
+};
+
+export const resetAdminAuthentication = (): void => {
+  adminSessionAuthorized = false;
 };
 
 export const clearAdminAuthentication = (): void => {
-  localStorage.removeItem(ADMIN_SESSION_KEY);
+  adminSessionAuthorized = false;
+  void supabase.auth.signOut();
 };
