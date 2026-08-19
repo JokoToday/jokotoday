@@ -14,15 +14,15 @@ import {
   MessageCircle,
   Package,
   Phone,
+  Printer,
   QrCode,
   Store,
-  ToggleLeft,
-  ToggleRight,
   Upload,
   User,
 } from 'lucide-react';
 import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
+import { printOrderReceipt } from '../lib/printReceipt';
 import {
   CustomerLookupNetworkError,
   CustomerLookupServiceError,
@@ -58,6 +58,9 @@ interface Order {
   customer_name: string;
   created_at: string;
   loyalty_points_earned: number | null;
+  picked_up_at?: string | null;
+  staff_id?: string | null;
+  purchase_type?: string | null;
 }
 
 const getBangkokToday = () => {
@@ -71,6 +74,10 @@ const getBangkokToday = () => {
   return `${values.year}-${values.month}-${values.day}`;
 };
 
+const paymentComplete = (order: Order) => (
+  order.payment_status === 'paid' && ['cash', 'qr_code', 'qr'].includes(order.payment_method || '')
+);
+
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
@@ -82,6 +89,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [orders, setOrders] = useState<Order[]>([]);
   const [upcomingOrders, setUpcomingOrders] = useState<Order[]>([]);
   const [earlyPickupOrder, setEarlyPickupOrder] = useState<Order | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [lastReceiptOrder, setLastReceiptOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -94,6 +103,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setOrders([]);
     setUpcomingOrders([]);
     setEarlyPickupOrder(null);
+    setLastReceiptOrder(null);
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -163,6 +173,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setOrders([]);
       setUpcomingOrders([]);
       setEarlyPickupOrder(null);
+      setLastReceiptOrder(null);
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -246,74 +257,74 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     image.src = objectUrl;
   };
 
-  const handleTogglePaid = async (order: Order) => {
+  const recordPayment = async (order: Order, method: 'qr_code' | 'cash') => {
     try {
       setUpdatingOrder(order.id);
       setActionError(null);
       setActionSuccess(null);
-      const newStatus = order.payment_status === 'paid' ? 'unpaid' : 'paid';
+      setLastReceiptOrder(null);
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ payment_status: newStatus })
+        .update({ payment_method: method, payment_status: 'paid' })
         .eq('id', order.id);
       if (updateError) throw updateError;
-      setOrders((current) => current.map((item) => (
-        item.id === order.id ? { ...item, payment_status: newStatus } : item
-      )));
+
+      const applyPayment = (item: Order) => (
+        item.id === order.id ? { ...item, payment_method: method, payment_status: 'paid' } : item
+      );
+      setOrders((current) => current.map(applyPayment));
+      setUpcomingOrders((current) => current.map(applyPayment));
+      setEarlyPickupOrder((current) => current?.id === order.id ? applyPayment(current) : current);
+      setActionSuccess(language === 'en'
+        ? `${method === 'cash' ? 'Cash' : 'QR'} payment recorded.`
+        : `บันทึกการชำระเงิน${method === 'cash' ? 'สด' : ' QR'}แล้ว`);
     } catch (err) {
-      console.error('Error updating payment status:', err);
-      setActionError(language === 'en' ? 'Could not update payment status.' : 'ไม่สามารถอัปเดตสถานะการชำระเงินได้');
+      console.error('Error recording payment:', err);
+      setActionError(language === 'en' ? 'Could not record payment.' : 'ไม่สามารถบันทึกการชำระเงินได้');
     } finally {
       setUpdatingOrder(null);
     }
   };
 
-  const handleSetPaymentMethod = async (order: Order, method: 'qr_code' | 'cash') => {
+  const confirmPickup = async (order: Order, early: boolean) => {
+    if (!paymentComplete(order)) {
+      setActionError(language === 'en'
+        ? 'Record payment by QR or Cash before confirming pickup.'
+        : 'กรุณาบันทึกการชำระเงินด้วย QR หรือเงินสดก่อนยืนยันการรับสินค้า');
+      return;
+    }
+
     try {
       setUpdatingOrder(order.id);
       setActionError(null);
       setActionSuccess(null);
-      const newMethod = order.payment_method === method ? null : method;
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ payment_method: newMethod })
-        .eq('id', order.id);
-      if (updateError) throw updateError;
-      setOrders((current) => current.map((item) => (
-        item.id === order.id ? { ...item, payment_method: newMethod } : item
-      )));
-    } catch (err) {
-      console.error('Error updating payment method:', err);
-      setActionError(language === 'en' ? 'Could not update payment method.' : 'ไม่สามารถอัปเดตวิธีการชำระเงินได้');
-    } finally {
-      setUpdatingOrder(null);
-    }
-  };
-
-  const confirmPickup = async (orderId: string, early: boolean) => {
-    try {
-      setUpdatingOrder(orderId);
-      setActionError(null);
-      setActionSuccess(null);
-      const { error: pickupError } = await supabase.rpc('confirm_order_pickup', {
-        p_order_id: orderId,
+      setLastReceiptOrder(null);
+      const { data: pickupRows, error: pickupError } = await supabase.rpc('confirm_order_pickup', {
+        p_order_id: order.id,
       });
       if (pickupError) throw pickupError;
 
+      const returnedOrder = Array.isArray(pickupRows) && pickupRows[0]
+        ? pickupRows[0] as Order
+        : { ...order, status: 'picked_up', picked_up_at: new Date().toISOString() };
+
       if (early) {
-        setUpcomingOrders((current) => current.filter((order) => order.id !== orderId));
+        setUpcomingOrders((current) => current.filter((item) => item.id !== order.id));
         setEarlyPickupOrder(null);
         setActionSuccess(language === 'en'
           ? 'Early pickup recorded successfully.'
           : 'บันทึกการรับสินค้าก่อนกำหนดเรียบร้อยแล้ว');
       } else {
-        setOrders((current) => current.map((order) => (
-          order.id === orderId ? { ...order, status: 'picked_up' } : order
+        setOrders((current) => current.map((item) => (
+          item.id === order.id ? returnedOrder : item
         )));
         setActionSuccess(language === 'en'
           ? 'Pickup recorded successfully.'
           : 'บันทึกการรับสินค้าเรียบร้อยแล้ว');
       }
+
+      setLastReceiptOrder(returnedOrder);
+      setHistoryRefreshKey((value) => value + 1);
     } catch (err) {
       console.error('Error confirming pickup:', err);
       setActionError(language === 'en'
@@ -322,15 +333,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     } finally {
       setUpdatingOrder(null);
     }
-  };
-
-  const handleMarkAsPickedUp = async (orderId: string) => {
-    await confirmPickup(orderId, false);
-  };
-
-  const handleConfirmEarlyPickup = async () => {
-    if (!earlyPickupOrder) return;
-    await confirmPickup(earlyPickupOrder.id, true);
   };
 
   const getContactMethod = () => {
@@ -597,9 +599,21 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                 )}
 
                 {actionSuccess && (
-                  <div className="mb-5 rounded-xl border border-green-200 bg-green-50 p-4 flex items-center gap-3">
-                    <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <p className="text-sm font-medium text-green-700">{actionSuccess}</p>
+                  <div className="mb-5 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <p className="text-sm font-medium text-green-700">{actionSuccess}</p>
+                    </div>
+                    {lastReceiptOrder && (
+                      <button
+                        type="button"
+                        onClick={() => printOrderReceipt({ order: lastReceiptOrder, customerName: customer.name, language: staffLanguage })}
+                        className="mt-3 flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100"
+                      >
+                        <Printer className="w-4 h-4" />
+                        {language === 'en' ? 'Print Order Receipt' : 'พิมพ์ใบเสร็จรับเงิน'}
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -654,72 +668,48 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           )}
 
-                          <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-gray-700">{language === 'en' ? 'Paid' : 'ชำระแล้ว'}</span>
+                          <div className="bg-slate-50 rounded-xl p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                              {language === 'en' ? 'Payment received' : 'รับชำระเงิน'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
                               <button
-                                onClick={() => handleTogglePaid(order)}
-                                disabled={updatingOrder === order.id}
-                                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                                  order.payment_status === 'paid'
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                }`}
+                                onClick={() => void recordPayment(order, 'qr_code')}
+                                disabled={updatingOrder === order.id || order.status === 'picked_up'}
+                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
+                                    ? 'border-slate-700 bg-slate-700 text-white'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                                } disabled:opacity-50`}
                               >
-                                {updatingOrder === order.id
-                                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : order.payment_status === 'paid'
-                                    ? <ToggleRight className="w-4 h-4" />
-                                    : <ToggleLeft className="w-4 h-4" />}
-                                {order.payment_status === 'paid'
-                                  ? (language === 'en' ? 'Yes' : 'ใช่')
-                                  : (language === 'en' ? 'No' : 'ยังไม่')}
+                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
                               </button>
-                            </div>
-
-                            <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                {language === 'en' ? 'Payment Method' : 'วิธีชำระเงิน'}
-                              </p>
-                              <div className="flex gap-3">
-                                <button
-                                  onClick={() => handleSetPaymentMethod(order, 'qr_code')}
-                                  disabled={updatingOrder === order.id}
-                                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                    order.payment_method === 'qr_code'
-                                      ? 'border-slate-700 bg-slate-700 text-white'
-                                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                  }`}
-                                >
-                                  <QrCode className="w-4 h-4" />
-                                  {language === 'en' ? 'QR Code' : 'คิวอาร์'}
-                                  {order.payment_method === 'qr_code' && <Check className="w-3.5 h-3.5" />}
-                                </button>
-                                <button
-                                  onClick={() => handleSetPaymentMethod(order, 'cash')}
-                                  disabled={updatingOrder === order.id}
-                                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                    order.payment_method === 'cash'
-                                      ? 'border-slate-700 bg-slate-700 text-white'
-                                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                  }`}
-                                >
-                                  <Banknote className="w-4 h-4" />
-                                  {language === 'en' ? 'Cash' : 'เงินสด'}
-                                  {order.payment_method === 'cash' && <Check className="w-3.5 h-3.5" />}
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => void recordPayment(order, 'cash')}
+                                disabled={updatingOrder === order.id || order.status === 'picked_up'}
+                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                                  order.payment_status === 'paid' && order.payment_method === 'cash'
+                                    ? 'border-slate-700 bg-slate-700 text-white'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                                } disabled:opacity-50`}
+                              >
+                                <Banknote className="w-4 h-4" />
+                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
+                              </button>
                             </div>
                           </div>
 
                           {order.status !== 'picked_up' && (
                             <button
-                              onClick={() => handleMarkAsPickedUp(order.id)}
-                              disabled={updatingOrder === order.id}
-                              className="w-full mt-4 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              onClick={() => void confirmPickup(order, false)}
+                              disabled={updatingOrder === order.id || !paymentComplete(order)}
+                              className="w-full mt-4 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                             >
                               {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                              {language === 'en' ? 'Mark as Picked Up' : 'บันทึกรับสินค้า'}
+                              {paymentComplete(order)
+                                ? (language === 'en' ? 'Mark as Picked Up' : 'บันทึกรับสินค้า')
+                                : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
                             </button>
                           )}
                         </div>
@@ -737,8 +727,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         {language === 'en'
-                          ? 'Scheduled pre-orders are shown here for reference. Use Pick Up Early only when the customer is collecting before the scheduled date.'
-                          : 'แสดงคำสั่งซื้อล่วงหน้าเพื่อใช้อ้างอิง ใช้ปุ่มรับสินค้าก่อนกำหนดเมื่อลูกค้ามารับก่อนวันที่กำหนดเท่านั้น'}
+                          ? 'For an early pickup, record how payment was received first, then confirm the early collection.'
+                          : 'หากรับสินค้าก่อนกำหนด ให้บันทึกวิธีการชำระเงินก่อน แล้วจึงยืนยันการรับสินค้าก่อนกำหนด'}
                       </p>
                     </div>
 
@@ -763,15 +753,44 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                   {language === 'en' ? 'Scheduled' : 'กำหนดไว้'}
                                 </span>
                                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  order.payment_status === 'paid'
+                                  paymentComplete(order)
                                     ? 'bg-green-100 text-green-700'
                                     : 'bg-amber-100 text-amber-700'
                                 }`}>
-                                  {order.payment_status === 'paid'
-                                    ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
-                                    : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                                  {paymentComplete(order)
+                                    ? `${language === 'en' ? 'Paid' : 'ชำระแล้ว'} · ${order.payment_method === 'cash' ? (language === 'en' ? 'Cash' : 'เงินสด') : 'QR'}`
+                                    : (language === 'en' ? 'Payment needed' : 'ต้องบันทึกการชำระเงิน')}
                                 </span>
                               </div>
+                            </div>
+
+                            <div className="mt-4 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => void recordPayment(order, 'qr_code')}
+                                disabled={Boolean(updatingOrder)}
+                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
+                                    ? 'border-slate-700 bg-slate-700 text-white'
+                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                                } disabled:opacity-50`}
+                              >
+                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
+                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void recordPayment(order, 'cash')}
+                                disabled={Boolean(updatingOrder)}
+                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                  order.payment_status === 'paid' && order.payment_method === 'cash'
+                                    ? 'border-slate-700 bg-slate-700 text-white'
+                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                                } disabled:opacity-50`}
+                              >
+                                <Banknote className="w-4 h-4" />
+                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
+                              </button>
                             </div>
 
                             {!confirmingEarly ? (
@@ -780,12 +799,15 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 onClick={() => {
                                   setActionError(null);
                                   setActionSuccess(null);
+                                  setLastReceiptOrder(null);
                                   setEarlyPickupOrder(order);
                                 }}
-                                disabled={Boolean(updatingOrder)}
-                                className="mt-4 w-full rounded-lg border-2 border-amber-500 bg-white px-4 py-2.5 font-semibold text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                                disabled={Boolean(updatingOrder) || !paymentComplete(order)}
+                                className="mt-3 w-full rounded-lg border-2 border-amber-500 bg-white px-4 py-2.5 font-semibold text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-40"
                               >
-                                {language === 'en' ? 'Pick Up Early' : 'รับสินค้าก่อนกำหนด'}
+                                {paymentComplete(order)
+                                  ? (language === 'en' ? 'Pick Up Early' : 'รับสินค้าก่อนกำหนด')
+                                  : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
                               </button>
                             ) : (
                               <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
@@ -797,13 +819,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                     ? `This order is scheduled for ${formatPickupDate(order.pickup_date)}. Confirming will record the pickup now and identify the staff member who processed it.`
                                     : `คำสั่งซื้อนี้กำหนดรับวันที่ ${formatPickupDate(order.pickup_date)} การยืนยันจะบันทึกการรับสินค้าตอนนี้และระบุพนักงานผู้ดำเนินการ`}
                                 </p>
-                                {order.payment_status !== 'paid' && (
-                                  <p className="mt-2 text-sm font-semibold text-amber-900">
-                                    {language === 'en'
-                                      ? 'Payment is still marked unpaid. Confirm only if that is intentional.'
-                                      : 'สถานะการชำระเงินยังเป็นยังไม่ชำระ โปรดยืนยันเฉพาะเมื่อเป็นความตั้งใจ'}
-                                  </p>
-                                )}
+                                <p className="mt-2 text-sm font-semibold text-amber-900">
+                                  {language === 'en'
+                                    ? `Payment recorded: ${order.payment_method === 'cash' ? 'Cash' : 'QR'}.`
+                                    : `บันทึกการชำระเงินแล้ว: ${order.payment_method === 'cash' ? 'เงินสด' : 'QR'}`}
+                                </p>
                                 <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                   <button
                                     type="button"
@@ -815,7 +835,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={handleConfirmEarlyPickup}
+                                    onClick={() => void confirmPickup(order, true)}
                                     disabled={updatingOrder === order.id}
                                     className="flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
                                   >
@@ -832,7 +852,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   </div>
                 )}
 
-                <CustomerPurchaseHistory customerId={customer.id} language={staffLanguage} />
+                <CustomerPurchaseHistory
+                  customerId={customer.id}
+                  customerName={customer.name}
+                  language={staffLanguage}
+                  refreshKey={historyRefreshKey}
+                />
               </>
             )}
           </div>
