@@ -12,7 +12,7 @@ type ReceiptItem = {
 
 type ReceiptOrder = {
   order_number: string;
-  order_items?: ReceiptItem[] | null;
+  order_items?: unknown[] | null;
   total_amount?: number | string | null;
   walk_in_amount?: number | string | null;
   purchase_type?: string | null;
@@ -49,7 +49,7 @@ const itemName = (item: ReceiptItem, language: 'en' | 'th') => {
 
 const paymentLabel = (method: string | null | undefined, language: 'en' | 'th') => {
   if (method === 'cash') return language === 'th' ? 'เงินสด' : 'Cash';
-  if (method === 'qr_code' || method === 'qr') return language === 'th' ? 'QR' : 'QR';
+  if (method === 'qr_code' || method === 'qr') return 'QR';
   return language === 'th' ? 'ไม่ได้บันทึก' : 'Not recorded';
 };
 
@@ -73,7 +73,7 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
     throw new Error('Print window was blocked');
   }
 
-  const items = Array.isArray(order.order_items) ? order.order_items : [];
+  const items = (Array.isArray(order.order_items) ? order.order_items : []) as ReceiptItem[];
   const total = order.purchase_type === 'walk_in'
     ? order.walk_in_amount ?? order.total_amount
     : order.total_amount;
