@@ -81,8 +81,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [upcomingOrders, setUpcomingOrders] = useState<Order[]>([]);
+  const [earlyPickupOrder, setEarlyPickupOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,10 +93,13 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setCustomer(null);
     setOrders([]);
     setUpcomingOrders([]);
+    setEarlyPickupOrder(null);
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
     setError(null);
+    setActionError(null);
+    setActionSuccess(null);
   };
 
   const handleLogout = async () => {
@@ -116,7 +122,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     const scheduledOrders = (ordersData || []) as Order[];
     setOrders(scheduledOrders.filter((order) => order.pickup_date === today));
     setUpcomingOrders(scheduledOrders.filter((order) => (
-      Boolean(order.pickup_date && order.pickup_date > today) && order.status !== 'cancelled'
+      Boolean(order.pickup_date && order.pickup_date > today)
+      && !['cancelled', 'picked_up', 'completed'].includes(order.status)
     )));
   };
 
@@ -150,9 +157,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     try {
       setLoading(true);
       setError(null);
+      setActionError(null);
+      setActionSuccess(null);
       setCustomer(null);
       setOrders([]);
       setUpcomingOrders([]);
+      setEarlyPickupOrder(null);
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -239,6 +249,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const handleTogglePaid = async (order: Order) => {
     try {
       setUpdatingOrder(order.id);
+      setActionError(null);
+      setActionSuccess(null);
       const newStatus = order.payment_status === 'paid' ? 'unpaid' : 'paid';
       const { error: updateError } = await supabase
         .from('orders')
@@ -250,6 +262,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       )));
     } catch (err) {
       console.error('Error updating payment status:', err);
+      setActionError(language === 'en' ? 'Could not update payment status.' : 'ไม่สามารถอัปเดตสถานะการชำระเงินได้');
     } finally {
       setUpdatingOrder(null);
     }
@@ -258,6 +271,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const handleSetPaymentMethod = async (order: Order, method: 'qr_code' | 'cash') => {
     try {
       setUpdatingOrder(order.id);
+      setActionError(null);
+      setActionSuccess(null);
       const newMethod = order.payment_method === method ? null : method;
       const { error: updateError } = await supabase
         .from('orders')
@@ -269,27 +284,53 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       )));
     } catch (err) {
       console.error('Error updating payment method:', err);
+      setActionError(language === 'en' ? 'Could not update payment method.' : 'ไม่สามารถอัปเดตวิธีการชำระเงินได้');
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  const confirmPickup = async (orderId: string, early: boolean) => {
+    try {
+      setUpdatingOrder(orderId);
+      setActionError(null);
+      setActionSuccess(null);
+      const { error: pickupError } = await supabase.rpc('confirm_order_pickup', {
+        p_order_id: orderId,
+      });
+      if (pickupError) throw pickupError;
+
+      if (early) {
+        setUpcomingOrders((current) => current.filter((order) => order.id !== orderId));
+        setEarlyPickupOrder(null);
+        setActionSuccess(language === 'en'
+          ? 'Early pickup recorded successfully.'
+          : 'บันทึกการรับสินค้าก่อนกำหนดเรียบร้อยแล้ว');
+      } else {
+        setOrders((current) => current.map((order) => (
+          order.id === orderId ? { ...order, status: 'picked_up' } : order
+        )));
+        setActionSuccess(language === 'en'
+          ? 'Pickup recorded successfully.'
+          : 'บันทึกการรับสินค้าเรียบร้อยแล้ว');
+      }
+    } catch (err) {
+      console.error('Error confirming pickup:', err);
+      setActionError(language === 'en'
+        ? 'Could not confirm pickup. Please try again.'
+        : 'ไม่สามารถยืนยันการรับสินค้าได้ กรุณาลองอีกครั้ง');
     } finally {
       setUpdatingOrder(null);
     }
   };
 
   const handleMarkAsPickedUp = async (orderId: string) => {
-    try {
-      setUpdatingOrder(orderId);
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ status: 'picked_up' })
-        .eq('id', orderId);
-      if (updateError) throw updateError;
-      setOrders((current) => current.map((order) => (
-        order.id === orderId ? { ...order, status: 'picked_up' } : order
-      )));
-    } catch (err) {
-      console.error('Error updating order:', err);
-    } finally {
-      setUpdatingOrder(null);
-    }
+    await confirmPickup(orderId, false);
+  };
+
+  const handleConfirmEarlyPickup = async () => {
+    if (!earlyPickupOrder) return;
+    await confirmPickup(earlyPickupOrder.id, true);
   };
 
   const getContactMethod = () => {
@@ -548,6 +589,20 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   </div>
                 </div>
 
+                {actionError && (
+                  <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <p className="text-sm font-medium text-red-700">{actionError}</p>
+                  </div>
+                )}
+
+                {actionSuccess && (
+                  <div className="mb-5 rounded-xl border border-green-200 bg-green-50 p-4 flex items-center gap-3">
+                    <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <p className="text-sm font-medium text-green-700">{actionSuccess}</p>
+                  </div>
+                )}
+
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -682,42 +737,97 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         {language === 'en'
-                          ? 'Scheduled pre-orders are shown here for reference. Payment and pickup actions are available on the pickup day.'
-                          : 'แสดงคำสั่งซื้อล่วงหน้าเพื่อใช้อ้างอิง การชำระเงินและการรับสินค้าจะดำเนินการได้ในวันรับสินค้า'}
+                          ? 'Scheduled pre-orders are shown here for reference. Use Pick Up Early only when the customer is collecting before the scheduled date.'
+                          : 'แสดงคำสั่งซื้อล่วงหน้าเพื่อใช้อ้างอิง ใช้ปุ่มรับสินค้าก่อนกำหนดเมื่อลูกค้ามารับก่อนวันที่กำหนดเท่านั้น'}
                       </p>
                     </div>
 
                     <div className="space-y-3">
-                      {upcomingOrders.map((order) => (
-                        <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-bold text-gray-900">#{order.order_number}</p>
-                              <div className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-700">
-                                <Calendar className="w-4 h-4 text-slate-500" />
-                                <span>{formatPickupDate(order.pickup_date)}</span>
+                      {upcomingOrders.map((order) => {
+                        const confirmingEarly = earlyPickupOrder?.id === order.id;
+                        return (
+                          <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="font-bold text-gray-900">#{order.order_number}</p>
+                                <div className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-700">
+                                  <Calendar className="w-4 h-4 text-slate-500" />
+                                  <span>{formatPickupDate(order.pickup_date)}</span>
+                                </div>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} &bull; ฿{Number(order.total_amount || 0).toFixed(2)}
+                                </p>
                               </div>
-                              <p className="mt-1 text-sm text-gray-500">
-                                {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} &bull; ฿{Number(order.total_amount || 0).toFixed(2)}
-                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                  {language === 'en' ? 'Scheduled' : 'กำหนดไว้'}
+                                </span>
+                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  order.payment_status === 'paid'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {order.payment_status === 'paid'
+                                    ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
+                                    : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                                {language === 'en' ? 'Scheduled' : 'กำหนดไว้'}
-                              </span>
-                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                order.payment_status === 'paid'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-amber-100 text-amber-700'
-                              }`}>
-                                {order.payment_status === 'paid'
-                                  ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
-                                  : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
-                              </span>
-                            </div>
+
+                            {!confirmingEarly ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionError(null);
+                                  setActionSuccess(null);
+                                  setEarlyPickupOrder(order);
+                                }}
+                                disabled={Boolean(updatingOrder)}
+                                className="mt-4 w-full rounded-lg border-2 border-amber-500 bg-white px-4 py-2.5 font-semibold text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+                              >
+                                {language === 'en' ? 'Pick Up Early' : 'รับสินค้าก่อนกำหนด'}
+                              </button>
+                            ) : (
+                              <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                                <p className="font-bold text-amber-900">
+                                  {language === 'en' ? 'Confirm early pickup?' : 'ยืนยันการรับสินค้าก่อนกำหนด?'}
+                                </p>
+                                <p className="mt-1 text-sm text-amber-800">
+                                  {language === 'en'
+                                    ? `This order is scheduled for ${formatPickupDate(order.pickup_date)}. Confirming will record the pickup now and identify the staff member who processed it.`
+                                    : `คำสั่งซื้อนี้กำหนดรับวันที่ ${formatPickupDate(order.pickup_date)} การยืนยันจะบันทึกการรับสินค้าตอนนี้และระบุพนักงานผู้ดำเนินการ`}
+                                </p>
+                                {order.payment_status !== 'paid' && (
+                                  <p className="mt-2 text-sm font-semibold text-amber-900">
+                                    {language === 'en'
+                                      ? 'Payment is still marked unpaid. Confirm only if that is intentional.'
+                                      : 'สถานะการชำระเงินยังเป็นยังไม่ชำระ โปรดยืนยันเฉพาะเมื่อเป็นความตั้งใจ'}
+                                  </p>
+                                )}
+                                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEarlyPickupOrder(null)}
+                                    disabled={updatingOrder === order.id}
+                                    className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                                  >
+                                    {language === 'en' ? 'Cancel' : 'ยกเลิก'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleConfirmEarlyPickup}
+                                    disabled={updatingOrder === order.id}
+                                    className="flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                                  >
+                                    {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                    {language === 'en' ? 'Confirm Early Pickup' : 'ยืนยันรับสินค้าก่อนกำหนด'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
