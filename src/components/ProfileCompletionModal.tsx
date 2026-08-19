@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,6 +13,21 @@ interface ProfileCompletionModalProps {
   showCelebration?: boolean;
   onNavigate?: (page: string) => void;
 }
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) return error.message;
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return fallback;
+};
 
 export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebration = false, onNavigate }: ProfileCompletionModalProps) {
   const { completeProfile, userProfile } = useAuth();
@@ -29,6 +44,20 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     whatsapp: '',
     wechat_id: '',
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setFormData({
+      name: userProfile?.name || '',
+      phone: userProfile?.phone || '',
+      line_id: userProfile?.line_id || '',
+      whatsapp: userProfile?.whatsapp || '',
+      wechat_id: userProfile?.wechat_id || '',
+    });
+    setError('');
+    setShowCelebrationModal(showCelebration);
+  }, [isOpen, showCelebration, userProfile]);
 
   if (!isOpen) return null;
 
@@ -63,7 +92,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       });
       setShowQRCode(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.profile.profileUpdateFailed);
+      setError(getErrorMessage(err, t.profile.profileUpdateFailed));
     } finally {
       setLoading(false);
     }
@@ -195,7 +224,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              {getLabel('profile.phone_hint', language, "We'll text you order updates")}
+              {getLabel('profile.phone_hint', language, "We'll use this to contact you about your order if needed")}
             </p>
           </div>
 
