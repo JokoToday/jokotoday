@@ -49,10 +49,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const currentUserId = user?.id ?? null;
     const savedOwner = localStorage.getItem(CART_OWNER_STORAGE_KEY);
+    const hasPersistedCartState =
+      localStorage.getItem(CART_STORAGE_KEY) !== null ||
+      localStorage.getItem(PICKUP_DAY_STORAGE_KEY) !== null;
+    const hasLegacyUnownedAuthenticatedCart =
+      Boolean(currentUserId) && !savedOwner && hasPersistedCartState;
 
-    // A cart owned by a previously authenticated user must never be restored
-    // for another account or for a signed-out visitor.
-    if (savedOwner && savedOwner !== currentUserId) {
+    // A cart owned by another authenticated user must never be restored.
+    // Old carts created before owner tracking are also unsafe to adopt when
+    // the app starts already authenticated because their owner is unknowable.
+    if (
+      (savedOwner && savedOwner !== currentUserId) ||
+      hasLegacyUnownedAuthenticatedCart
+    ) {
       clearPersistedCart();
       setItems([]);
       setSelectedPickupDay(null);
