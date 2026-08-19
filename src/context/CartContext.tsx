@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 export type CartItem = {
   product: Product;
@@ -24,34 +25,113 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const CART_STORAGE_KEY = 'joko-cart';
+const PICKUP_DAY_STORAGE_KEY = 'joko-pickup-day';
+const CART_OWNER_STORAGE_KEY = 'joko-cart-owner';
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedPickupDay, setSelectedPickupDay] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
+  const previousUserId = useRef<string | null | undefined>(undefined);
+
+  const clearPersistedCart = () => {
+    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
+    localStorage.removeItem(CART_OWNER_STORAGE_KEY);
+  };
 
   useEffect(() => {
-    const savedCart = localStorage.getItem('joko-cart');
-    if (savedCart) {
-      setItems(JSON.parse(savedCart));
-    }
-    const savedPickupDay = localStorage.getItem('joko-pickup-day');
-    if (savedPickupDay) {
-      setSelectedPickupDay(savedPickupDay);
-    }
-  }, []);
+    if (authLoading || storageReady) return;
 
-  useEffect(() => {
-    localStorage.setItem('joko-cart', JSON.stringify(items));
-  }, [items]);
+    const currentUserId = user?.id ?? null;
+    const savedOwner = localStorage.getItem(CART_OWNER_STORAGE_KEY);
+    const hasPersistedCartState =
+      localStorage.getItem(CART_STORAGE_KEY) !== null ||
+      localStorage.getItem(PICKUP_DAY_STORAGE_KEY) !== null;
+    const hasLegacyUnownedAuthenticatedCart =
+      Boolean(currentUserId) && !savedOwner && hasPersistedCartState;
 
-  useEffect(() => {
-    if (selectedPickupDay) {
-      localStorage.setItem('joko-pickup-day', selectedPickupDay);
+    // A cart owned by another authenticated user must never be restored.
+    // Old carts created before owner tracking are also unsafe to adopt when
+    // the app starts already authenticated because their owner is unknowable.
+    if (
+      (savedOwner && savedOwner !== currentUserId) ||
+      hasLegacyUnownedAuthenticatedCart
+    ) {
+      clearPersistedCart();
+      setItems([]);
+      setSelectedPickupDay(null);
     } else {
-      localStorage.removeItem('joko-pickup-day');
+      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+      if (savedCart) {
+        try {
+          const parsedCart = JSON.parse(savedCart);
+          if (Array.isArray(parsedCart)) {
+            setItems(parsedCart);
+          }
+        } catch {
+          localStorage.removeItem(CART_STORAGE_KEY);
+        }
+      }
+
+      const savedPickupDay = localStorage.getItem(PICKUP_DAY_STORAGE_KEY);
+      if (savedPickupDay) {
+        setSelectedPickupDay(savedPickupDay);
+      }
     }
-  }, [selectedPickupDay]);
+
+    if (currentUserId) {
+      localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
+    }
+
+    previousUserId.current = currentUserId;
+    setStorageReady(true);
+  }, [authLoading, storageReady, user?.id]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+
+    const currentUserId = user?.id ?? null;
+    const priorUserId = previousUserId.current;
+
+    if (priorUserId === currentUserId) return;
+
+    // Guest -> authenticated: keep the guest's current cart and assign it to
+    // the account they just signed into. All other auth transitions clear it.
+    if (priorUserId === null && currentUserId) {
+      localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
+    } else {
+      setItems([]);
+      setSelectedPickupDay(null);
+      setIsCartOpen(false);
+      clearPersistedCart();
+
+      if (currentUserId) {
+        localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
+      }
+    }
+
+    previousUserId.current = currentUserId;
+  }, [storageReady, user?.id]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  }, [items, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+
+    if (selectedPickupDay) {
+      localStorage.setItem(PICKUP_DAY_STORAGE_KEY, selectedPickupDay);
+    } else {
+      localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
+    }
+  }, [selectedPickupDay, storageReady]);
 
   const addToCart = (product: Product, quantity: number) => {
     setItems((currentItems) => {
@@ -86,7 +166,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setItems([]);
-    localStorage.removeItem('joko-cart');
+    setSelectedPickupDay(null);
+    setIsCartOpen(false);
+    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
