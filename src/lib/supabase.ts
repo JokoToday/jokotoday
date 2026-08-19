@@ -37,6 +37,9 @@ export type Product = {
   price: number;
   image_url: string;
   is_available: boolean;
+  available_days?: string[] | null;
+  stock_by_day?: Record<string, number> | null;
+  stock_remaining?: number | null;
   created_at: string;
   updated_at: string;
 };

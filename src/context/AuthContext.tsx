@@ -24,8 +24,24 @@ export interface UserProfile {
   preferred_language?: Language | null;
 }
 
+type ProfileDetails = {
+  name: string;
+  phone: string;
+  line_id?: string;
+  whatsapp?: string;
+  wechat_id?: string;
+};
+
 function isSupportedLanguage(value: unknown): value is Language {
   return value === 'en' || value === 'th' || value === 'zh';
+}
+
+function hasRequiredProfileDetails(data: ProfileDetails): boolean {
+  return Boolean(
+    data.name.trim() &&
+    data.phone.trim() &&
+    (data.line_id?.trim() || data.whatsapp?.trim() || data.wechat_id?.trim())
+  );
 }
 
 const AUTH_LANGUAGE_STORAGE_KEY = 'jt_auth_language';
@@ -42,8 +58,8 @@ interface AuthContextType {
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithLINE: () => Promise<void>;
-  completeProfile: (data: { name: string; phone: string; line_id?: string; whatsapp?: string; wechat_id?: string }) => Promise<void>;
-  updateProfileDetails: (data: { name: string; phone: string; line_id?: string; whatsapp?: string; wechat_id?: string }) => Promise<void>;
+  completeProfile: (data: ProfileDetails) => Promise<void>;
+  updateProfileDetails: (data: ProfileDetails) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -232,12 +248,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `https://web.line.me/web/login?${params.toString()}`;
   };
 
-  const completeProfile = async (data: { name: string; phone: string; line_id?: string; whatsapp?: string; wechat_id?: string }) => {
+  const completeProfile = async (data: ProfileDetails) => {
     if (!user) throw new Error('No user logged in');
 
-    const qrToken = crypto.randomUUID();
+    let qrToken = userProfile?.qr_token || null;
+    let shortCode = userProfile?.short_code || null;
 
-    const { data: shortCodeData } = await supabase.rpc('generate_next_short_code');
+    if (!qrToken) {
+      qrToken = crypto.randomUUID();
+    }
+
+    if (!shortCode) {
+      const { data: shortCodeData, error: shortCodeError } = await supabase.rpc('generate_next_short_code');
+      if (shortCodeError) throw shortCodeError;
+      shortCode = shortCodeData || null;
+    }
 
     const { data: profile, error } = await supabase
       .from('user_profiles')
@@ -248,9 +273,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         whatsapp: data.whatsapp || null,
         wechat_id: data.wechat_id || null,
         qr_token: qrToken,
-        short_code: shortCodeData || null,
+        short_code: shortCode,
         preferred_language: language,
-        profile_completed: true,
+        profile_completed: hasRequiredProfileDetails(data),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -262,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile(profile);
   };
 
-  const updateProfileDetails = async (data: { name: string; phone: string; line_id?: string; whatsapp?: string; wechat_id?: string }) => {
+  const updateProfileDetails = async (data: ProfileDetails) => {
     if (!user) throw new Error('No user logged in');
 
     const { data: profile, error } = await supabase
@@ -273,6 +298,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         line_id: data.line_id || null,
         whatsapp: data.whatsapp || null,
         wechat_id: data.wechat_id || null,
+        profile_completed: hasRequiredProfileDetails(data),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
