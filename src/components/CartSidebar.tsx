@@ -8,15 +8,23 @@ import { getPublicImageUrl } from '../lib/storage';
 
 type CartSidebarProps = {
   onCheckout: () => void;
+  onStartShopping: () => void;
 };
 
-export default function CartSidebar({ onCheckout }: CartSidebarProps) {
+export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebarProps) {
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   if (!isCartOpen) return null;
+
+  const startShoppingLabel =
+    language === 'th'
+      ? 'เริ่มเลือกซื้อสินค้า'
+      : language === 'zh'
+        ? '开始选购'
+        : 'Start shopping';
 
   return (
     <>
@@ -43,7 +51,16 @@ export default function CartSidebar({ onCheckout }: CartSidebarProps) {
           {items.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">{t.cart.empty}</p>
+              <p className="text-gray-500 mb-6">{t.cart.empty}</p>
+              <button
+                onClick={() => {
+                  setIsCartOpen(false);
+                  onStartShopping();
+                }}
+                className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+              >
+                {startShoppingLabel}
+              </button>
             </div>
           ) : (
             <div className="space-y-4">

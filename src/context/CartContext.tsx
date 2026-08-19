@@ -25,9 +25,104 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const CART_STORAGE_KEY = 'joko-cart';
-const PICKUP_DAY_STORAGE_KEY = 'joko-pickup-day';
-const CART_OWNER_STORAGE_KEY = 'joko-cart-owner';
+const LEGACY_CART_STORAGE_KEY = 'joko-cart';
+const LEGACY_PICKUP_DAY_STORAGE_KEY = 'joko-pickup-day';
+const LEGACY_CART_OWNER_STORAGE_KEY = 'joko-cart-owner';
+const GUEST_STORAGE_ID = 'guest';
+
+const getCartStorageKey = (userId: string | null) =>
+  `joko-cart:${userId ?? GUEST_STORAGE_ID}`;
+
+const getPickupDayStorageKey = (userId: string | null) =>
+  `joko-pickup-day:${userId ?? GUEST_STORAGE_ID}`;
+
+const readCartItems = (storageKey: string): CartItem[] => {
+  const savedCart = localStorage.getItem(storageKey);
+  if (!savedCart) return [];
+
+  try {
+    const parsedCart = JSON.parse(savedCart);
+    return Array.isArray(parsedCart) ? parsedCart : [];
+  } catch {
+    localStorage.removeItem(storageKey);
+    return [];
+  }
+};
+
+const readStoredCart = (userId: string | null) => ({
+  items: readCartItems(getCartStorageKey(userId)),
+  pickupDay: localStorage.getItem(getPickupDayStorageKey(userId)),
+});
+
+const writeStoredCart = (
+  userId: string | null,
+  items: CartItem[],
+  pickupDay: string | null
+) => {
+  localStorage.setItem(getCartStorageKey(userId), JSON.stringify(items));
+
+  if (pickupDay) {
+    localStorage.setItem(getPickupDayStorageKey(userId), pickupDay);
+  } else {
+    localStorage.removeItem(getPickupDayStorageKey(userId));
+  }
+};
+
+const clearStoredCart = (userId: string | null) => {
+  localStorage.removeItem(getCartStorageKey(userId));
+  localStorage.removeItem(getPickupDayStorageKey(userId));
+};
+
+const mergeCartItems = (savedItems: CartItem[], incomingItems: CartItem[]) => {
+  const merged = new Map<string, CartItem>();
+
+  savedItems.forEach((item) => {
+    merged.set(item.product.id, item);
+  });
+
+  incomingItems.forEach((item) => {
+    const existing = merged.get(item.product.id);
+    merged.set(
+      item.product.id,
+      existing
+        ? {
+            product: item.product,
+            quantity: existing.quantity + item.quantity,
+          }
+        : item
+    );
+  });
+
+  return Array.from(merged.values());
+};
+
+const migrateLegacyCart = (currentUserId: string | null) => {
+  const legacyOwner = localStorage.getItem(LEGACY_CART_OWNER_STORAGE_KEY);
+  const legacyCart = localStorage.getItem(LEGACY_CART_STORAGE_KEY);
+  const legacyPickupDay = localStorage.getItem(LEGACY_PICKUP_DAY_STORAGE_KEY);
+
+  const hasLegacyState =
+    legacyOwner !== null || legacyCart !== null || legacyPickupDay !== null;
+
+  if (!hasLegacyState) return;
+
+  const canSafelyMigrate = currentUserId
+    ? legacyOwner === currentUserId
+    : legacyOwner === null;
+
+  if (canSafelyMigrate) {
+    const existing = readStoredCart(currentUserId);
+    const legacyItems = readCartItems(LEGACY_CART_STORAGE_KEY);
+    const mergedItems = mergeCartItems(existing.items, legacyItems);
+    const pickupDay = legacyPickupDay ?? existing.pickupDay;
+
+    writeStoredCart(currentUserId, mergedItems, pickupDay);
+  }
+
+  localStorage.removeItem(LEGACY_CART_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_PICKUP_DAY_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_CART_OWNER_STORAGE_KEY);
+};
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -36,100 +131,83 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [selectedPickupDay, setSelectedPickupDay] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
-  const previousUserId = useRef<string | null | undefined>(undefined);
-
-  const clearPersistedCart = () => {
-    localStorage.removeItem(CART_STORAGE_KEY);
-    localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
-    localStorage.removeItem(CART_OWNER_STORAGE_KEY);
-  };
+  const activeUserId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (authLoading || storageReady) return;
 
     const currentUserId = user?.id ?? null;
-    const savedOwner = localStorage.getItem(CART_OWNER_STORAGE_KEY);
-    const hasPersistedCartState =
-      localStorage.getItem(CART_STORAGE_KEY) !== null ||
-      localStorage.getItem(PICKUP_DAY_STORAGE_KEY) !== null;
-    const hasLegacyUnownedAuthenticatedCart =
-      Boolean(currentUserId) && !savedOwner && hasPersistedCartState;
+    migrateLegacyCart(currentUserId);
 
-    // A cart owned by another authenticated user must never be restored.
-    // Old carts created before owner tracking are also unsafe to adopt when
-    // the app starts already authenticated because their owner is unknowable.
-    if (
-      (savedOwner && savedOwner !== currentUserId) ||
-      hasLegacyUnownedAuthenticatedCart
-    ) {
-      clearPersistedCart();
-      setItems([]);
-      setSelectedPickupDay(null);
-    } else {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-      if (savedCart) {
-        try {
-          const parsedCart = JSON.parse(savedCart);
-          if (Array.isArray(parsedCart)) {
-            setItems(parsedCart);
-          }
-        } catch {
-          localStorage.removeItem(CART_STORAGE_KEY);
-        }
-      }
-
-      const savedPickupDay = localStorage.getItem(PICKUP_DAY_STORAGE_KEY);
-      if (savedPickupDay) {
-        setSelectedPickupDay(savedPickupDay);
-      }
-    }
-
-    if (currentUserId) {
-      localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
-    }
-
-    previousUserId.current = currentUserId;
+    const stored = readStoredCart(currentUserId);
+    setItems(stored.items);
+    setSelectedPickupDay(stored.pickupDay);
+    activeUserId.current = currentUserId;
     setStorageReady(true);
   }, [authLoading, storageReady, user?.id]);
 
   useEffect(() => {
-    if (!storageReady) return;
+    if (authLoading || !storageReady) return;
 
-    const currentUserId = user?.id ?? null;
-    const priorUserId = previousUserId.current;
+    const nextUserId = user?.id ?? null;
+    const previousUserId = activeUserId.current;
 
-    if (priorUserId === currentUserId) return;
+    if (previousUserId === undefined || previousUserId === nextUserId) return;
 
-    // Guest -> authenticated: keep the guest's current cart and assign it to
-    // the account they just signed into. All other auth transitions clear it.
-    if (priorUserId === null && currentUserId) {
-      localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
-    } else {
+    // Always preserve the cart that belongs to the identity we are leaving.
+    writeStoredCart(previousUserId, items, selectedPickupDay);
+
+    if (previousUserId === null && nextUserId) {
+      // Guest -> account: merge the guest's selections into that account's
+      // existing saved cart, then retire the guest copy.
+      const savedUserCart = readStoredCart(nextUserId);
+      const mergedItems = mergeCartItems(savedUserCart.items, items);
+      const mergedPickupDay = selectedPickupDay ?? savedUserCart.pickupDay;
+
+      clearStoredCart(null);
+      activeUserId.current = nextUserId;
+      writeStoredCart(nextUserId, mergedItems, mergedPickupDay);
+      setItems(mergedItems);
+      setSelectedPickupDay(mergedPickupDay);
+      return;
+    }
+
+    if (previousUserId && nextUserId === null) {
+      // Account -> guest: keep the account cart saved, but expose a fresh
+      // empty guest cart so signed-out visitors never see account contents.
+      clearStoredCart(null);
+      activeUserId.current = null;
       setItems([]);
       setSelectedPickupDay(null);
       setIsCartOpen(false);
-      clearPersistedCart();
-
-      if (currentUserId) {
-        localStorage.setItem(CART_OWNER_STORAGE_KEY, currentUserId);
-      }
+      return;
     }
 
-    previousUserId.current = currentUserId;
-  }, [storageReady, user?.id]);
+    // Direct account switch: load only the destination account's saved cart.
+    const savedNextUserCart = readStoredCart(nextUserId);
+    activeUserId.current = nextUserId;
+    setItems(savedNextUserCart.items);
+    setSelectedPickupDay(savedNextUserCart.pickupDay);
+    setIsCartOpen(false);
+  }, [authLoading, storageReady, user?.id]);
 
   useEffect(() => {
-    if (!storageReady) return;
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    if (!storageReady || activeUserId.current === undefined) return;
+
+    localStorage.setItem(
+      getCartStorageKey(activeUserId.current),
+      JSON.stringify(items)
+    );
   }, [items, storageReady]);
 
   useEffect(() => {
-    if (!storageReady) return;
+    if (!storageReady || activeUserId.current === undefined) return;
 
+    const pickupDayStorageKey = getPickupDayStorageKey(activeUserId.current);
     if (selectedPickupDay) {
-      localStorage.setItem(PICKUP_DAY_STORAGE_KEY, selectedPickupDay);
+      localStorage.setItem(pickupDayStorageKey, selectedPickupDay);
     } else {
-      localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
+      localStorage.removeItem(pickupDayStorageKey);
     }
   }, [selectedPickupDay, storageReady]);
 
@@ -168,8 +246,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
     setSelectedPickupDay(null);
     setIsCartOpen(false);
-    localStorage.removeItem(CART_STORAGE_KEY);
-    localStorage.removeItem(PICKUP_DAY_STORAGE_KEY);
+
+    if (activeUserId.current !== undefined) {
+      clearStoredCart(activeUserId.current);
+    }
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
