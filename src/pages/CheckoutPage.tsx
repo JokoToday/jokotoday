@@ -16,7 +16,7 @@ type CheckoutPageProps = {
 };
 
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
-  const { items, totalPrice, clearCart, selectedPickupDay } = useCart();
+  const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
   const { t, language } = useLanguage();
   const { getLabel } = useCMSLabels();
   const { user, userProfile, profileLoading } = useAuth();
@@ -60,20 +60,44 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     setPickupDays(days);
   };
 
-  const [formData, setFormData] = useState({
-    pickupDay: '',
+  const [formData] = useState({
     notes: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isDayCompatibleWithCart = (pickupDayLabel: string) => {
+    return items.every((item) => {
+      const availableDays = item.product.available_days as string[] | null | undefined;
+      return !availableDays || availableDays.length === 0 || availableDays.includes(pickupDayLabel);
+    });
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const selectedDay = pickupDays.find((day) => day.label === selectedPickupDay);
 
-    if (!selectedPickupDay) newErrors.pickupDay = t.checkout.required;
+    if (
+      !selectedPickupDay ||
+      !selectedDay ||
+      !selectedDay.is_open ||
+      !isDayCompatibleWithCart(selectedPickupDay)
+    ) {
+      newErrors.pickupDay = t.checkout.required;
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePickupDayChange = (pickupDayLabel: string) => {
+    setSelectedPickupDay(pickupDayLabel);
+    setErrors((currentErrors) => {
+      if (!currentErrors.pickupDay) return currentErrors;
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.pickupDay;
+      return nextErrors;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -579,15 +603,17 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   const displayLabel = getPickupDayLabel(day, language);
                   const isSelected = selectedPickupDay === day.label;
                   const isOpen = day.is_open;
+                  const isCompatible = isDayCompatibleWithCart(day.label);
+                  const isSelectable = isOpen && isCompatible;
 
                   return (
-                    <div
+                    <label
                       key={day.id}
                       className={`flex items-center p-4 border-2 rounded-lg transition-colors ${
                         isSelected
                           ? 'border-primary-600 bg-primary-50'
-                          : isOpen
-                            ? 'border-gray-200 hover:border-primary-300 bg-gray-50'
+                          : isSelectable
+                            ? 'border-gray-200 hover:border-primary-300 bg-gray-50 cursor-pointer'
                             : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
                       }`}
                     >
@@ -596,13 +622,13 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                         name="pickupDay"
                         value={day.label}
                         checked={isSelected}
-                        disabled={!isOpen || !isSelected}
-                        onChange={() => {}}
+                        disabled={!isSelectable}
+                        onChange={() => handlePickupDayChange(day.label)}
                         className="mr-3"
                       />
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{displayLabel}</div>
-                        {isSelected && isOpen && (
+                        {isSelected && isOpen && isCompatible && (
                           <p className="text-xs text-primary-600 mt-1">
                             {t.checkout.pickupDayFromCatalog}
                           </p>
@@ -612,8 +638,13 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                             Cutoff passed ({day.cutoff_day} {day.cutoff_time})
                           </p>
                         )}
+                        {isOpen && !isCompatible && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Not available for all items in your cart
+                          </p>
+                        )}
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>
