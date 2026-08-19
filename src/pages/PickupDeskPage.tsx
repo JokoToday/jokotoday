@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Award,
   Banknote,
+  Calendar,
   Check,
   Home,
   Keyboard,
@@ -59,6 +60,17 @@ interface Order {
   loyalty_points_earned: number | null;
 }
 
+const getBangkokToday = () => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
@@ -68,6 +80,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [manualCode, setManualCode] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [upcomingOrders, setUpcomingOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
@@ -76,6 +89,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const resetCustomer = () => {
     setCustomer(null);
     setOrders([]);
+    setUpcomingOrders([]);
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -89,15 +103,21 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   };
 
   const loadOrders = async (customerId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBangkokToday();
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('*')
       .eq('customer_id', customerId)
-      .eq('pickup_date', today)
+      .gte('pickup_date', today)
+      .order('pickup_date', { ascending: true })
       .order('created_at', { ascending: false });
     if (ordersError) throw ordersError;
-    setOrders((ordersData || []) as Order[]);
+
+    const scheduledOrders = (ordersData || []) as Order[];
+    setOrders(scheduledOrders.filter((order) => order.pickup_date === today));
+    setUpcomingOrders(scheduledOrders.filter((order) => (
+      Boolean(order.pickup_date && order.pickup_date > today) && order.status !== 'cancelled'
+    )));
   };
 
   const getLookupErrorMessage = (err: unknown, source: 'manual' | 'qr' = 'qr') => {
@@ -132,6 +152,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setError(null);
       setCustomer(null);
       setOrders([]);
+      setUpcomingOrders([]);
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -277,6 +298,19 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     if (customer.whatsapp) return { type: 'WhatsApp', value: customer.whatsapp };
     if (customer.wechat_id) return { type: 'WeChat', value: customer.wechat_id };
     return null;
+  };
+
+  const formatPickupDate = (value: string | null) => {
+    if (!value) return '—';
+    const date = new Date(`${value}T00:00:00+07:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString(language === 'th' ? 'th-TH' : 'en-GB', {
+      timeZone: 'Asia/Bangkok',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const totalLoyaltyEarned = orders.reduce((sum, order) => sum + (order.loyalty_points_earned ?? 0), 0);
@@ -518,7 +552,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <Package className="w-5 h-5 text-slate-600" />
-                      {language === 'en' ? 'Pickup Orders' : 'คำสั่งรับสินค้า'} ({orders.length})
+                      {language === 'en' ? "Today's Pickup Orders" : 'รายการรับสินค้าวันนี้'} ({orders.length})
                     </h3>
                     {totalLoyaltyEarned > 0 && (
                       <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
@@ -638,6 +672,55 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     </div>
                   )}
                 </div>
+
+                {upcomingOrders.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-slate-600" />
+                        {language === 'en' ? 'Upcoming Pickup Orders' : 'คำสั่งรับสินค้าที่กำลังจะมาถึง'} ({upcomingOrders.length})
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {language === 'en'
+                          ? 'Scheduled pre-orders are shown here for reference. Payment and pickup actions are available on the pickup day.'
+                          : 'แสดงคำสั่งซื้อล่วงหน้าเพื่อใช้อ้างอิง การชำระเงินและการรับสินค้าจะดำเนินการได้ในวันรับสินค้า'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {upcomingOrders.map((order) => (
+                        <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-gray-900">#{order.order_number}</p>
+                              <div className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-700">
+                                <Calendar className="w-4 h-4 text-slate-500" />
+                                <span>{formatPickupDate(order.pickup_date)}</span>
+                              </div>
+                              <p className="mt-1 text-sm text-gray-500">
+                                {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} &bull; ฿{Number(order.total_amount || 0).toFixed(2)}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                {language === 'en' ? 'Scheduled' : 'กำหนดไว้'}
+                              </span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                order.payment_status === 'paid'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}>
+                                {order.payment_status === 'paid'
+                                  ? (language === 'en' ? 'Paid' : 'ชำระแล้ว')
+                                  : (language === 'en' ? 'Unpaid' : 'ยังไม่ชำระ')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <CustomerPurchaseHistory customerId={customer.id} language={staffLanguage} />
               </>
