@@ -9,11 +9,48 @@ import LocationMap from '../components/LocationMap';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { pickupLocations } from '../data/locations';
-import { getDayKey, getPickupDayLabel, getPickupDays, PickupDay } from '../lib/availabilityService';
+import { getDayKey, getPickupDayLabel, getPickupDays, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
 type CheckoutPageProps = {
   onNavigate: (page: string) => void;
 };
+
+const PICKUP_WEEKDAY_BY_DAY_KEY: Record<string, number> = {
+  friday_maerim: 5,
+  saturday_maerim: 6,
+  sunday_intown: 0,
+};
+
+function getScheduledPickupDate(pickupDay: PickupDay): string {
+  const configuredWeekday = (pickupDay as PickupDay & { pickup_weekday?: number }).pickup_weekday;
+  const pickupWeekday = configuredWeekday ?? PICKUP_WEEKDAY_BY_DAY_KEY[pickupDay.day_key];
+
+  if (pickupWeekday === undefined || pickupWeekday < 0 || pickupWeekday > 6) {
+    throw new Error(`Invalid pickup weekday for ${pickupDay.day_key}`);
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(new Date());
+  const partMap: Record<string, string> = {};
+  parts.forEach((part) => {
+    partMap[part.type] = part.value;
+  });
+
+  const bangkokToday = new Date(Date.UTC(
+    Number(partMap.year),
+    Number(partMap.month) - 1,
+    Number(partMap.day)
+  ));
+  const daysAhead = (pickupWeekday - bangkokToday.getUTCDay() + 7) % 7;
+  bangkokToday.setUTCDate(bangkokToday.getUTCDate() + daysAhead);
+
+  return bangkokToday.toISOString().slice(0, 10);
+}
 
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
@@ -80,7 +117,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     if (
       !selectedPickupDay ||
       !selectedDay ||
-      !selectedDay.is_open ||
+      !isDayOpenForOrdering(selectedDay) ||
       !isDayCompatibleWithCart(selectedPickupDay)
     ) {
       newErrors.pickupDay = t.checkout.required;
@@ -130,6 +167,10 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       }));
 
       const selectedDay = pickupDays.find((d) => d.label === selectedPickupDay);
+      if (!selectedDay) {
+        throw new Error('Selected pickup day could not be scheduled');
+      }
+      const pickupDate = getScheduledPickupDate(selectedDay);
       const pickupLocationId = (selectedDay as PickupDay & { location_id?: string })?.location_id ?? null;
 
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -144,6 +185,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
           customer_phone: userProfile.phone || '',
           line_id: userProfile.line_id || '',
           pickup_day: selectedPickupDay || '',
+          pickup_date: pickupDate,
           pickup_location_id: pickupLocationId,
           total_amount: totalPrice,
           status: 'pending',
@@ -602,7 +644,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                 {pickupDays.map((day) => {
                   const displayLabel = getPickupDayLabel(day, language);
                   const isSelected = selectedPickupDay === day.label;
-                  const isOpen = day.is_open;
+                  const isOpen = isDayOpenForOrdering(day);
                   const isCompatible = isDayCompatibleWithCart(day.label);
                   const isSelectable = isOpen && isCompatible;
 
