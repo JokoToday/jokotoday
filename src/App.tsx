@@ -243,8 +243,12 @@ function AppContent() {
       {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
       <main className="flex-1">{renderPage()}</main>
       {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
-      {!isStandalonePage && <CartSidebar onCheckout={() => handleNavigate('checkout')} />}
-
+      {!isStandalonePage && (
+        <CartSidebar
+          onCheckout={() => handleNavigate('checkout')}
+          onStartShopping={() => handleNavigate('products')}
+        />
+      )}
     </div>
   );
 }
