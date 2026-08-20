@@ -9,48 +9,31 @@ import LocationMap from '../components/LocationMap';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { pickupLocations } from '../data/locations';
-import { getDayKey, getPickupDayLabel, getPickupDays, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
+import { getPickupDayLabel, getPickupDays, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
 type CheckoutPageProps = {
   onNavigate: (page: string) => void;
 };
 
-const PICKUP_WEEKDAY_BY_DAY_KEY: Record<string, number> = {
-  friday_maerim: 5,
-  saturday_maerim: 6,
-  sunday_intown: 0,
+type SecureOrderItem = {
+  product_id: string;
+  product_name: string;
+  product_name_th?: string | null;
+  product_name_zh?: string | null;
+  quantity: number;
+  price_at_order: number | string;
 };
 
-function getScheduledPickupDate(pickupDay: PickupDay): string {
-  const configuredWeekday = (pickupDay as PickupDay & { pickup_weekday?: number }).pickup_weekday;
-  const pickupWeekday = configuredWeekday ?? PICKUP_WEEKDAY_BY_DAY_KEY[pickupDay.day_key];
-
-  if (pickupWeekday === undefined || pickupWeekday < 0 || pickupWeekday > 6) {
-    throw new Error(`Invalid pickup weekday for ${pickupDay.day_key}`);
-  }
-
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = formatter.formatToParts(new Date());
-  const partMap: Record<string, string> = {};
-  parts.forEach((part) => {
-    partMap[part.type] = part.value;
-  });
-
-  const bangkokToday = new Date(Date.UTC(
-    Number(partMap.year),
-    Number(partMap.month) - 1,
-    Number(partMap.day)
-  ));
-  const daysAhead = (pickupWeekday - bangkokToday.getUTCDay() + 7) % 7;
-  bangkokToday.setUTCDate(bangkokToday.getUTCDate() + daysAhead);
-
-  return bangkokToday.toISOString().slice(0, 10);
-}
+type SecureOrderResult = {
+  id: string;
+  order_number: string;
+  created_at: string;
+  pickup_day: string | null;
+  pickup_location_id: string | null;
+  total_amount: number | string;
+  loyalty_points_earned?: number | null;
+  order_items: SecureOrderItem[] | null;
+};
 
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
@@ -157,80 +140,50 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     setIsSubmitting(true);
 
     try {
-      const orderItemsJson = items.map((item) => ({
-        product_id: item.product.id,
-        product_name: item.product.name_en || '',
-        product_name_th: item.product.name_th || '',
-        product_name_zh: item.product.name_zh || '',
-        quantity: item.quantity,
-        price_at_order: item.product.price,
-      }));
-
-      const selectedDay = pickupDays.find((d) => d.label === selectedPickupDay);
+      const selectedDay = pickupDays.find((day) => day.label === selectedPickupDay);
       if (!selectedDay) {
         throw new Error('Selected pickup day could not be scheduled');
       }
-      const pickupDate = getScheduledPickupDate(selectedDay);
-      const pickupLocationId = (selectedDay as PickupDay & { location_id?: string })?.location_id ?? null;
 
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const orderReference = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const rpcItems = items.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+      }));
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: user.id,
-          order_number: orderNumber,
-          customer_name: userProfile.name || '',
-          customer_email: user.email,
-          customer_phone: userProfile.phone || '',
-          line_id: userProfile.line_id || '',
-          pickup_day: selectedPickupDay || '',
-          pickup_date: pickupDate,
-          pickup_location_id: pickupLocationId,
-          total_amount: totalPrice,
-          status: 'pending',
-          notes: formData.notes,
-          order_items: orderItemsJson,
-        })
-        .select()
-        .single();
+      const { data: orderData, error: orderError } = await supabase.rpc('create_online_order', {
+        p_order_number: orderReference,
+        p_pickup_day_key: selectedDay.day_key,
+        p_items: rpcItems,
+        p_notes: formData.notes || null,
+      });
 
       if (orderError) {
-        console.error("ORDER INSERT ERROR:", orderError);
+        console.error('SECURE ORDER RPC ERROR:', orderError);
         alert(orderError.message);
         return;
       }
 
-      const dayKey = getDayKey(selectedPickupDay || '');
-      for (const item of items) {
-        const product = item.product;
-        const currentStockByDay = (product.stock_by_day as Record<string, number>) || {};
-        const currentStock = currentStockByDay[dayKey] ?? product.stock_remaining ?? 0;
-        const newStock = Math.max(0, currentStock - item.quantity);
-
-        const updatedStockByDay = {
-          ...currentStockByDay,
-          [dayKey]: newStock,
-        };
-
-        await supabase
-          .from('cms_products')
-          .update({ stock_by_day: updatedStockByDay })
-          .eq('id', product.id);
+      const order = orderData as SecureOrderResult | null;
+      if (!order?.id || !order.order_number) {
+        throw new Error('Secure order creation returned an invalid order');
       }
+
+      const serverItems = Array.isArray(order.order_items) ? order.order_items : [];
+      const pickupLocationId = order.pickup_location_id;
 
       setOrderId(order.id);
       setOrderNumber(order.order_number);
-      setOrderCreatedAt(order.created_at);
-      setCompletedTotal(totalPrice);
-      setCompletedPickupDay(selectedPickupDay || '');
-      setCompletedLoyaltyPoints(order.loyalty_points_earned || 0);
-      setCompletedItems(items.map((item) => ({
-        name: item.product.name_en || '',
-        name_th: item.product.name_th || '',
-        name_zh: item.product.name_zh || '',
-        qty: item.quantity,
-        price: item.product.price,
+      setOrderCreatedAt(order.created_at || '');
+      setCompletedTotal(Number(order.total_amount) || 0);
+      setCompletedPickupDay(order.pickup_day || selectedPickupDay || '');
+      setCompletedLoyaltyPoints(Number(order.loyalty_points_earned) || 0);
+      setCompletedItems(serverItems.map((item) => ({
+        name: item.product_name || '',
+        name_th: item.product_name_th || '',
+        name_zh: item.product_name_zh || '',
+        qty: Number(item.quantity) || 0,
+        price: Number(item.price_at_order) || 0,
       })));
 
       if (pickupLocationId) {
@@ -238,17 +191,6 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
           .from('cms_pickup_locations')
           .select('name_en, name_th, name_zh, maps_url')
           .eq('id', pickupLocationId)
-          .maybeSingle();
-        if (loc) {
-          const locName = language === 'th' ? loc.name_th : language === 'zh' ? loc.name_zh : loc.name_en;
-          setOrderLocationName(locName || loc.name_en || '');
-          setOrderLocationMapsUrl(loc.maps_url || '');
-        }
-      } else if (selectedDay) {
-        const { data: loc } = await supabase
-          .from('cms_pickup_locations')
-          .select('name_en, name_th, name_zh, maps_url')
-          .eq('id', (selectedDay as PickupDay & { location_id?: string }).location_id)
           .maybeSingle();
         if (loc) {
           const locName = language === 'th' ? loc.name_th : language === 'zh' ? loc.name_zh : loc.name_en;
@@ -517,7 +459,6 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             <p className="text-gray-600 mb-8">
               {t.checkout.authRequired}
             </p>
-
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => setIsAuthModalOpen(true)}
