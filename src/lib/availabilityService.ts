@@ -316,7 +316,8 @@ export function getAvailabilityStatus(
   const availableDays = product.available_days as string[] || [];
   const stockByDay = product.stock_by_day as Record<string, number> || {};
 
-  const isOfferedToday = availableDays.includes(selectedDay)
+  const isOfferedToday = availableDays.length === 0
+    || availableDays.includes(selectedDay)
     || availableDays.includes(dayKey)
     || equivalentLabels.some((label) => availableDays.includes(label));
 
