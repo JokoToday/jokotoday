@@ -11,8 +11,6 @@ export interface PickupDay {
   cutoff_day: string;
   is_open: boolean;
   sort_order: number;
-  location_id: string | null;
-  pickup_weekday: number;
 }
 
 export interface ProductAvailability {
