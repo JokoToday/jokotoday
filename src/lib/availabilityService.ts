@@ -51,10 +51,21 @@ export interface PickupOverride {
 export type PickupStatus = 'available' | 'closing_soon' | 'closed' | 'sold_out' | 'holiday';
 
 const DAY_KEY_MAP: Record<string, string> = {
+  'Friday – Mae Rim': 'friday_maerim',
   'Friday - Mae Rim': 'friday_maerim',
+  'Saturday – Mae Rim': 'saturday_maerim',
   'Saturday - Mae Rim': 'saturday_maerim',
+  'Sunday – In-Town': 'sunday_intown',
   'Sunday - In-Town': 'sunday_intown',
 };
+
+function getEquivalentDayLabels(label: string): string[] {
+  return Array.from(new Set([
+    label,
+    label.replace(/ – /g, ' - '),
+    label.replace(/ - /g, ' – '),
+  ]));
+}
 
 function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
   const dayMap: Record<string, number> = {
@@ -301,10 +312,14 @@ export function getAvailabilityStatus(
   }
 
   const dayKey = getDayKey(selectedDay);
+  const equivalentLabels = getEquivalentDayLabels(selectedDay);
   const availableDays = product.available_days as string[] || [];
   const stockByDay = product.stock_by_day as Record<string, number> || {};
 
-  const isOfferedToday = availableDays.includes(selectedDay);
+  const isOfferedToday = availableDays.length === 0
+    || availableDays.includes(selectedDay)
+    || availableDays.includes(dayKey)
+    || equivalentLabels.some((label) => availableDays.includes(label));
 
   if (!isOfferedToday) {
     return {
@@ -315,7 +330,14 @@ export function getAvailabilityStatus(
     };
   }
 
-  const remainingStock = stockByDay[dayKey] ?? product.stock_remaining ?? 0;
+  const legacyStock = equivalentLabels
+    .map((label) => stockByDay[label])
+    .find((value) => value !== undefined);
+  const remainingStock = stockByDay[dayKey]
+    ?? stockByDay[selectedDay]
+    ?? legacyStock
+    ?? product.stock_remaining
+    ?? 0;
   const isSoldOut = remainingStock <= 0;
 
   return {
