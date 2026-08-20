@@ -19,9 +19,38 @@ function formatFullDate(dateString: string, language: 'en' | 'th' | 'zh'): strin
   );
 }
 
+function getTerminalStatus(
+  status: string,
+  language: 'en' | 'th' | 'zh'
+): { label: string; style: React.CSSProperties } | null {
+  if (status === 'cancelled') {
+    return {
+      label: language === 'th' ? 'ยกเลิกแล้ว' : language === 'zh' ? '已取消' : 'Cancelled',
+      style: { background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' },
+    };
+  }
+
+  if (status === 'picked_up') {
+    return {
+      label: language === 'th' ? 'รับสินค้าแล้ว' : language === 'zh' ? '已取货' : 'Picked Up',
+      style: { background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' },
+    };
+  }
+
+  if (status === 'completed') {
+    return {
+      label: language === 'th' ? 'เสร็จสิ้น' : language === 'zh' ? '已完成' : 'Completed',
+      style: { background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' },
+    };
+  }
+
+  return null;
+}
+
 export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps) {
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const total = isOnline ? order.total_amount : (order.walk_in_amount || order.total_amount);
+  const terminalStatus = getTerminalStatus(order.status, language);
 
   return (
     <button
@@ -71,6 +100,14 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                   ? getLabel('my_orders_page.online_order', language, 'Online Order')
                   : getLabel('my_orders_page.in_store_order', language, 'In-Store Order')}
               </span>
+              {terminalStatus && (
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"
+                  style={terminalStatus.style}
+                >
+                  {terminalStatus.label}
+                </span>
+              )}
               {(order.status !== 'cancelled' && order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border"

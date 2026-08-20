@@ -131,6 +131,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [selectedPickupDay, setSelectedPickupDay] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
+  const [stateOwnerId, setStateOwnerId] = useState<string | null | undefined>(undefined);
   const activeUserId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -143,6 +144,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(stored.items);
     setSelectedPickupDay(stored.pickupDay);
     activeUserId.current = currentUserId;
+    setStateOwnerId(currentUserId);
     setStorageReady(true);
   }, [authLoading, storageReady, user?.id]);
 
@@ -169,6 +171,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       writeStoredCart(nextUserId, mergedItems, mergedPickupDay);
       setItems(mergedItems);
       setSelectedPickupDay(mergedPickupDay);
+      setStateOwnerId(nextUserId);
       return;
     }
 
@@ -179,6 +182,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       activeUserId.current = null;
       setItems([]);
       setSelectedPickupDay(null);
+      setStateOwnerId(null);
       setIsCartOpen(false);
       return;
     }
@@ -188,28 +192,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     activeUserId.current = nextUserId;
     setItems(savedNextUserCart.items);
     setSelectedPickupDay(savedNextUserCart.pickupDay);
+    setStateOwnerId(nextUserId);
     setIsCartOpen(false);
   }, [authLoading, storageReady, user?.id]);
 
   useEffect(() => {
-    if (!storageReady || activeUserId.current === undefined) return;
+    if (!storageReady || stateOwnerId === undefined) return;
+
+    const currentUserId = user?.id ?? null;
+    if (stateOwnerId !== currentUserId) return;
 
     localStorage.setItem(
-      getCartStorageKey(activeUserId.current),
+      getCartStorageKey(stateOwnerId),
       JSON.stringify(items)
     );
-  }, [items, storageReady]);
+  }, [items, stateOwnerId, storageReady, user?.id]);
 
   useEffect(() => {
-    if (!storageReady || activeUserId.current === undefined) return;
+    if (!storageReady || stateOwnerId === undefined) return;
 
-    const pickupDayStorageKey = getPickupDayStorageKey(activeUserId.current);
+    const currentUserId = user?.id ?? null;
+    if (stateOwnerId !== currentUserId) return;
+
+    const pickupDayStorageKey = getPickupDayStorageKey(stateOwnerId);
     if (selectedPickupDay) {
       localStorage.setItem(pickupDayStorageKey, selectedPickupDay);
     } else {
       localStorage.removeItem(pickupDayStorageKey);
     }
-  }, [selectedPickupDay, storageReady]);
+  }, [selectedPickupDay, stateOwnerId, storageReady, user?.id]);
 
   const addToCart = (product: Product, quantity: number) => {
     setItems((currentItems) => {
@@ -252,13 +263,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const currentUserId = user?.id ?? null;
+  const cartIdentityReady = storageReady && stateOwnerId === currentUserId;
+  const visibleItems = cartIdentityReady ? items : [];
+  const visiblePickupDay = cartIdentityReady ? selectedPickupDay : null;
+  const totalItems = visibleItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = visibleItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   return (
     <CartContext.Provider
       value={{
-        items,
+        items: visibleItems,
         addToCart,
         removeFromCart,
         updateQuantity,
@@ -267,7 +282,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         totalPrice,
         isCartOpen,
         setIsCartOpen,
-        selectedPickupDay,
+        selectedPickupDay: visiblePickupDay,
         setSelectedPickupDay,
         selectedCategory,
         setSelectedCategory,
