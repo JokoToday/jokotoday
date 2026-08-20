@@ -1,9 +1,5 @@
--- SEC-005B: durable order notification outbox.
---
--- Additive only. New online orders get durable notification events in the
--- same transaction as the order. Historical orders are intentionally not
--- backfilled because prior delivery state is unknowable and a backfill could
--- resend old confirmations.
+-- SEC-005B: durable, owner-authorized order notification outbox.
+-- Additive migration. No historical notification events are backfilled.
 
 create table if not exists public.order_notification_events (
   id uuid primary key default gen_random_uuid(),
@@ -18,14 +14,15 @@ create table if not exists public.order_notification_events (
   sent_at timestamptz,
   provider_message_id text,
   last_error text,
-  constraint order_notification_events_order_type_key unique (order_id, notification_type)
+  unique (order_id, notification_type)
 );
 
 create index if not exists order_notification_events_status_created_idx
   on public.order_notification_events (status, created_at);
 
 alter table public.order_notification_events enable row level security;
-revoke all on table public.order_notification_events from anon, authenticated;
+revoke all on table public.order_notification_events from public, anon, authenticated;
+grant select, insert, update on table public.order_notification_events to service_role;
 
 create or replace function public.claim_order_notification(
   p_order_id uuid,
@@ -33,30 +30,21 @@ create or replace function public.claim_order_notification(
 )
 returns jsonb
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $function$
 declare
-  v_user_id uuid := auth.uid();
   v_event public.order_notification_events%rowtype;
-  v_order public.orders%rowtype;
 begin
-  if v_user_id is null then
-    return jsonb_build_object('outcome', 'unauthorized');
-  end if;
-
-  if p_notification_type not in ('customer_confirmation', 'admin_new_order') then
+  if p_order_id is null or p_notification_type not in ('customer_confirmation', 'admin_new_order') then
     return jsonb_build_object('outcome', 'invalid');
   end if;
 
-  select * into v_order
-  from public.orders
-  where id = p_order_id
-    and customer_id = v_user_id
-    and coalesce(purchase_type, 'online') = 'online';
-
-  if not found then
-    return jsonb_build_object('outcome', 'unauthorized');
+  if not exists (
+    select 1 from public.orders o
+    where o.id = p_order_id and coalesce(o.purchase_type, 'online') = 'online'
+  ) then
+    return jsonb_build_object('outcome', 'unavailable');
   end if;
 
   select * into v_event
@@ -70,36 +58,18 @@ begin
   end if;
 
   if v_event.status = 'sent' then
-    return jsonb_build_object(
-      'outcome', 'already_sent',
-      'event_id', v_event.id,
-      'attempt_count', v_event.attempt_count,
-      'language', v_event.language
-    );
+    return jsonb_build_object('outcome', 'already_sent', 'event_id', v_event.id, 'attempt_count', v_event.attempt_count, 'language', v_event.language);
   end if;
 
   if v_event.status = 'uncertain' then
-    return jsonb_build_object(
-      'outcome', 'uncertain',
-      'event_id', v_event.id,
-      'attempt_count', v_event.attempt_count,
-      'language', v_event.language
-    );
+    return jsonb_build_object('outcome', 'uncertain', 'event_id', v_event.id, 'attempt_count', v_event.attempt_count, 'language', v_event.language);
   end if;
 
   if v_event.status = 'processing' then
     if v_event.claimed_at is not null and v_event.claimed_at > now() - interval '5 minutes' then
-      return jsonb_build_object(
-        'outcome', 'processing',
-        'event_id', v_event.id,
-        'attempt_count', v_event.attempt_count,
-        'language', v_event.language
-      );
+      return jsonb_build_object('outcome', 'processing', 'event_id', v_event.id, 'attempt_count', v_event.attempt_count, 'language', v_event.language);
     end if;
 
-    -- Resend retains idempotency keys for 24h. A stale processing claim may be
-    -- retried inside a conservative 23h window; after that we stop automatic
-    -- retries rather than risk sending a duplicate after provider expiry.
     if v_event.claimed_at is null or v_event.claimed_at <= now() - interval '23 hours' then
       update public.order_notification_events
       set status = 'uncertain',
@@ -108,35 +78,25 @@ begin
       where id = v_event.id
       returning * into v_event;
 
-      return jsonb_build_object(
-        'outcome', 'uncertain',
-        'event_id', v_event.id,
-        'attempt_count', v_event.attempt_count,
-        'language', v_event.language
-      );
+      return jsonb_build_object('outcome', 'uncertain', 'event_id', v_event.id, 'attempt_count', v_event.attempt_count, 'language', v_event.language);
     end if;
   end if;
 
   update public.order_notification_events
   set status = 'processing',
-      attempt_count = attempt_count + 1,
       claimed_at = now(),
+      attempt_count = attempt_count + 1,
       updated_at = now(),
       last_error = null
   where id = v_event.id
   returning * into v_event;
 
-  return jsonb_build_object(
-    'outcome', 'claimed',
-    'event_id', v_event.id,
-    'attempt_count', v_event.attempt_count,
-    'language', v_event.language
-  );
+  return jsonb_build_object('outcome', 'claimed', 'event_id', v_event.id, 'attempt_count', v_event.attempt_count, 'language', v_event.language);
 end;
 $function$;
 
-revoke all on function public.claim_order_notification(uuid, text) from public, anon;
-grant execute on function public.claim_order_notification(uuid, text) to authenticated;
+revoke all on function public.claim_order_notification(uuid, text) from public, anon, authenticated;
+grant execute on function public.claim_order_notification(uuid, text) to service_role;
 
 create or replace function public.finish_order_notification(
   p_event_id uuid,
@@ -146,33 +106,25 @@ create or replace function public.finish_order_notification(
 )
 returns boolean
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $function$
 declare
-  v_user_id uuid := auth.uid();
   v_event public.order_notification_events%rowtype;
 begin
-  if v_user_id is null then return false; end if;
-  if p_outcome not in ('sent', 'failed', 'uncertain') then return false; end if;
+  if p_event_id is null or p_outcome not in ('sent', 'failed', 'uncertain') then return false; end if;
 
   select e.* into v_event
   from public.order_notification_events e
-  join public.orders o on o.id = e.order_id
   where e.id = p_event_id
-    and o.customer_id = v_user_id
-    and coalesce(o.purchase_type, 'online') = 'online'
-  for update of e;
+  for update;
 
   if not found or v_event.status <> 'processing' then return false; end if;
 
   update public.order_notification_events
   set status = p_outcome,
       sent_at = case when p_outcome = 'sent' then now() else sent_at end,
-      provider_message_id = case
-        when p_provider_message_id is null then provider_message_id
-        else left(p_provider_message_id, 500)
-      end,
+      provider_message_id = case when p_provider_message_id is null then provider_message_id else left(p_provider_message_id, 500) end,
       last_error = case when p_error is null then null else left(p_error, 1000) end,
       updated_at = now()
   where id = v_event.id;
@@ -181,9 +133,11 @@ begin
 end;
 $function$;
 
-revoke all on function public.finish_order_notification(uuid, text, text, text) from public, anon;
-grant execute on function public.finish_order_notification(uuid, text, text, text) to authenticated;
+revoke all on function public.finish_order_notification(uuid, text, text, text) from public, anon, authenticated;
+grant execute on function public.finish_order_notification(uuid, text, text, text) to service_role;
 
+-- Replace the already-hardened checkout RPC only to atomically enqueue the two
+-- notification events alongside a newly-created online order.
 create or replace function public.create_online_order(
   p_order_number text,
   p_pickup_day_key text,
@@ -225,22 +179,39 @@ begin
   if v_user_id is null then
     raise exception 'Authentication required' using errcode = '28000';
   end if;
-  if p_order_number is null or p_order_number !~ '^ORD-[0-9]{10,20}-[A-Z0-9]{4,12}$' then raise exception 'Invalid order reference'; end if;
-  if p_pickup_day_key is null or btrim(p_pickup_day_key) = '' then raise exception 'Pickup day is required'; end if;
-  if p_notes is not null and length(p_notes) > 2000 then raise exception 'Order notes are too long'; end if;
-  if p_items is null or jsonb_typeof(p_items) <> 'array' then raise exception 'Order items must be an array'; end if;
+  if p_order_number is null or p_order_number !~ '^ORD-[0-9]{10,20}-[A-Z0-9]{4,12}$' then
+    raise exception 'Invalid order reference';
+  end if;
+  if p_pickup_day_key is null or btrim(p_pickup_day_key) = '' then
+    raise exception 'Pickup day is required';
+  end if;
+  if p_notes is not null and length(p_notes) > 2000 then
+    raise exception 'Order notes are too long';
+  end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' then
+    raise exception 'Order items must be an array';
+  end if;
   v_item_count := jsonb_array_length(p_items);
-  if v_item_count < 1 or v_item_count > 50 then raise exception 'Order must contain between 1 and 50 items'; end if;
+  if v_item_count < 1 or v_item_count > 50 then
+    raise exception 'Order must contain between 1 and 50 items';
+  end if;
 
   select count(distinct item.product_id),
          count(*) filter (where item.product_id is null or item.quantity is null or item.quantity < 1 or item.quantity > 99)
   into v_distinct_item_count, v_invalid_item_count
   from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer);
 
-  if v_invalid_item_count > 0 then raise exception 'Each order item requires a valid product and quantity from 1 to 99'; end if;
-  if v_distinct_item_count <> v_item_count then raise exception 'Duplicate products are not allowed in one order request'; end if;
+  if v_invalid_item_count > 0 then
+    raise exception 'Each order item requires a valid product and quantity from 1 to 99';
+  end if;
+  if v_distinct_item_count <> v_item_count then
+    raise exception 'Duplicate products are not allowed in one order request';
+  end if;
 
-  select * into v_customer from public.customers where id = v_user_id for update;
+  select * into v_customer
+  from public.customers
+  where id = v_user_id
+  for update;
   if not found then raise exception 'Completed customer profile required'; end if;
   if coalesce(v_customer.status, 'active') <> 'active' then raise exception 'Customer account is not active'; end if;
 
@@ -252,15 +223,21 @@ begin
 
   select * into v_existing from public.orders where order_number = p_order_number;
   if found then
-    if v_existing.customer_id is distinct from v_user_id or coalesce(v_existing.purchase_type, 'online') <> 'online' then raise exception 'Order reference conflict'; end if;
+    if v_existing.customer_id is distinct from v_user_id or coalesce(v_existing.purchase_type, 'online') <> 'online' then
+      raise exception 'Order reference conflict';
+    end if;
     return to_jsonb(v_existing);
   end if;
 
-  select * into v_pickup from public.cms_pickup_days where day_key = p_pickup_day_key and coalesce(is_open, false) = true;
+  select * into v_pickup
+  from public.cms_pickup_days
+  where day_key = p_pickup_day_key and coalesce(is_open, false) = true;
   if not found then raise exception 'Selected pickup day is not available'; end if;
   if v_pickup.location_id is null then raise exception 'Selected pickup day has no pickup location'; end if;
 
-  select * into v_cutoff from public.pickup_cutoff_rules where day_key = v_pickup.day_key and coalesce(is_active, false) = true;
+  select * into v_cutoff
+  from public.pickup_cutoff_rules
+  where day_key = v_pickup.day_key and coalesce(is_active, false) = true;
   if not found then raise exception 'No active cutoff rule exists for the selected pickup day'; end if;
 
   v_today_bangkok := v_now_bangkok::date;
@@ -268,12 +245,21 @@ begin
 
   select * into v_override
   from public.pickup_overrides
-  where date = v_pickup_date and pickup_day = v_cutoff.pickup_day and location = v_cutoff.location and coalesce(is_active, false) = true
-  order by updated_at desc nulls last, created_at desc nulls last limit 1;
+  where date = v_pickup_date
+    and pickup_day = v_cutoff.pickup_day
+    and location = v_cutoff.location
+    and coalesce(is_active, false) = true
+  order by updated_at desc nulls last, created_at desc nulls last
+  limit 1;
 
-  if found and v_override.override_type in ('closed', 'sold_out') then raise exception 'Selected pickup day is unavailable'; end if;
+  if found and v_override.override_type in ('closed', 'sold_out') then
+    raise exception 'Selected pickup day is unavailable';
+  end if;
+
   if found and v_override.override_type = 'custom_cutoff' then
-    if v_override.custom_cutoff_day is null or v_override.custom_cutoff_time is null then raise exception 'Invalid custom cutoff configuration'; end if;
+    if v_override.custom_cutoff_day is null or v_override.custom_cutoff_time is null then
+      raise exception 'Invalid custom cutoff configuration';
+    end if;
     v_cutoff_day := v_override.custom_cutoff_day;
     v_cutoff_time := v_override.custom_cutoff_time;
   else
@@ -289,15 +275,21 @@ begin
   begin
     v_cutoff_date := v_pickup_date - ((v_pickup.pickup_weekday - v_cutoff_weekday + 7) % 7);
     v_cutoff_at := v_cutoff_date::timestamp + v_cutoff_time::time;
-  exception when invalid_datetime_format then raise exception 'Invalid cutoff time configuration'; end;
+  exception when invalid_datetime_format then
+    raise exception 'Invalid cutoff time configuration';
+  end;
   if v_now_bangkok >= v_cutoff_at then raise exception 'Ordering cutoff has passed for the selected pickup day'; end if;
 
   for v_item in
-    select item.product_id, item.quantity from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer) order by item.product_id
+    select item.product_id, item.quantity
+    from jsonb_to_recordset(p_items) as item(product_id uuid, quantity integer)
+    order by item.product_id
   loop
     select * into v_product from public.cms_products where id = v_item.product_id for update;
     if not found then raise exception 'A selected product no longer exists'; end if;
-    if coalesce(v_product.is_active, false) = false or coalesce(v_product.is_sold_out, false) = true then raise exception 'Product % is not available', v_product.name_en; end if;
+    if coalesce(v_product.is_active, false) = false or coalesce(v_product.is_sold_out, false) = true then
+      raise exception 'Product % is not available', v_product.name_en;
+    end if;
 
     v_available_days := coalesce(v_product.available_days, '[]'::jsonb);
     if jsonb_typeof(v_available_days) <> 'array' then raise exception 'Invalid availability configuration for product %', v_product.name_en; end if;
@@ -307,7 +299,9 @@ begin
       or (v_pickup.label_en is not null and v_available_days ? v_pickup.label_en)
       or v_available_days ? (v_cutoff.pickup_day || ' – ' || v_cutoff.location)
       or v_available_days ? (v_cutoff.pickup_day || ' - ' || v_cutoff.location)
-    ) then raise exception 'Product % is not offered for the selected pickup day', v_product.name_en; end if;
+    ) then
+      raise exception 'Product % is not offered for the selected pickup day', v_product.name_en;
+    end if;
 
     v_stock := coalesce(
       nullif(v_product.stock_by_day ->> v_pickup.day_key, '')::integer,
