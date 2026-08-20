@@ -44,6 +44,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [showCelebrationOnProfile, setShowCelebrationOnProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderAttemptReference, setOrderAttemptReference] = useState('');
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
@@ -145,7 +146,12 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
         throw new Error('Selected pickup day could not be scheduled');
       }
 
-      const orderReference = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      const orderReference = orderAttemptReference
+        || `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      if (!orderAttemptReference) {
+        setOrderAttemptReference(orderReference);
+      }
+
       const rpcItems = items.map((item) => ({
         product_id: item.product.id,
         quantity: item.quantity,
@@ -199,6 +205,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
         }
       }
 
+      setOrderAttemptReference('');
       setOrderComplete(true);
       clearCart();
 
