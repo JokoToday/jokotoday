@@ -60,6 +60,11 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
 
   const userName = userProfile?.name || user.email?.split('@')[0] || 'User';
   const initials = getInitials(userName);
+  const roleLabel = userRole === 'admin'
+    ? (language === 'th' ? 'ผู้ดูแลระบบ' : language === 'zh' ? '管理员' : 'Administrator')
+    : userRole === 'staff'
+      ? (language === 'th' ? 'พนักงาน' : language === 'zh' ? '员工' : 'Staff')
+      : null;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -79,6 +84,18 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="font-semibold text-gray-900">{userName}</p>
             <p className="text-xs text-gray-500 truncate">{user.email}</p>
+
+            {roleLabel && (
+              <span
+                className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${
+                  userRole === 'admin'
+                    ? 'border-purple-200 bg-purple-50 text-purple-700'
+                    : 'border-blue-200 bg-blue-50 text-blue-700'
+                }`}
+              >
+                {roleLabel}
+              </span>
+            )}
 
             {loyaltyPoints !== null && (
               <div
