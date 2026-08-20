@@ -1,0 +1,29 @@
+project_id = "jokotoday"
+
+# Edge Function JWT verification modes mirrored from production on 2026-08-20.
+# SEC-005 changes only the two order-notification functions from public to JWT-required.
+# The remaining public-function modes are preserved here pending the separate full Edge Function audit.
+
+[functions.customer-lookup]
+verify_jwt = true
+
+[functions.line-callback]
+verify_jwt = false
+
+[functions.qr-login]
+verify_jwt = false
+
+[functions.regenerate-qr]
+verify_jwt = true
+
+[functions.request-vip-magic-link]
+verify_jwt = true
+
+[functions.send-auth-email]
+verify_jwt = false
+
+[functions.send-order-confirmation]
+verify_jwt = true
+
+[functions.send-admin-order-notification]
+verify_jwt = true
