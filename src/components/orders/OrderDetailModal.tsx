@@ -260,7 +260,7 @@ export function OrderDetailModal({
             </span>
           </div>
 
-          {(order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
+          {(order.status !== 'cancelled' && order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
             <div
               className="mt-3 flex items-center gap-2.5 px-4 py-3 rounded-xl"
               style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}
