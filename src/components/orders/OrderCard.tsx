@@ -71,7 +71,7 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                   ? getLabel('my_orders_page.online_order', language, 'Online Order')
                   : getLabel('my_orders_page.in_store_order', language, 'In-Store Order')}
               </span>
-              {(order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
+              {(order.status !== 'cancelled' && order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
                 <span
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border"
                   style={{ background: '#fffbeb', color: '#92400e', borderColor: '#fde68a' }}
