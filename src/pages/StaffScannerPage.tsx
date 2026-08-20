@@ -69,11 +69,12 @@ export function StaffScannerPage() {
         .select('*')
         .eq('customer_id', customerData.id)
         .eq('pickup_date', today)
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
 
-      setOrders(ordersData || []);
+      setOrders((ordersData || []).filter((order) => order.status !== 'cancelled'));
     } catch (err) {
       console.error('Error loading customer:', err);
       setError(err instanceof Error ? err.message : 'Failed to load customer data');
@@ -334,7 +335,7 @@ export function StaffScannerPage() {
                           </div>
 
                           <div className="flex gap-2 mt-4">
-                            {order.payment_status !== 'paid' && (
+                            {order.status !== 'cancelled' && order.payment_status !== 'paid' && (
                               <button
                                 onClick={() => handleMarkAsPaid(order.id)}
                                 disabled={updatingOrder === order.id}
@@ -348,7 +349,7 @@ export function StaffScannerPage() {
                                 {language === 'en' ? 'Mark as Paid' : 'บันทึกการชำระ'}
                               </button>
                             )}
-                            {order.status !== 'picked_up' && (
+                            {order.status !== 'cancelled' && order.status !== 'picked_up' && (
                               <button
                                 onClick={() => handleMarkAsPickedUp(order.id)}
                                 disabled={updatingOrder === order.id}
