@@ -1,3 +1,5 @@
+project_id = "jokotoday"
+
 # Edge Function JWT verification modes mirrored from production on 2026-08-20.
 # SEC-005 changes only the two order-notification functions from public to JWT-required.
 # The remaining public-function modes are preserved here pending the separate full Edge Function audit.
