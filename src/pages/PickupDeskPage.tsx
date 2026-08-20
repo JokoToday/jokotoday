@@ -130,7 +130,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     if (ordersError) throw ordersError;
 
     const scheduledOrders = (ordersData || []) as Order[];
-    setOrders(scheduledOrders.filter((order) => order.pickup_date === today));
+    setOrders(scheduledOrders.filter((order) => order.pickup_date === today && order.status !== 'cancelled'));
     setUpcomingOrders(scheduledOrders.filter((order) => (
       Boolean(order.pickup_date && order.pickup_date > today)
       && !['cancelled', 'picked_up', 'completed'].includes(order.status)

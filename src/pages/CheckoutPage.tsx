@@ -231,11 +231,26 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const handleCancelOrder = async () => {
     setIsCancelling(true);
     try {
-      await supabase.from('orders').delete().eq('id', orderId);
+      const { data, error } = await supabase.rpc('cancel_online_order', {
+        p_order_id: orderId,
+      });
+
+      if (error) {
+        console.error('Cancel order RPC error:', error);
+        alert(error.message || 'Failed to cancel order. Please try again.');
+        return;
+      }
+
+      const cancelledOrder = data as { id?: string; status?: string } | null;
+      if (!cancelledOrder?.id || cancelledOrder.status !== 'cancelled') {
+        throw new Error('Cancellation returned an invalid order result');
+      }
+
       setCancelled(true);
       setShowCancelModal(false);
     } catch (err) {
       console.error('Cancel order error:', err);
+      alert(err instanceof Error ? err.message : 'Failed to cancel order. Please try again.');
     } finally {
       setIsCancelling(false);
     }
