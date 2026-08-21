@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Award,
@@ -97,6 +97,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const deepLinkHandledRef = useRef(false);
 
   const resetCustomer = () => {
     setCustomer(null);
@@ -192,6 +193,14 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!hasStaffAccess || deepLinkHandledRef.current) return;
+    const memberCode = new URLSearchParams(window.location.search).get('member');
+    if (!memberCode) return;
+    deepLinkHandledRef.current = true;
+    void findCustomer(memberCode, 'manual');
+  }, [hasStaffAccess]);
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);

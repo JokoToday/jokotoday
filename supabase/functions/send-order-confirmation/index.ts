@@ -117,6 +117,7 @@ type EmailCopy = {
   pointsSuffix: string;
   cancelNote: string;
   cancelButton: string;
+  summaryHeading: string;
   footer: string;
 };
 
@@ -144,6 +145,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     pointsSuffix: "pts",
     cancelNote: "Need to cancel? You can cancel your order up to 24 hours before your pickup day.",
     cancelButton: "Cancel Order",
+    summaryHeading: "English summary",
     footer: "Thank you for choosing JOKO TODAY",
   },
   th: {
@@ -169,6 +171,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     pointsSuffix: "แต้ม",
     cancelNote: "ต้องการยกเลิก? คุณสามารถยกเลิกคำสั่งซื้อได้ก่อน 24 ชั่วโมงก่อนวันรับสินค้า",
     cancelButton: "ยกเลิกคำสั่งซื้อ",
+    summaryHeading: "สรุปภาษาไทย",
     footer: "ขอบคุณที่ใช้บริการ JOKO TODAY",
   },
   zh: {
@@ -194,6 +197,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     pointsSuffix: "积分",
     cancelNote: "需要取消？您可以在取货日期前 24 小时内取消订单。",
     cancelButton: "取消订单",
+    summaryHeading: "中文摘要",
     footer: "感谢您选择 JOKO TODAY",
   },
 };
@@ -236,6 +240,35 @@ function buildLoyaltyBlock(points: number, copy: EmailCopy): string {
     </table>`;
 }
 
+
+function buildCompactLanguageSummary(
+  order: Order,
+  location: PickupLocation | null,
+  pickupDay: PickupDay | null,
+  lang: Language,
+): string {
+  const copy = EMAIL_COPY[lang];
+  const pickupLabel = getPickupDayLabel(pickupDay, order.pickup_day, lang);
+  const locationName = getLocationName(location, lang);
+
+  return `
+        <tr>
+          <td style="padding:0 40px 24px;">
+            <div style="border-top:1px solid #e5e7eb;padding-top:20px;">
+              <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:12px;">${escapeHtml(copy.summaryHeading)}</div>
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="font-size:13px;color:#4b5563;">
+                <tr><td style="padding:4px 0;font-weight:600;">${escapeHtml(copy.orderNumber)}</td><td style="padding:4px 0;text-align:right;font-family:monospace;">#${escapeHtml(order.order_number)}</td></tr>
+                <tr><td style="padding:4px 0;font-weight:600;">${escapeHtml(copy.pickupDay)}</td><td style="padding:4px 0;text-align:right;">${escapeHtml(pickupLabel)}</td></tr>
+                <tr><td style="padding:4px 0;font-weight:600;">${escapeHtml(copy.pickupLocation)}</td><td style="padding:4px 0;text-align:right;">${escapeHtml(locationName)}</td></tr>
+                <tr><td style="padding:4px 0;font-weight:600;">${escapeHtml(copy.grandTotal)}</td><td style="padding:4px 0;text-align:right;font-weight:800;color:#92400e;">฿${Number(order.total_amount).toFixed(2)}</td></tr>
+              </table>
+              <p style="font-size:12px;line-height:${lang === "en" ? "1.6" : "1.8"};color:#6b7280;margin:12px 0 4px;">${escapeHtml(copy.payment)}</p>
+              <p style="font-size:12px;line-height:${lang === "en" ? "1.6" : "1.8"};color:#9ca3af;margin:4px 0 0;">${escapeHtml(copy.cancelNote)}</p>
+            </div>
+          </td>
+        </tr>`;
+}
+
 function buildEmail(
   order: Order,
   items: OrderItem[],
@@ -251,6 +284,10 @@ function buildEmail(
   const itemRows = buildItemsTableRows(items, lang);
   const loyaltyBlock = buildLoyaltyBlock(Number(order.loyalty_points_earned ?? 0), copy);
   const customerName = escapeHtml(order.customer_name);
+  const languageSummaries = (["en", "th", "zh"] as Language[])
+    .filter((summaryLanguage) => summaryLanguage !== lang)
+    .map((summaryLanguage) => buildCompactLanguageSummary(order, location, pickupDay, summaryLanguage))
+    .join("");
 
   const html = `<!DOCTYPE html>
 <html lang="${copy.langAttr}">
@@ -349,6 +386,8 @@ function buildEmail(
             </div>
           </td>
         </tr>
+
+        ${languageSummaries}
 
         <tr>
           <td style="background:#faf7f2;padding:24px 40px;text-align:center;border-top:1px solid #fde68a;">
@@ -472,7 +511,7 @@ Deno.serve(async (req: Request) => {
   const resend = new Resend(resendKey);
   try {
     const { data, error } = await resend.emails.send({
-      from: "JOKO TODAY <orders@jokotoday.com>",
+      from: "JOKO TODAY <orders@joko.today>",
       to: order.customer_email,
       subject: email.subject,
       html: email.html,
