@@ -472,7 +472,7 @@ Deno.serve(async (req: Request) => {
   const resend = new Resend(resendKey);
   try {
     const { data, error } = await resend.emails.send({
-      from: "JOKO TODAY <orders@jokotoday.com>",
+      from: "JOKO TODAY <orders@joko.today>",
       to: order.customer_email,
       subject: email.subject,
       html: email.html,

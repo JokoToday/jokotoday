@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
   if (!resendKey) { console.error("SEC-005: RESEND_API_KEY is not configured"); if (eventId) await finishNotification(supabase, eventId, "failed", null, "Email provider not configured"); return jsonResponse(req, 500, { error: "Notification service unavailable" }); }
   const resend = new Resend(resendKey);
   try {
-    const { data, error } = await resend.emails.send({ from: "JOKO TODAY <orders@jokotoday.com>", to: "jokotoday@gmail.com", subject: email.subject, html: email.html }, { idempotencyKey: notificationIdempotencyKey(TYPE, order.id) });
+    const { data, error } = await resend.emails.send({ from: "JOKO TODAY <orders@joko.today>", to: "jokotoday@gmail.com", subject: email.subject, html: email.html }, { idempotencyKey: notificationIdempotencyKey(TYPE, order.id) });
     if (error) { const summary = providerErrorSummary(error); console.error("SEC-005: admin notification provider rejected request", summary); if (eventId) await finishNotification(supabase, eventId, "failed", null, summary); return jsonResponse(req, 502, { error: "Email provider rejected notification" }); }
     if (eventId) { const persisted = await finishNotification(supabase, eventId, "sent", data?.id ?? null, null); if (!persisted) return jsonResponse(req, 503, { error: "Notification delivery state unavailable" }); }
     return jsonResponse(req, 200, { success: true, status: "sent" });
