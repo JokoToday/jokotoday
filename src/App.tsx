@@ -15,6 +15,7 @@ import { LineCallback } from './components/LineCallback';
 import { CustomerAccountPage } from './pages/CustomerAccountPage';
 import { StaffScannerPage } from './pages/StaffScannerPage';
 import { StaffLoginPage } from './pages/StaffLoginPage';
+import { StaffCustomerLookupPage } from './pages/StaffCustomerLookupPage';
 import { PickupDeskPage } from './pages/PickupDeskPage';
 import { WalkInDeskPage } from './pages/WalkInDeskPage';
 import { MyQRPage } from './pages/MyQRPage';
@@ -38,6 +39,7 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
   staff: '/staff',
+  'staff-customer': '/staff/customer',
   pickup: '/pickup',
   'walk-in': '/walk-in',
 };
@@ -207,6 +209,8 @@ function AppContent() {
         return <AdminPage onNavigate={handleNavigate} />;
       case 'staff':
         return <StaffLoginPage onNavigate={handleNavigate} />;
+      case 'staff-customer':
+        return <StaffCustomerLookupPage onNavigate={handleNavigate} />;
       case 'staff-scanner':
         return <StaffScannerPage />;
       case 'pickup':
@@ -231,6 +235,7 @@ function AppContent() {
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'staff' ||
+    currentPage === 'staff-customer' ||
     currentPage === 'staff-scanner' ||
     currentPage === 'pickup' ||
     currentPage === 'walk-in' ||
