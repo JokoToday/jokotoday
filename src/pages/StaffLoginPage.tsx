@@ -67,6 +67,14 @@ const copy = {
   },
 } as const;
 
+function getSafeReturnPath(): string | null {
+  const returnPath = new URLSearchParams(window.location.search).get('return');
+  if (!returnPath) return null;
+  return /^\/(?:pickup|walk-in)(?:\?member=VIP\d+)?$/i.test(returnPath)
+    ? returnPath
+    : null;
+}
+
 export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   const { language, setLanguage } = useLanguage();
   const staffLanguage = language === 'th' ? 'th' : 'en';
@@ -86,6 +94,13 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   useEffect(() => {
     if (user?.email && !email) setEmail(user.email);
   }, [user, email]);
+
+  useEffect(() => {
+    if (!hasStaffAccess) return;
+    const returnPath = getSafeReturnPath();
+    if (!returnPath) return;
+    window.location.replace(returnPath);
+  }, [hasStaffAccess]);
 
   const languageSwitch = (
     <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">

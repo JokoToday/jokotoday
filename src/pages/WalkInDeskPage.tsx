@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Award,
@@ -65,6 +65,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
   const purchaseReferenceRef = useRef<string | null>(null);
 
@@ -153,6 +154,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!hasStaffAccess || deepLinkHandledRef.current) return;
+    const memberCode = new URLSearchParams(window.location.search).get('member');
+    if (!memberCode) return;
+    deepLinkHandledRef.current = true;
+    void findCustomer(memberCode, 'manual');
+  }, [hasStaffAccess]);
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
