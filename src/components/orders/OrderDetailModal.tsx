@@ -2,6 +2,7 @@ import React from 'react';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
 import { CMSProduct } from '../../lib/cmsService';
+import { isPickupDatePast } from '../../lib/availabilityService';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -13,6 +14,17 @@ interface OrderDetailModalProps {
   onClose: () => void;
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
+}
+
+function formatPickupDate(dateString: string, language: 'en' | 'th' | 'zh'): string {
+  if (!dateString) return '—';
+  const [year, month, day] = dateString.split('-').map(Number);
+  if (!year || !month || !day) return dateString;
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  return date.toLocaleDateString(
+    language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB',
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' },
+  );
 }
 
 export function OrderDetailModal({
@@ -81,8 +93,9 @@ export function OrderDetailModal({
   const subtotal = items.reduce((sum, i) => sum + i.price_at_order * i.quantity, 0);
   const total = Number(isOnline ? order.total_amount : (order.walk_in_amount || order.total_amount));
   const discount = subtotal > total ? subtotal - total : 0;
-
-  const isCancellable = (order.status === 'pending' || order.status === 'confirmed') && isOnline;
+  const pastPickup = isOnline && isPickupDatePast(order.pickup_date);
+  const unresolvedPastPickup = pastPickup && ['pending', 'confirmed', 'ready'].includes(order.status);
+  const isCancellable = (order.status === 'pending' || order.status === 'confirmed') && isOnline && !pastPickup;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -112,6 +125,11 @@ export function OrderDetailModal({
                   ? getLabel('my_orders_page.online_order', language, 'Online Order')
                   : getLabel('my_orders_page.in_store_order', language, 'In-Store Order')}
               </span>
+              {unresolvedPastPickup && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-amber-50 text-amber-800 border-amber-200">
+                  {language === 'th' ? 'เลยวันรับสินค้า' : language === 'zh' ? '取货日期已过' : 'Pickup date passed'}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -128,9 +146,16 @@ export function OrderDetailModal({
               {
                 label: language === 'zh' ? '取货日' : language === 'th' ? 'วันรับสินค้า' : 'Pickup Day',
                 value: (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 shrink-0" style={{ color: '#c6a75e' }} />
-                    {getPickupDayLabel(order.pickup_day) || '—'}
+                  <span className="flex items-start gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: '#c6a75e' }} />
+                    <span>
+                      {getPickupDayLabel(order.pickup_day) || '—'}
+                      {order.pickup_date && (
+                        <span className="block text-xs mt-0.5" style={{ color: unresolvedPastPickup ? '#b45309' : '#9a7b2f' }}>
+                          {formatPickupDate(order.pickup_date, language)}
+                        </span>
+                      )}
+                    </span>
                   </span>
                 ),
               },
@@ -182,18 +207,10 @@ export function OrderDetailModal({
                 const lineTotal = item.price_at_order * item.quantity;
 
                 return (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 transition-colors"
-                  >
+                  <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 transition-colors">
                     <div className="w-14 h-14 rounded-xl overflow-hidden bg-amber-50 shrink-0 border border-amber-100">
                       {img ? (
-                        <img
-                          src={img}
-                          alt={displayName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
+                        <img src={img} alt={displayName} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <ShoppingBag className="w-5 h-5 text-amber-300" />
@@ -252,12 +269,8 @@ export function OrderDetailModal({
             className="flex items-center justify-between py-3 px-4 rounded-xl"
             style={{ background: 'linear-gradient(135deg, #f6f1e7 0%, #fdf8f0 100%)', border: '1px solid #e8d9b8' }}
           >
-            <span className="text-sm font-semibold text-stone-700">
-              {getLabel('my_orders_page.total', language, 'Total')}
-            </span>
-            <span className="text-2xl font-extrabold" style={{ color: '#c6a75e' }}>
-              ฿{total.toFixed(2)}
-            </span>
+            <span className="text-sm font-semibold text-stone-700">{getLabel('my_orders_page.total', language, 'Total')}</span>
+            <span className="text-2xl font-extrabold" style={{ color: '#c6a75e' }}>฿{total.toFixed(2)}</span>
           </div>
 
           {(order.status !== 'cancelled' && order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (
@@ -265,20 +278,13 @@ export function OrderDetailModal({
               className="mt-3 flex items-center gap-2.5 px-4 py-3 rounded-xl"
               style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}
             >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                style={{ background: '#c6a75e', color: '#fff' }}
-              >
-                ★
-              </div>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-bold" style={{ background: '#c6a75e', color: '#fff' }}>★</div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-amber-700 font-semibold">
                   {getLabel('my_orders_page.loyalty_points_earned', language, 'Points Earned')}
                 </p>
               </div>
-              <span className="text-base font-extrabold" style={{ color: '#92400e' }}>
-                +{order.loyalty_points_earned}
-              </span>
+              <span className="text-base font-extrabold" style={{ color: '#92400e' }}>+{order.loyalty_points_earned}</span>
             </div>
           )}
 
