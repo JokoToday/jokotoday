@@ -85,12 +85,16 @@ const WEEKDAY_INDEX: Record<string, number> = {
   Saturday: 6,
 };
 
-export function getBangkokCalendarDate(): Date {
+function getBangkokWallClockNow(): Date {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Bangkok',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
   });
   const values: Record<string, string> = {};
   formatter.formatToParts(new Date()).forEach((part) => {
@@ -101,8 +105,16 @@ export function getBangkokCalendarDate(): Date {
     Number(values.year),
     Number(values.month) - 1,
     Number(values.day),
-    12,
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
   ));
+}
+
+export function getBangkokCalendarDate(): Date {
+  const date = getBangkokWallClockNow();
+  date.setUTCHours(12, 0, 0, 0);
+  return date;
 }
 
 export function getNextPickupDate(pickupDay: PickupDay): Date | null {
@@ -126,53 +138,33 @@ export function isPickupDatePast(dateString: string | null | undefined): boolean
   return pickup.getTime() < getBangkokCalendarDate().getTime();
 }
 
-function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
-  const cutoffDayOfWeek = WEEKDAY_INDEX[cutoffDay];
+function isCutoffPassedForPickup(pickupDay: PickupDay): boolean {
+  const cutoffDayOfWeek = WEEKDAY_INDEX[pickupDay.cutoff_day];
   if (cutoffDayOfWeek === undefined) {
-    console.warn(`[Cutoff] Unknown day: ${cutoffDay}`);
+    console.warn(`[Cutoff] Unknown day: ${pickupDay.cutoff_day}`);
     return true;
   }
 
-  const [hours, minutes] = cutoffTime.split(':').map(Number);
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
-    console.warn(`[Cutoff] Invalid time: ${cutoffTime}`);
+  const [hours, minutes] = pickupDay.cutoff_time.split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)
+      || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    console.warn(`[Cutoff] Invalid time: ${pickupDay.cutoff_time}`);
     return true;
   }
 
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  const pickupDate = getNextPickupDate(pickupDay);
+  if (!pickupDate) return true;
 
-  const partsMap: Record<string, string> = {};
-  formatter.formatToParts(new Date()).forEach((part) => {
-    partsMap[part.type] = part.value;
-  });
+  // Match PostgreSQL create_online_order(): the configured cutoff weekday is
+  // resolved backwards from the exact scheduled pickup occurrence. This remains
+  // correct even for unconventional schedules such as Monday pickup with a
+  // Tuesday cutoff in the previous week.
+  const daysBeforePickup = (pickupDay.pickup_weekday - cutoffDayOfWeek + 7) % 7;
+  const cutoffDate = new Date(pickupDate);
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysBeforePickup);
+  cutoffDate.setUTCHours(hours, minutes, 0, 0);
 
-  const nowInBangkok = new Date(
-    Number(partsMap.year),
-    Number(partsMap.month) - 1,
-    Number(partsMap.day),
-    Number(partsMap.hour),
-    Number(partsMap.minute),
-    Number(partsMap.second),
-  );
-
-  const currentDayOfWeek = nowInBangkok.getDay();
-  const cutoffDate = new Date(nowInBangkok);
-  const dayDelta = cutoffDayOfWeek <= currentDayOfWeek
-    ? -(currentDayOfWeek - cutoffDayOfWeek)
-    : cutoffDayOfWeek - currentDayOfWeek;
-
-  cutoffDate.setDate(cutoffDate.getDate() + dayDelta);
-  cutoffDate.setHours(hours, minutes, 0, 0);
-  return nowInBangkok >= cutoffDate;
+  return getBangkokWallClockNow().getTime() >= cutoffDate.getTime();
 }
 
 export function getOverrideForDate(
@@ -345,7 +337,7 @@ export function isDayOpenForOrdering(pickupDay: PickupDay): boolean {
   if (pickupDay.override?.override_type === 'closed' || pickupDay.override?.override_type === 'sold_out') {
     return false;
   }
-  return !isCutoffPassed(pickupDay.cutoff_day, pickupDay.cutoff_time);
+  return !isCutoffPassedForPickup(pickupDay);
 }
 
 export function getDayKey(labelOrKey: string): string {
