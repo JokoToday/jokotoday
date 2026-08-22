@@ -5,11 +5,9 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
-import LocationMap from '../components/LocationMap';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
-import { pickupLocations } from '../data/locations';
-import { getPickupDayLabel, getPickupDays, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
+import { getPickupDayLabel, getPickupDays, getNextPickupDate, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
 type CheckoutPageProps = {
   onNavigate: (page: string) => void;
@@ -36,53 +34,16 @@ type SecureOrderResult = {
   order_items: SecureOrderItem[] | null;
 };
 
-const PICKUP_WEEKDAY_BY_DAY_KEY: Record<string, number> = {
-  friday_maerim: 5,
-  saturday_maerim: 6,
-  sunday_intown: 0,
-};
-
-function getBangkokCalendarDate(): Date {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = formatter.formatToParts(new Date());
-  const values: Record<string, string> = {};
-  parts.forEach((part) => {
-    values[part.type] = part.value;
-  });
-
-  return new Date(Date.UTC(
-    Number(values.year),
-    Number(values.month) - 1,
-    Number(values.day),
-    12,
-  ));
-}
-
-function getConcretePickupDate(pickupDay: PickupDay): Date | null {
-  const configuredWeekday = (pickupDay as PickupDay & { pickup_weekday?: number }).pickup_weekday;
-  const pickupWeekday = Number.isInteger(configuredWeekday)
-    ? configuredWeekday
-    : PICKUP_WEEKDAY_BY_DAY_KEY[pickupDay.day_key];
-
-  if (pickupWeekday === undefined || pickupWeekday < 0 || pickupWeekday > 6) {
-    return null;
-  }
-
-  const date = getBangkokCalendarDate();
-  const daysAhead = (pickupWeekday - date.getUTCDay() + 7) % 7;
-  date.setUTCDate(date.getUTCDate() + daysAhead);
-  return date;
+function pickupDayMatches(values: string[], day: PickupDay): boolean {
+  const candidates = [day.day_key, day.label, day.label_en, day.label_th, day.label_zh]
+    .filter((value): value is string => Boolean(value));
+  return candidates.some((candidate) => values.includes(candidate));
 }
 
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
   const { t, language } = useLanguage();
-  const { getLabel } = useCMSLabels();
+  useCMSLabels();
   const { user, userProfile, profileLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -126,28 +87,29 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     setPickupDays(days);
   };
 
-  const [formData] = useState({
-    notes: '',
-  });
-
+  const [formData] = useState({ notes: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const isDayCompatibleWithCart = (pickupDayLabel: string) => {
+  const isDayCompatibleWithCart = (pickupDay: PickupDay) => {
     return items.every((item) => {
       const availableDays = item.product.available_days as string[] | null | undefined;
-      return !availableDays || availableDays.length === 0 || availableDays.includes(pickupDayLabel);
+      return !availableDays || availableDays.length === 0 || pickupDayMatches(availableDays, pickupDay);
     });
   };
 
+  const findSelectedDay = () => pickupDays.find((day) =>
+    day.label === selectedPickupDay || day.day_key === selectedPickupDay,
+  );
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    const selectedDay = pickupDays.find((day) => day.label === selectedPickupDay);
+    const selectedDay = findSelectedDay();
 
     if (
       !selectedPickupDay ||
       !selectedDay ||
       !isDayOpenForOrdering(selectedDay) ||
-      !isDayCompatibleWithCart(selectedPickupDay)
+      !isDayCompatibleWithCart(selectedDay)
     ) {
       newErrors.pickupDay = t.checkout.required;
     }
@@ -168,34 +130,25 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     if (items.length === 0) {
       alert('Your cart is empty!');
       return;
     }
-
     if (!user || !userProfile) {
       alert('You must be logged in to place an order.');
       return;
     }
 
-    console.log('Placing order for user:', user.id);
-
     setIsSubmitting(true);
-
     try {
-      const selectedDay = pickupDays.find((day) => day.label === selectedPickupDay);
-      if (!selectedDay) {
-        throw new Error('Selected pickup day could not be scheduled');
-      }
+      const selectedDay = findSelectedDay();
+      if (!selectedDay) throw new Error('Selected pickup day could not be scheduled');
 
       const orderReference = orderAttemptReference
         || `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-      if (!orderAttemptReference) {
-        setOrderAttemptReference(orderReference);
-      }
+      if (!orderAttemptReference) setOrderAttemptReference(orderReference);
 
       const rpcItems = items.map((item) => ({
         product_id: item.product.id,
@@ -216,9 +169,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       }
 
       const order = orderData as SecureOrderResult | null;
-      if (!order?.id || !order.order_number) {
-        throw new Error('Secure order creation returned an invalid order');
-      }
+      if (!order?.id || !order.order_number) throw new Error('Secure order creation returned an invalid order');
 
       const serverItems = Array.isArray(order.order_items) ? order.order_items : [];
       const pickupLocationId = order.pickup_location_id;
@@ -257,15 +208,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
       supabase.functions.invoke('send-order-confirmation', {
         body: { order_id: order.id, language },
-      }).catch((emailErr) => {
-        console.error('Failed to send order confirmation email:', emailErr);
-      });
+      }).catch((emailErr) => console.error('Failed to send order confirmation email:', emailErr));
 
       supabase.functions.invoke('send-admin-order-notification', {
         body: { order_id: order.id },
-      }).catch((notifErr) => {
-        console.error('Failed to send admin order notification:', notifErr);
-      });
+      }).catch((notifErr) => console.error('Failed to send admin order notification:', notifErr));
     } catch (error) {
       console.error('Error creating order:', error);
       alert('Failed to create order. Please try again.');
@@ -277,10 +224,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const handleCancelOrder = async () => {
     setIsCancelling(true);
     try {
-      const { data, error } = await supabase.rpc('cancel_online_order', {
-        p_order_id: orderId,
-      });
-
+      const { data, error } = await supabase.rpc('cancel_online_order', { p_order_id: orderId });
       if (error) {
         console.error('Cancel order RPC error:', error);
         alert(error.message || 'Failed to cancel order. Please try again.');
@@ -313,17 +257,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const formatDate = (iso: string) => {
     if (!iso) return '';
     const d = new Date(iso);
-    return d.toLocaleDateString(getDateLocale(), {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+    return d.toLocaleDateString(getDateLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const formatPickupDate = (date: Date) => date.toLocaleDateString(getDateLocale(), {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
   });
 
   const formatStoredPickupDate = (isoDate: string) => {
@@ -342,10 +280,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               <CheckCircle className="h-12 w-12 text-gray-400" />
             </div>
             <p className="text-gray-700 mb-8 text-lg">{t.confirmation.cancelSuccess}</p>
-            <button
-              onClick={() => onNavigate('home')}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
-            >
+            <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">
               {t.confirmation.backToHome}
             </button>
           </div>
@@ -397,12 +332,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupLocation}</p>
                   {orderLocationMapsUrl ? (
-                    <a
-                      href={orderLocationMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-amber-700 flex items-center gap-1.5 hover:text-amber-900 underline underline-offset-2 transition-colors"
-                    >
+                    <a href={orderLocationMapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 flex items-center gap-1.5 hover:text-amber-900 underline underline-offset-2 transition-colors">
                       <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                       {orderLocationName}
                     </a>
@@ -422,17 +352,12 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               )}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.payment}</p>
-                <span className="inline-block text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                  {t.confirmation.payAtPickup}
-                </span>
+                <span className="inline-block text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">{t.confirmation.payAtPickup}</span>
               </div>
             </div>
 
             <div className="px-8 py-4 border-b border-gray-100">
-              <button
-                onClick={() => setShowDetails((v) => !v)}
-                className="flex items-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors"
-              >
+              <button onClick={() => setShowDetails((v) => !v)} className="flex items-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">
                 <ShoppingBag className="w-4 h-4" />
                 {showDetails ? t.confirmation.hideDetails : t.confirmation.details}
                 {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -444,9 +369,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   {completedItems.map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-3 border-t border-gray-100 first:border-t-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <ShoppingBag className="w-4 h-4 text-amber-500" />
-                        </div>
+                        <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0"><ShoppingBag className="w-4 h-4 text-amber-500" /></div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{getItemName(item)}</p>
                           <p className="text-xs text-gray-400">{item.qty} × ฿{item.price.toFixed(2)}</p>
@@ -464,45 +387,23 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             </div>
 
             {completedLoyaltyPoints > 0 && (
-              <div
-                className="mx-8 mb-0 -mt-px py-4 border-b border-gray-100"
-              >
-                <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                  style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
-                    style={{ background: '#c6a75e', color: '#fff' }}
-                  >
-                    ★
-                  </div>
+              <div className="mx-8 mb-0 -mt-px py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold" style={{ background: '#c6a75e', color: '#fff' }}>★</div>
                   <div className="flex-1">
                     <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">
                       {language === 'zh' ? '本单获得积分' : language === 'th' ? 'แต้มที่ได้รับจากออเดอร์นี้' : 'Points Earned This Order'}
                     </p>
                   </div>
-                  <span className="text-xl font-extrabold" style={{ color: '#92400e' }}>
-                    +{completedLoyaltyPoints}
-                  </span>
+                  <span className="text-xl font-extrabold" style={{ color: '#92400e' }}>+{completedLoyaltyPoints}</span>
                 </div>
               </div>
             )}
 
             <div className="px-8 py-5 space-y-3">
               <p className="text-xs text-gray-500 text-center leading-relaxed">{t.confirmation.paymentReminder}</p>
-              <button
-                onClick={() => onNavigate('home')}
-                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
-              >
-                {t.confirmation.backToHome}
-              </button>
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm"
-              >
-                {t.confirmation.cancelOrder}
-              </button>
+              <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.confirmation.backToHome}</button>
+              <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
             </div>
           </div>
         </div>
@@ -510,25 +411,14 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
         {showCancelModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center">
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-7 h-7 text-red-500" />
-              </div>
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle className="w-7 h-7 text-red-500" /></div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">{t.confirmation.cancelConfirmTitle}</h3>
               <p className="text-gray-600 text-sm mb-8 leading-relaxed">{t.confirmation.cancelConfirmMessage}</p>
               <div className="flex flex-col gap-3">
-                <button
-                  onClick={handleCancelOrder}
-                  disabled={isCancelling}
-                  className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
+                <button onClick={handleCancelOrder} disabled={isCancelling} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50">
                   {isCancelling ? '...' : t.confirmation.cancelYes}
                 </button>
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-                >
-                  {t.confirmation.cancelNo}
-                </button>
+                <button onClick={() => setShowCancelModal(false)} className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors">{t.confirmation.cancelNo}</button>
               </div>
             </div>
           </div>
@@ -542,47 +432,22 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
         <div className="text-center max-w-md w-full">
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
-              <Sparkles className="w-8 h-8 text-amber-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-primary-900 mb-4">
-              {t.nav.products}
-            </h2>
-            <p className="text-gray-600 mb-8">
-              {t.checkout.authRequired}
-            </p>
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4"><Sparkles className="w-8 h-8 text-amber-600" /></div>
+            <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.nav.products}</h2>
+            <p className="text-gray-600 mb-8">{t.checkout.authRequired}</p>
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="w-full font-bold text-sm transition-all"
-                style={{
-                  background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '14px 0',
-                  cursor: 'pointer',
-                  letterSpacing: '0.03em',
-                  boxShadow: '0 4px 16px rgba(198,167,94,0.32)',
-                }}
+                style={{ background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', cursor: 'pointer', letterSpacing: '0.03em', boxShadow: '0 4px 16px rgba(198,167,94,0.32)' }}
               >
                 {t.checkout.logIn}
               </button>
             </div>
-
-            <button
-              onClick={() => onNavigate('products')}
-              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-            >
-              {t.nav.products}
-            </button>
+            <button onClick={() => onNavigate('products')} className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors">{t.nav.products}</button>
           </div>
         </div>
-        <AuthRequiredModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          actionType="checkout"
-        />
+        <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
       </div>
     );
   }
@@ -610,12 +475,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.cart.empty}</h2>
-          <button
-            onClick={() => onNavigate('products')}
-            className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
-          >
-            {t.nav.products}
-          </button>
+          <button onClick={() => onNavigate('products')} className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.nav.products}</button>
         </div>
       </div>
     );
@@ -624,9 +484,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl md:text-4xl font-header font-bold text-primary-900 mb-8 text-center">
-          {t.checkout.title}
-        </h1>
+        <h1 className="text-3xl md:text-4xl font-header font-bold text-primary-900 mb-8 text-center">{t.checkout.title}</h1>
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">
@@ -637,12 +495,8 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   const productName = language === 'th' ? item.product.name_th : item.product.name_en;
                   return (
                     <div key={item.product.id} className="flex justify-between text-sm">
-                      <span className="text-gray-700">
-                        {productName} × {item.quantity}
-                      </span>
-                      <span className="font-semibold text-primary-900">
-                        ฿{(item.product.price * item.quantity).toFixed(2)}
-                      </span>
+                      <span className="text-gray-700">{productName} × {item.quantity}</span>
+                      <span className="font-semibold text-primary-900">฿{(item.product.price * item.quantity).toFixed(2)}</span>
                     </div>
                   );
                 })}
@@ -655,17 +509,13 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
             <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
               <h3 className="font-semibold text-primary-900 mb-3">{t.checkout.paymentInfo}</h3>
-              <p className="text-sm text-gray-700">
-                {t.checkout.paymentInfoText}
-              </p>
+              <p className="text-sm text-gray-700">{t.checkout.paymentInfoText}</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="bg-background rounded-lg shadow-md p-6 space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700">
-                {t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user?.email || '')}
-              </p>
+              <p className="text-sm text-gray-700">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user?.email || '')}</p>
             </div>
 
             <div>
@@ -676,10 +526,10 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               <div className="space-y-2">
                 {pickupDays.map((day) => {
                   const displayLabel = getPickupDayLabel(day, language);
-                  const concretePickupDate = getConcretePickupDate(day);
-                  const isSelected = selectedPickupDay === day.label;
+                  const concretePickupDate = getNextPickupDate(day);
+                  const isSelected = selectedPickupDay === day.label || selectedPickupDay === day.day_key;
                   const isOpen = isDayOpenForOrdering(day);
-                  const isCompatible = isDayCompatibleWithCart(day.label);
+                  const isCompatible = isDayCompatibleWithCart(day);
                   const isSelectable = isOpen && isCompatible;
 
                   return (
@@ -709,29 +559,19 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                             {formatPickupDate(concretePickupDate)}
                           </p>
                         )}
-                        {isSelected && isOpen && isCompatible && (
-                          <p className="text-xs text-primary-600 mt-1">
-                            {t.checkout.pickupDayFromCatalog}
-                          </p>
-                        )}
+                        {isSelected && isOpen && isCompatible && <p className="text-xs text-primary-600 mt-1">{t.checkout.pickupDayFromCatalog}</p>}
                         {!isOpen && (
                           <p className="text-xs text-red-600 mt-1">
-                            Cutoff passed ({day.cutoff_day} {day.cutoff_time})
+                            {day.cutoff_day && day.cutoff_time ? `Cutoff passed (${day.cutoff_day} ${day.cutoff_time})` : 'Pickup schedule is not fully configured'}
                           </p>
                         )}
-                        {isOpen && !isCompatible && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Not available for all items in your cart
-                          </p>
-                        )}
+                        {isOpen && !isCompatible && <p className="text-xs text-gray-500 mt-1">Not available for all items in your cart</p>}
                       </div>
                     </label>
                   );
                 })}
               </div>
-              {errors.pickupDay && (
-                <p className="text-red-500 text-xs mt-2">{errors.pickupDay}</p>
-              )}
+              {errors.pickupDay && <p className="text-red-500 text-xs mt-2">{errors.pickupDay}</p>}
             </div>
 
             <button
