@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
-import { getCutoffRules, getPickupOverrides, getOverrideForDate, CutoffRule, PickupOverride } from '../lib/availabilityService';
+import {
+  getPickupDays,
+  getPickupOverrides,
+  getOverrideForDate,
+  getPickupDayLabel,
+  getNextPickupDate,
+  isDayOpenForOrdering,
+  PickupDay,
+  PickupOverride,
+} from '../lib/availabilityService';
 import { CountdownTimer } from './CountdownTimer';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -11,6 +20,12 @@ interface PickupDaySelectorProps {
   closedDays: string[];
 }
 
+function matchesConfiguredDay(values: string[], day: PickupDay): boolean {
+  const candidates = [day.day_key, day.label, day.label_en, day.label_th, day.label_zh]
+    .filter((value): value is string => Boolean(value));
+  return candidates.some((candidate) => values.includes(candidate));
+}
+
 export function PickupDaySelector({
   selectedPickupDay,
   onPickupDayChange,
@@ -19,36 +34,22 @@ export function PickupDaySelector({
 }: PickupDaySelectorProps) {
   const { t, language } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [rules, setRules] = useState<CutoffRule[]>([]);
+  const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
   const [overrides, setOverrides] = useState<PickupOverride[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [rulesData, overridesData] = await Promise.all([
-        getCutoffRules(),
+      const [daysData, overridesData] = await Promise.all([
+        getPickupDays(),
         getPickupOverrides(),
       ]);
-      setRules(rulesData);
+      setPickupDays(daysData);
       setOverrides(overridesData);
       setLoading(false);
     };
     fetchData();
   }, []);
-
-  const today = new Date();
-
-  const dayOptions = [
-    { value: 'Friday – Mae Rim', labelEn: 'Friday – Mae Rim', labelTh: 'วันศุกร์ – แม่ริม', labelZh: '周五 – 湄林' },
-    { value: 'Saturday – Mae Rim', labelEn: 'Saturday – Mae Rim', labelTh: 'วันเสาร์ – แม่ริม', labelZh: '周六 – 湄林' },
-    { value: 'Sunday – In-Town', labelEn: 'Sunday – In-Town', labelTh: 'วันอาทิตย์ – ในเมือง', labelZh: '周日 – 市区' },
-  ];
-
-  const getDisplayLabel = (option: typeof dayOptions[0]) => {
-    if (language === 'th') return option.labelTh;
-    if (language === 'zh') return option.labelZh;
-    return option.labelEn;
-  };
 
   const headerTextEn = 'Orders close before baking starts';
   const headerTextTh = 'ปิดรับออเดอร์ก่อนเริ่มอบ';
@@ -56,6 +57,24 @@ export function PickupDaySelector({
   const selectLabelEn = 'Select your pickup day:';
   const selectLabelTh = 'เลือกวันรับสินค้า:';
   const selectLabelZh = '请选择取货日期：';
+
+  const getOverride = (day: PickupDay): PickupOverride | null => {
+    const rule = day.cutoff_rule;
+    const pickupDate = getNextPickupDate(day);
+    if (!rule || !pickupDate) return null;
+    return getOverrideForDate(overrides, pickupDate, rule.pickup_day, rule.location);
+  };
+
+  const isClosed = (day: PickupDay): boolean => {
+    const override = getOverride(day);
+    if (override?.override_type === 'closed' || override?.override_type === 'sold_out') return true;
+    return !isDayOpenForOrdering(day) || matchesConfiguredDay(closedDays, day);
+  };
+
+  const isSoldOut = (day: PickupDay): boolean => {
+    if (availableDays.length === 0) return false;
+    return !matchesConfiguredDay(availableDays, day) && !isClosed(day);
+  };
 
   return (
     <div className="max-w-2xl mx-auto mb-8">
@@ -75,25 +94,34 @@ export function PickupDaySelector({
           <select
             value={selectedPickupDay || ''}
             onChange={(e) => onPickupDayChange(e.target.value || null)}
+            disabled={loading || pickupDays.length === 0}
             className="w-full px-4 py-3 border-2 border-amber-300 rounded-xl bg-white text-gray-900 font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:border-amber-400"
           >
             <option value="">{t.pickupDay.chooseDayPlaceholder}</option>
-            {dayOptions.map((option) => {
-              const isClosed = closedDays.includes(option.value);
-              const isSoldOut = !availableDays.includes(option.value) && !isClosed;
-
+            {pickupDays.map((day) => {
+              const closed = isClosed(day);
+              const soldOut = isSoldOut(day);
               return (
-                <option key={option.value} value={option.value} disabled={isClosed}>
-                  {getDisplayLabel(option)}
-                  {isClosed ? ` (${t.pickupDay.preordersClosed})` : ''}
-                  {isSoldOut ? ` (${t.product.soldOut})` : ''}
+                <option key={day.id} value={day.label} disabled={closed}>
+                  {getPickupDayLabel(day, language)}
+                  {closed ? ` (${t.pickupDay.preordersClosed})` : ''}
+                  {soldOut ? ` (${t.product.soldOut})` : ''}
                 </option>
               );
             })}
           </select>
+          {!loading && pickupDays.length === 0 && (
+            <p className="text-xs text-red-600 mt-2">
+              {language === 'th'
+                ? 'ยังไม่มีรอบรับสินค้าที่เปิดใช้งาน'
+                : language === 'zh'
+                ? '目前没有已配置的取货时段。'
+                : 'No pickup slots are currently configured.'}
+            </p>
+          )}
         </div>
 
-        {!loading && (
+        {!loading && pickupDays.length > 0 && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-2 text-sm font-medium text-amber-700 hover:text-amber-900 transition-colors group"
@@ -111,23 +139,26 @@ export function PickupDaySelector({
 
         {isExpanded && !loading && (
           <div className="mt-4 space-y-3 animate-fadeIn">
-            {rules.map((rule) => {
-              const label = language === 'th'
-                ? rule.pickup_label_th
-                : language === 'zh'
-                ? (rule.pickup_label_zh || rule.pickup_label_en)
-                : rule.pickup_label_en;
-              const override = getOverrideForDate(overrides, today, rule.pickup_day, rule.location);
+            {pickupDays.map((day) => {
+              const rule = day.cutoff_rule;
+              const override = getOverride(day);
+              const label = getPickupDayLabel(day, language);
 
-              if (override && override.override_type === 'closed') {
+              if (!rule) {
                 return (
-                  <div
-                    key={rule.id}
-                    className="bg-red-50 border-2 border-red-200 rounded-xl p-4 transition-all"
-                  >
+                  <div key={day.id} className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                    <p className="font-semibold text-gray-900 text-sm mb-1">{label}</p>
+                    <p className="text-xs text-red-700 font-medium">Cutoff rule not configured</p>
+                  </div>
+                );
+              }
+
+              if (override && (override.override_type === 'closed' || override.override_type === 'sold_out')) {
+                return (
+                  <div key={day.id} className="bg-red-50 border-2 border-red-200 rounded-xl p-4 transition-all">
                     <p className="font-semibold text-gray-900 text-sm mb-1">{label}</p>
                     <p className="text-xs text-red-700 font-medium">
-                      {language === 'th' ? 'ปิดรับออเดอร์' : language === 'zh' ? '此取货时段已截止' : 'Closed for this pickup'}
+                      {language === 'th' ? 'ปิดรับออเดอร์' : language === 'zh' ? '此取货时段不可用' : 'Unavailable for this pickup'}
                     </p>
                   </div>
                 );
@@ -136,16 +167,14 @@ export function PickupDaySelector({
               const cutoffDay = override?.override_type === 'custom_cutoff' && override.custom_cutoff_day
                 ? override.custom_cutoff_day
                 : rule.cutoff_day;
-
               const cutoffTime = override?.override_type === 'custom_cutoff' && override.custom_cutoff_time
                 ? override.custom_cutoff_time
                 : rule.cutoff_time;
-
               const cutoffDayZh = rule.cutoff_day_zh || cutoffDay;
 
               return (
                 <div
-                  key={rule.id}
+                  key={day.id}
                   className="bg-white border-2 border-amber-100 rounded-xl p-4 hover:border-amber-200 transition-all shadow-sm"
                 >
                   <p className="font-semibold text-gray-900 text-sm mb-2">{label}</p>
@@ -176,7 +205,7 @@ export function PickupDaySelector({
           </p>
         )}
 
-        {selectedPickupDay && closedDays.includes(selectedPickupDay) && (
+        {selectedPickupDay && pickupDays.some((day) => day.label === selectedPickupDay && isClosed(day)) && (
           <div className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
             <p className="text-center text-red-700 text-sm font-semibold mb-1">
               {t.pickupDay.preordersClosedFull}
