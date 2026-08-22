@@ -19,6 +19,18 @@ function formatFullDate(dateString: string, language: 'en' | 'th' | 'zh'): strin
   );
 }
 
+function formatPickupDate(dateString: string, language: 'en' | 'th' | 'zh'): string {
+  if (!dateString) return '—';
+  const [year, month, day] = dateString.split('-').map(Number);
+  if (!year || !month || !day) return dateString;
+
+  const d = new Date(Date.UTC(year, month - 1, day, 12));
+  return d.toLocaleDateString(
+    language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB',
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }
+  );
+}
+
 function getTerminalStatus(
   status: string,
   language: 'en' | 'th' | 'zh'
@@ -76,6 +88,11 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                   {getLabel('my_orders_page.order_number', language, 'Order')} #{order.order_number}
                 </p>
                 <p className="text-xs text-stone-500">{formatFullDate(order.created_at, language)}</p>
+                {isOnline && order.pickup_date && (
+                  <p className="text-xs font-semibold mt-1" style={{ color: '#9a7b2f' }}>
+                    {getLabel('my_orders_page.pickup_day', language, 'Pickup')}: {formatPickupDate(order.pickup_date, language)}
+                  </p>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p
