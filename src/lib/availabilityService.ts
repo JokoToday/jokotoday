@@ -14,6 +14,7 @@ export interface PickupDay {
   is_open: boolean;
   sort_order: number;
   cutoff_rule?: CutoffRule | null;
+  override?: PickupOverride | null;
 }
 
 export interface ProductAvailability {
@@ -174,8 +175,23 @@ function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
   return nowInBangkok >= cutoffDate;
 }
 
+export function getOverrideForDate(
+  overrides: PickupOverride[],
+  date: Date,
+  pickupDay: string,
+  location: string,
+): PickupOverride | null {
+  const dateStr = date.toISOString().split('T')[0];
+  return overrides.find((override) =>
+    override.date === dateStr
+    && override.pickup_day === pickupDay
+    && override.location === location
+    && override.is_active,
+  ) || null;
+}
+
 export async function getPickupDays(): Promise<PickupDay[]> {
-  const [daysResult, rulesResult] = await Promise.all([
+  const [daysResult, rulesResult, overridesResult] = await Promise.all([
     supabase
       .from('cms_pickup_days')
       .select('*')
@@ -185,6 +201,10 @@ export async function getPickupDays(): Promise<PickupDay[]> {
       .select('*')
       .eq('is_active', true)
       .order('sort_order', { ascending: true }),
+    supabase
+      .from('pickup_overrides')
+      .select('*')
+      .eq('is_active', true),
   ]);
 
   if (daysResult.error) {
@@ -195,22 +215,47 @@ export async function getPickupDays(): Promise<PickupDay[]> {
     console.error('Error fetching authoritative cutoff rules:', rulesResult.error);
     return [];
   }
+  if (overridesResult.error) {
+    console.error('Error fetching pickup overrides:', overridesResult.error);
+    return [];
+  }
 
   const rulesByDayKey = new Map<string, CutoffRule>();
   (rulesResult.data || []).forEach((rule) => {
     if (rule.day_key) rulesByDayKey.set(rule.day_key, rule as CutoffRule);
   });
+  const activeOverrides = (overridesResult.data || []) as PickupOverride[];
 
   const days = (daysResult.data || []).map((row) => {
     const rule = rulesByDayKey.get(row.day_key) || null;
-    const day: PickupDay = {
+    const baseDay: PickupDay = {
       ...(row as PickupDay),
       cutoff_day: rule?.cutoff_day || '',
       cutoff_time: rule?.cutoff_time || '',
-      // A slot without an active authoritative cutoff rule must not be orderable.
       is_open: Boolean(row.is_open && rule),
       cutoff_rule: rule,
+      override: null,
     };
+
+    const pickupDate = rule ? getNextPickupDate(baseDay) : null;
+    const override = rule && pickupDate
+      ? getOverrideForDate(activeOverrides, pickupDate, rule.pickup_day, rule.location)
+      : null;
+
+    const unavailableByOverride = override?.override_type === 'closed'
+      || override?.override_type === 'sold_out';
+    const customCutoff = override?.override_type === 'custom_cutoff'
+      && override.custom_cutoff_day
+      && override.custom_cutoff_time;
+
+    const day: PickupDay = {
+      ...baseDay,
+      cutoff_day: customCutoff ? override.custom_cutoff_day! : baseDay.cutoff_day,
+      cutoff_time: customCutoff ? override.custom_cutoff_time! : baseDay.cutoff_time,
+      is_open: Boolean(baseDay.is_open && !unavailableByOverride),
+      override,
+    };
+
     registerPickupDay(day);
     return day;
   });
@@ -274,24 +319,9 @@ export async function getAllPickupOverrides(): Promise<PickupOverride[]> {
   return data as PickupOverride[];
 }
 
-export function getOverrideForDate(
-  overrides: PickupOverride[],
-  date: Date,
-  pickupDay: string,
-  location: string,
-): PickupOverride | null {
-  const dateStr = date.toISOString().split('T')[0];
-  return overrides.find((override) =>
-    override.date === dateStr
-    && override.pickup_day === pickupDay
-    && override.location === location
-    && override.is_active,
-  ) || null;
-}
-
 export function getEffectiveCutoff(
   pickupDay: PickupDay,
-  override: PickupOverride | null,
+  override: PickupOverride | null = pickupDay.override || null,
 ): { cutoffDay: string; cutoffTime: string } | null {
   if (!pickupDay.cutoff_day || !pickupDay.cutoff_time) return null;
 
@@ -312,6 +342,9 @@ export function getEffectiveCutoff(
 
 export function isDayOpenForOrdering(pickupDay: PickupDay): boolean {
   if (!pickupDay.is_open || !pickupDay.cutoff_rule) return false;
+  if (pickupDay.override?.override_type === 'closed' || pickupDay.override?.override_type === 'sold_out') {
+    return false;
+  }
   return !isCutoffPassed(pickupDay.cutoff_day, pickupDay.cutoff_time);
 }
 
