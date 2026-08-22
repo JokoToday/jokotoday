@@ -21,7 +21,7 @@
     - remove anonymous CMS writes at the privilege layer
     - replace legacy "by anyone" / any-authenticated write policies with
       role='admin' authorization
-    - preserve the current authenticated Admin CMS write workflows
+    - preserve only the write capabilities actually used by the Admin CMS
     - allow admins to see inactive social links and cancellation rules while
       public readers continue to see only active rows
 */
@@ -43,10 +43,10 @@ ALTER TABLE public.cancellation_cutoff_rules ENABLE ROW LEVEL SECURITY;
 -- ---------------------------------------------------------------------------
 -- Table privileges.
 --
--- Public SELECT behavior is intentionally not changed in this migration.
--- Anonymous callers must never be able to mutate CMS/configuration data.
--- Authenticated sessions retain normal DML capability so the Admin CMS can
--- operate, but RLS below restricts those writes to role='admin'.
+-- Public SELECT behavior is intentionally unchanged.
+-- Anonymous callers must never mutate CMS/configuration data.
+-- Authenticated sessions receive only the DML needed by the current Admin CMS;
+-- RLS below further restricts those writes to role='admin'.
 -- ---------------------------------------------------------------------------
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES
 ON TABLE
@@ -60,7 +60,7 @@ ON TABLE
   public.cancellation_cutoff_rules
 FROM anon;
 
-REVOKE TRUNCATE, TRIGGER, REFERENCES
+REVOKE DELETE, TRUNCATE, TRIGGER, REFERENCES
 ON TABLE
   public.cms_categories,
   public.cms_pages,
@@ -72,7 +72,9 @@ ON TABLE
   public.cancellation_cutoff_rules
 FROM authenticated;
 
-GRANT INSERT, UPDATE, DELETE
+-- Current CMS forms create/edit these records and "delete" most of them by
+-- setting is_active=false, so INSERT + UPDATE are sufficient.
+GRANT INSERT, UPDATE
 ON TABLE
   public.cms_categories,
   public.cms_pages,
@@ -80,13 +82,12 @@ ON TABLE
   public.cms_settings,
   public.cms_pickup_locations,
   public.cms_pickup_days,
-  public.site_social_links
+  public.site_social_links,
+  public.cancellation_cutoff_rules
 TO authenticated;
 
--- Cancellation rules are soft-deactivated by the current Admin CMS; no browser
--- DELETE path is required. Keep DELETE unavailable at the privilege layer.
-REVOKE DELETE ON TABLE public.cancellation_cutoff_rules FROM authenticated;
-GRANT INSERT, UPDATE ON TABLE public.cancellation_cutoff_rules TO authenticated;
+-- Social Links is the one current Admin CMS workflow that performs a hard DELETE.
+GRANT DELETE ON TABLE public.site_social_links TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- cms_categories
@@ -124,19 +125,6 @@ USING (
   )
 )
 WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid())
-      AND p.role = 'admin'
-  )
-);
-
-CREATE POLICY "Admins can delete categories"
-ON public.cms_categories
-FOR DELETE
-TO authenticated
-USING (
   EXISTS (
     SELECT 1
     FROM public.user_profiles p
@@ -183,17 +171,6 @@ WITH CHECK (
   )
 );
 
-CREATE POLICY "Admins can delete pages"
-ON public.cms_pages
-FOR DELETE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
-  )
-);
-
 -- ---------------------------------------------------------------------------
 -- cms_labels
 -- ---------------------------------------------------------------------------
@@ -226,17 +203,6 @@ USING (
   )
 )
 WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
-  )
-);
-
-CREATE POLICY "Admins can delete labels"
-ON public.cms_labels
-FOR DELETE
-TO authenticated
-USING (
   EXISTS (
     SELECT 1 FROM public.user_profiles p
     WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
@@ -281,17 +247,6 @@ WITH CHECK (
   )
 );
 
-CREATE POLICY "Admins can delete settings"
-ON public.cms_settings
-FOR DELETE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
-  )
-);
-
 -- ---------------------------------------------------------------------------
 -- cms_pickup_locations
 -- ---------------------------------------------------------------------------
@@ -330,17 +285,6 @@ WITH CHECK (
   )
 );
 
-CREATE POLICY "Admins can delete pickup locations"
-ON public.cms_pickup_locations
-FOR DELETE
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
-  )
-);
-
 -- ---------------------------------------------------------------------------
 -- cms_pickup_days
 -- ---------------------------------------------------------------------------
@@ -373,17 +317,6 @@ USING (
   )
 )
 WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.user_profiles p
-    WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
-  )
-);
-
-CREATE POLICY "Admins can delete pickup days"
-ON public.cms_pickup_days
-FOR DELETE
-TO authenticated
-USING (
   EXISTS (
     SELECT 1 FROM public.user_profiles p
     WHERE p.id = (SELECT auth.uid()) AND p.role = 'admin'
@@ -460,6 +393,7 @@ DROP POLICY IF EXISTS "Authenticated users can update cancellation cutoff rules"
 DROP POLICY IF EXISTS "Admins can view all cancellation cutoff rules" ON public.cancellation_cutoff_rules;
 DROP POLICY IF EXISTS "Admins can insert cancellation cutoff rules" ON public.cancellation_cutoff_rules;
 DROP POLICY IF EXISTS "Admins can update cancellation cutoff rules" ON public.cancellation_cutoff_rules;
+DROP POLICY IF EXISTS "Admins can delete cancellation cutoff rules" ON public.cancellation_cutoff_rules;
 
 CREATE POLICY "Admins can view all cancellation cutoff rules"
 ON public.cancellation_cutoff_rules
