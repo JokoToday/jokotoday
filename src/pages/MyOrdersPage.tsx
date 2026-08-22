@@ -23,7 +23,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
   const [locationMap, setLocationMap] = useState<Record<string, PickupLocation>>({});
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
-  const [cancelTooLate, setCancelTooLate] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
@@ -78,23 +78,15 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
     }
   };
 
-  const isWithin24h = (order: Order): boolean => {
-    const dateStr = order.pickup_date;
-    if (!dateStr) return false;
-    const pickupDate = new Date(dateStr);
-    pickupDate.setHours(0, 0, 0, 0);
-    const cutoff = new Date(pickupDate.getTime() - 24 * 60 * 60 * 1000);
-    return new Date() >= cutoff;
-  };
-
   const openCancelModal = (order: Order) => {
-    setCancelTooLate(isWithin24h(order));
+    setCancelError('');
     setCancelTarget(order);
   };
 
   const handleCancelOrder = async () => {
     if (!cancelTarget) return;
     setIsCancelling(true);
+    setCancelError('');
     try {
       const { data, error } = await supabase.rpc('cancel_online_order', {
         p_order_id: cancelTarget.id,
@@ -102,7 +94,9 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
       if (error) {
         console.error('Cancel order RPC error:', error);
-        alert(error.message || 'Failed to cancel order. Please try again.');
+        // The RPC is the authoritative source for the Admin-configured cancellation
+        // deadline and order-state checks. Do not duplicate a hard-coded cutoff here.
+        setCancelError(error.message || 'This order can no longer be cancelled.');
         return;
       }
 
@@ -119,7 +113,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       setCancelTarget(null);
     } catch (err) {
       console.error('Cancel error:', err);
-      alert(err instanceof Error ? err.message : 'Failed to cancel order. Please try again.');
+      setCancelError(err instanceof Error ? err.message : 'Failed to cancel order. Please try again.');
     } finally {
       setIsCancelling(false);
     }
@@ -187,16 +181,18 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       {cancelTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center">
-            {cancelTooLate ? (
+            <div className={`w-14 h-14 ${cancelError ? 'bg-orange-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+              <AlertTriangle className={`w-7 h-7 ${cancelError ? 'text-orange-500' : 'text-red-500'}`} />
+            </div>
+
+            {cancelError ? (
               <>
-                <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="w-7 h-7 text-orange-500" />
-                </div>
-                <p className="text-stone-800 font-semibold text-base mb-6 leading-relaxed">
-                  {t.confirmation.cancelTooLate}
-                </p>
+                <h3 className="text-lg font-bold text-stone-900 mb-2">
+                  {language === 'th' ? 'ไม่สามารถยกเลิกได้' : language === 'zh' ? '无法取消订单' : 'Cancellation unavailable'}
+                </h3>
+                <p className="text-stone-600 text-sm mb-6 leading-relaxed">{cancelError}</p>
                 <button
-                  onClick={() => setCancelTarget(null)}
+                  onClick={() => { setCancelTarget(null); setCancelError(''); }}
                   className="w-full bg-stone-100 text-stone-700 py-3 rounded-xl font-medium hover:bg-stone-200 transition-colors"
                 >
                   {t.confirmation.cancelNo}
@@ -204,9 +200,6 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
               </>
             ) : (
               <>
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="w-7 h-7 text-red-500" />
-                </div>
                 <h3 className="text-xl font-bold text-stone-900 mb-2">{t.confirmation.cancelConfirmTitle}</h3>
                 <p className="text-stone-600 text-sm mb-8 leading-relaxed">{t.confirmation.cancelConfirmMessage}</p>
                 <div className="flex flex-col gap-3">
