@@ -7,10 +7,13 @@ export interface PickupDay {
   label_en: string | null;
   label_th: string | null;
   label_zh?: string | null;
+  pickup_weekday: number;
+  location_id: string | null;
   cutoff_time: string;
   cutoff_day: string;
   is_open: boolean;
   sort_order: number;
+  cutoff_rule?: CutoffRule | null;
 }
 
 export interface ProductAvailability {
@@ -22,6 +25,7 @@ export interface ProductAvailability {
 
 export interface CutoffRule {
   id: string;
+  day_key: string;
   pickup_label_en: string;
   pickup_label_th: string;
   pickup_label_zh?: string | null;
@@ -50,14 +54,7 @@ export interface PickupOverride {
 
 export type PickupStatus = 'available' | 'closing_soon' | 'closed' | 'sold_out' | 'holiday';
 
-const DAY_KEY_MAP: Record<string, string> = {
-  'Friday – Mae Rim': 'friday_maerim',
-  'Friday - Mae Rim': 'friday_maerim',
-  'Saturday – Mae Rim': 'saturday_maerim',
-  'Saturday - Mae Rim': 'saturday_maerim',
-  'Sunday – In-Town': 'sunday_intown',
-  'Sunday - In-Town': 'sunday_intown',
-};
+const dayKeyByLabel = new Map<string, string>();
 
 function getEquivalentDayLabels(label: string): string[] {
   return Array.from(new Set([
@@ -67,26 +64,80 @@ function getEquivalentDayLabels(label: string): string[] {
   ]));
 }
 
-function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
-  const dayMap: Record<string, number> = {
-    'Sunday': 0,
-    'Monday': 1,
-    'Tuesday': 2,
-    'Wednesday': 3,
-    'Thursday': 4,
-    'Friday': 5,
-    'Saturday': 6,
-  };
+function registerPickupDay(day: PickupDay) {
+  const labels = [day.label, day.label_en, day.label_th, day.label_zh]
+    .filter((value): value is string => Boolean(value));
 
-  const cutoffDayOfWeek = dayMap[cutoffDay];
+  labels.forEach((label) => {
+    getEquivalentDayLabels(label).forEach((variant) => dayKeyByLabel.set(variant, day.day_key));
+  });
+  dayKeyByLabel.set(day.day_key, day.day_key);
+}
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+export function getBangkokCalendarDate(): Date {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const values: Record<string, string> = {};
+  formatter.formatToParts(new Date()).forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return new Date(Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    12,
+  ));
+}
+
+export function getNextPickupDate(pickupDay: PickupDay): Date | null {
+  if (!Number.isInteger(pickupDay.pickup_weekday)
+      || pickupDay.pickup_weekday < 0
+      || pickupDay.pickup_weekday > 6) {
+    return null;
+  }
+
+  const date = getBangkokCalendarDate();
+  const daysAhead = (pickupDay.pickup_weekday - date.getUTCDay() + 7) % 7;
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  return date;
+}
+
+export function isPickupDatePast(dateString: string | null | undefined): boolean {
+  if (!dateString) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateString);
+  if (!match) return false;
+  const pickup = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12));
+  return pickup.getTime() < getBangkokCalendarDate().getTime();
+}
+
+function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
+  const cutoffDayOfWeek = WEEKDAY_INDEX[cutoffDay];
   if (cutoffDayOfWeek === undefined) {
     console.warn(`[Cutoff] Unknown day: ${cutoffDay}`);
     return true;
   }
 
   const [hours, minutes] = cutoffTime.split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    console.warn(`[Cutoff] Invalid time: ${cutoffTime}`);
+    return true;
+  }
 
-  // Get current time in Asia/Bangkok timezone
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Bangkok',
     year: 'numeric',
@@ -98,78 +149,73 @@ function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
     hour12: false,
   });
 
-  const parts = formatter.formatToParts(new Date());
   const partsMap: Record<string, string> = {};
-  parts.forEach((part) => {
+  formatter.formatToParts(new Date()).forEach((part) => {
     partsMap[part.type] = part.value;
   });
 
   const nowInBangkok = new Date(
-    parseInt(partsMap.year),
-    parseInt(partsMap.month) - 1,
-    parseInt(partsMap.day),
-    parseInt(partsMap.hour),
-    parseInt(partsMap.minute),
-    parseInt(partsMap.second)
+    Number(partsMap.year),
+    Number(partsMap.month) - 1,
+    Number(partsMap.day),
+    Number(partsMap.hour),
+    Number(partsMap.minute),
+    Number(partsMap.second),
   );
 
   const currentDayOfWeek = nowInBangkok.getDay();
-  let cutoffDate = new Date(nowInBangkok);
+  const cutoffDate = new Date(nowInBangkok);
+  const dayDelta = cutoffDayOfWeek <= currentDayOfWeek
+    ? -(currentDayOfWeek - cutoffDayOfWeek)
+    : cutoffDayOfWeek - currentDayOfWeek;
 
-  // Calculate the cutoff date for this week
-  if (cutoffDayOfWeek <= currentDayOfWeek) {
-    // Cutoff day was earlier in the week or is today
-    const daysBack = currentDayOfWeek - cutoffDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-  } else {
-    // Cutoff day is later in the week
-    const daysForward = cutoffDayOfWeek - currentDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() + daysForward);
-  }
-
-  // Set the cutoff time
+  cutoffDate.setDate(cutoffDate.getDate() + dayDelta);
   cutoffDate.setHours(hours, minutes, 0, 0);
-
-  const isPassed = nowInBangkok > cutoffDate;
-
-  // Debug logging
-  const nowStr = nowInBangkok.toLocaleString('en-US', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'short',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const cutoffStr = cutoffDate.toLocaleString('en-US', {
-    timeZone: 'Asia/Bangkok',
-    weekday: 'short',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  console.log(
-    `[Cutoff Check] Pickup: ${cutoffDay} ${cutoffTime} | Now: ${nowStr} | Cutoff: ${cutoffStr} | Passed: ${isPassed}`
-  );
-
-  return isPassed;
+  return nowInBangkok >= cutoffDate;
 }
 
 export async function getPickupDays(): Promise<PickupDay[]> {
-  const { data, error } = await supabase
-    .from('cms_pickup_days')
-    .select('*')
-    .order('sort_order', { ascending: true });
+  const [daysResult, rulesResult] = await Promise.all([
+    supabase
+      .from('cms_pickup_days')
+      .select('*')
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('pickup_cutoff_rules')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true }),
+  ]);
 
-  if (error) {
-    console.error('Error fetching pickup days:', error);
+  if (daysResult.error) {
+    console.error('Error fetching pickup days:', daysResult.error);
+    return [];
+  }
+  if (rulesResult.error) {
+    console.error('Error fetching authoritative cutoff rules:', rulesResult.error);
     return [];
   }
 
-  return data as PickupDay[];
+  const rulesByDayKey = new Map<string, CutoffRule>();
+  (rulesResult.data || []).forEach((rule) => {
+    if (rule.day_key) rulesByDayKey.set(rule.day_key, rule as CutoffRule);
+  });
+
+  const days = (daysResult.data || []).map((row) => {
+    const rule = rulesByDayKey.get(row.day_key) || null;
+    const day: PickupDay = {
+      ...(row as PickupDay),
+      cutoff_day: rule?.cutoff_day || '',
+      cutoff_time: rule?.cutoff_time || '',
+      // A slot without an active authoritative cutoff rule must not be orderable.
+      is_open: Boolean(row.is_open && rule),
+      cutoff_rule: rule,
+    };
+    registerPickupDay(day);
+    return day;
+  });
+
+  return days;
 }
 
 export async function getCutoffRules(): Promise<CutoffRule[]> {
@@ -232,32 +278,26 @@ export function getOverrideForDate(
   overrides: PickupOverride[],
   date: Date,
   pickupDay: string,
-  location: string
+  location: string,
 ): PickupOverride | null {
   const dateStr = date.toISOString().split('T')[0];
-  return (
-    overrides.find(
-      (o) =>
-        o.date === dateStr &&
-        o.pickup_day === pickupDay &&
-        o.location === location &&
-        o.is_active
-    ) || null
-  );
+  return overrides.find((override) =>
+    override.date === dateStr
+    && override.pickup_day === pickupDay
+    && override.location === location
+    && override.is_active,
+  ) || null;
 }
 
 export function getEffectiveCutoff(
   pickupDay: PickupDay,
-  override: PickupOverride | null
+  override: PickupOverride | null,
 ): { cutoffDay: string; cutoffTime: string } | null {
-  if (!override || override.override_type !== 'custom_cutoff') {
-    return {
-      cutoffDay: pickupDay.cutoff_day,
-      cutoffTime: pickupDay.cutoff_time,
-    };
-  }
+  if (!pickupDay.cutoff_day || !pickupDay.cutoff_time) return null;
 
-  if (override.custom_cutoff_day && override.custom_cutoff_time) {
+  if (override?.override_type === 'custom_cutoff'
+      && override.custom_cutoff_day
+      && override.custom_cutoff_time) {
     return {
       cutoffDay: override.custom_cutoff_day,
       cutoffTime: override.custom_cutoff_time,
@@ -271,36 +311,32 @@ export function getEffectiveCutoff(
 }
 
 export function isDayOpenForOrdering(pickupDay: PickupDay): boolean {
-  if (!pickupDay.is_open) {
-    return false;
-  }
+  if (!pickupDay.is_open || !pickupDay.cutoff_rule) return false;
   return !isCutoffPassed(pickupDay.cutoff_day, pickupDay.cutoff_time);
 }
 
-export function getDayKey(label: string): string {
-  return DAY_KEY_MAP[label] || label;
+export function getDayKey(labelOrKey: string): string {
+  return dayKeyByLabel.get(labelOrKey) || labelOrKey;
 }
 
-export function getPickupDayLabel(pickupDay: PickupDay, language: 'en' | 'th' | 'zh' = 'en'): string {
-  if (language === 'zh' && pickupDay.label_zh) {
-    return pickupDay.label_zh;
-  }
-  if (language === 'th' && pickupDay.label_th) {
-    return pickupDay.label_th;
-  }
-  if (language === 'en' && pickupDay.label_en) {
-    return pickupDay.label_en;
-  }
+export function getPickupDayLabel(
+  pickupDay: PickupDay,
+  language: 'en' | 'th' | 'zh' = 'en',
+): string {
+  if (language === 'zh' && pickupDay.label_zh) return pickupDay.label_zh;
+  if (language === 'th' && pickupDay.label_th) return pickupDay.label_th;
+  if (language === 'en' && pickupDay.label_en) return pickupDay.label_en;
   return pickupDay.label;
 }
 
 export function getCutoffDayAndTime(pickupDay: PickupDay): string {
+  if (!pickupDay.cutoff_day || !pickupDay.cutoff_time) return 'Not configured';
   return `${pickupDay.cutoff_day} at ${pickupDay.cutoff_time}`;
 }
 
 export function getAvailabilityStatus(
   product: any,
-  selectedDay: string | null
+  selectedDay: string | null,
 ): ProductAvailability {
   if (!selectedDay) {
     return {
