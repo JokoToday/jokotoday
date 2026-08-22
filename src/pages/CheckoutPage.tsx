@@ -29,11 +29,55 @@ type SecureOrderResult = {
   order_number: string;
   created_at: string;
   pickup_day: string | null;
+  pickup_date: string | null;
   pickup_location_id: string | null;
   total_amount: number | string;
   loyalty_points_earned?: number | null;
   order_items: SecureOrderItem[] | null;
 };
+
+const PICKUP_WEEKDAY_BY_DAY_KEY: Record<string, number> = {
+  friday_maerim: 5,
+  saturday_maerim: 6,
+  sunday_intown: 0,
+};
+
+function getBangkokCalendarDate(): Date {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(new Date());
+  const values: Record<string, string> = {};
+  parts.forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return new Date(Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    12,
+  ));
+}
+
+function getConcretePickupDate(pickupDay: PickupDay): Date | null {
+  const configuredWeekday = (pickupDay as PickupDay & { pickup_weekday?: number }).pickup_weekday;
+  const pickupWeekday = Number.isInteger(configuredWeekday)
+    ? configuredWeekday
+    : PICKUP_WEEKDAY_BY_DAY_KEY[pickupDay.day_key];
+
+  if (pickupWeekday === undefined || pickupWeekday < 0 || pickupWeekday > 6) {
+    return null;
+  }
+
+  const date = getBangkokCalendarDate();
+  const daysAhead = (pickupWeekday - date.getUTCDay() + 7) % 7;
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  return date;
+}
 
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
@@ -54,6 +98,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const [completedItems, setCompletedItems] = useState<{ name: string; name_th: string; name_zh: string; qty: number; price: number }[]>([]);
   const [completedTotal, setCompletedTotal] = useState(0);
   const [completedPickupDay, setCompletedPickupDay] = useState('');
+  const [completedPickupDate, setCompletedPickupDate] = useState('');
   const [completedLoyaltyPoints, setCompletedLoyaltyPoints] = useState<number>(0);
   const [showDetails, setShowDetails] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -183,6 +228,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
       setOrderCreatedAt(order.created_at || '');
       setCompletedTotal(Number(order.total_amount) || 0);
       setCompletedPickupDay(order.pickup_day || selectedPickupDay || '');
+      setCompletedPickupDate(order.pickup_date || '');
       setCompletedLoyaltyPoints(Number(order.loyalty_points_earned) || 0);
       setCompletedItems(serverItems.map((item) => ({
         name: item.product_name || '',
@@ -262,12 +308,29 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     return item.name;
   };
 
+  const getDateLocale = () => language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
+
   const formatDate = (iso: string) => {
     if (!iso) return '';
     const d = new Date(iso);
-    return d.toLocaleDateString(language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-US', {
+    return d.toLocaleDateString(getDateLocale(), {
       year: 'numeric', month: 'short', day: 'numeric',
     });
+  };
+
+  const formatPickupDate = (date: Date) => date.toLocaleDateString(getDateLocale(), {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+
+  const formatStoredPickupDate = (isoDate: string) => {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-').map(Number);
+    if (!year || !month || !day) return isoDate;
+    return formatPickupDate(new Date(Date.UTC(year, month - 1, day, 12)));
   };
 
   if (orderComplete) {
@@ -318,9 +381,16 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             <div className="px-8 py-5 border-b border-gray-100 grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupDay}</p>
-                <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                  {completedPickupDay}
+                <p className="text-sm font-medium text-gray-800 flex items-start gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <span>
+                    {completedPickupDay}
+                    {completedPickupDate && (
+                      <span className="block text-xs font-semibold text-amber-700 mt-0.5">
+                        {formatStoredPickupDate(completedPickupDate)}
+                      </span>
+                    )}
+                  </span>
                 </p>
               </div>
               {orderLocationName && (
@@ -606,6 +676,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               <div className="space-y-2">
                 {pickupDays.map((day) => {
                   const displayLabel = getPickupDayLabel(day, language);
+                  const concretePickupDate = getConcretePickupDate(day);
                   const isSelected = selectedPickupDay === day.label;
                   const isOpen = isDayOpenForOrdering(day);
                   const isCompatible = isDayCompatibleWithCart(day.label);
@@ -633,6 +704,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                       />
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{displayLabel}</div>
+                        {concretePickupDate && (
+                          <p className={`text-xs font-semibold mt-0.5 ${isSelectable ? 'text-amber-700' : 'text-gray-500'}`}>
+                            {formatPickupDate(concretePickupDate)}
+                          </p>
+                        )}
                         {isSelected && isOpen && isCompatible && (
                           <p className="text-xs text-primary-600 mt-1">
                             {t.checkout.pickupDayFromCatalog}
