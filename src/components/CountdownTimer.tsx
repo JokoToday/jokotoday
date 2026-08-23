@@ -75,9 +75,7 @@ export function CountdownTimer({
       const daysUntilPickup = (pickupWeekday - now.getDay() + 7) % 7;
       pickupDate.setDate(pickupDate.getDate() + daysUntilPickup);
 
-      let daysBeforePickup = (pickupWeekday - cutoffWeekday + 7) % 7;
-      if (daysBeforePickup === 0) daysBeforePickup = 7;
-
+      const daysBeforePickup = (pickupWeekday - cutoffWeekday + 7) % 7;
       const cutoffDate = new Date(pickupDate);
       cutoffDate.setDate(cutoffDate.getDate() - daysBeforePickup);
       cutoffDate.setHours(hours, minutes, 0, 0);
