@@ -65,27 +65,33 @@ export function CustomerAccountPage({ qrToken, onNavigate }: CustomerAccountPage
   useEffect(() => {
     if (!user || !tokenMatchesProfile) {
       setLoyaltyPoints(0);
+      setLoadingPoints(false);
       return;
     }
 
     let active = true;
-    setLoadingPoints(true);
-    supabase
-      .from('customers')
-      .select('loyalty_points')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+
+    const loadLoyaltyPoints = async () => {
+      setLoadingPoints(true);
+      try {
+        const { data, error } = await supabase
+          .from('customers')
+          .select('loyalty_points')
+          .eq('id', user.id)
+          .maybeSingle();
+
         if (!active) return;
         if (error) {
           console.error('Error loading loyalty points:', error);
           return;
         }
         setLoyaltyPoints(Number(data?.loyalty_points) || 0);
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoadingPoints(false);
-      });
+      }
+    };
+
+    void loadLoyaltyPoints();
 
     return () => {
       active = false;
