@@ -12,10 +12,11 @@ import { getPublicImageUrl } from '../lib/storage';
 type ProductCardProps = {
   product: Product | CMSProduct;
   selectedDay?: string | null;
+  selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
 };
 
-export default function ProductCard({ product, selectedDay, onLoginRequired }: ProductCardProps) {
+export default function ProductCard({ product, selectedDay, selectedDayDisplay, onLoginRequired }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { addToCart } = useCart();
@@ -24,6 +25,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
   const availability = getAvailabilityStatus(product, selectedDay || null);
+  const pickupDisplay = selectedDayDisplay || selectedDay;
 
   const productId = product.id;
   const liked = isLiked(productId);
@@ -135,17 +137,17 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
             {availability.isSoldOut ? (
               <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 bg-red-50 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                {t.pickupDay.soldOutFor} {selectedDay}
+                {t.pickupDay.soldOutFor} {pickupDisplay}
               </div>
             ) : availability.isNotOfferedToday ? (
               <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                {t.pickupDay.notAvailableFor} {selectedDay}
+                {t.pickupDay.notAvailableFor} {pickupDisplay}
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                {t.pickupDay.availableFor} {selectedDay}
+                {t.pickupDay.availableFor} {pickupDisplay}
               </div>
             )}
           </div>
