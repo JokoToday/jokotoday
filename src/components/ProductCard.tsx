@@ -44,20 +44,13 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   };
 
   const handleAddToCart = () => {
-    const cartItem = {
-      ...product,
-      name_en: 'name_en' in product ? product.name_en : 'product.name_en',
-      name_th: 'name_th' in product ? product.name_th : 'product.name_th',
-      name_zh: 'name_zh' in product ? product.name_zh : undefined,
-      price: product.price,
-    };
-    addToCart(cartItem, quantity);
+    addToCart(product, quantity);
     setQuantity(1);
   };
 
   const getProductName = () => {
     if (language === 'th') return product.name_th;
-    if (language === 'zh') return ('name_zh' in product && product.name_zh) || product.name_en;
+    if (language === 'zh') return product.name_zh || product.name_en;
     return product.name_en;
   };
 
@@ -66,7 +59,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
       return 'desc_th' in product ? product.desc_th : product.description_th;
     }
     if (language === 'zh') {
-      const zhDesc = 'desc_zh' in product ? product.desc_zh : ('description_zh' in product ? product.description_zh : null);
+      const zhDesc = 'desc_zh' in product ? product.desc_zh : product.description_zh;
       if (zhDesc) return zhDesc;
       return 'desc_en' in product ? product.desc_en : product.description_en;
     }
@@ -76,7 +69,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   const productName = getProductName();
   const productDescription = getProductDescription();
 
-  const stockRemaining = 'stock_remaining' in product ? product.stock_remaining : null;
+  const stockRemaining = product.stock_remaining ?? null;
   const isSoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || stockRemaining === 0;
 
   const getProductImage = () => {
@@ -188,7 +181,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
               </button>
               <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(stockRemaining || 999, quantity + 1))}
+                onClick={() => setQuantity(Math.min(stockRemaining ?? 999, quantity + 1))}
                 className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />
