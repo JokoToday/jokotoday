@@ -678,6 +678,9 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
               <p className="text-gray-900 font-semibold text-lg mb-2">
                 {msg.unavailableTitle}
               </p>
+              <p className="text-sm font-medium text-red-700 mb-4">
+                {getErrorMessage()}
+              </p>
               <div className="text-gray-600 mb-6 text-left space-y-3">
                 <p>
                   {msg.unavailableIntro}
