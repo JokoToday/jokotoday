@@ -189,6 +189,7 @@ export function PickupDaySelector({
                     <CountdownTimer
                       cutoffDay={cutoffDay}
                       cutoffTime={cutoffTime}
+                      pickupWeekday={day.pickup_weekday}
                       language={language}
                       compact
                     />
