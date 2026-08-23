@@ -1,15 +1,29 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Product } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
+export type CartProduct = {
+  id: string;
+  name_en: string;
+  name_th: string;
+  name_zh?: string | null;
+  price: number;
+  image_url?: string | null;
+  image?: string | null;
+  available_days?: string[] | null;
+  stock_by_day?: Record<string, number> | null;
+  stock_remaining?: number | null;
+  slug?: string;
+  category_id?: string;
+};
+
 export type CartItem = {
-  product: Product;
+  product: CartProduct;
   quantity: number;
 };
 
 type CartContextType = {
   items: CartItem[];
-  addToCart: (product: Product, quantity: number) => void;
+  addToCart: (product: CartProduct, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -156,12 +170,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     if (previousUserId === undefined || previousUserId === nextUserId) return;
 
-    // Always preserve the cart that belongs to the identity we are leaving.
     writeStoredCart(previousUserId, items, selectedPickupDay);
 
     if (previousUserId === null && nextUserId) {
-      // Guest -> account: merge the guest's selections into that account's
-      // existing saved cart, then retire the guest copy.
       const savedUserCart = readStoredCart(nextUserId);
       const mergedItems = mergeCartItems(savedUserCart.items, items);
       const mergedPickupDay = selectedPickupDay ?? savedUserCart.pickupDay;
@@ -176,8 +187,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (previousUserId && nextUserId === null) {
-      // Account -> guest: keep the account cart saved, but expose a fresh
-      // empty guest cart so signed-out visitors never see account contents.
       clearStoredCart(null);
       activeUserId.current = null;
       setItems([]);
@@ -187,7 +196,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Direct account switch: load only the destination account's saved cart.
     const savedNextUserCart = readStoredCart(nextUserId);
     activeUserId.current = nextUserId;
     setItems(savedNextUserCart.items);
@@ -222,7 +230,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [selectedPickupDay, stateOwnerId, storageReady, user?.id]);
 
-  const addToCart = (product: Product, quantity: number) => {
+  const addToCart = (product: CartProduct, quantity: number) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.product.id === product.id);
       if (existingItem) {
