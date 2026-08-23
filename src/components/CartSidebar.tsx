@@ -73,7 +73,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                 const productName = getProductName();
 
                 const getImageUrl = () => {
-                  const imageUrl = item.product.image_url;
+                  const imageUrl = item.product.image_url ?? item.product.image;
                   if (!imageUrl || imageUrl.startsWith('http')) {
                     return imageUrl || 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
                   }
