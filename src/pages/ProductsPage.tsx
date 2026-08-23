@@ -81,11 +81,20 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     }
   }
 
+  const selectedPickupSlot = pickupDays.find((day) =>
+    day.day_key === selectedPickupDay || day.label === selectedPickupDay,
+  ) || null;
+  const selectedPickupDisplay = selectedPickupSlot
+    ? getPickupDayLabel(selectedPickupSlot, language)
+    : selectedPickupDay;
+
   const filteredProducts = products.filter((p) => {
     const matchesCategory = !selectedCategory || selectedCategory === 'all' || p.category_id === selectedCategory;
     if (!selectedPickupDay) return matchesCategory;
 
-    const selectedDay = pickupDays.find((day) => day.label === selectedPickupDay);
+    const selectedDay = pickupDays.find((day) =>
+      day.day_key === selectedPickupDay || day.label === selectedPickupDay,
+    );
     const candidates = selectedDay
       ? [selectedDay.day_key, selectedDay.label, selectedDay.label_en, selectedDay.label_th, selectedDay.label_zh]
           .filter((value): value is string => Boolean(value))
@@ -187,6 +196,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                 <ProductCard
                   product={product}
                   selectedDay={selectedPickupDay}
+                  selectedDayDisplay={selectedPickupDisplay}
                   onLoginRequired={() => setShowAuthModal(true)}
                 />
               </div>
@@ -205,6 +215,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
         selectedDay={selectedPickupDay}
+        selectedDayDisplay={selectedPickupDisplay}
         onLoginRequired={() => setShowAuthModal(true)}
       />
     </div>
