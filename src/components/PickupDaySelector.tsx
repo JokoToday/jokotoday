@@ -30,6 +30,16 @@ type DatedPickupSlot = {
   selectable: boolean;
 };
 
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
 function matchesConfiguredDay(values: string[], day: PickupDay): boolean {
   const candidates = [day.day_key, day.label, day.label_en, day.label_th, day.label_zh]
     .filter((value): value is string => Boolean(value));
@@ -56,6 +66,16 @@ function monthFromIndex(index: number): Date {
   const year = Math.floor(index / 12);
   const month = index % 12;
   return new Date(Date.UTC(year, month, 1, 12));
+}
+
+function getCutoffDateForSlot(slot: DatedPickupSlot): Date | null {
+  const cutoffWeekday = WEEKDAY_INDEX[slot.day.cutoff_day];
+  if (cutoffWeekday === undefined) return null;
+
+  const daysBeforePickup = (slot.day.pickup_weekday - cutoffWeekday + 7) % 7;
+  const cutoffDate = new Date(slot.date);
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysBeforePickup);
+  return cutoffDate;
 }
 
 export function PickupDaySelector({
@@ -197,6 +217,24 @@ export function PickupDaySelector({
     year: 'numeric',
     timeZone: 'UTC',
   }).format(date);
+
+  const formatCutoffDate = (slot: DatedPickupSlot): string => {
+    const cutoffDate = getCutoffDateForSlot(slot);
+    if (!cutoffDate) return slot.day.cutoff_day;
+    return new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }).format(cutoffDate);
+  };
+
+  const formatCutoffText = (slot: DatedPickupSlot): string => {
+    const cutoffDate = formatCutoffDate(slot);
+    if (language === 'th') return `สั่งก่อน ${cutoffDate} เวลา ${slot.day.cutoff_time} น.`;
+    if (language === 'zh') return `截止：${cutoffDate} ${slot.day.cutoff_time}`;
+    return `Order by ${cutoffDate} · ${slot.day.cutoff_time}`;
+  };
 
   const handleDateSelection = (key: string) => {
     const slots = slotsByDate.get(key) || [];
@@ -348,11 +386,7 @@ export function PickupDaySelector({
                           </div>
                           {rule && (
                             <p className="text-xs text-gray-500 mt-2 ml-6">
-                              {language === 'th'
-                                ? `สั่งก่อน ${day.cutoff_day} เวลา ${day.cutoff_time} น.`
-                                : language === 'zh'
-                                  ? `截止：${day.cutoff_day} ${day.cutoff_time}`
-                                  : `Order by ${day.cutoff_day} ${day.cutoff_time}`}
+                              {formatCutoffText(slot)}
                             </p>
                           )}
                         </div>
@@ -436,11 +470,7 @@ export function PickupDaySelector({
                       </div>
                       <div className="flex items-center justify-between gap-3 mt-2">
                         <p className="text-xs text-gray-600">
-                          {language === 'th'
-                            ? `สั่งก่อน ${day.cutoff_day} เวลา ${day.cutoff_time} น.`
-                            : language === 'zh'
-                              ? `截止时间：${day.cutoff_day} ${day.cutoff_time}`
-                              : `Order by ${day.cutoff_day} ${day.cutoff_time}`}
+                          {formatCutoffText(slot)}
                         </p>
                         <CountdownTimer
                           cutoffDay={day.cutoff_day}
