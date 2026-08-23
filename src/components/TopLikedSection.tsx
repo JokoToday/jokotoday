@@ -40,9 +40,9 @@ export default function TopLikedSection({ onNavigate, onProductClick }: TopLiked
     }
   };
 
-  const getProductName = (product: TopLikedProduct) => {
+  const getProductName = (product: TopLikedProduct): string => {
     if (language === 'th') return product.name_th;
-    if (language === 'zh') return product.name_zh;
+    if (language === 'zh') return product.name_zh || product.name_en;
     return product.name_en;
   };
 
