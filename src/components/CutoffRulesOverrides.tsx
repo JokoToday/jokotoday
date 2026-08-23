@@ -1,35 +1,78 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { PickupOverride } from '../lib/availabilityService';
+import { CutoffRule, PickupOverride } from '../lib/availabilityService';
 
 interface CutoffRulesOverridesProps {
   overrides: PickupOverride[];
+  rules: CutoffRule[];
   onRefresh: () => void;
 }
 
+type OverrideType = PickupOverride['override_type'];
+
+type OverrideFormData = {
+  date: string;
+  pickup_day: string;
+  location: string;
+  override_type: OverrideType;
+  custom_cutoff_day: string;
+  custom_cutoff_time: string;
+  note_en: string;
+  note_th: string;
+  is_active: boolean;
+};
+
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const locations = ['Mae Rim', 'In-Town'];
-const pickupDays = ['Friday', 'Saturday', 'Sunday'];
-const overrideTypes = [
+const overrideTypes: Array<{ value: OverrideType; label: string }> = [
   { value: 'closed', label: 'Closed' },
   { value: 'custom_cutoff', label: 'Custom Cutoff' },
   { value: 'sold_out', label: 'Sold Out' },
 ];
 
-export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverridesProps) {
+const makeSlotValue = (pickupDay: string, location: string) =>
+  JSON.stringify([pickupDay, location]);
+
+export function CutoffRulesOverrides({ overrides, rules, onRefresh }: CutoffRulesOverridesProps) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<PickupOverride | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OverrideFormData>({
     date: '',
     pickup_day: '',
     location: '',
-    override_type: 'closed' as const,
+    override_type: 'closed',
     custom_cutoff_day: '',
     custom_cutoff_time: '',
     note_en: '',
     note_th: '',
     is_active: true,
   });
+
+  const configuredSlots = useMemo(() => {
+    const unique = new Map<string, { pickupDay: string; location: string; label: string }>();
+    rules
+      .filter((rule) => rule.is_active)
+      .forEach((rule) => {
+        const value = makeSlotValue(rule.pickup_day, rule.location);
+        unique.set(value, {
+          pickupDay: rule.pickup_day,
+          location: rule.location,
+          label: rule.pickup_label_en || `${rule.pickup_day} – ${rule.location}`,
+        });
+      });
+
+    if (editing) {
+      const value = makeSlotValue(editing.pickup_day, editing.location);
+      if (!unique.has(value)) {
+        unique.set(value, {
+          pickupDay: editing.pickup_day,
+          location: editing.location,
+          label: `${editing.pickup_day} – ${editing.location} (existing)`,
+        });
+      }
+    }
+
+    return Array.from(unique.entries()).map(([value, slot]) => ({ value, ...slot }));
+  }, [editing, rules]);
 
   const handleNew = () => {
     setFormData({
@@ -69,11 +112,10 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
       return;
     }
 
-    if (formData.override_type === 'custom_cutoff') {
-      if (!formData.custom_cutoff_day || !formData.custom_cutoff_time) {
-        alert('Please specify custom cutoff day and time');
-        return;
-      }
+    if (formData.override_type === 'custom_cutoff'
+        && (!formData.custom_cutoff_day || !formData.custom_cutoff_time)) {
+      alert('Please specify custom cutoff day and time');
+      return;
     }
 
     try {
@@ -130,15 +172,23 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
     }
   };
 
-  const getOverrideTypeLabel = (type: string): string => {
-    const found = overrideTypes.find(t => t.value === type);
-    return found ? found.label : type;
+  const getOverrideTypeLabel = (type: OverrideType): string => {
+    return overrideTypes.find((item) => item.value === type)?.label || type;
   };
+
+  const selectedSlotValue = formData.pickup_day && formData.location
+    ? makeSlotValue(formData.pickup_day, formData.location)
+    : '';
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Holiday / Special Overrides</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Holiday / Special Overrides</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Overrides use the pickup slots configured in Pickup Schedule.
+          </p>
+        </div>
         <button
           onClick={handleNew}
           className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium"
@@ -157,47 +207,33 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
             <input
               type="date"
               value={formData.date}
-              onChange={(e) =>
-                setFormData({ ...formData, date: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             />
 
             <select
-              value={formData.pickup_day}
-              onChange={(e) =>
-                setFormData({ ...formData, pickup_day: e.target.value })
-              }
+              value={selectedSlotValue}
+              onChange={(e) => {
+                if (!e.target.value) {
+                  setFormData({ ...formData, pickup_day: '', location: '' });
+                  return;
+                }
+                const [pickupDay, location] = JSON.parse(e.target.value) as [string, string];
+                setFormData({ ...formData, pickup_day: pickupDay, location });
+              }}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             >
-              <option value="">Select Pickup Day</option>
-              {pickupDays.map((day) => (
-                <option key={day} value={day}>
-                  {day}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={formData.location}
-              onChange={(e) =>
-                setFormData({ ...formData, location: e.target.value })
-              }
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
-            >
-              <option value="">Select Location</option>
-              {locations.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
+              <option value="">Select Pickup Slot</option>
+              {configuredSlots.map((slot) => (
+                <option key={slot.value} value={slot.value}>
+                  {slot.label}
                 </option>
               ))}
             </select>
 
             <select
               value={formData.override_type}
-              onChange={(e) =>
-                setFormData({ ...formData, override_type: e.target.value as any })
-              }
+              onChange={(e) => setFormData({ ...formData, override_type: e.target.value as OverrideType })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             >
               {overrideTypes.map((type) => (
@@ -211,25 +247,19 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
               <>
                 <select
                   value={formData.custom_cutoff_day}
-                  onChange={(e) =>
-                    setFormData({ ...formData, custom_cutoff_day: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, custom_cutoff_day: e.target.value })}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                 >
                   <option value="">Select Cutoff Day</option>
                   {days.map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
+                    <option key={day} value={day}>{day}</option>
                   ))}
                 </select>
 
                 <input
                   type="time"
                   value={formData.custom_cutoff_time}
-                  onChange={(e) =>
-                    setFormData({ ...formData, custom_cutoff_time: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, custom_cutoff_time: e.target.value })}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                 />
               </>
@@ -239,9 +269,7 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
               type="text"
               placeholder="Note in English (optional)"
               value={formData.note_en}
-              onChange={(e) =>
-                setFormData({ ...formData, note_en: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, note_en: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             />
 
@@ -249,9 +277,7 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
               type="text"
               placeholder="Note in Thai (optional)"
               value={formData.note_th}
-              onChange={(e) =>
-                setFormData({ ...formData, note_th: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, note_th: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             />
 
@@ -259,9 +285,7 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
               <input
                 type="checkbox"
                 checked={formData.is_active}
-                onChange={(e) =>
-                  setFormData({ ...formData, is_active: e.target.checked })
-                }
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 className="w-4 h-4 rounded border-gray-300"
               />
               Active
@@ -289,24 +313,12 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">
-                Date
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">
-                Pickup / Location
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">
-                Override Type
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">
-                Details
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">
-                Status
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">
-                Actions
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Date</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Pickup / Location</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Override Type</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Details</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">Status</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -318,13 +330,8 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
               </tr>
             ) : (
               overrides.map((override) => (
-                <tr
-                  key={override.id}
-                  className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {override.date}
-                  </td>
+                <tr key={override.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{override.date}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {override.pickup_day} / {override.location}
                   </td>
@@ -342,13 +349,9 @@ export function CutoffRulesOverrides({ overrides, onRefresh }: CutoffRulesOverri
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span
-                      className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
-                        override.is_active
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
+                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
+                      override.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
                       {override.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
