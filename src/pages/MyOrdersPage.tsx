@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -94,8 +94,6 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
       if (error) {
         console.error('Cancel order RPC error:', error);
-        // The RPC is the authoritative source for the Admin-configured cancellation
-        // deadline and order-state checks. Do not duplicate a hard-coded cutoff here.
         setCancelError(error.message || 'This order can no longer be cancelled.');
         return;
       }
