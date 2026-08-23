@@ -59,7 +59,9 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
       return 'desc_th' in product ? product.desc_th : product.description_th;
     }
     if (language === 'zh') {
-      const zhDesc = 'desc_zh' in product ? product.desc_zh : product.description_zh;
+      const zhDesc = 'description_zh' in product
+        ? product.description_zh
+        : ('desc_zh' in product ? product.desc_zh : null);
       if (zhDesc) return zhDesc;
       return 'desc_en' in product ? product.desc_en : product.description_en;
     }
