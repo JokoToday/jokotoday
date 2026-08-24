@@ -31,7 +31,8 @@ BEGIN
     SELECT o.pickup_date_id
     INTO v_pickup_date_id
     FROM public.orders o
-    WHERE o.id = p_order_id;
+    WHERE o.id = p_order_id
+    FOR UPDATE;
 
     IF FOUND AND v_pickup_date_id IS NOT NULL THEN
       RAISE EXCEPTION
