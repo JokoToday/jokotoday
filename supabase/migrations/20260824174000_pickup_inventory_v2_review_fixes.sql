@@ -230,9 +230,9 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text) TO authenticated;
+/* Keep customer checkout inaccessible at this migration boundary. */
+REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text)
+FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.cancel_online_order_v2(p_order_id uuid)
 RETURNS jsonb
@@ -354,8 +354,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.cancel_online_order_v2(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.cancel_online_order_v2(uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.cancel_online_order_v2(uuid) TO authenticated;
+/* Keep customer cancellation inaccessible at this migration boundary. */
+REVOKE ALL ON FUNCTION public.cancel_online_order_v2(uuid)
+FROM PUBLIC, anon, authenticated;
 
 COMMIT;
