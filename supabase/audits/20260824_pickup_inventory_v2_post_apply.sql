@@ -119,7 +119,7 @@ WHERE n.nspname = 'public'
   )
 ORDER BY p.proname, p.oid::regprocedure::text;
 
--- T. Invariant trigger inspection. All five rows should exist and be enabled.
+-- T. Invariant trigger inspection. All four trigger rows should exist and be enabled.
 SELECT
   c.relname AS table_name,
   t.tgname AS trigger_name,
@@ -138,3 +138,19 @@ WHERE n.nspname = 'public'
     'prevent_inventory_event_delete_v2'
   )
 ORDER BY c.relname, t.tgname;
+
+-- U. Legacy-cancellation compatibility boundary.
+-- Expected:
+--   cancel_online_order(uuid): anon=false, authenticated=true
+--   cancel_online_order_legacy_v1(uuid): anon=false, authenticated=false
+SELECT
+  p.oid::regprocedure AS function_signature,
+  p.prosecdef AS security_definer,
+  p.proconfig,
+  has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_can_execute,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_can_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('cancel_online_order', 'cancel_online_order_legacy_v1')
+ORDER BY p.proname;
