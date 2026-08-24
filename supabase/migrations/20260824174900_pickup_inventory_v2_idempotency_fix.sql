@@ -40,6 +40,7 @@ DECLARE
   v_normalized_notes text;
   v_today_bangkok date := timezone('Asia/Bangkok', now())::date;
   v_language text := 'en';
+  v_recurring_active boolean;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000';
@@ -188,6 +189,19 @@ BEGIN
       RAISE EXCEPTION 'Product % is not available', v_product.name_en;
     END IF;
 
+    /*
+      Recurring availability is authoritative for recurring-default pools.
+      Lock it before the inventory row so Admin availability changes serialize
+      as schedule-capacity -> date-inventory, matching the Admin RPC lock order.
+      Explicit date overrides remain independently offerable.
+    */
+    v_recurring_active := NULL;
+    SELECT c.is_active INTO v_recurring_active
+    FROM public.product_schedule_capacity c
+    WHERE c.schedule_id = v_date.schedule_id
+      AND c.product_id = v_item.product_id
+    FOR SHARE;
+
     SELECT * INTO v_inventory
     FROM public.product_date_inventory
     WHERE pickup_date_id = p_pickup_date_id
@@ -195,6 +209,10 @@ BEGIN
     FOR UPDATE;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Product % is not offered for the selected pickup date', v_product.name_en;
+    END IF;
+    IF v_inventory.capacity_source = 'recurring_default'
+       AND COALESCE(v_recurring_active, false) = false THEN
+      RAISE EXCEPTION 'Product % is not active for this pickup schedule', v_product.name_en;
     END IF;
     IF (v_inventory.capacity - v_inventory.reserved_quantity) < v_item.quantity THEN
       RAISE EXCEPTION 'Insufficient stock for product %', v_product.name_en;
