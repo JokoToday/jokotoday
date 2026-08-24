@@ -161,9 +161,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.materialize_pickup_dates_v2(date, date) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.materialize_pickup_dates_v2(date, date) FROM anon;
-GRANT EXECUTE ON FUNCTION public.materialize_pickup_dates_v2(date, date) TO authenticated;
+/* This initial definition is intentionally dark; 174700 installs the corrected
+   date + time implementation and is the first migration to grant Admin EXECUTE. */
+REVOKE ALL ON FUNCTION public.materialize_pickup_dates_v2(date, date)
+FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.admin_upsert_pickup_schedule_v2(
   p_schedule_id uuid,
