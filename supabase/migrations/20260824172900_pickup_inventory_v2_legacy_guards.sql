@@ -28,7 +28,7 @@ BEGIN
         OR COALESCE(l.is_active, false) = false
         OR r.day_key IS NULL
         OR r.cutoff_day NOT IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
-        OR COALESCE(r.cutoff_time, '') !~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$'
+        OR COALESCE(r.cutoff_time, '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
       )
   ) THEN
     RAISE EXCEPTION
@@ -53,7 +53,7 @@ BEGIN
       ON c.pickup_label_en = COALESCE(d.label_en, d.label)
      AND COALESCE(c.is_active, false) = true
     WHERE c.cutoff_day NOT IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
-       OR COALESCE(c.cutoff_time, '') !~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$'
+       OR COALESCE(c.cutoff_time, '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
   ) THEN
     RAISE EXCEPTION
       'Pickup v2 guard failed: an active legacy cancellation cutoff has an invalid weekday/time. Run the pickup v2 preflight.';
