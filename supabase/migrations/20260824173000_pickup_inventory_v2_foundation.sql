@@ -222,12 +222,11 @@ REVOKE ALL ON TABLE
   public.inventory_events
 FROM anon, authenticated;
 
-GRANT SELECT ON TABLE
-  public.pickup_schedules,
-  public.pickup_schedule_locations,
-  public.pickup_dates,
-  public.pickup_date_locations
-TO anon, authenticated;
+/*
+  Keep public/customer metadata reads dark at this migration boundary.
+  174800 installs anonymous-safe public/admin RLS policies and grants SELECT
+  on these four metadata tables in the same transaction.
+*/
 
 GRANT SELECT ON TABLE
   public.product_schedule_capacity,
