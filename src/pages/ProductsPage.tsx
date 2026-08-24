@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase, Category, Product } from '../lib/supabase';
 import ProductCard from '../components/ProductCard';
 import { PickupDaySelector } from '../components/PickupDaySelector';
 import { AuthModal } from '../components/AuthModal';
@@ -7,7 +6,7 @@ import ProductDetailModal from '../components/ProductDetailModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { getCategories, getProducts, getProductBySlug, CMSCategory, CMSProduct } from '../lib/cmsService';
-import { getPickupDays, isDayOpenForOrdering, getCutoffDayAndTime, getPickupDayLabel, PickupDay } from '../lib/availabilityService';
+import { getPickupDays, isDayOpenForOrdering, getPickupDayLabel, PickupDay } from '../lib/availabilityService';
 
 interface ProductsPageProps {
   initialProductSlug?: string | null;
@@ -82,28 +81,40 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     }
   }
 
+  const selectedPickupSlot = pickupDays.find((day) =>
+    day.day_key === selectedPickupDay || day.label === selectedPickupDay,
+  ) || null;
+  const selectedPickupDisplay = selectedPickupSlot
+    ? getPickupDayLabel(selectedPickupSlot, language)
+    : selectedPickupDay;
+
   const filteredProducts = products.filter((p) => {
     const matchesCategory = !selectedCategory || selectedCategory === 'all' || p.category_id === selectedCategory;
-    const matchesPickupDay = !selectedPickupDay || (p.available_days && (p.available_days as string[]).includes(selectedPickupDay));
+    if (!selectedPickupDay) return matchesCategory;
+
+    const selectedDay = pickupDays.find((day) =>
+      day.day_key === selectedPickupDay || day.label === selectedPickupDay,
+    );
+    const candidates = selectedDay
+      ? [selectedDay.day_key, selectedDay.label, selectedDay.label_en, selectedDay.label_th, selectedDay.label_zh]
+          .filter((value): value is string => Boolean(value))
+      : [selectedPickupDay];
+    const productDays = p.available_days || [];
+    const matchesPickupDay = productDays.length === 0 || candidates.some((value) => productDays.includes(value));
     return matchesCategory && matchesPickupDay;
   });
 
   const dayOptions = pickupDays.map(day => ({
     label: day.label,
     displayLabel: getPickupDayLabel(day, language),
-    key: day.day_key
+    key: day.day_key,
   }));
 
   const getIsOpen = (label: string): boolean => {
     const day = pickupDays.find((d) => d.label === label);
-    return day ? isDayOpenForOrdering(day) : true;
+    return day ? isDayOpenForOrdering(day) : false;
   };
 
-  const getPickupDayObject = (label: string): PickupDay | undefined => {
-    return pickupDays.find((d) => d.label === label);
-  };
-
-  // Get available and closed days for the selector
   const availableDays = dayOptions.filter(d => getIsOpen(d.label)).map(d => d.label);
   const closedDays = dayOptions.filter(d => !getIsOpen(d.label)).map(d => d.label);
 
@@ -139,7 +150,11 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               {t.categories.all}
             </button>
             {categories.map((category) => {
-              const categoryName = language === 'zh' ? (category.title_zh || category.title_en) : (language === 'th' ? category.title_th : category.title_en);
+              const categoryName = language === 'zh'
+                ? (category.title_zh || category.title_en)
+                : language === 'th'
+                  ? category.title_th
+                  : category.title_en;
               return (
                 <button
                   key={category.id}
@@ -181,6 +196,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                 <ProductCard
                   product={product}
                   selectedDay={selectedPickupDay}
+                  selectedDayDisplay={selectedPickupDisplay}
                   onLoginRequired={() => setShowAuthModal(true)}
                 />
               </div>
@@ -199,6 +215,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
         selectedDay={selectedPickupDay}
+        selectedDayDisplay={selectedPickupDisplay}
         onLoginRequired={() => setShowAuthModal(true)}
       />
     </div>

@@ -2,9 +2,9 @@ import { supabase } from './supabase';
 
 export interface CustomerRecord {
   id: string;
-  name: string | null;
-  email: string | null;
-  phone: string | null;
+  name: string;
+  email: string;
+  phone: string;
   line_id: string | null;
   whatsapp: string | null;
   wechat_id: string | null;
@@ -12,6 +12,12 @@ export interface CustomerRecord {
   short_code: string;
   loyalty_points: number;
 }
+
+type RawCustomerRecord = Omit<CustomerRecord, 'name' | 'email' | 'phone'> & {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+};
 
 export class InvalidCustomerCodeError extends Error {
   constructor() {
@@ -64,7 +70,6 @@ function extractFromUrl(url: URL): string {
   throw new InvalidCustomerCodeError();
 }
 
-// Extract a supported member code/token from a QR URL or raw value.
 export function extractCustomerLookupToken(raw: string): string {
   const value = raw.trim();
   if (!value) throw new InvalidCustomerCodeError();
@@ -90,9 +95,19 @@ export function extractCustomerLookupToken(raw: string): string {
   return MEMBER_CODE_PATTERN.test(token) ? token.toUpperCase() : token;
 }
 
+function normalizeCustomer(record: RawCustomerRecord): CustomerRecord {
+  return {
+    ...record,
+    name: record.name?.trim() || 'Customer',
+    email: record.email?.trim() || '',
+    phone: record.phone?.trim() || '',
+    loyalty_points: Number(record.loyalty_points) || 0,
+  };
+}
+
 async function fetchCustomerByToken(token: string): Promise<CustomerRecord | null> {
   try {
-    const { data, error } = await supabase.functions.invoke<CustomerRecord | null>('customer-lookup', {
+    const { data, error } = await supabase.functions.invoke<RawCustomerRecord | null>('customer-lookup', {
       method: 'POST',
       body: { token },
     });
@@ -106,7 +121,7 @@ async function fetchCustomerByToken(token: string): Promise<CustomerRecord | nul
       throw new CustomerLookupServiceError(status);
     }
 
-    return data;
+    return data ? normalizeCustomer(data) : null;
   } catch (err) {
     if (err instanceof CustomerLookupNetworkError || err instanceof CustomerLookupServiceError) {
       throw err;
@@ -119,7 +134,6 @@ export async function lookupCustomerByQRToken(qrToken: string): Promise<Customer
   return fetchCustomerByToken(extractCustomerLookupToken(qrToken));
 }
 
-// 🔁 Short code = same logic
 export async function lookupCustomerByShortCode(shortCode: string): Promise<CustomerRecord | null> {
   return lookupCustomerByQRToken(shortCode);
 }

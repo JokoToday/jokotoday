@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { CMSProduct } from './cmsService';
 
 export interface ProductLike {
   id: string;
@@ -83,13 +84,13 @@ export async function toggleLike(
   if (currentlyLiked) {
     const success = await unlikeProduct(userId, productId);
     return { success, isLiked: success ? false : true };
-  } else {
-    const success = await likeProduct(userId, productId);
-    return { success, isLiked: success ? true : false };
   }
+
+  const success = await likeProduct(userId, productId);
+  return { success, isLiked: success ? true : false };
 }
 
-export async function fetchLikedProducts(userId: string) {
+export async function fetchLikedProducts(userId: string): Promise<CMSProduct[]> {
   const { data, error } = await supabase
     .from('product_likes')
     .select(`
@@ -106,8 +107,11 @@ export async function fetchLikedProducts(userId: string) {
         desc_zh,
         price,
         image,
+        qr_code_url,
         is_sold_out,
         is_active,
+        sort_order,
+        stock_total,
         stock_remaining,
         available_days,
         stock_by_day,
@@ -122,7 +126,19 @@ export async function fetchLikedProducts(userId: string) {
     return [];
   }
 
-  return data?.map((item) => item.cms_products).filter(Boolean) || [];
+  const products: CMSProduct[] = [];
+  (data || []).forEach((item) => {
+    const relation = item.cms_products;
+    if (Array.isArray(relation)) {
+      relation.forEach((product) => {
+        if (product) products.push(product as CMSProduct);
+      });
+    } else if (relation) {
+      products.push(relation as CMSProduct);
+    }
+  });
+
+  return products;
 }
 
 export function subscribeToLikes(

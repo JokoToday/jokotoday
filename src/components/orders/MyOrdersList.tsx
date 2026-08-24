@@ -4,11 +4,11 @@ import { Order, PickupDay, PickupLocation, SortOption } from './OrderTypes';
 import { OrderCard } from './OrderCard';
 import { OrderDetailModal } from './OrderDetailModal';
 import { CMSProduct } from '../../lib/cmsService';
+import { isPickupDatePast } from '../../lib/availabilityService';
 
 const PAGE_SIZE = 20;
 
 const CURRENT_STATUSES = new Set(['pending', 'confirmed', 'ready']);
-const PAST_STATUSES = new Set(['picked_up', 'cancelled', 'completed', 'walk_in']);
 
 interface MyOrdersListProps {
   orders: Order[];
@@ -23,7 +23,8 @@ interface MyOrdersListProps {
 
 function isCurrentOrder(order: Order): boolean {
   if (order.purchase_type === 'walk_in') return false;
-  return CURRENT_STATUSES.has(order.status);
+  if (!CURRENT_STATUSES.has(order.status)) return false;
+  return !isPickupDatePast(order.pickup_date);
 }
 
 function formatDateHeader(dateString: string, language: 'en' | 'th' | 'zh'): string {
@@ -132,9 +133,7 @@ function OrderColumn({
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/80 rounded-lg border text-xs font-medium text-stone-600 hover:bg-white transition-colors"
             style={{ borderColor: '#e8d9b8' }}
           >
-            <span className="hidden sm:inline text-stone-400">
-              {sortLabel}:
-            </span>
+            <span className="hidden sm:inline text-stone-400">{sortLabel}:</span>
             <span className="max-w-[80px] truncate">{currentSortLabel}</span>
             <ChevronDown
               className={`w-3 h-3 text-stone-400 transition-transform duration-200 shrink-0 ${sortOpen ? 'rotate-180' : ''}`}
@@ -309,7 +308,7 @@ export function MyOrdersList({
         title={pastTitle}
         icon={<Zap className="w-4 h-4 text-stone-400" />}
         accent="#78716c"
-        accentBg="linear-gradient(135deg, #f5f5f4 0%, #fafaf9 100%)"
+        accentBg="linear-gradient(135deg, #f5f5f4 0%,#fafaf9 100%)"
         orders={pastOrders}
         language={language}
         productMap={productMap}

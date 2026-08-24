@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Download, Sparkles } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -67,10 +67,7 @@ export function QRCodeDisplay({ qrToken, qrValue, onClose }: QRCodeDisplayProps)
       </div>
 
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-xl border border-amber-200 flex flex-col items-center">
-        <div
-          ref={qrRef}
-          className="bg-white p-4 rounded-xl shadow-sm"
-        >
+        <div ref={qrRef} className="bg-white p-4 rounded-xl shadow-sm">
           <QRCodeSVG
             value={String(qrValue).trim()}
             size={200}

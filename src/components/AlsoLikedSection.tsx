@@ -11,7 +11,7 @@ interface AlsoLikedSectionProps {
   selectedDay?: string | null;
 }
 
-export default function AlsoLikedSection({ productId, onProductClick, selectedDay }: AlsoLikedSectionProps) {
+export default function AlsoLikedSection({ productId, onProductClick }: AlsoLikedSectionProps) {
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
   const { recommendations, loading } = useProductRecommendations(productId);

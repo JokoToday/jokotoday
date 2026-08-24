@@ -14,6 +14,7 @@ interface ProductDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedDay?: string | null;
+  selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
 }
 
@@ -22,6 +23,7 @@ export default function ProductDetailModal({
   isOpen,
   onClose,
   selectedDay,
+  selectedDayDisplay,
   onLoginRequired,
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1);
@@ -46,6 +48,7 @@ export default function ProductDetailModal({
   if (!isOpen || !product) return null;
 
   const availability = getAvailabilityStatus(product, selectedDay || null);
+  const pickupDisplay = selectedDayDisplay || selectedDay;
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
 
@@ -160,17 +163,17 @@ export default function ProductDetailModal({
                 {availability.isSoldOut ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-red-600 bg-red-50 px-3 py-2 rounded-full w-fit">
                     <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                    {t.pickupDay.soldOutFor} {selectedDay}
+                    {t.pickupDay.soldOutFor} {pickupDisplay}
                   </div>
                 ) : availability.isNotOfferedToday ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-gray-600 bg-gray-100 px-3 py-2 rounded-full w-fit">
                     <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                    {t.pickupDay.notAvailableFor} {selectedDay}
+                    {t.pickupDay.notAvailableFor} {pickupDisplay}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-green-600 bg-green-50 px-3 py-2 rounded-full w-fit">
                     <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                    {t.pickupDay.availableFor} {selectedDay}
+                    {t.pickupDay.availableFor} {pickupDisplay}
                   </div>
                 )}
               </div>

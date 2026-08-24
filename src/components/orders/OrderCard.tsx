@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, ShoppingBag } from 'lucide-react';
 import { Order } from './OrderTypes';
+import { isPickupDatePast } from '../../lib/availabilityService';
 
 interface OrderCardProps {
   order: Order;
@@ -63,6 +64,9 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const total = isOnline ? order.total_amount : (order.walk_in_amount || order.total_amount);
   const terminalStatus = getTerminalStatus(order.status, language);
+  const unresolvedPastPickup = isOnline
+    && ['pending', 'confirmed', 'ready'].includes(order.status)
+    && isPickupDatePast(order.pickup_date);
 
   return (
     <button
@@ -89,7 +93,7 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                 </p>
                 <p className="text-xs text-stone-500">{formatFullDate(order.created_at, language)}</p>
                 {isOnline && order.pickup_date && (
-                  <p className="text-xs font-semibold mt-1" style={{ color: '#9a7b2f' }}>
+                  <p className="text-xs font-semibold mt-1" style={{ color: unresolvedPastPickup ? '#b45309' : '#9a7b2f' }}>
                     {getLabel('my_orders_page.pickup_day', language, 'Pickup')}: {formatPickupDate(order.pickup_date, language)}
                   </p>
                 )}
@@ -123,6 +127,11 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                   style={terminalStatus.style}
                 >
                   {terminalStatus.label}
+                </span>
+              )}
+              {unresolvedPastPickup && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-800 border-amber-200">
+                  {language === 'th' ? 'เลยวันรับสินค้า' : language === 'zh' ? '取货日期已过' : 'Pickup date passed'}
                 </span>
               )}
               {(order.status !== 'cancelled' && order.loyalty_points_earned != null && order.loyalty_points_earned > 0) && (

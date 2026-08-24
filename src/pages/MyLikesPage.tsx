@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Heart, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useLikes } from '../context/LikesContext';
 import { fetchLikedProducts } from '../lib/likesService';
 import { CMSProduct } from '../lib/cmsService';
 import ProductCard from '../components/ProductCard';
@@ -15,7 +14,6 @@ interface MyLikesPageProps {
 export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
-  const { refreshLikes } = useLikes();
   const [likedProducts, setLikedProducts] = useState<CMSProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -68,18 +66,12 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     setLoading(true);
     try {
       const products = await fetchLikedProducts(user.id);
-      setLikedProducts(products as CMSProduct[]);
+      setLikedProducts(products);
     } catch (error) {
       console.error('Error loading liked products:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    refreshLikes();
-    loadLikedProducts();
   };
 
   if (authLoading) {

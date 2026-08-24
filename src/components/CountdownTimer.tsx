@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface CountdownTimerProps {
   cutoffDay: string;
   cutoffTime: string;
+  pickupWeekday: number;
   language: 'en' | 'th' | 'zh';
   compact?: boolean;
 }
@@ -14,73 +15,72 @@ interface TimeRemaining {
   passed: boolean;
 }
 
+const DAY_INDEX: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+function getBangkokWallClock(): Date {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const values: Record<string, string> = {};
+  formatter.formatToParts(new Date()).forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return new Date(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+  );
+}
+
 export function CountdownTimer({
   cutoffDay,
   cutoffTime,
+  pickupWeekday,
   language,
   compact = false,
 }: CountdownTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
 
   useEffect(() => {
-    const calculateTimeRemaining = () => {
-      const dayMap: Record<string, number> = {
-        'Sunday': 0,
-        'Monday': 1,
-        'Tuesday': 2,
-        'Wednesday': 3,
-        'Thursday': 4,
-        'Friday': 5,
-        'Saturday': 6,
-      };
-
-      const cutoffDayOfWeek = dayMap[cutoffDay];
-      if (cutoffDayOfWeek === undefined) return null;
+    const calculateTimeRemaining = (): TimeRemaining | null => {
+      const cutoffWeekday = DAY_INDEX[cutoffDay];
+      if (cutoffWeekday === undefined || pickupWeekday < 0 || pickupWeekday > 6) return null;
 
       const [hours, minutes] = cutoffTime.split(':').map(Number);
+      if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
 
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Bangkok',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      });
+      const now = getBangkokWallClock();
+      const pickupDate = new Date(now);
+      pickupDate.setHours(0, 0, 0, 0);
+      const daysUntilPickup = (pickupWeekday - now.getDay() + 7) % 7;
+      pickupDate.setDate(pickupDate.getDate() + daysUntilPickup);
 
-      const parts = formatter.formatToParts(new Date());
-      const partsMap: Record<string, string> = {};
-      parts.forEach((part) => {
-        partsMap[part.type] = part.value;
-      });
-
-      const now = new Date(
-        parseInt(partsMap.year),
-        parseInt(partsMap.month) - 1,
-        parseInt(partsMap.day),
-        parseInt(partsMap.hour),
-        parseInt(partsMap.minute),
-        parseInt(partsMap.second)
-      );
-
-      const currentDayOfWeek = now.getDay();
-      let cutoffDate = new Date(now);
-
-      if (cutoffDayOfWeek <= currentDayOfWeek) {
-        const daysBack = currentDayOfWeek - cutoffDayOfWeek;
-        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-      } else {
-        const daysForward = cutoffDayOfWeek - currentDayOfWeek;
-        cutoffDate.setDate(cutoffDate.getDate() + daysForward);
-      }
-
+      const daysBeforePickup = (pickupWeekday - cutoffWeekday + 7) % 7;
+      const cutoffDate = new Date(pickupDate);
+      cutoffDate.setDate(cutoffDate.getDate() - daysBeforePickup);
       cutoffDate.setHours(hours, minutes, 0, 0);
 
-      const passed = now > cutoffDate;
-
-      if (passed) {
+      if (now >= cutoffDate) {
         return { days: 0, hours: 0, minutes: 0, passed: true };
       }
 
@@ -95,14 +95,11 @@ export function CountdownTimer({
       };
     };
 
-    const timer = setInterval(() => {
-      setTimeRemaining(calculateTimeRemaining());
-    }, 60000);
-
-    setTimeRemaining(calculateTimeRemaining());
-
-    return () => clearInterval(timer);
-  }, [cutoffDay, cutoffTime]);
+    const update = () => setTimeRemaining(calculateTimeRemaining());
+    update();
+    const timer = window.setInterval(update, 60000);
+    return () => window.clearInterval(timer);
+  }, [cutoffDay, cutoffTime, pickupWeekday]);
 
   if (!timeRemaining) return null;
 

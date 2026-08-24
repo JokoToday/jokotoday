@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { LikesProvider } from './context/LikesContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -51,7 +51,6 @@ function AppContent() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [qrSource, setQrSource] = useState<string | null>(null);
-  const { user, loading } = useAuth();
 
   useEffect(() => {
     const syncPageFromLocation = () => {

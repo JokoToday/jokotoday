@@ -1,121 +1,39 @@
 import { useEffect, useState } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
-import { getCutoffRules, getPickupOverrides, getOverrideForDate, CutoffRule, PickupOverride } from '../lib/availabilityService';
+import { getPickupDays, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
 interface CutoffTimesDisplayProps {
   language: 'en' | 'th' | 'zh';
 }
 
-function isCutoffToday(cutoffDay: string): boolean {
-  const dayMap: Record<string, number> = {
-    'Sunday': 0,
-    'Monday': 1,
-    'Tuesday': 2,
-    'Wednesday': 3,
-    'Thursday': 4,
-    'Friday': 5,
-    'Saturday': 6,
-  };
-
-  const cutoffDayOfWeek = dayMap[cutoffDay];
-  if (cutoffDayOfWeek === undefined) return false;
-
-  const formatter = new Intl.DateTimeFormat('en-US', {
+function getBangkokWeekdayName(): string {
+  return new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Bangkok',
     weekday: 'long',
-  });
-
-  const todayName = formatter.format(new Date());
-  return todayName === cutoffDay;
-}
-
-function isCutoffPassed(cutoffDay: string, cutoffTime: string): boolean {
-  const dayMap: Record<string, number> = {
-    'Sunday': 0,
-    'Monday': 1,
-    'Tuesday': 2,
-    'Wednesday': 3,
-    'Thursday': 4,
-    'Friday': 5,
-    'Saturday': 6,
-  };
-
-  const cutoffDayOfWeek = dayMap[cutoffDay];
-  if (cutoffDayOfWeek === undefined) return true;
-
-  const [hours, minutes] = cutoffTime.split(':').map(Number);
-
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(new Date());
-  const partsMap: Record<string, string> = {};
-  parts.forEach((part) => {
-    partsMap[part.type] = part.value;
-  });
-
-  const nowInBangkok = new Date(
-    parseInt(partsMap.year),
-    parseInt(partsMap.month) - 1,
-    parseInt(partsMap.day),
-    parseInt(partsMap.hour),
-    parseInt(partsMap.minute),
-    parseInt(partsMap.second)
-  );
-
-  const currentDayOfWeek = nowInBangkok.getDay();
-  let cutoffDate = new Date(nowInBangkok);
-
-  if (cutoffDayOfWeek <= currentDayOfWeek) {
-    const daysBack = currentDayOfWeek - cutoffDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-  } else {
-    const daysForward = cutoffDayOfWeek - currentDayOfWeek;
-    cutoffDate.setDate(cutoffDate.getDate() + daysForward);
-  }
-
-  cutoffDate.setHours(hours, minutes, 0, 0);
-  return nowInBangkok > cutoffDate;
+  }).format(new Date());
 }
 
 export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
-  const [rules, setRules] = useState<CutoffRule[]>([]);
-  const [overrides, setOverrides] = useState<PickupOverride[]>([]);
+  const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const [rulesData, overridesData] = await Promise.all([
-        getCutoffRules(),
-        getPickupOverrides(),
-      ]);
-      setRules(rulesData);
-      setOverrides(overridesData);
-      setLoading(false);
-    };
-    fetchData();
+    getPickupDays()
+      .then(setPickupDays)
+      .catch((error) => console.error('Error loading pickup schedule:', error))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading || rules.length === 0) {
+  if (loading || pickupDays.length === 0) {
     return null;
   }
 
-  const today = new Date();
   const isThailand = language === 'th';
   const isChinese = language === 'zh';
+  const todayName = getBangkokWeekdayName();
 
-  const getStatusBadge = (rule: CutoffRule) => {
-    const override = getOverrideForDate(overrides, today, rule.pickup_day, rule.location);
-
-    if (override?.override_type === 'closed') {
+  const getStatusBadge = (day: PickupDay) => {
+    if (day.override?.override_type === 'closed') {
       return {
         text: isThailand ? 'ปิดรับออเดอร์' : isChinese ? '已停止接单' : 'Closed',
         color: 'bg-red-100 text-red-700 border-red-300',
@@ -123,7 +41,7 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
       };
     }
 
-    if (override?.override_type === 'sold_out') {
+    if (day.override?.override_type === 'sold_out') {
       return {
         text: isThailand ? 'ขายหมดแล้ว' : isChinese ? '已售罄' : 'Sold Out',
         color: 'bg-gray-100 text-gray-700 border-gray-300',
@@ -131,18 +49,7 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
       };
     }
 
-    const cutoffDay = override?.override_type === 'custom_cutoff' && override.custom_cutoff_day
-      ? override.custom_cutoff_day
-      : rule.cutoff_day;
-
-    const cutoffTime = override?.override_type === 'custom_cutoff' && override.custom_cutoff_time
-      ? override.custom_cutoff_time
-      : rule.cutoff_time;
-
-    const passed = isCutoffPassed(cutoffDay, cutoffTime);
-    const isToday = isCutoffToday(cutoffDay);
-
-    if (passed) {
+    if (!isDayOpenForOrdering(day)) {
       return {
         text: isThailand ? 'ปิดรับออเดอร์แล้ว' : isChinese ? '此取货时段已截止' : 'Closed for this pickup',
         color: 'bg-red-50 text-red-600 border-red-200',
@@ -150,9 +57,13 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
       };
     }
 
-    if (isToday) {
+    if (todayName === day.cutoff_day) {
       return {
-        text: isThailand ? `ปิดวันนี้ ${cutoffTime} น.` : isChinese ? `今日 ${cutoffTime} 截止` : `Closes today at ${cutoffTime}`,
+        text: isThailand
+          ? `ปิดวันนี้ ${day.cutoff_time} น.`
+          : isChinese
+            ? `今日 ${day.cutoff_time} 截止`
+            : `Closes today at ${day.cutoff_time}`,
         color: 'bg-amber-100 text-amber-700 border-amber-300',
         icon: 'clock',
       };
@@ -171,30 +82,29 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
         {isThailand
           ? 'สั่งสินค้าภายในเวลาปิดรับออเดอร์ของแต่ละรอบ'
           : isChinese
-          ? '请在各时段截止时间前下单。'
-          : 'Place your order before the respective cut-off times (see Products page).'}
+            ? '请在各时段截止时间前下单。'
+            : 'Place your order before the respective cut-off times (see Products page).'}
       </p>
 
       <div className="space-y-3">
-        {rules.map((rule) => {
-          const override = getOverrideForDate(overrides, today, rule.pickup_day, rule.location);
-
-          const cutoffDay = override?.override_type === 'custom_cutoff' && override.custom_cutoff_day
-            ? override.custom_cutoff_day
-            : rule.cutoff_day;
-
-          const cutoffTime = override?.override_type === 'custom_cutoff' && override.custom_cutoff_time
-            ? override.custom_cutoff_time
-            : rule.cutoff_time;
-
-          const cutoffDayZh = rule.cutoff_day_zh || cutoffDay;
-
-          const label = isThailand ? rule.pickup_label_th : isChinese ? (rule.pickup_label_zh || rule.pickup_label_en) : rule.pickup_label_en;
-          const status = getStatusBadge(rule);
+        {pickupDays.map((day) => {
+          const rule = day.cutoff_rule;
+          const label = isThailand
+            ? (day.label_th || day.label_en || day.label)
+            : isChinese
+              ? (day.label_zh || day.label_en || day.label)
+              : (day.label_en || day.label);
+          const status = getStatusBadge(day);
+          const cutoffDayZh = rule?.cutoff_day_zh || day.cutoff_day;
+          const note = isThailand
+            ? day.override?.note_th
+            : isChinese
+              ? (day.override?.note_zh || day.override?.note_en)
+              : day.override?.note_en;
 
           return (
             <div
-              key={rule.id}
+              key={day.id}
               className="bg-white border-2 border-amber-100 rounded-xl p-4 hover:border-amber-200 hover:shadow-sm transition-all"
             >
               <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -204,10 +114,10 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
                   </p>
                   <p className="text-xs md:text-sm text-gray-600">
                     {isThailand
-                      ? `สั่งก่อน ${cutoffDay} เวลา ${cutoffTime} น.`
+                      ? `สั่งก่อน ${day.cutoff_day} เวลา ${day.cutoff_time} น.`
                       : isChinese
-                      ? `截止时间：${cutoffDayZh} ${cutoffTime}`
-                      : `Order by ${cutoffDay} ${cutoffTime}`}
+                        ? `截止时间：${cutoffDayZh} ${day.cutoff_time}`
+                        : `Order by ${day.cutoff_day} ${day.cutoff_time}`}
                   </p>
                 </div>
 
@@ -218,9 +128,9 @@ export function CutoffTimesDisplay({ language }: CutoffTimesDisplayProps) {
                 </div>
               </div>
 
-              {override?.note_en && (
+              {note && (
                 <p className="text-xs text-orange-600 mt-2">
-                  {isThailand ? override.note_th : override.note_en}
+                  {note}
                 </p>
               )}
             </div>

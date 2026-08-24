@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getCutoffRules, CutoffRule, getPickupOverrides, PickupOverride, getOverrideForDate } from '../lib/availabilityService';
 
 interface CutoffRulesSelectorProps {

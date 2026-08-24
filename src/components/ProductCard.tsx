@@ -12,10 +12,11 @@ import { getPublicImageUrl } from '../lib/storage';
 type ProductCardProps = {
   product: Product | CMSProduct;
   selectedDay?: string | null;
+  selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
 };
 
-export default function ProductCard({ product, selectedDay, onLoginRequired }: ProductCardProps) {
+export default function ProductCard({ product, selectedDay, selectedDayDisplay, onLoginRequired }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { addToCart } = useCart();
@@ -24,6 +25,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
   const availability = getAvailabilityStatus(product, selectedDay || null);
+  const pickupDisplay = selectedDayDisplay || selectedDay;
 
   const productId = product.id;
   const liked = isLiked(productId);
@@ -44,20 +46,13 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   };
 
   const handleAddToCart = () => {
-    const cartItem = {
-      ...product,
-      name_en: 'name_en' in product ? product.name_en : 'product.name_en',
-      name_th: 'name_th' in product ? product.name_th : 'product.name_th',
-      name_zh: 'name_zh' in product ? product.name_zh : undefined,
-      price: product.price,
-    };
-    addToCart(cartItem, quantity);
+    addToCart(product, quantity);
     setQuantity(1);
   };
 
   const getProductName = () => {
     if (language === 'th') return product.name_th;
-    if (language === 'zh') return ('name_zh' in product && product.name_zh) || product.name_en;
+    if (language === 'zh') return product.name_zh || product.name_en;
     return product.name_en;
   };
 
@@ -66,7 +61,9 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
       return 'desc_th' in product ? product.desc_th : product.description_th;
     }
     if (language === 'zh') {
-      const zhDesc = 'desc_zh' in product ? product.desc_zh : ('description_zh' in product ? product.description_zh : null);
+      const zhDesc = 'description_zh' in product
+        ? product.description_zh
+        : ('desc_zh' in product ? product.desc_zh : null);
       if (zhDesc) return zhDesc;
       return 'desc_en' in product ? product.desc_en : product.description_en;
     }
@@ -76,7 +73,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
   const productName = getProductName();
   const productDescription = getProductDescription();
 
-  const stockRemaining = 'stock_remaining' in product ? product.stock_remaining : null;
+  const stockRemaining = product.stock_remaining ?? null;
   const isSoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || stockRemaining === 0;
 
   const getProductImage = () => {
@@ -140,17 +137,17 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
             {availability.isSoldOut ? (
               <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 bg-red-50 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                {t.pickupDay.soldOutFor} {selectedDay}
+                {t.pickupDay.soldOutFor} {pickupDisplay}
               </div>
             ) : availability.isNotOfferedToday ? (
               <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                {t.pickupDay.notAvailableFor} {selectedDay}
+                {t.pickupDay.notAvailableFor} {pickupDisplay}
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 px-2 py-1.5 rounded-full w-fit">
                 <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                {t.pickupDay.availableFor} {selectedDay}
+                {t.pickupDay.availableFor} {pickupDisplay}
               </div>
             )}
           </div>
@@ -188,7 +185,7 @@ export default function ProductCard({ product, selectedDay, onLoginRequired }: P
               </button>
               <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(stockRemaining || 999, quantity + 1))}
+                onClick={() => setQuantity(Math.min(stockRemaining ?? 999, quantity + 1))}
                 className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />

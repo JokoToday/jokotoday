@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Clock, CheckCircle, Zap } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
 import { PickupStatus } from '../lib/availabilityService';
 
 interface PickupStatusBadgeProps {
