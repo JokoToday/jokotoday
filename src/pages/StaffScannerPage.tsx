@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
-import { AlertCircle, Camera, Loader2, QrCode, Search, Star, UserCircle } from 'lucide-react';
+import { AlertCircle, Camera, Loader2, Lock, QrCode, Search, Star, UserCircle } from 'lucide-react';
 import { QRScanner } from '../components/QRScanner';
+import { useAuth } from '../context/AuthContext';
 import {
   CustomerRecord,
   CustomerLookupNetworkError,
@@ -10,6 +11,8 @@ import {
 } from '../lib/customerLookup';
 
 export function StaffScannerPage() {
+  const { user, userRole, profileLoading } = useAuth();
+  const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [customer, setCustomer] = useState<CustomerRecord | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -50,6 +53,26 @@ export function StaffScannerPage() {
     if (!manualCode.trim() || loading) return;
     void lookupCustomer(manualCode);
   };
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
+        <Loader2 className="w-9 h-9 text-amber-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!hasStaffAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 p-8 text-center">
+          <Lock className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Staff access required</h1>
+          <p className="text-sm text-slate-600">Sign in with a staff or admin account before using the customer scanner.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4 py-8">
