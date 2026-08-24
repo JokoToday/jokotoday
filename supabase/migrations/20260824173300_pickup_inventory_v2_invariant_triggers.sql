@@ -26,9 +26,6 @@ BEGIN
       'Pickup weekday cannot change after concrete dates have been materialized; use concrete-date overrides or a reviewed schedule transition';
   END IF;
 
-  -- A newly activated/reassigned schedule must not target a weekday that already
-  -- has future concrete date identities owned by another schedule. Otherwise the
-  -- later materializer would collide with the global pickup_date uniqueness rule.
   IF COALESCE(NEW.is_active, false) AND EXISTS (
     SELECT 1
     FROM public.pickup_dates d
@@ -43,6 +40,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.guard_pickup_schedule_lifecycle_v2()
+FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS guard_pickup_schedule_lifecycle_v2
   ON public.pickup_schedules;
@@ -66,7 +66,7 @@ DECLARE
   v_location_active boolean;
 BEGIN
   IF NEW.pickup_date_id IS NULL THEN
-    RETURN NEW; -- legacy order path
+    RETURN NEW;
   END IF;
 
   IF COALESCE(NEW.purchase_type, 'online') <> 'online' THEN
@@ -115,6 +115,9 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.guard_v2_order_pickup_selection()
+FROM PUBLIC, anon, authenticated;
+
 DROP TRIGGER IF EXISTS guard_v2_order_pickup_selection ON public.orders;
 CREATE TRIGGER guard_v2_order_pickup_selection
 BEFORE INSERT ON public.orders
@@ -133,6 +136,9 @@ BEGIN
   RAISE EXCEPTION 'inventory_events is append-only; write a compensating adjustment event instead';
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.prevent_inventory_event_mutation_v2()
+FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS prevent_inventory_event_update_v2
   ON public.inventory_events;
