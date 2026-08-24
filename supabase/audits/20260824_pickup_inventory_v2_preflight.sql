@@ -34,8 +34,8 @@ LEFT JOIN public.cms_pickup_locations l ON l.id = d.location_id
 LEFT JOIN public.pickup_cutoff_rules r ON r.day_key = d.day_key
 ORDER BY d.sort_order, d.day_key;
 
--- B. HARD STOP: every open slot must have a location, valid weekday and one
--- active canonical cutoff rule. This query must return ZERO rows.
+-- B1. HARD STOP: every open slot must have a valid active canonical cutoff.
+-- Must return ZERO rows.
 SELECT
   d.day_key,
   d.label_en,
@@ -57,8 +57,17 @@ WHERE COALESCE(d.is_open, false) = true
     OR d.location_id IS NULL
     OR r.day_key IS NULL
     OR r.cutoff_day NOT IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
-    OR r.cutoff_time IS NULL
+    OR COALESCE(r.cutoff_time, '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
   );
+
+-- B2. HARD STOP: Phase A represents one recurring schedule per weekday, with
+-- multiple locations below that schedule. Must return ZERO rows.
+SELECT d.pickup_weekday, count(*) AS active_legacy_slots
+FROM public.cms_pickup_days d
+WHERE COALESCE(d.is_open, false) = true
+GROUP BY d.pickup_weekday
+HAVING count(*) > 1
+ORDER BY d.pickup_weekday;
 
 -- C. HARD STOP: an open pickup slot must point to an active location.
 -- Must return ZERO rows.
@@ -68,7 +77,7 @@ LEFT JOIN public.cms_pickup_locations l ON l.id = d.location_id
 WHERE COALESCE(d.is_open, false) = true
   AND (l.id IS NULL OR COALESCE(l.is_active, false) = false);
 
--- D. Cancellation rule resolution currently depends on historical pickup label.
+-- D1. Cancellation rule resolution currently depends on historical pickup label.
 -- Review these rows before migration; zero rows is acceptable because legacy
 -- cancellation has a fallback, but duplicates/renames require explicit review.
 SELECT
@@ -82,6 +91,22 @@ FROM public.cms_pickup_days d
 LEFT JOIN public.cancellation_cutoff_rules c
   ON c.pickup_label_en = COALESCE(d.label_en, d.label)
  AND c.is_active = true
+ORDER BY d.sort_order, c.sort_order;
+
+-- D2. HARD STOP: any active cancellation rule that maps to a current slot must
+-- contain a valid weekday and time. Must return ZERO rows.
+SELECT
+  d.day_key,
+  COALESCE(d.label_en, d.label) AS current_pickup_label,
+  c.id AS cancellation_rule_id,
+  c.cutoff_day,
+  c.cutoff_time
+FROM public.cms_pickup_days d
+JOIN public.cancellation_cutoff_rules c
+  ON c.pickup_label_en = COALESCE(d.label_en, d.label)
+ AND COALESCE(c.is_active, false) = true
+WHERE c.cutoff_day NOT IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
+   OR COALESCE(c.cutoff_time, '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
 ORDER BY d.sort_order, c.sort_order;
 
 -- E. Active date-specific legacy overrides that the v2 materializer will bridge.
@@ -163,7 +188,8 @@ WHERE COALESCE(o.purchase_type, 'online') = 'online'
 ORDER BY o.pickup_date, o.created_at;
 
 -- I. HARD STOP: future reserved orders whose snapshot items cannot be used for
--- a deterministic inventory reconciliation. Must return ZERO rows.
+-- deterministic inventory reconciliation. Must return ZERO rows. UUID and
+-- quantity are validated as text here so malformed history cannot abort audit.
 SELECT o.id, o.order_number, o.order_items
 FROM public.orders o
 WHERE COALESCE(o.purchase_type, 'online') = 'online'
@@ -180,33 +206,38 @@ WHERE COALESCE(o.purchase_type, 'online') = 'online'
           ELSE '[]'::jsonb
         END
       ) item
-      WHERE NULLIF(item ->> 'product_id', '') IS NULL
+      WHERE COALESCE(item ->> 'product_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
          OR COALESCE(item ->> 'quantity', '') !~ '^[1-9][0-9]*$'
     )
   );
 
 -- J. Future known reservations aggregated by concrete date/product.
--- Malformed non-array snapshots are skipped here and already surfaced by I.
--- This is useful for reconciliation only; it is NOT recurring capacity.
+-- Invalid snapshot elements are skipped here and already surfaced by I.
+-- This is reconciliation data only; it is NOT recurring production capacity.
 SELECT
   o.pickup_date,
   item.product_id,
   p.name_en,
   sum(item.quantity)::integer AS known_reserved_quantity
 FROM public.orders o
-CROSS JOIN LATERAL jsonb_to_recordset(
-  CASE
-    WHEN jsonb_typeof(o.order_items) = 'array' THEN o.order_items
-    ELSE '[]'::jsonb
-  END
-) AS item(product_id uuid, quantity integer)
+CROSS JOIN LATERAL (
+  SELECT
+    (element ->> 'product_id')::uuid AS product_id,
+    (element ->> 'quantity')::integer AS quantity
+  FROM jsonb_array_elements(
+    CASE
+      WHEN jsonb_typeof(o.order_items) = 'array' THEN o.order_items
+      ELSE '[]'::jsonb
+    END
+  ) element
+  WHERE COALESCE(element ->> 'product_id', '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    AND COALESCE(element ->> 'quantity', '') ~ '^[1-9][0-9]*$'
+) AS item
 LEFT JOIN public.cms_products p ON p.id = item.product_id
 WHERE COALESCE(o.purchase_type, 'online') = 'online'
   AND o.pickup_date >= timezone('Asia/Bangkok', now())::date
   AND COALESCE(o.inventory_reserved, false) = true
   AND o.status NOT IN ('cancelled', 'picked_up', 'completed')
-  AND item.product_id IS NOT NULL
-  AND item.quantity > 0
 GROUP BY o.pickup_date, item.product_id, p.name_en
 ORDER BY o.pickup_date, p.name_en;
 
