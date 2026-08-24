@@ -77,4 +77,12 @@ USING (
   )
 );
 
+/* Expose metadata only after the anonymous-safe policy split is installed. */
+GRANT SELECT ON TABLE
+  public.pickup_schedules,
+  public.pickup_schedule_locations,
+  public.pickup_dates,
+  public.pickup_date_locations
+TO anon, authenticated;
+
 COMMIT;
