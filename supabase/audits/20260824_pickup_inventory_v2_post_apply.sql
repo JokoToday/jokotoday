@@ -76,7 +76,9 @@ LEFT JOIN public.inventory_events e
 GROUP BY i.pickup_date_id, i.product_id, i.reserved_quantity
 HAVING i.reserved_quantity <> COALESCE(sum(e.reserved_delta), 0)::integer;
 
--- R. Security inspection for new tables.
+-- R. Security inspection for new tables. Public-active policies should be
+-- separate from authenticated Admin policies; anon policies must not depend on
+-- protected user_profiles access.
 SELECT schemaname, tablename, policyname, roles, cmd, qual, with_check
 FROM pg_policies
 WHERE schemaname = 'public'
@@ -105,10 +107,34 @@ WHERE n.nspname = 'public'
     'materialize_pickup_dates_v2',
     'admin_upsert_pickup_schedule_v2',
     'admin_set_product_schedule_capacity_v2',
+    'admin_set_product_schedule_availability_v2',
     'admin_set_product_date_capacity_v2',
     'admin_update_pickup_date_v2',
     'admin_set_pickup_date_location_v2',
     'create_online_order_v2',
-    'cancel_online_order_v2'
+    'cancel_online_order_v2',
+    'guard_pickup_schedule_lifecycle_v2',
+    'guard_v2_order_pickup_selection',
+    'prevent_inventory_event_mutation_v2'
   )
 ORDER BY p.proname, p.oid::regprocedure::text;
+
+-- T. Invariant trigger inspection. All five rows should exist and be enabled.
+SELECT
+  c.relname AS table_name,
+  t.tgname AS trigger_name,
+  t.tgenabled,
+  p.oid::regprocedure AS trigger_function
+FROM pg_trigger t
+JOIN pg_class c ON c.oid = t.tgrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_proc p ON p.oid = t.tgfoid
+WHERE n.nspname = 'public'
+  AND NOT t.tgisinternal
+  AND t.tgname IN (
+    'guard_pickup_schedule_lifecycle_v2',
+    'guard_v2_order_pickup_selection',
+    'prevent_inventory_event_update_v2',
+    'prevent_inventory_event_delete_v2'
+  )
+ORDER BY c.relname, t.tgname;
