@@ -112,6 +112,7 @@ SELECT
   p.name_en,
   p.available_days,
   p.stock_by_day,
+  jsonb_typeof(COALESCE(p.stock_by_day, '{}'::jsonb)) AS stock_by_day_type,
   p.stock_remaining,
   p.is_active,
   p.is_sold_out
@@ -119,15 +120,29 @@ FROM public.cms_products p
 WHERE COALESCE(p.is_active, false) = true
 ORDER BY p.sort_order, p.name_en;
 
--- G. HARD STOP: malformed / negative legacy stock values.
--- Must return ZERO rows before relying on legacy stock during transition.
+-- G1. HARD STOP: stock_by_day must be a JSON object when present.
+-- Must return ZERO rows.
+SELECT p.id AS product_id, p.name_en, p.stock_by_day
+FROM public.cms_products p
+WHERE p.stock_by_day IS NOT NULL
+  AND jsonb_typeof(p.stock_by_day) <> 'object'
+ORDER BY p.name_en;
+
+-- G2. HARD STOP: malformed / negative legacy stock values.
+-- Safe even if G1 found malformed JSON shapes. Must return ZERO rows.
 SELECT
   p.id AS product_id,
   p.name_en,
   e.key AS stock_key,
   e.value AS stock_value
 FROM public.cms_products p
-CROSS JOIN LATERAL jsonb_each_text(COALESCE(p.stock_by_day, '{}'::jsonb)) e
+CROSS JOIN LATERAL jsonb_each_text(
+  CASE
+    WHEN jsonb_typeof(COALESCE(p.stock_by_day, '{}'::jsonb)) = 'object'
+      THEN COALESCE(p.stock_by_day, '{}'::jsonb)
+    ELSE '{}'::jsonb
+  END
+) e
 WHERE e.value !~ '^[0-9]+$'
    OR (CASE WHEN e.value ~ '^[0-9]+$' THEN e.value::integer ELSE 0 END) < 0
 ORDER BY p.name_en, e.key;
@@ -153,6 +168,7 @@ ORDER BY o.pickup_date, o.created_at;
 
 -- I. HARD STOP: future reserved orders whose snapshot items cannot be used for
 -- a deterministic inventory reconciliation. Must return ZERO rows.
+-- The CASE keeps the audit itself safe if a historical row contains non-array JSON.
 SELECT o.id, o.order_number, o.order_items
 FROM public.orders o
 WHERE COALESCE(o.purchase_type, 'online') = 'online'
@@ -163,13 +179,19 @@ WHERE COALESCE(o.purchase_type, 'online') = 'online'
     OR jsonb_typeof(o.order_items) <> 'array'
     OR EXISTS (
       SELECT 1
-      FROM jsonb_array_elements(COALESCE(o.order_items, '[]'::jsonb)) item
+      FROM jsonb_array_elements(
+        CASE
+          WHEN jsonb_typeof(o.order_items) = 'array' THEN o.order_items
+          ELSE '[]'::jsonb
+        END
+      ) item
       WHERE NULLIF(item ->> 'product_id', '') IS NULL
          OR COALESCE(item ->> 'quantity', '') !~ '^[1-9][0-9]*$'
     )
   );
 
 -- J. Future known reservations aggregated by concrete date/product.
+-- Malformed non-array snapshots are skipped here and already surfaced by I.
 -- This is useful for reconciliation only; it is NOT recurring capacity.
 SELECT
   o.pickup_date,
@@ -177,8 +199,12 @@ SELECT
   p.name_en,
   sum(item.quantity)::integer AS known_reserved_quantity
 FROM public.orders o
-CROSS JOIN LATERAL jsonb_to_recordset(o.order_items)
-  AS item(product_id uuid, quantity integer)
+CROSS JOIN LATERAL jsonb_to_recordset(
+  CASE
+    WHEN jsonb_typeof(o.order_items) = 'array' THEN o.order_items
+    ELSE '[]'::jsonb
+  END
+) AS item(product_id uuid, quantity integer)
 LEFT JOIN public.cms_products p ON p.id = item.product_id
 WHERE COALESCE(o.purchase_type, 'online') = 'online'
   AND o.pickup_date >= timezone('Asia/Bangkok', now())::date
@@ -265,8 +291,7 @@ SELECT count(*) AS orders_linked_to_v2_pickup_date
 FROM public.orders
 WHERE pickup_date_id IS NOT NULL;
 
--- P. Shared inventory invariant: no location dimension exists on the inventory
--- table, and reserved quantity is within capacity.
+-- P. Shared inventory invariant: reserved quantity must stay within capacity.
 SELECT
   i.pickup_date_id,
   d.pickup_date,
