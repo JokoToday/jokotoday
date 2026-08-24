@@ -261,9 +261,8 @@ BEGIN
 END;
 $$;
 
+/* Keep the customer checkout RPC dark until a separately reviewed cutover. */
 REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text)
-FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text)
-TO authenticated;
+FROM PUBLIC, anon, authenticated;
 
 COMMIT;
