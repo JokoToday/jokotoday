@@ -154,3 +154,16 @@ JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname IN ('cancel_online_order', 'cancel_online_order_legacy_v1')
 ORDER BY p.proname;
+
+-- V. Customer v2 RPC rollout gate. Both functions are intentionally defined but
+-- unavailable to browser roles until a separately approved cutover migration.
+-- Expected for both rows: anon=false, authenticated=false.
+SELECT
+  p.oid::regprocedure AS function_signature,
+  has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_can_execute,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_can_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('create_online_order_v2', 'cancel_online_order_v2')
+ORDER BY p.proname;
