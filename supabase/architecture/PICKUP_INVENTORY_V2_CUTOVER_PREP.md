@@ -44,7 +44,7 @@ For the initial active schedules:
 - Saturday: `cancellation_cutoff_days_before = 2`, `cancellation_cutoff_time = 17:00`;
 - Sunday: `cancellation_cutoff_days_before = 2`, `cancellation_cutoff_time = 17:00`.
 
-Friday remains a retained but inactive future schedule. Its cancellation settings do not need to be changed as part of the initial launch configuration.
+Friday remains a retained but inactive future schedule. Its cancellation settings do not need to be changed as part of the initial launch configuration. If Friday is introduced later, apply the same business rule at that time: self-cancellation cutoff equals the Friday order cutoff.
 
 Deactivating Friday in the v2 schedule table does **not** modify the legacy pickup tables or current legacy checkout flow. It controls only whether the v2 materializer and later v2 customer calendar treat Friday as an active recurring schedule.
 
