@@ -44,9 +44,9 @@ This is a business-policy recommendation only. Apply only after explicit product
 
 ## 3. Product offering semantics inherited from the current site
 
-The current frontend treats an empty `cms_products.available_days` array as **available on every configured pickup day**.
+The current frontend treats an empty `cms_products.available_days` array as **offered on every configured pickup day**.
 
-Therefore the current recurring offering matrix is:
+The semantic recurring offering matrix is therefore:
 
 | Product | Friday Mae Rim | Saturday Mae Rim | Sunday In-Town |
 | --- | ---: | ---: | ---: |
@@ -60,27 +60,51 @@ Therefore the current recurring offering matrix is:
 | Strawberry Shortcake | offered | offered | offered |
 | Almond Croissant | offered | offered | offered |
 
-That produces **25 recurring product × schedule capacity decisions**.
+That produces 25 semantic offered cells, but **semantic offering is not the same as current sellability**.
 
-## 4. Capacity decision sheet
+### Current effective sellability
+
+For a selected pickup day, the legacy frontend resolves remaining stock from `stock_by_day`, then `stock_remaining`, then falls back to zero. Seven active products currently have neither usable day stock nor `stock_remaining`, so they are effectively sold out whenever a pickup day is selected.
+
+Recent non-cancelled online order history also contains orders only for:
+
+- Chocolate Croissant;
+- Spinach & Cheese Quiche.
+
+Therefore the conservative initial v2 configuration should **not** assign positive capacity to all 25 semantic offered cells.
+
+## 4. Initial capacity decision sheet
 
 Capacity means the **maximum number of units of that product available for the entire concrete pickup date across all pickup locations combined**.
 
-Do not copy current `stock_by_day` or `stock_remaining` into these fields automatically. Those are mutable legacy balances.
+Do not copy current `stock_by_day`, `stock_remaining`, or `stock_total` automatically. Legacy values are incomplete and/or mutable.
 
-Fill each offered cell with an explicit production maximum:
+### Recommended initial launch scope
+
+Only the four cells that are both explicitly scheduled and operationally represented in current inventory/order history should be treated as initial launch-capacity candidates:
 
 | Product | Friday capacity | Saturday capacity | Sunday capacity |
 | --- | ---: | ---: | ---: |
-| Chocolate Cake | TBD | TBD | TBD |
-| Chocolate Croissant | TBD | — | TBD |
-| Sourdough Loaf | TBD | TBD | TBD |
-| Spinach & Cheese Quiche | — | TBD | TBD |
-| Multigrain Bread | TBD | TBD | TBD |
-| Mushroom Pizza | TBD | TBD | TBD |
-| Plain Croissant | TBD | TBD | TBD |
-| Strawberry Shortcake | TBD | TBD | TBD |
-| Almond Croissant | TBD | TBD | TBD |
+| Chocolate Croissant | **TBD** | — | **TBD** |
+| Spinach & Cheese Quiche | — | **TBD** | **TBD** |
+
+These four numbers require explicit bakery production limits.
+
+### Hold unconfigured for initial v2 launch
+
+Unless explicitly activated, leave these products without recurring v2 capacity for the first cutover:
+
+- Chocolate Cake
+- Sourdough Loaf
+- Multigrain Bread
+- Mushroom Pizza
+- Plain Croissant
+- Strawberry Shortcake
+- Almond Croissant
+
+This preserves the current effective sold-out behavior rather than accidentally making placeholder/incomplete products sellable during migration.
+
+They can be activated later through the normal Admin capacity workflow without another architecture change.
 
 ### Demand reference only
 
@@ -110,15 +134,15 @@ Do not enable v2 customer checkout while that reservation remains outside the v2
 
 ## 6. Phase A3 configuration sequence
 
-After capacity numbers and cancellation policy are approved:
+After the four initial capacity numbers and cancellation policy are approved:
 
 1. Re-run `20260825_pickup_inventory_v2_configuration_snapshot.sql`.
 2. Update recurring cancellation cutoffs.
-3. Set the 25 recurring product capacities through reviewed Admin RPC calls.
-4. Verify `product_schedule_capacity` exactly matches the approved matrix.
+3. Set only the approved launch recurring capacities through reviewed Admin RPC calls.
+4. Verify `product_schedule_capacity` exactly matches the approved launch matrix and contains no unintended product/schedule rows.
 5. Materialize an initial **8-week** horizon rather than 12 weeks for the first production cycle.
 6. Inspect every materialized date, location, order cutoff and cancellation cutoff.
-7. Verify `product_date_inventory` rows exactly mirror the approved recurring offering/capacity matrix.
+7. Verify `product_date_inventory` rows exactly mirror the approved launch capacity matrix.
 8. Keep both customer v2 RPCs dark.
 9. Resolve/age out the final legacy reservation blocker.
 10. Only then prepare the frontend cutover PR.
