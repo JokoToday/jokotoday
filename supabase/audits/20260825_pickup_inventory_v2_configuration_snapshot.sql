@@ -3,7 +3,7 @@
   Pickup date + shared inventory v2
 
   Purpose:
-    Re-run before any Phase A3 production configuration write.
+    Re-run before and after Phase A3a production schedule/date configuration.
 
   This file contains SELECT statements only.
 */
@@ -51,11 +51,36 @@ JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
 JOIN public.cms_pickup_locations l ON l.id = sl.location_id
 ORDER BY s.sort_order, sl.sort_order, s.schedule_key;
 
+-- B2. Initial v2 launch scope. After approved A3a configuration this must show:
+--   friday_maerim   desired=false actual=false
+--   saturday_maerim desired=true  actual=true
+--   sunday_intown   desired=true  actual=true
+SELECT
+  s.schedule_key,
+  CASE s.schedule_key
+    WHEN 'saturday_maerim' THEN true
+    WHEN 'sunday_intown' THEN true
+    WHEN 'friday_maerim' THEN false
+    ELSE NULL
+  END AS desired_initial_v2_active,
+  s.is_active AS actual_active,
+  CASE
+    WHEN s.schedule_key IN ('friday_maerim', 'saturday_maerim', 'sunday_intown') THEN
+      s.is_active IS NOT DISTINCT FROM CASE s.schedule_key
+        WHEN 'saturday_maerim' THEN true
+        WHEN 'sunday_intown' THEN true
+        WHEN 'friday_maerim' THEN false
+      END
+    ELSE NULL
+  END AS matches_initial_launch_scope
+FROM public.pickup_schedules s
+ORDER BY s.sort_order, s.schedule_key;
+
 -- C. Current legacy product x recurring-schedule offering matrix.
 -- IMPORTANT: current cms_products rows are not authoritative launch-capacity
 -- input. This query is transitional diagnostics only. It reflects the legacy
 -- frontend rule that empty available_days means semantically offered on every
--- pickup day. It does NOT infer v2 capacity or launch availability.
+-- ACTIVE v2 pickup schedule. It does NOT infer v2 capacity or launch availability.
 WITH active_schedules AS (
   SELECT id, schedule_key, label_en, sort_order
   FROM public.pickup_schedules
@@ -116,6 +141,18 @@ JOIN public.pickup_schedules s ON s.id = d.schedule_id
 LEFT JOIN public.pickup_date_locations dl ON dl.pickup_date_id = d.id
 LEFT JOIN public.cms_pickup_locations l ON l.id = dl.location_id
 ORDER BY d.pickup_date, dl.sort_order, l.name_en;
+
+-- E2. Weekend-only launch invariant. After A3a materialization, Friday count must
+-- be zero; Saturday/Sunday should contain the materialized horizon.
+SELECT
+  count(*) FILTER (WHERE s.schedule_key = 'friday_maerim') AS friday_dates,
+  count(*) FILTER (WHERE s.schedule_key = 'saturday_maerim') AS saturday_dates,
+  count(*) FILTER (WHERE s.schedule_key = 'sunday_intown') AS sunday_dates,
+  count(*) FILTER (
+    WHERE s.schedule_key NOT IN ('friday_maerim', 'saturday_maerim', 'sunday_intown')
+  ) AS other_schedule_dates
+FROM public.pickup_dates d
+JOIN public.pickup_schedules s ON s.id = d.schedule_id;
 
 -- F. Product date inventory. Zero rows is valid until real products receive
 -- recurring capacities or date overrides in Admin.
