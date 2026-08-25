@@ -1,0 +1,70 @@
+name: Loyalty Pickup Rate Reserved Once
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-foundation-20260825
+    paths:
+      - .github/workflows/loyalty-pickup-rate-reserved-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/loyalty-v2-foundation-20260825
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Mark pickup earning rule as reserved
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/components/LoyaltyRewardsManagement.tsx')
+          text = path.read_text()
+          text = text.replace(
+              "  pickup: 'Pickup order',",
+              "  pickup: 'Pickup order (reserved)',",
+              1,
+          )
+          anchor = """          {(['online', 'pickup', 'walk_in'] as PurchaseType[]).map((purchaseType) => {\n            const current = earningRules.find((rule) => rule.purchase_type === purchaseType);\n            return (\n"""
+          replacement = """          {(['online', 'pickup', 'walk_in'] as PurchaseType[]).map((purchaseType) => {\n            const current = earningRules.find((rule) => rule.purchase_type === purchaseType);\n            const isReservedPickupRate = purchaseType === 'pickup';\n            return (\n"""
+          if anchor not in text:
+              raise SystemExit('earning card anchor missing')
+          text = text.replace(anchor, replacement, 1)
+          text = text.replace(
+              "                <p className=\"text-xs text-gray-500 mt-1\">Current: {Number(current?.points_percentage ?? 0)}%</p>\n",
+              "                <p className=\"text-xs text-gray-500 mt-1\">Current: {Number(current?.points_percentage ?? 0)}%</p>\n                {isReservedPickupRate && (\n                  <p className=\"mt-2 rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600\">\n                    Reserved for a future standalone pickup-purchase flow. Current pre-orders use the Online / Pre-order earning rate.\n                  </p>\n                )}\n",
+              1,
+          )
+          text = text.replace(
+              "                      disabled={migrationPending || savingRule !== null}\n",
+              "                      disabled={migrationPending || savingRule !== null || isReservedPickupRate}\n",
+              1,
+          )
+          text = text.replace(
+              "                      disabled={migrationPending || savingRule !== null}\n                      className=\"inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white disabled:bg-gray-300\"\n",
+              "                      disabled={migrationPending || savingRule !== null || isReservedPickupRate}\n                      className=\"inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white disabled:bg-gray-300\"\n",
+              1,
+          )
+          path.write_text(text)
+      - name: Validate
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build
+          git diff --check
+      - name: Commit and remove one-shot workflow
+        run: |
+          git config user.name "JOKO TODAY CI"
+          git config user.email "jokotoday@gmail.com"
+          git rm .github/workflows/loyalty-pickup-rate-reserved-once.yml
+          git add src/components/LoyaltyRewardsManagement.tsx
+          git commit -m "fix: mark pickup loyalty rate reserved"
+          git push origin HEAD:feat/loyalty-v2-foundation-20260825
