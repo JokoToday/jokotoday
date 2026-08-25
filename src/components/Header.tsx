@@ -1,12 +1,13 @@
 import { ShoppingCart, Menu, X, LogOut } from 'lucide-react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
-import { AuthModal } from './AuthModal';
 import { UserAvatarDropdown } from './UserAvatarDropdown';
 import { getPublicImageUrl } from '../lib/storage';
+
+const AuthModal = lazy(() => import('./AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
 type HeaderProps = {
   currentPage: string;
@@ -238,7 +239,11 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
           </nav>
         )}
 
-        <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+        {isAuthModalOpen && (
+          <Suspense fallback={null}>
+            <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+          </Suspense>
+        )}
       </div>
     </header>
   );
