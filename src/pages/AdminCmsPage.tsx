@@ -469,22 +469,36 @@ function CategoriesTab({ categories, onRefresh, onDelete }: CategoriesTabProps) 
 }
 
 function PagesTab({ pages, onRefresh }: PagesTabProps) {
+  const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CMSPage | null>(null);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Pages</h2>
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
+          + Add Page
+        </button>
       </div>
 
-      {editing && (
+      {showForm && (
         <PageForm
           page={editing}
           onSave={() => {
+            setShowForm(false);
             setEditing(null);
             void onRefresh();
           }}
-          onCancel={() => setEditing(null)}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
         />
       )}
 
@@ -499,14 +513,19 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
             </tr>
           </thead>
           <tbody>
-            {pages.map((page) => (
+            {pages.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-12 text-center text-gray-500 text-sm">No pages yet. Add your first page!</td></tr>
+            ) : pages.map((page) => (
               <tr key={page.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-xs font-mono text-gray-600">{page.page_key}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{page.title_en}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{page.title_th}</td>
                 <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => setEditing(page)}
+                    onClick={() => {
+                      setEditing(page);
+                      setShowForm(true);
+                    }}
                     className="text-primary-600 hover:text-primary-700 font-medium text-sm"
                   >
                     Edit
