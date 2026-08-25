@@ -19,110 +19,119 @@ Expected state before configuration:
 
 No frontend cutover should occur until all gates in this document are cleared.
 
-## 2. Recurring schedules
+## 2. Recurring schedules and approved cancellation policy
 
-| Schedule | Pickup | Order cutoff | Current transitional cancellation cutoff | Recommended cancellation cutoff |
+| Schedule | Pickup | Order cutoff | Transitional cancellation cutoff | Approved v2 cancellation cutoff |
 | --- | --- | --- | --- | --- |
 | `friday_maerim` | Friday — Mae Rim | Wednesday 17:00 | Thursday 00:00 | **Wednesday 17:00** |
 | `saturday_maerim` | Saturday — Mae Rim | Thursday 17:00 | Friday 00:00 | **Thursday 17:00** |
 | `sunday_intown` | Sunday — In-Town | Friday 17:00 | Saturday 00:00 | **Friday 17:00** |
 
-### Recommendation: align cancellation cutoff with order cutoff
+Business decision confirmed 2026-08-25:
 
-The current transitional fallback allows cancellation for seven hours after new ordering has already closed. That creates a period where a customer can release capacity but another customer can no longer book it, and production may already have been committed.
+> Customer self-cancellation closes at the exact same cutoff as ordering for that pickup date. After the cutoff, cancellation requires staff assistance.
 
-Recommended v2 policy:
-
-> Customer self-cancellation remains available until the exact order cutoff for that pickup date. After the order cutoff, cancellation requires staff assistance.
-
-In relative schedule fields, all three schedules therefore use:
+For all three current schedules:
 
 - `cancellation_cutoff_days_before = 2`
 - `cancellation_cutoff_time = 17:00`
 
-This is a business-policy recommendation only. Apply only after explicit production-data approval.
+The policy is approved. Applying the production configuration remains a separate production-data action.
 
-## 3. Product offering semantics inherited from the current site
+## 3. Product data is not ready for capacity configuration
 
-The current frontend treats an empty `cms_products.available_days` array as **offered on every configured pickup day**.
+The current `cms_products` rows are not the final production catalog. They are placeholder / development-era product records and must not be treated as the authoritative launch assortment.
 
-The semantic recurring offering matrix is therefore:
+Therefore:
 
-| Product | Friday Mae Rim | Saturday Mae Rim | Sunday In-Town |
-| --- | ---: | ---: | ---: |
-| Chocolate Cake | offered | offered | offered |
-| Chocolate Croissant | offered | — | offered |
-| Sourdough Loaf | offered | offered | offered |
-| Spinach & Cheese Quiche | — | offered | offered |
-| Multigrain Bread | offered | offered | offered |
-| Mushroom Pizza | offered | offered | offered |
-| Plain Croissant | offered | offered | offered |
-| Strawberry Shortcake | offered | offered | offered |
-| Almond Croissant | offered | offered | offered |
+- do **not** derive v2 recurring capacities from the current placeholder products;
+- do **not** seed capacity from `stock_by_day`, `stock_remaining`, `stock_total`, or historical demand;
+- do **not** require capacity values before the real catalog is uploaded;
+- do **not** make current placeholder availability metadata a launch commitment.
 
-That produces 25 semantic offered cells, but **semantic offering is not the same as current sellability**.
+The current frontend's `available_days` and stock semantics remain useful only for understanding the legacy site during transition.
 
-### Current effective sellability
+## 4. Capacity belongs in Admin
 
-For a selected pickup day, the legacy frontend resolves remaining stock from `stock_by_day`, then `stock_remaining`, then falls back to zero. Seven active products currently have neither usable day stock nor `stock_remaining`, so they are effectively sold out whenever a pickup day is selected.
+Capacity is business data, not infrastructure configuration.
 
-Recent non-cancelled online order history also contains orders only for:
+For each real product, Admin must be able to manage recurring availability and capacity by pickup schedule, for example:
 
-- Chocolate Croissant;
-- Spinach & Cheese Quiche.
+```text
+Plain Croissant
+  Friday Mae Rim     active   capacity 24
+  Saturday Mae Rim   active   capacity 30
+  Sunday In-Town     active   capacity 18
+```
 
-Therefore the conservative initial v2 configuration should **not** assign positive capacity to all 25 semantic offered cells.
+Capacities may differ by product and by recurring schedule.
 
-## 4. Initial capacity decision sheet
+The v2 database already supports this through reviewed transactional RPCs:
 
-Capacity means the **maximum number of units of that product available for the entire concrete pickup date across all pickup locations combined**.
+- `admin_set_product_schedule_capacity_v2(...)`
+- `admin_set_product_schedule_availability_v2(...)`
+- `admin_set_product_date_capacity_v2(...)` for exceptional concrete dates.
 
-Do not copy current `stock_by_day`, `stock_remaining`, or `stock_total` automatically. Legacy values are incomplete and/or mutable.
+`admin_set_product_schedule_capacity_v2(..., p_apply_to_future_dates = true)` is specifically designed to propagate a new/changed recurring capacity into already-materialized future pickup dates while preserving explicit date overrides.
 
-### Recommended initial launch scope
+### Required Admin UX
 
-Only the four cells that are both explicitly scheduled and operationally represented in current inventory/order history should be treated as initial launch-capacity candidates:
+The frontend cutover work must provide an Admin interface where a product can be configured with:
 
-| Product | Friday capacity | Saturday capacity | Sunday capacity |
-| --- | ---: | ---: | ---: |
-| Chocolate Croissant | **TBD** | — | **TBD** |
-| Spinach & Cheese Quiche | — | **TBD** | **TBD** |
+- which recurring pickup schedules it is offered on;
+- capacity for each enabled schedule;
+- enable/disable state per schedule;
+- optional concrete-date capacity overrides later.
 
-These four numbers require explicit bakery production limits.
+A product should not become v2-orderable for a schedule until an active recurring capacity exists for that product + schedule (or an explicit date override exists).
 
-### Hold unconfigured for initial v2 launch
+## 5. Materializing dates no longer depends on having the final catalog
 
-Unless explicitly activated, leave these products without recurring v2 capacity for the first cutover:
+Because customer v2 RPCs remain dark, schedule/date configuration can be validated independently of product inventory.
 
-- Chocolate Cake
-- Sourdough Loaf
-- Multigrain Bread
-- Mushroom Pizza
-- Plain Croissant
-- Strawberry Shortcake
-- Almond Croissant
+After the approved cancellation policy is applied, it is acceptable to materialize an initial **8-week** pickup-date horizon even while `product_schedule_capacity` is still empty.
 
-This preserves the current effective sold-out behavior rather than accidentally making placeholder/incomplete products sellable during migration.
+That first materialization should create only:
 
-They can be activated later through the normal Admin capacity workflow without another architecture change.
+- concrete `pickup_dates`;
+- concrete `pickup_date_locations`;
+- materialized order/cancellation cutoff timestamps.
 
-### Demand reference only
+With zero recurring product capacities, it should create zero `product_date_inventory` rows. This is a safe and useful intermediate state.
 
-Recent production order history is too sparse to define capacity safely. It can be used only as a lower-bound demand reference:
+Later, when real products are uploaded and Admin capacities are configured with `p_apply_to_future_dates = true`, the corresponding future `product_date_inventory` rows can be created without rematerializing the calendar architecture.
 
-- Spinach & Cheese Quiche: recent observed maximum = 6 units on one pickup date;
-- Chocolate Croissant: recent observed maximum = 5 units on one pickup date.
+## 6. Revised Phase A3 sequence
 
-Observed demand is **not** a production-capacity recommendation.
+### A3a — schedule/date configuration
 
-## 5. Legacy reservation gate
+1. Re-run `20260825_pickup_inventory_v2_configuration_snapshot.sql`.
+2. Apply the approved cancellation cutoffs to the three recurring schedules.
+3. Verify schedule/location/order/cancellation metadata.
+4. Materialize an initial 8-week future pickup-date horizon.
+5. Inspect every concrete date, location and cutoff timestamp.
+6. Confirm `product_schedule_capacity = 0` and `product_date_inventory = 0` while the catalog is still unconfigured.
+7. Keep both customer v2 RPCs dark.
+
+### A3b — real product onboarding and Admin capacity configuration
+
+1. Upload / configure the real production catalog.
+2. For each product, select the recurring pickup schedules on which it is offered.
+3. Enter the production capacity for each enabled product + schedule combination in Admin.
+4. Use the reviewed Admin capacity RPC with future-date propagation enabled.
+5. Verify future `product_date_inventory` rows exactly match the Admin configuration.
+6. Use date-level overrides for exceptional dates where needed.
+
+No architecture migration is required merely because a new product or new capacity value is introduced.
+
+## 7. Legacy reservation gate
 
 Before customer v2 cutover, every active future legacy reservation must either:
 
 1. age out / be resolved under the legacy flow; or
 2. be reconciled into the v2 inventory ledger in a separately reviewed operation.
 
-Current known blocker at preparation time:
+Known blocker at preparation time:
 
 - Saturday 2026-08-29 — Mae Rim;
 - pending / unpaid;
@@ -130,38 +139,7 @@ Current known blocker at preparation time:
 - `inventory_reserved = true`;
 - `pickup_date_id IS NULL`.
 
-Do not enable v2 customer checkout while that reservation remains outside the v2 ledger.
-
-## 6. Phase A3 configuration sequence
-
-After the four initial capacity numbers and cancellation policy are approved:
-
-1. Re-run `20260825_pickup_inventory_v2_configuration_snapshot.sql`.
-2. Update recurring cancellation cutoffs.
-3. Set only the approved launch recurring capacities through reviewed Admin RPC calls.
-4. Verify `product_schedule_capacity` exactly matches the approved launch matrix and contains no unintended product/schedule rows.
-5. Materialize an initial **8-week** horizon rather than 12 weeks for the first production cycle.
-6. Inspect every materialized date, location, order cutoff and cancellation cutoff.
-7. Verify `product_date_inventory` rows exactly mirror the approved launch capacity matrix.
-8. Keep both customer v2 RPCs dark.
-9. Resolve/age out the final legacy reservation blocker.
-10. Only then prepare the frontend cutover PR.
-
-### Why start with 8 weeks
-
-Eight weeks is long enough to exercise recurrence and exceptions while keeping the first operational review bounded. Once stable, the horizon can be extended to the architecture target of 8–12 weeks.
-
-## 7. Materialization expectations
-
-For each generated pickup date:
-
-- one globally unique `pickup_dates` row exists for that calendar date;
-- the schedule's active default location is copied to `pickup_date_locations`;
-- each active recurring product capacity creates one `product_date_inventory` row;
-- inventory identity remains `(pickup_date_id, product_id)`, never location-specific;
-- order and cancellation timestamps are materialized in Bangkok time.
-
-No materialization should occur until the cancellation policy and recurring capacities are approved.
+This reservation does not prevent schedule/date preparation. It does prevent enabling customer v2 checkout while it remains outside the v2 ledger.
 
 ## 8. Frontend cutover prerequisites
 
@@ -172,19 +150,25 @@ The frontend cutover remains a separate PR and must include:
 - a safe customer-facing availability read surface for remaining stock;
 - checkout using `create_online_order_v2`;
 - v2-order cancellation using `cancel_online_order_v2`;
-- Admin schedule/capacity/date controls using transactional v2 RPCs;
+- Admin product recurring-schedule availability controls;
+- Admin product capacity controls per schedule;
+- Admin concrete-date capacity override controls;
+- Admin schedule/date controls using transactional v2 RPCs;
 - explicit migration/cutover that grants authenticated EXECUTE on customer v2 RPCs only when the frontend is ready.
 
-Do **not** grant browser EXECUTE merely because capacities/dates have been configured.
+Do **not** grant browser EXECUTE merely because dates or capacities have been configured.
 
 ## 9. Required cutover smoke tests
 
 Before enabling customer traffic:
 
 - Friday/Saturday/Sunday dates are correct in `Asia/Bangkok`;
-- exact cutoff boundary behavior is correct;
+- order and cancellation cutoffs are identical for each schedule and enforce the exact boundary;
 - closed/sold-out dates reject ordering;
 - disabled location/date combinations reject ordering server-side;
+- a product without configured schedule capacity is not orderable;
+- changing a product's recurring capacity in Admin propagates correctly to future recurring-default inventory rows;
+- explicit date overrides are not overwritten by recurring capacity edits;
 - two locations on one date share one inventory pool;
 - simultaneous final-unit attempts cannot oversell;
 - cancellation restores the shared pool;
@@ -196,11 +180,12 @@ Before enabling customer traffic:
 
 ## 10. Production change gates
 
-Separate explicit approval is required before any of the following:
+Separate explicit approval remains required before any of the following production actions:
 
-- changing recurring cancellation cutoffs;
-- inserting recurring capacities;
+- applying the approved recurring cancellation cutoffs;
 - materializing concrete production pickup dates;
 - reconciling a legacy reservation into the v2 ledger;
 - granting browser access to v2 customer RPCs;
 - merging/deploying the frontend cutover.
+
+Normal future product capacity editing should become an Admin business operation after the Admin UI and authorization path have been reviewed and deployed; it should not require a new database migration for every product or capacity change.
