@@ -172,6 +172,8 @@ ORDER BY d.pickup_date, p.name_en;
 
 -- G. Active future legacy reservations outside the v2 ledger. Frontend cutover
 -- requires zero rows unless a separately reviewed reconciliation is performed.
+-- Null status is treated conservatively as active/pending so an unclassified
+-- reserved order can never disappear from this cutover blocker check.
 SELECT
   o.id,
   o.order_number,
@@ -189,7 +191,7 @@ LEFT JOIN public.cms_pickup_locations l ON l.id = o.pickup_location_id
 WHERE COALESCE(o.purchase_type, 'online') = 'online'
   AND o.pickup_date >= timezone('Asia/Bangkok', now())::date
   AND COALESCE(o.inventory_reserved, false) = true
-  AND o.status NOT IN ('cancelled', 'picked_up', 'completed')
+  AND COALESCE(o.status, 'pending') NOT IN ('cancelled', 'picked_up', 'completed')
   AND o.pickup_date_id IS NULL
 ORDER BY o.pickup_date, o.created_at;
 
