@@ -21,9 +21,11 @@ No frontend cutover should occur until all gates in this document are cleared.
 
 ## 2. Initial v2 pickup scope and approved cancellation policy
 
-Business decision confirmed 2026-08-25:
+Business decisions confirmed 2026-08-25:
 
 > The initial v2 launch offers pickup only on **Saturday and Sunday**. Friday is out of scope for the initial launch.
+
+> Customer self-cancellation closes at the exact same cutoff as ordering for each active pickup schedule. After the cutoff, cancellation requires staff assistance.
 
 The existing `friday_maerim` schedule definition should be retained for future use but kept **inactive in v2** during the initial launch. It should not be deleted, and no Friday concrete pickup dates should be materialized while it is inactive.
 
@@ -34,10 +36,6 @@ Initial v2 launch schedules:
 | `friday_maerim` | **inactive / future use** | Friday — Mae Rim | Wednesday 17:00 | Thursday 00:00 | not applied during initial launch |
 | `saturday_maerim` | **active** | Saturday — Mae Rim | Thursday 17:00 | Friday 00:00 | **Thursday 17:00** |
 | `sunday_intown` | **active** | Sunday — In-Town | Friday 17:00 | Saturday 00:00 | **Friday 17:00** |
-
-Cancellation policy confirmed 2026-08-25:
-
-> Customer self-cancellation closes at the exact same cutoff as ordering for each active pickup schedule. After the cutoff, cancellation requires staff assistance.
 
 For the initial active schedules:
 
