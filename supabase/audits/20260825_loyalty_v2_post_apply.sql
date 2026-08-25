@@ -90,6 +90,14 @@ SELECT
 FROM public.loyalty_rewards
 ORDER BY sort_order, points_required, reward_key;
 
+-- Fixed-discount rewards must never carry a percentage-only maximum cap.
+SELECT id, reward_key, max_discount_amount
+FROM public.loyalty_rewards
+WHERE reward_type = 'fixed_discount'
+  AND max_discount_amount IS NOT NULL;
+
+-- Expected: zero rows.
+
 -- 7. RLS posture for Loyalty v2 tables.
 SELECT
   c.relname AS table_name,
@@ -187,6 +195,44 @@ WHERE n.nspname = 'public'
 
 -- Expected: one row, both guards=true, security_definer=true,
 -- function_config contains search_path=public.
+
+-- 11c. Retry-safe staff redemption. request_key must be unique and only the
+-- hardened request-key signature may exist.
+SELECT request_key, COUNT(*) AS redemption_count
+FROM public.loyalty_redemptions
+WHERE request_key IS NOT NULL
+GROUP BY request_key
+HAVING COUNT(*) > 1;
+
+-- Expected: zero rows.
+
+SELECT
+  p.proname,
+  pg_get_function_identity_arguments(p.oid) AS arguments
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'staff_redeem_loyalty_reward_v2'
+ORDER BY arguments;
+
+-- Expected: exactly one row and arguments include p_request_key uuid.
+
+-- 11d. The legacy cancellation helper must remain dark; only the guarded wrapper
+-- may be customer-executable.
+SELECT
+  p.proname,
+  has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
+  has_function_privilege('public', p.oid, 'EXECUTE') AS public_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('cancel_online_order', 'cancel_online_order_legacy_v1')
+ORDER BY p.proname;
+
+-- Expected:
+-- - cancel_online_order: authenticated=true, anon/public=false
+-- - cancel_online_order_legacy_v1: authenticated/anon/public=false
 
 -- 12. Pickup v2 customer rollout gates must remain unchanged/dark.
 SELECT

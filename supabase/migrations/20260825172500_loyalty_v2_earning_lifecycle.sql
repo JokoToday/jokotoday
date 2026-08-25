@@ -95,10 +95,30 @@ SET search_path = public
 AS $$
 DECLARE
   v_order public.orders%ROWTYPE;
+  v_customer_id uuid;
   v_existing_earn_at timestamptz;
 BEGIN
   IF NOT public.is_staff_or_admin() THEN
     RAISE EXCEPTION 'Staff access required' USING ERRCODE = '42501';
+  END IF;
+
+  -- Canonical lock order for customer orders is customer -> order. This matches
+  -- cancellation/redemption and prevents pickup/cancellation deadlocks.
+  SELECT o.customer_id
+  INTO v_customer_id
+  FROM public.orders o
+  WHERE o.id = p_order_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_customer_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.customers c
+    WHERE c.id = v_customer_id
+    FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
   END IF;
 
   SELECT *
@@ -109,6 +129,9 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Order not found';
+  END IF;
+  IF v_order.customer_id IS DISTINCT FROM v_customer_id THEN
+    RAISE EXCEPTION 'Order customer changed while confirming pickup; retry';
   END IF;
 
   IF v_order.status = 'cancelled' THEN
@@ -345,17 +368,22 @@ BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000'; END IF;
   IF p_order_id IS NULL THEN RAISE EXCEPTION 'Order id is required'; END IF;
 
+  -- Canonical lock order is customer -> order. The internal helper also
+  -- independently rejects v2 orders so the wrapper cannot be bypassed.
+  SELECT * INTO v_customer FROM public.customers WHERE id = v_user_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
+
   SELECT * INTO v_order FROM public.orders WHERE id = p_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;
   IF v_order.customer_id IS DISTINCT FROM v_user_id THEN RAISE EXCEPTION 'You may only cancel your own order' USING ERRCODE = '42501'; END IF;
   IF COALESCE(v_order.purchase_type, 'online') <> 'online' THEN RAISE EXCEPTION 'Only online orders can be cancelled here'; END IF;
+  IF v_order.pickup_date_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Pickup v2 orders cannot use the legacy cancellation helper' USING ERRCODE = 'P0001';
+  END IF;
   IF v_order.status = 'cancelled' THEN RETURN to_jsonb(v_order); END IF;
   IF v_order.status NOT IN ('pending', 'confirmed') THEN RAISE EXCEPTION 'This order can no longer be cancelled'; END IF;
   IF COALESCE(v_order.payment_status, 'unpaid') <> 'unpaid' OR v_order.picked_up_at IS NOT NULL THEN RAISE EXCEPTION 'Paid or picked-up orders require staff assistance to cancel'; END IF;
   IF v_order.pickup_date IS NULL THEN RAISE EXCEPTION 'Order has no scheduled pickup date'; END IF;
-
-  SELECT * INTO v_customer FROM public.customers WHERE id = v_order.customer_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
 
   SELECT * INTO v_pickup
   FROM public.cms_pickup_days
@@ -438,8 +466,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.cancel_online_order_legacy_v1(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.cancel_online_order_legacy_v1(uuid) TO authenticated;
+-- Internal helper: customers must use the guarded cancel_online_order wrapper.
+REVOKE ALL ON FUNCTION public.cancel_online_order_legacy_v1(uuid) FROM PUBLIC, anon, authenticated;
 
 -- Keep the existing legacy/v2 routing guard intact.
 CREATE OR REPLACE FUNCTION public.cancel_online_order(p_order_id uuid)
@@ -455,8 +483,7 @@ BEGIN
     SELECT o.pickup_date_id
     INTO v_pickup_date_id
     FROM public.orders o
-    WHERE o.id = p_order_id
-    FOR UPDATE;
+    WHERE o.id = p_order_id;
 
     IF FOUND AND v_pickup_date_id IS NOT NULL THEN
       RAISE EXCEPTION

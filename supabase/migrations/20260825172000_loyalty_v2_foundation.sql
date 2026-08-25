@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.loyalty_rewards (
     CHECK (
       (reward_type = 'fixed_discount'
         AND fixed_discount_amount IS NOT NULL AND fixed_discount_amount > 0
-        AND percentage_discount IS NULL AND product_id IS NULL)
+        AND percentage_discount IS NULL AND max_discount_amount IS NULL AND product_id IS NULL)
       OR
       (reward_type = 'percentage_discount'
         AND percentage_discount IS NOT NULL AND percentage_discount > 0 AND percentage_discount <= 100
@@ -212,38 +212,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS loyalty_point_events_redemption_event_uq
 ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS loyalty_points_awarded_at timestamptz;
 
--- Every existing positive-point order was created under the legacy model where
--- non-walk-in orders were credited by the AFTER INSERT trigger and walk-in
--- orders were credited by record_walk_in_purchase(). Mark them as already
--- awarded so a later pickup-time award path cannot double-credit them.
-UPDATE public.orders
-SET loyalty_points_awarded_at = COALESCE(created_at, now())
-WHERE loyalty_points_awarded_at IS NULL
-  AND customer_id IS NOT NULL
-  AND COALESCE(loyalty_points_earned, 0) > 0;
-
--- Establish an opening ledger without attempting to reconstruct historical
--- earns/reversals. This does not change any customer balance.
-INSERT INTO public.loyalty_point_events (
-  customer_id,
-  event_type,
-  points_delta,
-  balance_after,
-  reason,
-  metadata,
-  created_at
-)
-SELECT
-  c.id,
-  'migration_opening_balance',
-  c.loyalty_points,
-  c.loyalty_points,
-  'Opening balance at Loyalty v2 cutover',
-  jsonb_build_object('legacy_balance', c.loyalty_points),
-  now()
-FROM public.customers c
-WHERE COALESCE(c.loyalty_points, 0) > 0
-ON CONFLICT DO NOTHING;
+-- Historical award markers and opening-ledger rows are intentionally created only
+-- by 20260825172500_loyalty_v2_earning_lifecycle.sql inside one locked atomic
+-- cutover. Keeping the foundation schema-only avoids a commit-to-commit window
+-- where the legacy insert trigger could credit an order without an award marker.
 
 -- -----------------------------------------------------------------------------
 -- RLS and grants
@@ -474,7 +446,7 @@ BEGIN
 
   IF p_reward_type = 'fixed_discount' THEN
     IF p_fixed_discount_amount IS NULL OR p_fixed_discount_amount <= 0
-       OR p_percentage_discount IS NOT NULL OR p_product_id IS NOT NULL THEN
+       OR p_percentage_discount IS NOT NULL OR p_max_discount_amount IS NOT NULL OR p_product_id IS NOT NULL THEN
       RAISE EXCEPTION 'Fixed discount reward configuration is invalid';
     END IF;
   ELSIF p_reward_type = 'percentage_discount' THEN

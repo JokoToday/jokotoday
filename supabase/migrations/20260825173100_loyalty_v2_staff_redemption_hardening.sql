@@ -151,23 +151,8 @@ BEGIN
     );
   END IF;
 
-  -- Exclusive reward lock protects the global redemption limit against
-  -- concurrent redemptions by different customers.
-  SELECT * INTO v_reward
-  FROM public.loyalty_rewards
-  WHERE id = p_reward_id
-  FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Reward not found'; END IF;
-
-  IF NOT v_reward.is_active
-     OR (v_reward.starts_at IS NOT NULL AND v_reward.starts_at > now())
-     OR (v_reward.ends_at IS NOT NULL AND v_reward.ends_at <= now()) THEN
-    RAISE EXCEPTION 'Reward is not currently available';
-  END IF;
-  IF NOT (p_channel = ANY(v_reward.channels)) THEN
-    RAISE EXCEPTION 'Reward is not available for this channel';
-  END IF;
-
+  -- Customer is already locked. Lock an attached order next so all customer/order
+  -- operations follow the same customer -> order sequence as cancellation/pickup.
   IF p_order_id IS NOT NULL THEN
     SELECT * INTO v_order
     FROM public.orders
@@ -184,6 +169,23 @@ BEGIN
       RAISE EXCEPTION 'Pickup redemption requires an online/pickup order';
     END IF;
     v_context_amount := COALESCE(v_order.total_amount, 0);
+  END IF;
+
+  -- Exclusive reward lock protects the global redemption limit against
+  -- concurrent redemptions by different customers.
+  SELECT * INTO v_reward
+  FROM public.loyalty_rewards
+  WHERE id = p_reward_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Reward not found'; END IF;
+
+  IF NOT v_reward.is_active
+     OR (v_reward.starts_at IS NOT NULL AND v_reward.starts_at > now())
+     OR (v_reward.ends_at IS NOT NULL AND v_reward.ends_at <= now()) THEN
+    RAISE EXCEPTION 'Reward is not currently available';
+  END IF;
+  IF NOT (p_channel = ANY(v_reward.channels)) THEN
+    RAISE EXCEPTION 'Reward is not available for this channel';
   END IF;
 
   IF v_context_amount IS NOT NULL AND v_context_amount < 0 THEN
