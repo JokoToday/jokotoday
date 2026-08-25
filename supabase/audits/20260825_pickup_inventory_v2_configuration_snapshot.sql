@@ -3,17 +3,20 @@
   Pickup date + shared inventory v2
 
   Purpose:
-    Re-run before and after Phase A3a production schedule/date configuration.
+    Re-run before and after Phase A3 production schedule/date configuration.
+
+  IMPORTANT:
+    Pickup weekdays, locations, activation state and cutoffs are Admin-managed
+    business configuration. This audit reports the actual configured state; it
+    deliberately does not hard-code Saturday/Sunday/Friday as architecture rules.
 
   This file contains SELECT statements only.
 */
 
--- A. Rollout state. Expected before Phase A3 schedule/date configuration:
--- latest migration = 20260824175100
--- recurring_capacity_count may remain 0 until real product onboarding
--- date_inventory_count may remain 0 even after dates are materialized
--- v2_order_count = 0
--- customer v2 RPC EXECUTE = false / false
+-- A. Rollout state.
+-- Before customer cutover, v2_order_count = 0 and customer v2 RPC EXECUTE must
+-- remain false / false. Recurring capacity and date inventory may remain empty
+-- until the real product catalog is onboarded.
 SELECT
   (SELECT max(version) FROM supabase_migrations.schema_migrations) AS latest_migration,
   (SELECT count(*) FROM public.pickup_schedules) AS schedule_count,
@@ -32,7 +35,7 @@ SELECT
     'EXECUTE'
   ) AS cancel_v2_authenticated;
 
--- B. Recurring schedules, locations and cutoff policy.
+-- B. Actual recurring Admin configuration: schedules, locations and cutoff policy.
 SELECT
   s.id AS schedule_id,
   s.schedule_key,
@@ -45,42 +48,41 @@ SELECT
   s.is_active,
   l.id AS location_id,
   l.name_en AS location_name,
-  sl.is_active AS schedule_location_active
+  l.is_active AS location_is_active,
+  sl.is_active AS schedule_location_active,
+  sl.sort_order AS location_sort_order
 FROM public.pickup_schedules s
-JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
-JOIN public.cms_pickup_locations l ON l.id = sl.location_id
+LEFT JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
+LEFT JOIN public.cms_pickup_locations l ON l.id = sl.location_id
 ORDER BY s.sort_order, sl.sort_order, s.schedule_key;
 
--- B2. Initial v2 launch scope. After approved A3a configuration this must show:
---   friday_maerim   desired=false actual=false  (retained for future use)
---   saturday_maerim desired=true  actual=true
---   sunday_intown   desired=true  actual=true
+-- B2. Safety diagnostics for recurring schedule configuration.
+-- Active schedules should have at least one active linked pickup location.
 SELECT
+  s.id AS schedule_id,
   s.schedule_key,
-  CASE s.schedule_key
-    WHEN 'saturday_maerim' THEN true
-    WHEN 'sunday_intown' THEN true
-    WHEN 'friday_maerim' THEN false
-    ELSE NULL
-  END AS desired_initial_v2_active,
-  s.is_active AS actual_active,
+  s.label_en,
+  s.pickup_weekday,
+  s.is_active,
+  count(*) FILTER (
+    WHERE sl.is_active = true AND l.is_active = true
+  ) AS active_location_count,
   CASE
-    WHEN s.schedule_key IN ('friday_maerim', 'saturday_maerim', 'sunday_intown') THEN
-      s.is_active IS NOT DISTINCT FROM CASE s.schedule_key
-        WHEN 'saturday_maerim' THEN true
-        WHEN 'sunday_intown' THEN true
-        WHEN 'friday_maerim' THEN false
-      END
-    ELSE NULL
-  END AS matches_initial_launch_scope
+    WHEN s.is_active = false THEN 'inactive_schedule'
+    WHEN count(*) FILTER (WHERE sl.is_active = true AND l.is_active = true) > 0 THEN 'ok'
+    ELSE 'active_schedule_without_active_location'
+  END AS configuration_status
 FROM public.pickup_schedules s
+LEFT JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
+LEFT JOIN public.cms_pickup_locations l ON l.id = sl.location_id
+GROUP BY s.id, s.schedule_key, s.label_en, s.pickup_weekday, s.is_active, s.sort_order
 ORDER BY s.sort_order, s.schedule_key;
 
--- C. Current legacy product x recurring-schedule offering matrix.
+-- C. Current legacy product x ACTIVE recurring-schedule offering matrix.
 -- IMPORTANT: current cms_products rows are not authoritative launch-capacity
 -- input. This query is transitional diagnostics only. It reflects the legacy
 -- frontend rule that empty available_days means semantically offered on every
--- ACTIVE v2 pickup schedule. It does NOT infer v2 capacity or launch availability.
+-- active v2 pickup schedule. It does NOT infer v2 capacity or launch availability.
 WITH active_schedules AS (
   SELECT id, schedule_key, label_en, sort_order
   FROM public.pickup_schedules
@@ -124,12 +126,13 @@ JOIN public.pickup_schedules s ON s.id = c.schedule_id
 JOIN public.cms_products p ON p.id = c.product_id
 ORDER BY s.sort_order, p.sort_order, p.name_en;
 
--- E. Concrete dates and locations. It is valid to materialize pickup dates while
--- recurring capacities are still empty, because customer v2 RPCs remain dark.
+-- E. Concrete dates and locations. These are snapshots generated from whatever
+-- recurring schedules were active when materialization was run.
 SELECT
   d.id AS pickup_date_id,
   d.pickup_date,
   s.schedule_key,
+  s.label_en AS schedule_label,
   d.status,
   d.order_cutoff_at,
   d.cancellation_cutoff_at,
@@ -142,17 +145,20 @@ LEFT JOIN public.pickup_date_locations dl ON dl.pickup_date_id = d.id
 LEFT JOIN public.cms_pickup_locations l ON l.id = dl.location_id
 ORDER BY d.pickup_date, dl.sort_order, l.name_en;
 
--- E2. Weekend-only launch invariant. After A3a materialization, Friday count must
--- be zero; Saturday/Sunday should contain the materialized horizon.
+-- E2. Materialized date counts by schedule. This reports actual state without
+-- encoding any particular weekday as a permanent requirement.
 SELECT
-  count(*) FILTER (WHERE s.schedule_key = 'friday_maerim') AS friday_dates,
-  count(*) FILTER (WHERE s.schedule_key = 'saturday_maerim') AS saturday_dates,
-  count(*) FILTER (WHERE s.schedule_key = 'sunday_intown') AS sunday_dates,
-  count(*) FILTER (
-    WHERE s.schedule_key NOT IN ('friday_maerim', 'saturday_maerim', 'sunday_intown')
-  ) AS other_schedule_dates
-FROM public.pickup_dates d
-JOIN public.pickup_schedules s ON s.id = d.schedule_id;
+  s.schedule_key,
+  s.label_en,
+  s.pickup_weekday,
+  s.is_active AS recurring_schedule_currently_active,
+  count(d.id) AS materialized_date_count,
+  min(d.pickup_date) AS first_materialized_date,
+  max(d.pickup_date) AS last_materialized_date
+FROM public.pickup_schedules s
+LEFT JOIN public.pickup_dates d ON d.schedule_id = s.id
+GROUP BY s.id, s.schedule_key, s.label_en, s.pickup_weekday, s.is_active, s.sort_order
+ORDER BY s.sort_order, s.schedule_key;
 
 -- F. Product date inventory. Zero rows is valid until real products receive
 -- recurring capacities or date overrides in Admin.
