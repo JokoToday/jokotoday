@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Award, Check, ChevronDown, Gift, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -39,6 +39,9 @@ type RedemptionResult = {
   channel: RedemptionChannel;
   order_id: string | null;
   context_amount: number | null;
+  discount_amount: number | null;
+  request_key: string;
+  idempotent_replay: boolean;
 };
 
 type Props = {
@@ -74,6 +77,7 @@ export function LoyaltyRewardRedemption({
   const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const requestKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!expanded) return;
@@ -117,12 +121,21 @@ export function LoyaltyRewardRedemption({
     [pickupOrders, selectedOrderId]
   );
 
+  useEffect(() => {
+    requestKeyRef.current = null;
+  }, [selectedRewardId, selectedOrderId, contextAmount]);
+
   const balanceAfter = selectedReward
     ? currentBalance - selectedReward.points_required
     : currentBalance;
 
   const orderRequired = Boolean(selectedReward && channel === 'pickup' && needsOrderContext(selectedReward));
   const insufficient = Boolean(selectedReward && balanceAfter < 0);
+  const monetaryContextMissing = Boolean(
+    selectedReward
+    && ['fixed_discount', 'percentage_discount'].includes(selectedReward.reward_type)
+    && (channel === 'pickup' ? !selectedOrder : Number(contextAmount || 0) <= 0)
+  );
   const minimumNotMet = Boolean(
     selectedReward
     && channel === 'walk_in'
@@ -150,7 +163,10 @@ export function LoyaltyRewardRedemption({
       setError(language === 'en' ? 'Select the pickup order for this reward.' : 'กรุณาเลือกคำสั่งซื้อสำหรับรางวัลนี้');
       return;
     }
-    if (insufficient || minimumNotMet) return;
+    if (insufficient || minimumNotMet || monetaryContextMissing) return;
+
+    const requestKey = requestKeyRef.current ?? crypto.randomUUID();
+    requestKeyRef.current = requestKey;
 
     try {
       setRedeeming(true);
@@ -162,6 +178,7 @@ export function LoyaltyRewardRedemption({
         p_channel: channel,
         p_order_id: channel === 'pickup' ? (selectedOrder?.id || null) : null,
         p_context_amount: channel === 'walk_in' ? Number(contextAmount || 0) : null,
+        p_request_key: requestKey,
       });
       if (redeemError) throw redeemError;
       if (!data || typeof data.new_balance !== 'number' || typeof data.points_spent !== 'number') {
@@ -170,9 +187,15 @@ export function LoyaltyRewardRedemption({
 
       const result = data as RedemptionResult;
       onRedeemed(result);
+      const discountText = typeof result.discount_amount === 'number' && result.discount_amount > 0
+        ? (language === 'en'
+          ? ` Discount value: ฿${result.discount_amount.toFixed(2)}.`
+          : ` มูลค่าส่วนลด ฿${result.discount_amount.toFixed(2)}`)
+        : '';
       setSuccess(language === 'en'
-        ? `${result.points_spent} points redeemed. New balance: ${result.new_balance} points.`
-        : `แลก ${result.points_spent} แต้มแล้ว ยอดคงเหลือ ${result.new_balance} แต้ม`);
+        ? `${result.points_spent} points redeemed.${discountText} New balance: ${result.new_balance} points.`
+        : `แลก ${result.points_spent} แต้มแล้ว${discountText} ยอดคงเหลือ ${result.new_balance} แต้ม`);
+      requestKeyRef.current = null;
       setSelectedRewardId('');
       setSelectedOrderId('');
     } catch (err) {
@@ -302,6 +325,13 @@ export function LoyaltyRewardRedemption({
                     : `ยอดซื้อยังไม่ถึงขั้นต่ำ ฿${Number(selectedReward.minimum_order_amount).toFixed(2)}`}
                 </p>
               )}
+              {monetaryContextMissing && selectedReward && (
+                <p className="text-sm font-semibold text-red-600">
+                  {language === 'en'
+                    ? (channel === 'pickup' ? 'Select the pickup order to calculate this discount.' : 'Enter the sale amount before redeeming this discount.')
+                    : (channel === 'pickup' ? 'กรุณาเลือกคำสั่งซื้อเพื่อคำนวณส่วนลด' : 'กรุณากรอกยอดขายก่อนแลกส่วนลด')}
+                </p>
+              )}
               {error && <p className="text-sm font-medium text-red-600">{error}</p>}
               {success && (
                 <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-700">
@@ -313,7 +343,7 @@ export function LoyaltyRewardRedemption({
               <button
                 type="button"
                 onClick={() => void redeem()}
-                disabled={!selectedReward || redeeming || insufficient || minimumNotMet || (orderRequired && !selectedOrder)}
+                disabled={!selectedReward || redeeming || insufficient || minimumNotMet || monetaryContextMissing || (orderRequired && !selectedOrder)}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 font-semibold text-white hover:bg-amber-700 disabled:opacity-40"
               >
                 {redeeming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
