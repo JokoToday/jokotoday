@@ -50,6 +50,7 @@ type Props = {
   channel: RedemptionChannel;
   language: StaffLanguage;
   contextAmount?: number | null;
+  walkInOrderId?: string | null;
   pickupOrders?: PickupOrderOption[];
   onRedeemed: (result: RedemptionResult) => void;
 };
@@ -66,6 +67,7 @@ export function LoyaltyRewardRedemption({
   channel,
   language,
   contextAmount = null,
+  walkInOrderId = null,
   pickupOrders = [],
   onRedeemed,
 }: Props) {
@@ -123,7 +125,7 @@ export function LoyaltyRewardRedemption({
 
   useEffect(() => {
     requestKeyRef.current = null;
-  }, [selectedRewardId, selectedOrderId, contextAmount]);
+  }, [selectedRewardId, selectedOrderId, contextAmount, walkInOrderId]);
 
   const balanceAfter = selectedReward
     ? currentBalance - selectedReward.points_required
@@ -134,7 +136,7 @@ export function LoyaltyRewardRedemption({
   const monetaryContextMissing = Boolean(
     selectedReward
     && ['fixed_discount', 'percentage_discount'].includes(selectedReward.reward_type)
-    && (channel === 'pickup' ? !selectedOrder : Number(contextAmount || 0) <= 0)
+    && (channel === 'pickup' ? !selectedOrder : !walkInOrderId)
   );
   const minimumNotMet = Boolean(
     selectedReward
@@ -176,8 +178,10 @@ export function LoyaltyRewardRedemption({
         p_customer_id: customerId,
         p_reward_id: selectedReward.id,
         p_channel: channel,
-        p_order_id: channel === 'pickup' ? (selectedOrder?.id || null) : null,
-        p_context_amount: channel === 'walk_in' ? Number(contextAmount || 0) : null,
+        p_order_id: channel === 'pickup' ? (selectedOrder?.id || null) : walkInOrderId,
+        // Walk-In amount is display-only here. The RPC derives the authoritative
+        // value from the persisted walk-in order selected above.
+        p_context_amount: null,
         p_request_key: requestKey,
       });
       if (redeemError) throw redeemError;

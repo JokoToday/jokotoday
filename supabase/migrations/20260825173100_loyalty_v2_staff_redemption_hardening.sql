@@ -153,6 +153,10 @@ BEGIN
 
   -- Customer is already locked. Lock an attached order next so all customer/order
   -- operations follow the same customer -> order sequence as cancellation/pickup.
+  IF p_channel = 'walk_in' AND p_order_id IS NULL THEN
+    RAISE EXCEPTION 'Walk-in redemption requires a persisted sale';
+  END IF;
+
   IF p_order_id IS NOT NULL THEN
     SELECT * INTO v_order
     FROM public.orders
@@ -168,6 +172,16 @@ BEGIN
     IF p_channel = 'pickup' AND COALESCE(v_order.purchase_type, 'online') <> 'online' THEN
       RAISE EXCEPTION 'Pickup redemption requires an online/pickup order';
     END IF;
+    IF p_channel = 'walk_in' THEN
+      IF v_order.purchase_type IS DISTINCT FROM 'walk_in'
+         OR v_order.status IS DISTINCT FROM 'completed'
+         OR v_order.payment_status IS DISTINCT FROM 'paid' THEN
+        RAISE EXCEPTION 'Walk-in redemption requires a completed paid walk-in sale';
+      END IF;
+    END IF;
+    -- Authoritative reward context always comes from the persisted order.
+    -- p_context_amount is retained only for signature compatibility and is never
+    -- trusted for eligibility or monetary valuation.
     v_context_amount := COALESCE(v_order.total_amount, 0);
   END IF;
 

@@ -186,6 +186,7 @@ SELECT
   p.proname,
   pg_get_functiondef(p.oid) ILIKE '%is_staff_or_admin%' AS has_staff_admin_guard,
   pg_get_functiondef(p.oid) ILIKE '%auth.uid()%' AS has_authenticated_actor_guard,
+  pg_get_functiondef(p.oid) ILIKE '%Walk-in redemption requires a persisted sale%' AS has_persisted_walk_in_guard,
   p.prosecdef AS security_definer,
   p.proconfig AS function_config
 FROM pg_proc p
@@ -193,8 +194,8 @@ JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname = 'staff_redeem_loyalty_reward_v2';
 
--- Expected: one row, both guards=true, security_definer=true,
--- function_config contains search_path=public.
+-- Expected: one row, both identity guards=true, persisted-walk-in guard=true,
+-- security_definer=true, function_config contains search_path=public.
 
 -- 11c. Retry-safe staff redemption. request_key must be unique and only the
 -- hardened request-key signature may exist.

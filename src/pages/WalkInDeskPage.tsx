@@ -44,6 +44,7 @@ interface Customer {
 }
 
 interface PurchaseResult {
+  order_id: string;
   order_number: string;
   amount: number;
   points_earned: number;
@@ -538,20 +539,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   </div>
                 </div>
 
-                <LoyaltyRewardRedemption
-                  customerId={customer.id}
-                  currentBalance={customer.loyalty_points}
-                  channel="walk_in"
-                  language={staffLanguage}
-                  contextAmount={calculationAmount}
-                  onRedeemed={(result) => {
-                    setCustomer((current) => current
-                      ? { ...current, loyalty_points: result.new_balance }
-                      : current);
-                    setHistoryRefreshKey((value) => value + 1);
-                  }}
-                />
-
                 {purchaseResult ? (
                   <div className="space-y-6">
                     <div className="p-6 bg-green-50 border border-green-200 rounded-xl text-center">
@@ -576,6 +563,21 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         <p className="text-xl font-bold text-green-700 mt-1">{purchaseResult.updated_balance}</p>
                       </div>
                     </div>
+                    <LoyaltyRewardRedemption
+                      customerId={customer.id}
+                      currentBalance={customer.loyalty_points}
+                      channel="walk_in"
+                      language={staffLanguage}
+                      contextAmount={purchaseResult.amount}
+                      walkInOrderId={purchaseResult.order_id}
+                      onRedeemed={(result) => {
+                        setCustomer((current) => current
+                          ? { ...current, loyalty_points: result.new_balance }
+                          : current);
+                        setHistoryRefreshKey((value) => value + 1);
+                      }}
+                    />
+
                     <div className="space-y-3">
                       <button type="button" onClick={handleAnotherPurchase} className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                         {language === 'en' ? 'Make Another Purchase' : 'ทำรายการซื้ออีกครั้ง'}
