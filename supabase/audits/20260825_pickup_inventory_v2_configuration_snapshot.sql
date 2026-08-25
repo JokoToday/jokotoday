@@ -52,7 +52,7 @@ JOIN public.cms_pickup_locations l ON l.id = sl.location_id
 ORDER BY s.sort_order, sl.sort_order, s.schedule_key;
 
 -- B2. Initial v2 launch scope. After approved A3a configuration this must show:
---   friday_maerim   desired=false actual=false
+--   friday_maerim   desired=false actual=false  (retained for future use)
 --   saturday_maerim desired=true  actual=true
 --   sunday_intown   desired=true  actual=true
 SELECT
