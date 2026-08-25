@@ -48,9 +48,7 @@ export const deleteImage = async (
   }
 };
 
-export const listImages = async (
-  folder: string
-): Promise<{ files: any[] | null; error: Error | null }> => {
+export const listImages = async (folder: string) => {
   try {
     const { data, error } = await supabase
       .storage
