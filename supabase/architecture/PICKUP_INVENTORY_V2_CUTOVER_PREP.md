@@ -20,209 +20,245 @@ Admin-managed recurring schedule fields are:
 - cancellation cutoff days-before and time;
 - sort order.
 
-The stable internal `schedule_key` is intentionally immutable after creation. It is technical identity, not a business setting.
+Admin-managed concrete-date fields are:
 
-Product availability and capacity are also Admin-managed business data:
+- materialization / extension range;
+- date status (`open`, `closed`, `sold_out`);
+- exact order cutoff timestamp;
+- exact cancellation cutoff timestamp;
+- date-specific locations;
+- date notes (EN / TH / ZH).
 
-- product enabled / disabled per recurring pickup schedule;
-- recurring capacity per product + schedule;
-- concrete-date capacity overrides.
+Product availability and capacity also belong in Admin, but that is a later slice because the real production catalog has not yet been onboarded.
 
-## 2. Current safe production state
+The initial business intention is Saturday + Sunday pickup only. That is an **initial Admin configuration**, not an architecture rule. Friday or any other recurring pickup pattern can be enabled later without a migration or source-code change.
 
-The Phase A v2 database architecture is installed, but customer traffic remains on the legacy order path.
+Customer self-cancellation is intended to default to the same cutoff as ordering. The Admin UI supports that default while retaining the database's ability to represent an explicit exception.
 
-Current expected state before v2 configuration/cutover:
+## 2. Current safe rollout state
 
-- recurring schedule definitions exist in `pickup_schedules`;
-- 0 concrete `pickup_dates` rows;
-- 0 `product_schedule_capacity` rows;
-- 0 `product_date_inventory` rows;
-- 0 orders with `pickup_date_id`;
-- `create_online_order_v2` and `cancel_online_order_v2` remain unavailable to browser roles.
+The Phase A database architecture is installed, but customer traffic remains on the legacy order path.
 
-No customer frontend cutover should occur until all cutover gates are cleared.
+Expected state before live configuration:
 
-## 3. Initial business configuration — not hard-coded behavior
+- recurring pickup schedule definitions may exist;
+- concrete `pickup_dates` may remain empty until Admin materializes them;
+- `product_schedule_capacity` may remain empty until the real catalog is onboarded;
+- `product_date_inventory` may remain empty until products receive recurring capacity or date overrides;
+- no v2 orders have `pickup_date_id` yet;
+- `create_online_order_v2` and `cancel_online_order_v2` remain unavailable to browser customer roles.
 
-The current intended launch configuration is:
+No customer frontend cutover should occur until all rollout gates are cleared.
 
-- Saturday pickup: enabled;
-- Sunday pickup: enabled;
-- Friday pickup: disabled for now.
+## 3. Recurring Pickup Schedule Admin
 
-This is an **initial Admin configuration choice**, not an architectural rule. Admin must be able to enable Friday later, disable Sunday, add another weekday, change locations, or add another recurring schedule without a code change or database migration.
+The v2 Pickup Schedule Admin UI reads from:
 
-The approved operating policy is:
+- `pickup_schedules`;
+- `pickup_schedule_locations`;
+- `cms_pickup_locations`.
 
-> Customer self-cancellation closes at the same cutoff as ordering for the active schedule.
+Writes use the reviewed admin-only transactional RPC:
 
-The Admin UI therefore defaults cancellation cutoff to the order cutoff, while the database remains capable of storing a separate cancellation cutoff if the business later chooses a different policy.
+- `admin_upsert_pickup_schedule_v2(...)`.
 
-## 4. Recurring configuration vs concrete-date snapshots
+Admin can:
 
-Admin editability does not mean historical/customer-bound dates should mutate silently.
+- view active and inactive recurring schedules;
+- create a schedule;
+- edit EN / TH / ZH labels;
+- choose pickup weekday;
+- assign one or more locations;
+- edit order cutoff days-before + time;
+- use cancellation cutoff = order cutoff by default;
+- optionally set a separate cancellation cutoff;
+- activate / deactivate a recurring schedule;
+- edit sort order.
 
-The v2 model intentionally separates:
+`schedule_key` remains a stable immutable technical identifier after creation.
 
-1. **Recurring schedule configuration** (`pickup_schedules`, `pickup_schedule_locations`) — editable in Admin.
-2. **Concrete pickup dates** (`pickup_dates`, `pickup_date_locations`) — stable snapshots used by customer orders.
+### Recurring schedule versus concrete dates
 
-When future dates are materialized, they copy the then-current recurring schedule rules. Later changes to the recurring template do not silently rewrite existing concrete dates or existing orders.
+A recurring schedule is a template. A concrete pickup date is a materialized customer-selectable occurrence.
 
-Important lifecycle rule already enforced by the database:
+Changing the recurring template must not silently rewrite already-materialized customer dates. The database deliberately blocks changing a schedule's weekday after concrete dates exist. Existing dates are managed through the concrete-date Admin workflow instead.
 
-- after concrete dates exist for a schedule, that schedule's weekday cannot simply be changed;
-- date-specific exceptions belong on concrete-date controls;
-- a materially different recurring pattern can be represented by a new schedule / reviewed transition.
+## 4. Concrete Pickup Date Admin
 
-This preserves customer/order integrity while keeping normal business configuration flexible.
+The authenticated Admin workspace now has a dedicated **Concrete Pickup Dates** section.
 
-## 5. v2 Pickup Schedule Admin UI
+### 4.1 Materialization / calendar extension
 
-PR #44 now starts the v2 Admin implementation rather than manually writing launch values directly to production.
+Admin can choose a future date range and call:
 
-The Pickup Schedule Admin surface uses the existing transactional RPC:
+- `materialize_pickup_dates_v2(start_date, end_date)`.
 
-- `admin_upsert_pickup_schedule_v2(...)`
+The UI defaults to an eight-week range as an operational convenience, but the range is editable and is not a business rule.
 
-The initial UI supports:
+Safety behavior:
 
-- viewing active and inactive v2 recurring schedules;
-- creating a recurring schedule;
-- editing EN / TH / ZH labels;
-- selecting the pickup weekday;
-- assigning one or more pickup locations;
-- setting order cutoff days-before and time;
-- defaulting cancellation cutoff to the order cutoff;
-- optionally setting a separate cancellation cutoff;
-- enabling/disabling the recurring schedule;
-- setting display sort order.
+- the Admin UI only materializes future dates;
+- one operation is limited to 366 days, matching the server guard;
+- only currently active recurring schedules produce concrete dates;
+- missing date rows are created idempotently;
+- recurring schedule locations are snapshotted into `pickup_date_locations`;
+- configured recurring product capacities, if any, are snapshotted into `product_date_inventory`;
+- existing `source = 'manual'` concrete dates are preserved;
+- customer v2 ordering remains dark regardless of materialization state.
 
-Authorization remains server-side. The Admin page already requires an authenticated Supabase account whose `user_profiles.role = 'admin'`, and the RPC independently checks the same role.
+The Admin UI requires an explicit confirmation before materialization because branch previews currently use the live Supabase environment.
 
-The legacy Holiday Overrides and Cancellation Cutoff tabs remain temporarily available and are explicitly labelled **Legacy** while current customer checkout remains on v1.
+### 4.2 Concrete-date settings
 
-## 6. Product capacity belongs in Admin
+Each materialized date can be edited through:
 
-The current `cms_products` rows are development/placeholder data and are not the final production catalog. Do not derive launch capacities from them.
+- `admin_update_pickup_date_v2(...)`.
 
-No product capacity values are required at this stage.
+Admin can set:
 
-Once the real products are onboarded, Admin must manage:
+- status: `open`, `closed`, or `sold_out`;
+- exact order cutoff timestamp;
+- cancellation cutoff, defaulting in the UI to the order cutoff;
+- EN / TH / ZH date notes.
 
-- which recurring schedules a product is offered on;
-- capacity for each enabled product + schedule combination;
-- enable/disable state per schedule;
-- concrete-date capacity overrides.
+A date edited through this RPC becomes `source = 'manual'`, protecting that snapshot from later materializer resets.
 
-The v2 database already supports this with:
+Date timestamps are presented and edited in `Asia/Bangkok` and converted to UTC ISO timestamps before the RPC call.
+
+### 4.3 Concrete-date locations
+
+Date-specific location changes use:
+
+- `admin_set_pickup_date_location_v2(...)`.
+
+The UI deliberately saves each location toggle as its own explicit RPC action rather than bundling several location mutations into the date-settings save. This keeps each Admin action atomic and avoids a multi-RPC save that could partially succeed.
+
+UI guards include:
+
+- an open date must keep at least one active pickup location;
+- a globally inactive location cannot be newly enabled for a concrete date;
+- disabling the last active location on an open date is blocked;
+- every live location change requires explicit confirmation.
+
+Existing orders retain their stable `pickup_date_id` / location identity even if Admin later closes a date or disables that location for new orders.
+
+## 5. Product data is not ready for capacity configuration
+
+The current `cms_products` rows are not the final production catalog. They are placeholder / development-era product records and must not be treated as authoritative launch-capacity inputs.
+
+Therefore:
+
+- do **not** derive v2 recurring capacities from current placeholder products;
+- do **not** seed capacity from `stock_by_day`, `stock_remaining`, `stock_total`, or historical demand;
+- do **not** require capacity values before the real catalog is uploaded;
+- do **not** make placeholder availability metadata a launch commitment.
+
+## 6. Product availability and capacity belong in Admin
+
+For each real product, Admin must later be able to manage recurring availability and capacity by recurring pickup schedule.
+
+The v2 database already supports this through:
 
 - `admin_set_product_schedule_capacity_v2(...)`;
 - `admin_set_product_schedule_availability_v2(...)`;
-- `admin_set_product_date_capacity_v2(...)`.
+- `admin_set_product_date_capacity_v2(...)` for exceptional concrete dates.
 
-`admin_set_product_schedule_capacity_v2(..., p_apply_to_future_dates = true)` can create/update recurring-default inventory rows for already-materialized future dates while preserving explicit date overrides.
+`admin_set_product_schedule_capacity_v2(..., p_apply_to_future_dates = true)` can populate/update future materialized recurring-default inventory while preserving explicit date overrides.
 
-## 7. Date materialization should also become an Admin operation
+This product/inventory Admin UI is the next implementation slice after recurring schedules + concrete dates.
 
-`materialize_pickup_dates_v2(start_date, end_date)` already materializes dates only for schedules that are active at execution time.
+## 7. Revised Phase A3 sequence
 
-Therefore the intended workflow is:
+### A3a — Admin configuration tooling
 
-1. Admin configures the recurring schedules.
-2. Admin reviews those settings.
-3. Admin materializes/extends the future calendar horizon.
-4. Admin reviews concrete dates and date-specific exceptions.
+1. recurring Pickup Schedule Admin UI;
+2. Concrete Pickup Date Admin UI;
+3. product recurring availability + capacity Admin UI;
+4. product concrete-date capacity override Admin UI;
+5. validate Admin authorization and all server-side invariants.
 
-The initial target may still be an 8-week horizon, but the weekday composition of that horizon comes from the active Admin configuration — not hard-coded Saturday/Sunday logic.
+### A3b — initial business configuration through Admin
 
-With no recurring product capacities configured, materializing dates creates schedule/date/location/cutoff snapshots but no product inventory rows. That is valid while customer v2 ordering remains dark.
+Only after the Admin tooling is reviewed and deployed:
 
-## 8. Revised implementation sequence
+1. configure the intended launch recurring schedules through Admin;
+2. configure order/cancellation cutoffs through Admin;
+3. materialize the desired future pickup horizon through Admin;
+4. inspect every concrete date, location and cutoff;
+5. keep product capacity empty until the real catalog is onboarded;
+6. keep customer v2 RPCs dark.
 
-### A3a — Admin schedule control
+### A3c — real product onboarding
 
-1. Implement and review v2 Pickup Schedule Admin UI.
-2. Ensure schedule writes use `admin_upsert_pickup_schedule_v2(...)`, never direct browser table mutation.
-3. Verify only authenticated database admins can save.
-4. Keep current customer v2 RPCs dark.
-5. Do not change production schedule values merely to test the UI.
+1. upload/configure the real production catalog;
+2. choose recurring schedule availability per product;
+3. enter production capacity per product + schedule;
+4. propagate recurring defaults to future dates;
+5. use concrete-date capacity overrides where required;
+6. verify `product_date_inventory` against Admin configuration.
 
-### A3b — concrete-date Admin controls
+### A4 — customer frontend cutover
 
-1. Add an Admin action to materialize/extend a chosen future date horizon.
-2. Add concrete-date list/calendar controls.
-3. Support open / closed / sold-out state and date-level location/cutoff changes through reviewed v2 RPCs.
-4. Preserve stable snapshots for orders already using a concrete date.
+Only after schedule/date/product Admin flows are stable and the legacy reservation gate is clear:
 
-### A3c — real product onboarding and capacity Admin
+- customer calendar reads concrete dates;
+- customer location selection reads concrete date locations;
+- customer stock reads a safe v2 availability surface;
+- checkout uses `create_online_order_v2`;
+- v2 cancellation uses `cancel_online_order_v2`;
+- authenticated EXECUTE is granted to customer v2 RPCs only in the separately reviewed final cutover migration.
 
-1. Upload/configure the real product catalog.
-2. Configure product availability per recurring schedule.
-3. Configure recurring product capacity per schedule.
-4. Propagate recurring defaults to future materialized dates.
-5. Use concrete-date capacity overrides for exceptions.
-
-### A3d — customer frontend cutover
-
-Only after Admin configuration and concrete-date operations are stable:
-
-1. customer calendar reads `pickup_dates` and `pickup_date_locations`;
-2. product availability reads v2 date inventory;
-3. checkout uses `create_online_order_v2`;
-4. cancellation uses `cancel_online_order_v2`;
-5. a separately reviewed migration grants authenticated customer EXECUTE only at the final cutover point.
-
-## 9. Legacy reservation gate
+## 8. Legacy reservation gate
 
 Before customer v2 cutover, every active future legacy reservation must either:
 
-1. age out / be resolved under the legacy flow; or
+1. age out / resolve under the legacy flow; or
 2. be reconciled into the v2 inventory ledger in a separately reviewed operation.
 
-Known preparation-time blocker:
+The read-only audit treats nullable order status fail-closed by coalescing null to an active/pending state.
 
-- Saturday 2026-08-29 — Mae Rim;
-- pending / unpaid;
-- 1 × Spinach & Cheese Quiche;
-- `inventory_reserved = true`;
-- `pickup_date_id IS NULL`.
+No schedule or concrete-date Admin tooling removes this gate.
 
-This does not block building or reviewing the Admin UI. It does block enabling customer v2 checkout while the reservation remains outside the v2 ledger.
+## 9. Transition clarity
 
-## 10. Required cutover behavior tests
+Current customer checkout remains on v1.
 
-Before enabling customer traffic:
+Legacy Admin sections remain labelled explicitly as legacy where they still support current v1 checkout. The v2 recurring schedule and concrete-date controls do not themselves activate customer v2 ordering.
 
-- Admin can create/edit/enable/disable recurring pickup schedules without source-code changes;
-- only database-role admins can call Admin RPCs;
-- active schedule location requirements are enforced;
-- materialization follows whatever schedules are active in Admin;
-- schedule changes do not silently rewrite existing concrete-date snapshots;
-- exact Bangkok cutoff timestamps are correct;
+No browser customer role receives v2 RPC EXECUTE merely because schedules or dates exist.
+
+## 10. Required cutover smoke tests
+
+Before enabling v2 customer traffic:
+
+- active recurring schedules are driven entirely by Admin configuration;
+- materialization creates dates only for active recurring schedules;
+- Bangkok order/cancellation timestamps are correct;
+- manual concrete-date settings survive later materializer runs;
 - closed/sold-out dates reject ordering;
-- disabled location/date combinations reject ordering server-side;
-- a product without configured v2 capacity is not orderable;
-- recurring capacity changes propagate only to recurring-default future inventory rows;
-- explicit date overrides remain intact;
-- shared inventory cannot oversell under concurrent final-unit attempts;
-- cancellation restores shared inventory;
+- disabled date/location combinations reject ordering server-side;
+- an open date cannot be left without an active location through normal Admin UI;
+- a product without configured capacity is not orderable;
+- recurring product capacity changes propagate correctly to future recurring-default inventory;
+- explicit product/date overrides are not overwritten by recurring edits;
+- simultaneous final-unit attempts cannot oversell;
+- cancellation restores the shared pool;
 - idempotent retry does not double reserve;
 - customer cannot call Admin RPCs;
 - customer cannot cancel another customer's order;
-- customer v2 RPCs remain dark until the final cutover migration;
+- customer v2 RPCs remain dark until final cutover;
 - `reserved_quantity = SUM(inventory_events.reserved_delta)` for every v2 pool.
 
 ## 11. Production change gates
 
-Separate explicit approval remains required before production actions such as:
+Separate explicit approval remains required during rollout preparation before production actions including:
 
-- changing live v2 recurring schedule configuration;
-- materializing concrete production pickup dates;
-- changing production RLS/schema/RPC authorization;
-- reconciling legacy reservations;
-- granting customer v2 RPC access;
-- merging/deploying a customer frontend cutover with operational/security impact.
+- changing live recurring schedule configuration;
+- materializing live concrete pickup dates;
+- changing live concrete-date status/cutoffs/locations;
+- reconciling a legacy reservation into the v2 ledger;
+- applying any new migration/RLS/grant/auth change;
+- granting browser access to customer v2 RPCs;
+- merging/deploying the eventual customer cutover.
 
-Once the reviewed Admin UI is deployed, routine business configuration (weekday activation, labels, locations, cutoffs, product availability/capacity) should be normal authorized Admin operation and should not require a new code change for every value change.
+After the Admin system itself is reviewed and deployed, ordinary schedule/date/product configuration is intended to become normal authorized Admin business operation rather than requiring a source-code change or migration each time.
