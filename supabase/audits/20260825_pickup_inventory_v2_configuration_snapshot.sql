@@ -3,20 +3,17 @@
   Pickup date + shared inventory v2
 
   Purpose:
-    Re-run before and after Phase A3 production schedule/date configuration.
-
-  IMPORTANT:
-    Pickup weekdays, locations, activation state and cutoffs are Admin-managed
-    business configuration. This audit reports the actual configured state; it
-    deliberately does not hard-code Saturday/Sunday/Friday as architecture rules.
+    Re-run before and after Phase A3 Admin-driven schedule/date configuration.
 
   This file contains SELECT statements only.
 */
 
--- A. Rollout state.
--- Before customer cutover, v2_order_count = 0 and customer v2 RPC EXECUTE must
--- remain false / false. Recurring capacity and date inventory may remain empty
--- until the real product catalog is onboarded.
+-- A. Rollout state. Expected before customer v2 cutover:
+-- latest migration = 20260824175100
+-- recurring_capacity_count may remain 0 until real product onboarding
+-- date_inventory_count may remain 0 even after dates are materialized
+-- v2_order_count = 0
+-- customer v2 RPC EXECUTE = false / false
 SELECT
   (SELECT max(version) FROM supabase_migrations.schema_migrations) AS latest_migration,
   (SELECT count(*) FROM public.pickup_schedules) AS schedule_count,
@@ -35,7 +32,9 @@ SELECT
     'EXECUTE'
   ) AS cancel_v2_authenticated;
 
--- B. Actual recurring Admin configuration: schedules, locations and cutoff policy.
+-- B. Recurring schedules, locations and cutoff policy.
+-- This reports actual Admin configuration; it does not encode a hard-coded
+-- launch weekday/location matrix.
 SELECT
   s.id AS schedule_id,
   s.schedule_key,
@@ -48,48 +47,60 @@ SELECT
   s.is_active,
   l.id AS location_id,
   l.name_en AS location_name,
-  l.is_active AS location_is_active,
-  sl.is_active AS schedule_location_active,
-  sl.sort_order AS location_sort_order
+  l.is_active AS location_global_active,
+  sl.is_active AS schedule_location_active
 FROM public.pickup_schedules s
 LEFT JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
 LEFT JOIN public.cms_pickup_locations l ON l.id = sl.location_id
 ORDER BY s.sort_order, sl.sort_order, s.schedule_key;
 
--- B2. Safety diagnostics for recurring schedule configuration.
--- Active schedules should have at least one active linked pickup location.
+-- B2. Generic active-schedule safety diagnostic.
+-- Every active schedule should have at least one schedule-location link that is
+-- active AND whose underlying CMS pickup location is globally active.
 SELECT
   s.id AS schedule_id,
   s.schedule_key,
   s.label_en,
-  s.pickup_weekday,
   s.is_active,
   count(*) FILTER (
-    WHERE sl.is_active = true AND l.is_active = true
-  ) AS active_location_count,
+    WHERE COALESCE(sl.is_active, false) = true
+      AND COALESCE(l.is_active, false) = true
+  ) AS active_usable_location_count,
   CASE
-    WHEN s.is_active = false THEN 'inactive_schedule'
-    WHEN count(*) FILTER (WHERE sl.is_active = true AND l.is_active = true) > 0 THEN 'ok'
-    ELSE 'active_schedule_without_active_location'
-  END AS configuration_status
+    WHEN NOT s.is_active THEN true
+    ELSE count(*) FILTER (
+      WHERE COALESCE(sl.is_active, false) = true
+        AND COALESCE(l.is_active, false) = true
+    ) > 0
+  END AS schedule_location_configuration_safe
 FROM public.pickup_schedules s
 LEFT JOIN public.pickup_schedule_locations sl ON sl.schedule_id = s.id
 LEFT JOIN public.cms_pickup_locations l ON l.id = sl.location_id
-GROUP BY s.id, s.schedule_key, s.label_en, s.pickup_weekday, s.is_active, s.sort_order
+GROUP BY s.id, s.schedule_key, s.label_en, s.is_active, s.sort_order
 ORDER BY s.sort_order, s.schedule_key;
 
 -- C. Current legacy product x ACTIVE recurring-schedule offering matrix.
 -- IMPORTANT: current cms_products rows are not authoritative launch-capacity
 -- input. This query is transitional diagnostics only. It reflects the legacy
--- frontend rule that empty available_days means semantically offered on every
--- active v2 pickup schedule. It does NOT infer v2 capacity or launch availability.
+-- frontend rule that an empty JSON array in available_days means semantically
+-- offered on every active v2 pickup schedule. Malformed/non-array JSON is
+-- treated conservatively as not offered so this diagnostic can never abort the
+-- rollout-critical checks that follow it.
 WITH active_schedules AS (
   SELECT id, schedule_key, label_en, sort_order
   FROM public.pickup_schedules
   WHERE is_active = true
 ),
 active_products AS (
-  SELECT id, name_en, available_days, sort_order
+  SELECT
+    id,
+    name_en,
+    CASE
+      WHEN jsonb_typeof(COALESCE(available_days, '[]'::jsonb)) = 'array'
+        THEN COALESCE(available_days, '[]'::jsonb)
+      ELSE NULL
+    END AS available_days_array,
+    sort_order
   FROM public.cms_products
   WHERE COALESCE(is_active, false) = true
 )
@@ -100,10 +111,11 @@ SELECT
   s.schedule_key,
   s.label_en AS schedule_label,
   CASE
-    WHEN jsonb_array_length(COALESCE(p.available_days, '[]'::jsonb)) = 0 THEN true
-    WHEN p.available_days ? s.schedule_key THEN true
-    WHEN p.available_days ? s.label_en THEN true
-    WHEN p.available_days ? replace(s.label_en, ' – ', ' - ') THEN true
+    WHEN p.available_days_array IS NULL THEN false
+    WHEN jsonb_array_length(p.available_days_array) = 0 THEN true
+    WHEN p.available_days_array ? s.schedule_key THEN true
+    WHEN p.available_days_array ? s.label_en THEN true
+    WHEN p.available_days_array ? replace(s.label_en, ' – ', ' - ') THEN true
     ELSE false
   END AS legacy_semantically_offered
 FROM active_products p
@@ -126,39 +138,52 @@ JOIN public.pickup_schedules s ON s.id = c.schedule_id
 JOIN public.cms_products p ON p.id = c.product_id
 ORDER BY s.sort_order, p.sort_order, p.name_en;
 
--- E. Concrete dates and locations. These are snapshots generated from whatever
--- recurring schedules were active when materialization was run.
+-- E. Concrete dates and locations. It is valid to materialize pickup dates while
+-- recurring capacities are still empty, because customer v2 RPCs remain dark.
 SELECT
   d.id AS pickup_date_id,
   d.pickup_date,
   s.schedule_key,
-  s.label_en AS schedule_label,
   d.status,
   d.order_cutoff_at,
   d.cancellation_cutoff_at,
   d.source,
   l.name_en AS location_name,
-  dl.is_active AS location_active
+  l.is_active AS location_global_active,
+  dl.is_active AS date_location_active
 FROM public.pickup_dates d
 JOIN public.pickup_schedules s ON s.id = d.schedule_id
 LEFT JOIN public.pickup_date_locations dl ON dl.pickup_date_id = d.id
 LEFT JOIN public.cms_pickup_locations l ON l.id = dl.location_id
 ORDER BY d.pickup_date, dl.sort_order, l.name_en;
 
--- E2. Materialized date counts by schedule. This reports actual state without
--- encoding any particular weekday as a permanent requirement.
+-- E2. Generic concrete-date safety diagnostic. Every OPEN future date should
+-- expose at least one active date-location whose underlying CMS location is
+-- also globally active. This is independent of which weekdays the business has
+-- configured in Admin.
 SELECT
+  d.id AS pickup_date_id,
+  d.pickup_date,
   s.schedule_key,
-  s.label_en,
-  s.pickup_weekday,
-  s.is_active AS recurring_schedule_currently_active,
-  count(d.id) AS materialized_date_count,
-  min(d.pickup_date) AS first_materialized_date,
-  max(d.pickup_date) AS last_materialized_date
-FROM public.pickup_schedules s
-LEFT JOIN public.pickup_dates d ON d.schedule_id = s.id
-GROUP BY s.id, s.schedule_key, s.label_en, s.pickup_weekday, s.is_active, s.sort_order
-ORDER BY s.sort_order, s.schedule_key;
+  d.status,
+  count(*) FILTER (
+    WHERE COALESCE(dl.is_active, false) = true
+      AND COALESCE(l.is_active, false) = true
+  ) AS active_usable_location_count,
+  CASE
+    WHEN d.status <> 'open' THEN true
+    ELSE count(*) FILTER (
+      WHERE COALESCE(dl.is_active, false) = true
+        AND COALESCE(l.is_active, false) = true
+    ) > 0
+  END AS date_location_configuration_safe
+FROM public.pickup_dates d
+JOIN public.pickup_schedules s ON s.id = d.schedule_id
+LEFT JOIN public.pickup_date_locations dl ON dl.pickup_date_id = d.id
+LEFT JOIN public.cms_pickup_locations l ON l.id = dl.location_id
+WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date
+GROUP BY d.id, d.pickup_date, s.schedule_key, s.sort_order, d.status
+ORDER BY d.pickup_date, s.sort_order, s.schedule_key;
 
 -- F. Product date inventory. Zero rows is valid until real products receive
 -- recurring capacities or date overrides in Admin.
