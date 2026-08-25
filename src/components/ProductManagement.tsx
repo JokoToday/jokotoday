@@ -41,7 +41,7 @@ function dayAliases(day: PickupDay): string[] {
     .filter((value): value is string => Boolean(value));
 }
 
-export function ProductForm({ product, categories, locations: _locations, onSave, onCancel }: ProductFormProps) {
+export function ProductForm({ product, categories, onSave, onCancel }: ProductFormProps) {
   const [formData, setFormData] = useState<FormData>({
     name_en: product?.name_en || '',
     name_th: product?.name_th || '',

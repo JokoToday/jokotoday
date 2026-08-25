@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { LikesProvider } from './context/LikesContext';
@@ -6,24 +6,25 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import HomePage from './pages/HomePage';
-import ProductsPage from './pages/ProductsPage';
-import CheckoutPage from './pages/CheckoutPage';
-import AboutPage from './pages/AboutPage';
-import HowItWorksPage from './pages/HowItWorksPage';
-import { AdminPage } from './pages/AdminPage';
-import { LineCallback } from './components/LineCallback';
-import { CustomerAccountPage } from './pages/CustomerAccountPage';
-import { StaffScannerPage } from './pages/StaffScannerPage';
-import { StaffLoginPage } from './pages/StaffLoginPage';
-import { PickupDeskPage } from './pages/PickupDeskPage';
-import { WalkInDeskPage } from './pages/WalkInDeskPage';
-import { MyQRPage } from './pages/MyQRPage';
-import { MyProfilePage } from './pages/MyProfilePage';
-import { MyOrdersPage } from './pages/MyOrdersPage';
-import { MyLikesPage } from './pages/MyLikesPage';
-import { ScanPage } from './pages/ScanPage';
-import { AuthCallbackPage } from './pages/AuthCallbackPage';
-import QRResolverPage from './pages/QRResolverPage';
+
+const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
+const LineCallback = lazy(() => import('./components/LineCallback').then(({ LineCallback }) => ({ default: LineCallback })));
+const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
+const StaffScannerPage = lazy(() => import('./pages/StaffScannerPage').then(({ StaffScannerPage }) => ({ default: StaffScannerPage })));
+const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage').then(({ StaffLoginPage }) => ({ default: StaffLoginPage })));
+const PickupDeskPage = lazy(() => import('./pages/PickupDeskPage').then(({ PickupDeskPage }) => ({ default: PickupDeskPage })));
+const WalkInDeskPage = lazy(() => import('./pages/WalkInDeskPage').then(({ WalkInDeskPage }) => ({ default: WalkInDeskPage })));
+const MyQRPage = lazy(() => import('./pages/MyQRPage').then(({ MyQRPage }) => ({ default: MyQRPage })));
+const MyProfilePage = lazy(() => import('./pages/MyProfilePage').then(({ MyProfilePage }) => ({ default: MyProfilePage })));
+const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage').then(({ MyOrdersPage }) => ({ default: MyOrdersPage })));
+const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage }) => ({ default: MyLikesPage })));
+const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
+const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 
 const ACCOUNT_PAGE_PATHS: Record<string, string> = {
   profile: '/my-profile',
@@ -240,7 +241,11 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col">
       {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
-      <main className="flex-1">{renderPage()}</main>
+      <main className="flex-1">
+        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
+          {renderPage()}
+        </Suspense>
+      </main>
       {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
       {!isStandalonePage && (
         <CartSidebar

@@ -101,7 +101,7 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
     try {
       await deleteSocialLink(id);
       onRefresh();
-    } catch (err) {
+    } catch {
       alert('Failed to delete social link');
     }
   };
@@ -110,7 +110,7 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
     try {
       await updateSocialLink(link.id, { is_active: !link.is_active });
       onRefresh();
-    } catch (err) {
+    } catch {
       alert('Failed to update status');
     }
   };
