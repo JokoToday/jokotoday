@@ -24,6 +24,12 @@ export interface ProductAvailability {
   remainingStock: number;
 }
 
+interface AvailabilityProduct {
+  available_days?: string[] | null;
+  stock_by_day?: Record<string, number> | null;
+  stock_remaining?: number | null;
+}
+
 export interface CutoffRule {
   id: string;
   day_key: string;
@@ -155,10 +161,6 @@ function isCutoffPassedForPickup(pickupDay: PickupDay): boolean {
   const pickupDate = getNextPickupDate(pickupDay);
   if (!pickupDate) return true;
 
-  // Match PostgreSQL create_online_order(): the configured cutoff weekday is
-  // resolved backwards from the exact scheduled pickup occurrence. This remains
-  // correct even for unconventional schedules such as Monday pickup with a
-  // Tuesday cutoff in the previous week.
   const daysBeforePickup = (pickupDay.pickup_weekday - cutoffDayOfWeek + 7) % 7;
   const cutoffDate = new Date(pickupDate);
   cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysBeforePickup);
@@ -360,7 +362,7 @@ export function getCutoffDayAndTime(pickupDay: PickupDay): string {
 }
 
 export function getAvailabilityStatus(
-  product: any,
+  product: AvailabilityProduct,
   selectedDay: string | null,
 ): ProductAvailability {
   if (!selectedDay) {
@@ -374,8 +376,8 @@ export function getAvailabilityStatus(
 
   const dayKey = getDayKey(selectedDay);
   const equivalentLabels = getEquivalentDayLabels(selectedDay);
-  const availableDays = product.available_days as string[] || [];
-  const stockByDay = product.stock_by_day as Record<string, number> || {};
+  const availableDays = product.available_days || [];
+  const stockByDay = product.stock_by_day || {};
 
   const isOfferedToday = availableDays.length === 0
     || availableDays.includes(selectedDay)
