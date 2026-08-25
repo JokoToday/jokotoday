@@ -4,18 +4,84 @@
   Depends on 20260825172000_loyalty_v2_foundation.sql.
 
   Target behavior:
+  - the legacy insert-time award is cut over atomically with the opening ledger;
   - online/preorder points are calculated at order creation but become spendable
     only when pickup/completion is confirmed;
   - paid/completed walk-in purchases earn immediately;
   - cancellation reverses points only if that order was actually awarded;
   - all post-cutover balance changes use loyalty_point_events atomically;
-  - existing positive-point orders were marked as already awarded by the
-    foundation migration, preventing double-credit on later pickup.
+  - existing positive-point orders are marked as legacy-awarded so they can
+    never be awarded twice at pickup.
 */
 
--- Stop legacy insert-time balance crediting. Keep the BEFORE INSERT calculator
--- so orders.loyalty_points_earned remains the prospective/earned snapshot.
+-- -----------------------------------------------------------------------------
+-- Atomic cutover
+-- -----------------------------------------------------------------------------
+-- The foundation migration creates the new schema and may initially snapshot an
+-- opening balance. Rebuild that opening snapshot here while blocking every
+-- legacy path that can mutate orders/customers/point events. This closes the
+-- migration-order race where an order or cancellation between migrations could
+-- otherwise make the opening ledger stale.
+
+LOCK TABLE public.orders, public.customers, public.loyalty_point_events
+  IN SHARE ROW EXCLUSIVE MODE;
+
+-- Stop legacy insert-time balance crediting before the final opening snapshot.
+-- The BEFORE INSERT calculator remains and continues to snapshot prospective
+-- points on the order.
 DROP TRIGGER IF EXISTS orders_update_customer_loyalty ON public.orders;
+
+-- Remove only the provisional opening rows written by the foundation migration.
+-- Preserve any real ledger events that may have been created through an Admin
+-- RPC before this cutover transaction.
+DELETE FROM public.loyalty_point_events
+WHERE event_type = 'migration_opening_balance';
+
+-- Every positive-point order that exists at this exact cutover moment was
+-- created under the legacy award-at-insert model (or is a completed walk-in), so
+-- it has already affected the cached balance. Mark it as awarded to prevent a
+-- later pickup action from awarding it again.
+UPDATE public.orders
+SET loyalty_points_awarded_at = COALESCE(loyalty_points_awarded_at, created_at, now())
+WHERE customer_id IS NOT NULL
+  AND COALESCE(loyalty_points_earned, 0) > 0
+  AND loyalty_points_awarded_at IS NULL;
+
+-- Reconcile the ledger to the exact cached balance at cutover. Normally there
+-- are no non-opening v2 events yet; subtracting any that do exist makes this
+-- robust if an authorized Admin adjustment occurred between migrations.
+WITH existing_events AS (
+  SELECT customer_id, COALESCE(SUM(points_delta), 0)::integer AS existing_delta
+  FROM public.loyalty_point_events
+  GROUP BY customer_id
+), opening AS (
+  SELECT
+    c.id AS customer_id,
+    COALESCE(c.loyalty_points, 0)::integer AS current_balance,
+    (COALESCE(c.loyalty_points, 0) - COALESCE(e.existing_delta, 0))::integer AS opening_delta
+  FROM public.customers c
+  LEFT JOIN existing_events e ON e.customer_id = c.id
+)
+INSERT INTO public.loyalty_point_events (
+  customer_id,
+  event_type,
+  points_delta,
+  balance_after,
+  reason,
+  metadata,
+  created_at
+)
+SELECT
+  o.customer_id,
+  'migration_opening_balance',
+  o.opening_delta,
+  o.current_balance,
+  'Opening balance at Loyalty v2 atomic cutover',
+  jsonb_build_object('cutover_balance', o.current_balance),
+  now()
+FROM opening o
+WHERE o.opening_delta <> 0
+ON CONFLICT DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- Pickup confirmation: award once, at completion/pickup.
@@ -49,18 +115,18 @@ BEGIN
     RAISE EXCEPTION 'Cancelled orders cannot be picked up';
   END IF;
 
-  IF v_order.status IN ('picked_up', 'completed') THEN
-    RETURN NEXT v_order;
-    RETURN;
+  -- If a row is already picked_up/completed but lacks an award marker (for
+  -- example after an interrupted/manual legacy transition), reconcile the
+  -- loyalty award idempotently instead of returning before it can be repaired.
+  IF v_order.status NOT IN ('picked_up', 'completed') THEN
+    UPDATE public.orders
+    SET
+      status = 'picked_up',
+      picked_up_at = COALESCE(picked_up_at, now()),
+      staff_id = COALESCE(staff_id, auth.uid())
+    WHERE id = p_order_id
+    RETURNING * INTO v_order;
   END IF;
-
-  UPDATE public.orders
-  SET
-    status = 'picked_up',
-    picked_up_at = COALESCE(picked_up_at, now()),
-    staff_id = COALESCE(staff_id, auth.uid())
-  WHERE id = p_order_id
-  RETURNING * INTO v_order;
 
   IF v_order.customer_id IS NOT NULL
      AND COALESCE(v_order.loyalty_points_earned, 0) > 0
@@ -104,7 +170,7 @@ REVOKE ALL ON FUNCTION public.confirm_order_pickup(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.confirm_order_pickup(uuid) TO authenticated;
 
 -- -----------------------------------------------------------------------------
--- Walk-in: use the canonical points-per-baht rate and ledger the immediate earn.
+-- Walk-in: use canonical points-per-baht and ledger the immediate earn.
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.record_walk_in_purchase(
@@ -251,8 +317,8 @@ REVOKE ALL ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) FROM 
 GRANT EXECUTE ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) TO authenticated;
 
 -- -----------------------------------------------------------------------------
--- Legacy online cancellation: preserve existing stock/cutoff behavior and only
--- reverse loyalty if the order was actually awarded.
+-- Legacy online cancellation: preserve stock/cutoff behavior and reverse only
+-- if the order was actually awarded.
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.cancel_online_order_legacy_v1(p_order_id uuid)
@@ -407,8 +473,8 @@ REVOKE ALL ON FUNCTION public.cancel_online_order(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.cancel_online_order(uuid) TO authenticated;
 
 -- -----------------------------------------------------------------------------
--- Pickup v2 cancellation: preserve inventory ledger behavior; reverse only an
--- actually-awarded earn. Customer EXECUTE remains dark after this migration.
+-- Pickup v2 cancellation: preserve inventory-ledger behavior and reverse only
+-- an actually-awarded earn. Customer EXECUTE remains dark.
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.cancel_online_order_v2(p_order_id uuid)
@@ -427,8 +493,10 @@ DECLARE
 BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000'; END IF;
   IF p_order_id IS NULL THEN RAISE EXCEPTION 'Order id is required'; END IF;
+
   SELECT * INTO v_customer FROM public.customers WHERE id = v_user_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
+
   SELECT * INTO v_order FROM public.orders WHERE id = p_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;
   IF v_order.customer_id IS DISTINCT FROM v_user_id THEN RAISE EXCEPTION 'You may only cancel your own order' USING ERRCODE = '42501'; END IF;
@@ -438,22 +506,39 @@ BEGIN
   IF v_order.status NOT IN ('pending', 'confirmed') THEN RAISE EXCEPTION 'This order can no longer be cancelled'; END IF;
   IF COALESCE(v_order.payment_status, 'unpaid') <> 'unpaid' OR v_order.picked_up_at IS NOT NULL THEN RAISE EXCEPTION 'Paid or picked-up orders require staff assistance to cancel'; END IF;
   IF v_order.order_items IS NULL OR jsonb_typeof(v_order.order_items) <> 'array' THEN RAISE EXCEPTION 'Order item snapshot is invalid'; END IF;
+
   SELECT * INTO v_date FROM public.pickup_dates WHERE id = v_order.pickup_date_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Order pickup date no longer exists'; END IF;
   IF now() >= v_date.cancellation_cutoff_at THEN RAISE EXCEPTION 'Cancellation cutoff has passed for this order'; END IF;
 
   IF v_order.inventory_reserved THEN
     FOR v_item IN
-      SELECT item.product_id, item.quantity FROM jsonb_to_recordset(v_order.order_items) AS item(product_id uuid, quantity integer)
-      WHERE item.product_id IS NOT NULL AND item.quantity IS NOT NULL AND item.quantity > 0 ORDER BY item.product_id
+      SELECT item.product_id, item.quantity
+      FROM jsonb_to_recordset(v_order.order_items) AS item(product_id uuid, quantity integer)
+      WHERE item.product_id IS NOT NULL AND item.quantity IS NOT NULL AND item.quantity > 0
+      ORDER BY item.product_id
     LOOP
-      SELECT * INTO v_inventory FROM public.product_date_inventory WHERE pickup_date_id = v_order.pickup_date_id AND product_id = v_item.product_id FOR UPDATE;
+      SELECT * INTO v_inventory
+      FROM public.product_date_inventory
+      WHERE pickup_date_id = v_order.pickup_date_id
+        AND product_id = v_item.product_id
+      FOR UPDATE;
       IF NOT FOUND THEN RAISE EXCEPTION 'Inventory record is missing for a product in this order'; END IF;
       IF v_inventory.reserved_quantity < v_item.quantity THEN RAISE EXCEPTION 'Inventory reservation ledger is inconsistent for this order'; END IF;
-      UPDATE public.product_date_inventory SET reserved_quantity = reserved_quantity - v_item.quantity, updated_at = now()
-      WHERE pickup_date_id = v_order.pickup_date_id AND product_id = v_item.product_id;
-      INSERT INTO public.inventory_events (pickup_date_id, product_id, order_id, event_type, reserved_delta, actor_id, reason)
-      VALUES (v_order.pickup_date_id, v_item.product_id, v_order.id, 'release', -v_item.quantity, v_user_id, 'customer_cancellation');
+
+      UPDATE public.product_date_inventory
+      SET reserved_quantity = reserved_quantity - v_item.quantity,
+          updated_at = now()
+      WHERE pickup_date_id = v_order.pickup_date_id
+        AND product_id = v_item.product_id;
+
+      INSERT INTO public.inventory_events (
+        pickup_date_id, product_id, order_id, event_type,
+        reserved_delta, actor_id, reason
+      ) VALUES (
+        v_order.pickup_date_id, v_item.product_id, v_order.id, 'release',
+        -v_item.quantity, v_user_id, 'customer_cancellation'
+      );
     END LOOP;
   END IF;
 
@@ -475,7 +560,11 @@ BEGIN
     );
   END IF;
 
-  UPDATE public.orders SET status = 'cancelled' WHERE id = v_order.id RETURNING * INTO v_order;
+  UPDATE public.orders
+  SET status = 'cancelled'
+  WHERE id = v_order.id
+  RETURNING * INTO v_order;
+
   RETURN to_jsonb(v_order);
 END;
 $$;
@@ -483,4 +572,5 @@ $$;
 REVOKE ALL ON FUNCTION public.cancel_online_order_v2(uuid) FROM PUBLIC, anon, authenticated;
 
 -- Preserve the explicit dark gate: no customer EXECUTE is granted for v2 create/cancel.
-REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.create_online_order_v2(text, uuid, uuid, jsonb, text)
+FROM PUBLIC, anon, authenticated;
