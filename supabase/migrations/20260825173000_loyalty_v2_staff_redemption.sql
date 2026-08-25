@@ -46,10 +46,12 @@ BEGIN
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Customer not found'; END IF;
 
+  -- Lock the reward row exclusively so a total-redemption limit cannot be
+  -- exceeded by concurrent redemptions for different customers.
   SELECT * INTO v_reward
   FROM public.loyalty_rewards
   WHERE id = p_reward_id
-  FOR SHARE;
+  FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Reward not found'; END IF;
 
   IF NOT v_reward.is_active
