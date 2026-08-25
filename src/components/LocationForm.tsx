@@ -9,6 +9,11 @@ interface LocationFormProps {
   onCancel: () => void;
 }
 
+interface ActiveScheduleDependency {
+  id: string;
+  label_en: string;
+}
+
 export function LocationForm({ location, onSave, onCancel }: LocationFormProps) {
   const [formData, setFormData] = useState({
     name_en: location?.name_en || '',
@@ -18,41 +23,108 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
     description_th: location?.description_th || '',
     description_zh: location?.description_zh || '',
     maps_url: location?.maps_url || '',
-    // Legacy compatibility field. Actual day/location relationships are now
-    // managed by cms_pickup_days.location_id in Pickup Schedule.
+    // Legacy compatibility field. Actual recurring v2 day/location relationships
+    // are managed by pickup_schedule_locations in Pickup Schedule.
     available_days: (location?.available_days as string[]) || [],
     is_active: location?.is_active ?? true,
   });
 
   const [linkedSlots, setLinkedSlots] = useState<string[]>([]);
+  const [activeV2Schedules, setActiveV2Schedules] = useState<ActiveScheduleDependency[]>([]);
+  const [dependencyLoading, setDependencyLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!location?.id) {
       setLinkedSlots([]);
+      setActiveV2Schedules([]);
       return;
     }
 
-    supabase
-      .from('cms_pickup_days')
-      .select('label_en, label')
-      .eq('location_id', location.id)
-      .order('sort_order', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error loading linked pickup slots:', error);
-          return;
-        }
-        setLinkedSlots((data || []).map((slot) => slot.label_en || slot.label));
-      });
+    let cancelled = false;
+    setDependencyLoading(true);
+
+    void (async () => {
+      const [legacyResult, v2LinksResult] = await Promise.all([
+        supabase
+          .from('cms_pickup_days')
+          .select('label_en, label')
+          .eq('location_id', location.id)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('pickup_schedule_locations')
+          .select('schedule_id')
+          .eq('location_id', location.id)
+          .eq('is_active', true),
+      ]);
+
+      if (cancelled) return;
+
+      if (legacyResult.error) {
+        console.error('Error loading linked legacy pickup slots:', legacyResult.error);
+      } else {
+        setLinkedSlots((legacyResult.data || []).map((slot) => slot.label_en || slot.label));
+      }
+
+      if (v2LinksResult.error) {
+        console.error('Error loading v2 schedule dependencies:', v2LinksResult.error);
+        setErrors((current) => ({ ...current, dependency: 'Could not verify active schedule dependencies. Location deactivation is disabled.' }));
+        setActiveV2Schedules([]);
+        setDependencyLoading(false);
+        return;
+      }
+
+      const scheduleIds = Array.from(new Set((v2LinksResult.data || []).map((link) => link.schedule_id)));
+      if (scheduleIds.length === 0) {
+        setActiveV2Schedules([]);
+        setDependencyLoading(false);
+        return;
+      }
+
+      const schedulesResult = await supabase
+        .from('pickup_schedules')
+        .select('id, label_en')
+        .in('id', scheduleIds)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (cancelled) return;
+
+      if (schedulesResult.error) {
+        console.error('Error loading active v2 schedules:', schedulesResult.error);
+        setErrors((current) => ({ ...current, dependency: 'Could not verify active schedule dependencies. Location deactivation is disabled.' }));
+        setActiveV2Schedules([]);
+      } else {
+        setActiveV2Schedules((schedulesResult.data || []) as ActiveScheduleDependency[]);
+        setErrors((current) => {
+          const next = { ...current };
+          delete next.dependency;
+          return next;
+        });
+      }
+      setDependencyLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [location?.id]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name_en.trim()) newErrors.name_en = 'Name (English) is required';
     if (!formData.name_th.trim()) newErrors.name_th = 'Name (Thai) is required';
-    setErrors(newErrors);
+
+    if (location?.id && !formData.is_active) {
+      if (dependencyLoading || errors.dependency) {
+        newErrors.submit = 'Cannot deactivate this location until active v2 schedule dependencies are verified.';
+      } else if (activeV2Schedules.length > 0) {
+        newErrors.submit = `This location is still used by active pickup schedule${activeV2Schedules.length === 1 ? '' : 's'}: ${activeV2Schedules.map((schedule) => schedule.label_en).join(', ')}. Reassign or deactivate those schedules first.`;
+      }
+    }
+
+    setErrors((current) => ({ ...current, ...newErrors }));
     return Object.keys(newErrors).length === 0;
   };
 
@@ -85,11 +157,17 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
       onSave();
     } catch (error) {
       console.error('Error saving:', error);
-      setErrors({ submit: 'Error saving location. Please try again.' });
+      setErrors((current) => ({ ...current, submit: 'Error saving location. Please try again.' }));
     } finally {
       setLoading(false);
     }
   };
+
+  const deactivationProtected = Boolean(
+    location?.id
+    && location.is_active
+    && (dependencyLoading || Boolean(errors.dependency) || activeV2Schedules.length > 0)
+  );
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -104,6 +182,12 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
             <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-red-700 text-sm">{errors.submit}</p>
+            </div>
+          )}
+          {errors.dependency && (
+            <div className="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-800 text-sm">{errors.dependency}</p>
             </div>
           )}
 
@@ -146,29 +230,48 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
           </div>
 
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-900 mb-1">Pickup Slots</p>
-            {location ? (
-              linkedSlots.length > 0 ? (
-                <ul className="text-sm text-gray-700 list-disc pl-5 space-y-1">
+            <p className="text-sm font-medium text-gray-900 mb-1">Pickup schedule usage</p>
+            {activeV2Schedules.length > 0 ? (
+              <>
+                <p className="text-sm text-gray-700">Used by active v2 schedule{activeV2Schedules.length === 1 ? '' : 's'}:</p>
+                <ul className="text-sm text-gray-700 list-disc pl-5 mt-1 space-y-1">
+                  {activeV2Schedules.map((schedule) => <li key={schedule.id}>{schedule.label_en}</li>)}
+                </ul>
+                <p className="text-xs text-blue-700 mt-2">Reassign or deactivate these schedules before deactivating this location.</p>
+              </>
+            ) : dependencyLoading ? (
+              <p className="text-sm text-gray-600">Checking active v2 schedule dependencies…</p>
+            ) : (
+              <p className="text-sm text-gray-600">No active v2 recurring schedules currently depend on this location.</p>
+            )}
+
+            {linkedSlots.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <p className="text-xs font-medium text-gray-700 mb-1">Legacy pickup slots</p>
+                <ul className="text-xs text-gray-600 list-disc pl-5 space-y-1">
                   {linkedSlots.map((slot) => <li key={slot}>{slot}</li>)}
                 </ul>
-              ) : (
-                <p className="text-sm text-gray-600">No pickup slots currently use this location.</p>
-              )
-            ) : (
-              <p className="text-sm text-gray-600">Save this location first, then assign it to one or more slots under Pickup Schedule.</p>
+              </div>
             )}
-            <p className="text-xs text-blue-700 mt-2">Weekdays are no longer stored as a separate hard-coded location setting. The pickup slot is the authoritative relationship between weekday and location.</p>
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500" />
+          <label className={`flex items-center gap-3 ${deactivationProtected ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={formData.is_active}
+              disabled={deactivationProtected}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed"
+            />
             <span className="text-sm text-gray-700">Active</span>
           </label>
+          {deactivationProtected && (
+            <p className="text-xs text-amber-700 -mt-2">This active location cannot be deactivated while an active v2 recurring schedule depends on it.</p>
+          )}
 
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : location ? 'Update' : 'Create'}</button>
+            <button type="submit" disabled={loading || dependencyLoading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : location ? 'Update' : 'Create'}</button>
           </div>
         </form>
       </div>

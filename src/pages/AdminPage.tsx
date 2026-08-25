@@ -3,7 +3,7 @@ import { AlertCircle, KeyRound, Loader2, Lock, LogOut, Mail, ShieldCheck } from 
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { resetAdminAuthentication, setAdminAuthenticated } from '../lib/adminConfig';
-import { AdminPage as AdminCmsPage } from './AdminCmsPage';
+import { AdminWorkspace } from '../components/AdminWorkspace';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
@@ -159,7 +159,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
 
   if (user && userRole === 'admin') {
     setAdminAuthenticated();
-    return <AdminCmsPage onNavigate={onNavigate} />;
+    return <AdminWorkspace onNavigate={onNavigate} />;
   }
 
   resetAdminAuthentication();
