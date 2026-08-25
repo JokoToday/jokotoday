@@ -1,0 +1,108 @@
+name: Loyalty Redemption Hardening Once
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-foundation-20260825
+    paths:
+      - .github/workflows/loyalty-redemption-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/loyalty-v2-foundation-20260825
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Apply retry-safe redemption client changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/components/staff/LoyaltyRewardRedemption.tsx')
+          text = path.read_text()
+
+          text = text.replace(
+              "import { useEffect, useMemo, useState } from 'react';",
+              "import { useEffect, useMemo, useRef, useState } from 'react';",
+              1,
+          )
+
+          text = text.replace(
+              "  context_amount: number | null;\n};",
+              "  context_amount: number | null;\n  discount_amount: number | null;\n  request_key: string;\n  idempotent_replay: boolean;\n};",
+              1,
+          )
+
+          text = text.replace(
+              "  const [success, setSuccess] = useState<string | null>(null);\n",
+              "  const [success, setSuccess] = useState<string | null>(null);\n  const requestKeyRef = useRef<string | null>(null);\n",
+              1,
+          )
+
+          selected_order_anchor = """  const selectedOrder = useMemo(\n    () => pickupOrders.find((order) => order.id === selectedOrderId) || null,\n    [pickupOrders, selectedOrderId]\n  );\n\n"""
+          selected_order_block = selected_order_anchor + """  useEffect(() => {\n    requestKeyRef.current = null;\n  }, [selectedRewardId, selectedOrderId, contextAmount]);\n\n"""
+          if selected_order_anchor not in text:
+              raise SystemExit('selected-order anchor not found')
+          text = text.replace(selected_order_anchor, selected_order_block, 1)
+
+          text = text.replace(
+              "  const insufficient = Boolean(selectedReward && balanceAfter < 0);\n",
+              "  const insufficient = Boolean(selectedReward && balanceAfter < 0);\n  const monetaryContextMissing = Boolean(\n    selectedReward\n    && ['fixed_discount', 'percentage_discount'].includes(selectedReward.reward_type)\n    && (channel === 'pickup' ? !selectedOrder : Number(contextAmount || 0) <= 0)\n  );\n",
+              1,
+          )
+
+          text = text.replace(
+              "    if (insufficient || minimumNotMet) return;\n\n    try {",
+              "    if (insufficient || minimumNotMet || monetaryContextMissing) return;\n\n    const requestKey = requestKeyRef.current ?? crypto.randomUUID();\n    requestKeyRef.current = requestKey;\n\n    try {",
+              1,
+          )
+
+          text = text.replace(
+              "        p_context_amount: channel === 'walk_in' ? Number(contextAmount || 0) : null,\n",
+              "        p_context_amount: channel === 'walk_in' ? Number(contextAmount || 0) : null,\n        p_request_key: requestKey,\n",
+              1,
+          )
+
+          old_success = """      setSuccess(language === 'en'\n        ? `${result.points_spent} points redeemed. New balance: ${result.new_balance} points.`\n        : `แลก ${result.points_spent} แต้มแล้ว ยอดคงเหลือ ${result.new_balance} แต้ม`);\n      setSelectedRewardId('');\n      setSelectedOrderId('');\n"""
+          new_success = """      const discountText = typeof result.discount_amount === 'number' && result.discount_amount > 0\n        ? (language === 'en'\n          ? ` Discount value: ฿${result.discount_amount.toFixed(2)}.`\n          : ` มูลค่าส่วนลด ฿${result.discount_amount.toFixed(2)}`)\n        : '';\n      setSuccess(language === 'en'\n        ? `${result.points_spent} points redeemed.${discountText} New balance: ${result.new_balance} points.`\n        : `แลก ${result.points_spent} แต้มแล้ว${discountText} ยอดคงเหลือ ${result.new_balance} แต้ม`);\n      requestKeyRef.current = null;\n      setSelectedRewardId('');\n      setSelectedOrderId('');\n"""
+          if old_success not in text:
+              raise SystemExit('success anchor not found')
+          text = text.replace(old_success, new_success, 1)
+
+          min_error_anchor = """              {minimumNotMet && selectedReward && (\n                <p className=\"text-sm font-semibold text-red-600\">\n                  {language === 'en'\n                    ? `Minimum purchase of ฿${Number(selectedReward.minimum_order_amount).toFixed(2)} is not met.`\n                    : `ยอดซื้อยังไม่ถึงขั้นต่ำ ฿${Number(selectedReward.minimum_order_amount).toFixed(2)}`}\n                </p>\n              )}\n"""
+          monetary_error = min_error_anchor + """              {monetaryContextMissing && selectedReward && (\n                <p className=\"text-sm font-semibold text-red-600\">\n                  {language === 'en'\n                    ? (channel === 'pickup' ? 'Select the pickup order to calculate this discount.' : 'Enter the sale amount before redeeming this discount.')\n                    : (channel === 'pickup' ? 'กรุณาเลือกคำสั่งซื้อเพื่อคำนวณส่วนลด' : 'กรุณากรอกยอดขายก่อนแลกส่วนลด')}\n                </p>\n              )}\n"""
+          if min_error_anchor not in text:
+              raise SystemExit('minimum error anchor not found')
+          text = text.replace(min_error_anchor, monetary_error, 1)
+
+          text = text.replace(
+              "disabled={!selectedReward || redeeming || insufficient || minimumNotMet || (orderRequired && !selectedOrder)}",
+              "disabled={!selectedReward || redeeming || insufficient || minimumNotMet || monetaryContextMissing || (orderRequired && !selectedOrder)}",
+              1,
+          )
+
+          path.write_text(text)
+
+      - name: Validate exact changes
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run build
+          git diff --check
+      - name: Commit hardening and remove one-shot workflow
+        run: |
+          git config user.name "JOKO TODAY CI"
+          git config user.email "jokotoday@gmail.com"
+          git rm .github/workflows/loyalty-redemption-hardening-once.yml
+          git add src/components/staff/LoyaltyRewardRedemption.tsx
+          git commit -m "fix: make staff reward redemption retry-safe"
+          git push origin HEAD:feat/loyalty-v2-foundation-20260825
