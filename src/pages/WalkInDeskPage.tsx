@@ -62,7 +62,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [loyaltyMultiplier, setLoyaltyMultiplier] = useState(0.5);
+  const [loyaltyMultiplier, setLoyaltyMultiplier] = useState(0);
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -143,11 +143,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
       const { data: loyaltyData } = await supabase
         .from('loyalty_settings')
-        .select('multiplier')
+        .select('points_per_baht')
         .eq('purchase_type', 'walk_in')
         .maybeSingle();
 
-      if (loyaltyData) setLoyaltyMultiplier(loyaltyData.multiplier);
+      if (loyaltyData) setLoyaltyMultiplier(Number(loyaltyData.points_per_baht ?? 0));
     } catch (err) {
       console.error('Error loading customer:', err);
       setError(getLookupErrorMessage(err, source));
