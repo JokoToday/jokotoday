@@ -1,0 +1,44 @@
+name: Technical Housekeeping Baseline
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        continue-on-error: true
+        run: npm audit --audit-level=low
+
+      - name: Outdated direct and transitive packages
+        continue-on-error: true
+        run: npm outdated
+
+      - name: Typecheck
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Production build
+        continue-on-error: true
+        run: npm run build
