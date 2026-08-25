@@ -158,8 +158,8 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
     { id: 'locations' as const, label: 'Pickup Locations', icon: MapPin },
     { id: 'socials' as const, label: 'Social Links', icon: Share2 },
     { id: 'cutoffs' as const, label: 'Pickup Schedule', icon: Clock },
-    { id: 'overrides' as const, label: 'Holiday Overrides', icon: Clock },
-    { id: 'cancellation' as const, label: 'Cancellation Cutoff', icon: Ban },
+    { id: 'overrides' as const, label: 'Holiday Overrides (Legacy)', icon: Clock },
+    { id: 'cancellation' as const, label: 'Cancellation Cutoff (Legacy)', icon: Ban },
   ];
 
   const handleLogout = () => {
@@ -241,7 +241,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
                 {activeTab === 'settings' && <SettingsTab settings={settings} onRefresh={loadData} onDelete={handleDelete} />}
                 {activeTab === 'locations' && <LocationsTab locations={locations} onRefresh={loadData} onDelete={handleDelete} />}
                 {activeTab === 'socials' && <SocialLinksManagement socialLinks={socialLinks} onRefresh={loadData} />}
-                {activeTab === 'cutoffs' && <CutoffRulesManagement rules={cutoffRules} onRefresh={loadData} />}
+                {activeTab === 'cutoffs' && <CutoffRulesManagement onRefresh={loadData} />}
                 {activeTab === 'overrides' && <CutoffRulesOverrides overrides={pickupOverrides} rules={cutoffRules} onRefresh={loadData} />}
                 {activeTab === 'cancellation' && <CancellationCutoffManagement rules={cancellationRules} onRefresh={loadData} />}
               </>
@@ -358,13 +358,25 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
                   <div className="flex flex-wrap gap-1 justify-center">
                     {!product.is_active && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded">Hidden</span>}
                     {product.is_sold_out && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">Sold Out</span>}
+                    {product.is_active && !product.is_sold_out && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">Active</span>}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex gap-2 justify-end">
-                    <button onClick={() => { setEditing(product); setShowForm(true); }} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 font-medium rounded hover:bg-blue-100 transition-colors">Edit</button>
-                    <button onClick={() => void onDelete('cms_products', product.id)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded hover:bg-red-100 transition-colors">Delete</button>
-                  </div>
+                <td className="px-4 py-3 text-right space-x-3">
+                  <button
+                    onClick={() => {
+                      setEditing(product);
+                      setShowForm(true);
+                    }}
+                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => void onDelete('cms_products', product.id)}
+                    className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -383,52 +395,127 @@ function CategoriesTab({ categories, onRefresh, onDelete }: CategoriesTabProps) 
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Categories</h2>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium">+ Add Category</button>
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
+          + Add Category
+        </button>
       </div>
-      {showForm && <CategoryForm category={editing} onSave={() => { setShowForm(false); setEditing(null); void onRefresh(); }} onCancel={() => { setShowForm(false); setEditing(null); }} />}
-      <div className="space-y-3">
-        {categories.length === 0 ? <p className="text-center text-gray-500 py-8">No categories yet</p> : categories.map((category) => (
-          <div key={category.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-            <div className="flex-1">
-              <h3 className="font-medium text-gray-900">{category.title_en}</h3>
-              <p className="text-sm text-gray-600">{category.title_th}</p>
-              {category.description_en && <p className="text-xs text-gray-500 mt-1">{category.description_en}</p>}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => { setEditing(category); setShowForm(true); }} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Edit</button>
-              <button onClick={() => void onDelete('cms_categories', category.id)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">Delete</button>
-            </div>
-          </div>
-        ))}
+
+      {showForm && (
+        <CategoryForm
+          category={editing}
+          onSave={() => {
+            setShowForm(false);
+            setEditing(null);
+            void onRefresh();
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Category</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Slug</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">Sort</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.length === 0 ? (
+              <tr><td colSpan={4} className="px-4 py-12 text-center text-gray-500 text-sm">No categories yet.</td></tr>
+            ) : categories.map((category) => (
+              <tr key={category.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3">
+                  <p className="font-medium text-gray-900 text-sm">{category.title_en}</p>
+                  <p className="text-xs text-gray-600">{category.title_th}</p>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-600 font-mono">{category.slug}</td>
+                <td className="px-4 py-3 text-center text-xs text-gray-600">{category.sort_order}</td>
+                <td className="px-4 py-3 text-right space-x-3">
+                  <button
+                    onClick={() => {
+                      setEditing(category);
+                      setShowForm(true);
+                    }}
+                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => void onDelete('cms_categories', category.id)}
+                    className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
 
 function PagesTab({ pages, onRefresh }: PagesTabProps) {
-  const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CMSPage | null>(null);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Pages</h2>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium">+ Add Page</button>
       </div>
-      {showForm && <PageForm page={editing} onSave={() => { setShowForm(false); setEditing(null); void onRefresh(); }} onCancel={() => { setShowForm(false); setEditing(null); }} />}
-      <div className="space-y-3">
-        {pages.length === 0 ? <p className="text-center text-gray-500 py-8">No pages yet</p> : pages.map((page) => (
-          <div key={page.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">{page.page_key}</h3>
-                <p className="text-sm text-gray-600 mt-1">{page.title_en}</p>
-                <p className="text-sm text-gray-600">{page.title_th}</p>
-              </div>
-              <button onClick={() => { setEditing(page); setShowForm(true); }} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 whitespace-nowrap ml-4">Edit</button>
-            </div>
-          </div>
-        ))}
+
+      {editing && (
+        <PageForm
+          page={editing}
+          onSave={() => {
+            setEditing(null);
+            void onRefresh();
+          }}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Page</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">English Title</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Thai Title</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pages.map((page) => (
+              <tr key={page.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-xs font-mono text-gray-600">{page.page_key}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{page.title_en}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{page.title_th}</td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => setEditing(page)}
+                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -441,23 +528,71 @@ function LabelsTab({ labels, onRefresh, onDelete }: LabelsTabProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">UI Labels & Microcopy</h2>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium">+ Add Label</button>
+        <h2 className="text-xl font-semibold text-gray-900">Labels</h2>
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
+          + Add Label
+        </button>
       </div>
-      {showForm && <LabelForm label={editing} onSave={() => { setShowForm(false); setEditing(null); void onRefresh(); }} onCancel={() => { setShowForm(false); setEditing(null); }} />}
-      {labels.length === 0 ? <p className="text-center text-gray-500 py-8">No labels yet</p> : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-200 bg-gray-50"><th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Key</th><th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">English</th><th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Thai</th><th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th></tr></thead>
-            <tbody>{labels.map((label) => (
-              <tr key={label.id} className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-4 py-3 text-xs font-mono text-gray-900">{label.key}</td><td className="px-4 py-3 text-sm text-gray-600">{label.text_en}</td><td className="px-4 py-3 text-sm text-gray-600">{label.text_th}</td>
-                <td className="px-4 py-3 text-right"><div className="flex gap-2 justify-end"><button onClick={() => { setEditing(label); setShowForm(true); }} className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Edit</button><button onClick={() => void onDelete('cms_labels', label.id)} className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">Delete</button></div></td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
+
+      {showForm && (
+        <LabelForm
+          label={editing}
+          onSave={() => {
+            setShowForm(false);
+            setEditing(null);
+            void onRefresh();
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
       )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Key</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">English</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Thai</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {labels.map((label) => (
+              <tr key={label.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-xs font-mono text-gray-600">{label.key}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{label.text_en}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{label.text_th}</td>
+                <td className="px-4 py-3 text-right space-x-3">
+                  <button
+                    onClick={() => {
+                      setEditing(label);
+                      setShowForm(true);
+                    }}
+                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => void onDelete('cms_labels', label.id)}
+                    className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -469,20 +604,69 @@ function SettingsTab({ settings, onRefresh, onDelete }: SettingsTabProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Settings & Configuration</h2>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium">+ Add Setting</button>
+        <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
+          + Add Setting
+        </button>
       </div>
-      {showForm && <SettingForm setting={editing} onSave={() => { setShowForm(false); setEditing(null); void onRefresh(); }} onCancel={() => { setShowForm(false); setEditing(null); }} />}
-      {settings.length === 0 ? <p className="text-center text-gray-500 py-8">No settings yet</p> : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-gray-200 bg-gray-50"><th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Key</th><th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Value</th><th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th></tr></thead>
-            <tbody>{settings.map((setting) => (
-              <tr key={setting.id} className="border-b border-gray-200 hover:bg-gray-50"><td className="px-4 py-3 text-xs font-mono text-gray-900">{setting.setting_key}</td><td className="px-4 py-3 text-sm text-gray-600 break-all max-w-xs">{setting.value}</td><td className="px-4 py-3 text-right"><div className="flex gap-2 justify-end"><button onClick={() => { setEditing(setting); setShowForm(true); }} className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Edit</button><button onClick={() => void onDelete('cms_settings', setting.id)} className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">Delete</button></div></td></tr>
-            ))}</tbody>
-          </table>
-        </div>
+
+      {showForm && (
+        <SettingForm
+          setting={editing}
+          onSave={() => {
+            setShowForm(false);
+            setEditing(null);
+            void onRefresh();
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
       )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Key</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Value</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {settings.map((setting) => (
+              <tr key={setting.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-xs font-mono text-gray-600">{setting.setting_key}</td>
+                <td className="px-4 py-3 text-sm text-gray-900 max-w-md truncate">{setting.value}</td>
+                <td className="px-4 py-3 text-right space-x-3">
+                  <button
+                    onClick={() => {
+                      setEditing(setting);
+                      setShowForm(true);
+                    }}
+                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => void onDelete('cms_settings', setting.id)}
+                    className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -494,27 +678,55 @@ function LocationsTab({ locations, onRefresh, onDelete }: LocationsTabProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Pickup Locations</h2>
-          <p className="text-sm text-gray-500 mt-1">Create and edit places here. Assign weekdays and cutoffs in Pickup Schedule.</p>
-        </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium">+ Add Location</button>
+        <h2 className="text-xl font-semibold text-gray-900">Pickup Locations</h2>
+        <button
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
+          + Add Location
+        </button>
       </div>
-      {showForm && <LocationForm location={editing} onSave={() => { setShowForm(false); setEditing(null); void onRefresh(); }} onCancel={() => { setShowForm(false); setEditing(null); }} />}
-      <div className="space-y-3">
-        {locations.length === 0 ? <p className="text-center text-gray-500 py-8">No locations yet</p> : locations.map((location) => (
-          <div key={location.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">{location.name_en}</h3>
-                <p className="text-sm text-gray-600">{location.name_th}</p>
-                {location.description_en && <p className="text-xs text-gray-500 mt-1">{location.description_en}</p>}
-                {location.is_active === false && <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">Inactive</span>}
-              </div>
-              <div className="flex gap-2 ml-4">
-                <button onClick={() => { setEditing(location); setShowForm(true); }} className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Edit</button>
-                <button onClick={() => void onDelete('cms_pickup_locations', location.id)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100">Delete</button>
-              </div>
+
+      {showForm && (
+        <LocationForm
+          location={editing}
+          onSave={() => {
+            setShowForm(false);
+            setEditing(null);
+            void onRefresh();
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {locations.map((location) => (
+          <div key={location.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <h3 className="font-semibold text-gray-900 text-sm">{location.name_en}</h3>
+            <p className="text-xs text-gray-600 mt-1">{location.name_th}</p>
+            {location.description_en && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{location.description_en}</p>}
+            <div className="mt-3 flex gap-3">
+              <button
+                onClick={() => {
+                  setEditing(location);
+                  setShowForm(true);
+                }}
+                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => void onDelete('cms_pickup_locations', location.id)}
+                className="text-red-600 hover:text-red-700 text-sm font-medium"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
