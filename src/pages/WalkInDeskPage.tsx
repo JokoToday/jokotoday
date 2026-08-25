@@ -27,6 +27,7 @@ import {
 } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHistory';
+import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemption';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -536,6 +537,20 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     )}
                   </div>
                 </div>
+
+                <LoyaltyRewardRedemption
+                  customerId={customer.id}
+                  currentBalance={customer.loyalty_points}
+                  channel="walk_in"
+                  language={staffLanguage}
+                  contextAmount={calculationAmount}
+                  onRedeemed={(result) => {
+                    setCustomer((current) => current
+                      ? { ...current, loyalty_points: result.new_balance }
+                      : current);
+                    setHistoryRefreshKey((value) => value + 1);
+                  }}
+                />
 
                 {purchaseResult ? (
                   <div className="space-y-6">

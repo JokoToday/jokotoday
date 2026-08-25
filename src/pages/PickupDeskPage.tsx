@@ -31,6 +31,7 @@ import {
 } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHistory';
+import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemption';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -599,6 +600,31 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     )}
                   </div>
                 </div>
+
+                <LoyaltyRewardRedemption
+                  customerId={customer.id}
+                  currentBalance={customer.loyalty_points}
+                  channel="pickup"
+                  language={staffLanguage}
+                  pickupOrders={[...orders, ...upcomingOrders]
+                    .filter((order) => order.status !== 'cancelled')
+                    .map((order) => ({
+                      id: order.id,
+                      orderNumber: order.order_number,
+                      totalAmount: Number(order.total_amount || 0),
+                      status: order.status,
+                    }))}
+                  onRedeemed={(result) => {
+                    setCustomer((current) => current
+                      ? { ...current, loyalty_points: result.new_balance }
+                      : current);
+                    setHistoryRefreshKey((value) => value + 1);
+                    setActionError(null);
+                    setActionSuccess(language === 'en'
+                      ? `${result.points_spent} loyalty points redeemed. Balance: ${result.new_balance} points.`
+                      : `แลก ${result.points_spent} แต้มแล้ว ยอดคงเหลือ ${result.new_balance} แต้ม`);
+                  }}
+                />
 
                 {actionError && (
                   <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3">
