@@ -1,26 +1,47 @@
 /*
-  Pickup / inventory v2 — Admin concrete-date integrity hardening.
+  Pickup / inventory v2 — Admin configuration integrity hardening.
 
   PURPOSE
   -------
-  Make the new Admin schedule/date controls safe at the database boundary:
-    - serialize concurrent date-location changes;
-    - never leave an OPEN date without a globally active pickup location;
-    - reject enabling a globally inactive location for a concrete date;
-    - prevent global location deactivation while active v2 schedules or future
+  Make the Admin-managed pickup schedule/date workflow safe at the database
+  boundary under concurrent Admin operations.
+
+  Global lock order used by v2 Admin configuration writes:
+
+    1. cms_pickup_locations
+    2. pickup_schedules
+    3. pickup_dates
+    4. dependent schedule/date rows
+
+  Functions that mutate recurring product capacity also lock their schedule
+  before changing capacity. The materializer holds the same recurring
+  configuration locks for the whole snapshot operation.
+
+  This migration:
+    - prevents active schedules from racing global location deactivation;
+    - serializes concrete-date location changes;
+    - never leaves an OPEN date without a globally active pickup location;
+    - rejects enabling a globally inactive location for a concrete date;
+    - prevents global location deactivation while active v2 schedules or future
       open concrete dates still depend on it;
-    - materialize recurring location/capacity snapshots only for newly-created
+    - materializes recurring location/capacity snapshots only for newly-created
       pickup dates so reruns cannot expand an existing/manual snapshot;
-    - make the advertised 366-day materialization cap inclusive.
+    - keeps recurring schedule/location/capacity configuration stable throughout
+      one materialization call;
+    - makes the advertised 366-day materialization cap inclusive;
+    - blocks normal materialization into the past.
 
   ROLLOUT
   -------
   This migration does NOT enable customer v2 checkout and does NOT change RLS.
-  It only replaces existing admin-only RPC implementations and adds a defensive
-  trigger on cms_pickup_locations.
+  Customer create/cancel v2 RPC grants remain dark until separately reviewed.
 */
 
 BEGIN;
+
+/* -------------------------------------------------------------------------- */
+/* Global pickup-location deactivation guard                                   */
+/* -------------------------------------------------------------------------- */
 
 CREATE OR REPLACE FUNCTION public.guard_cms_pickup_location_deactivation_v2()
 RETURNS trigger
@@ -34,8 +55,10 @@ BEGIN
      AND COALESCE(NEW.is_active, false) = false THEN
 
     /*
-      Keep recurring configuration internally consistent. Reassign or disable
-      the recurring schedule/link first, then deactivate the global location.
+      The UPDATE already owns the location row lock. All other v2 Admin writers
+      acquire location locks before schedule/date locks, so the trigger follows
+      the same location -> schedule -> date order and cannot form the inverse
+      date -> location cycle.
     */
     PERFORM s.id
     FROM public.pickup_schedules s
@@ -43,6 +66,7 @@ BEGIN
     WHERE sl.location_id = OLD.id
       AND s.is_active = true
       AND sl.is_active = true
+    ORDER BY s.id
     FOR UPDATE OF s;
 
     IF FOUND THEN
@@ -50,10 +74,6 @@ BEGIN
         'Pickup location is used by an active v2 recurring schedule; reassign or deactivate that schedule first';
     END IF;
 
-    /*
-      A future OPEN concrete date may outlive changes to its recurring template.
-      Require Admin to disable/replace this date-location snapshot first.
-    */
     PERFORM d.id
     FROM public.pickup_dates d
     JOIN public.pickup_date_locations dl ON dl.pickup_date_id = d.id
@@ -61,6 +81,7 @@ BEGIN
       AND dl.is_active = true
       AND d.status = 'open'
       AND d.pickup_date >= timezone('Asia/Bangkok', now())::date
+    ORDER BY d.id
     FOR UPDATE OF d;
 
     IF FOUND THEN
@@ -83,6 +104,367 @@ BEFORE UPDATE OF is_active
 ON public.cms_pickup_locations
 FOR EACH ROW
 EXECUTE FUNCTION public.guard_cms_pickup_location_deactivation_v2();
+
+/* -------------------------------------------------------------------------- */
+/* Recurring pickup schedule Admin                                             */
+/* -------------------------------------------------------------------------- */
+
+CREATE OR REPLACE FUNCTION public.admin_upsert_pickup_schedule_v2(
+  p_schedule_id uuid,
+  p_schedule_key text,
+  p_label_en text,
+  p_label_th text,
+  p_label_zh text,
+  p_pickup_weekday smallint,
+  p_order_cutoff_days_before smallint,
+  p_order_cutoff_time time,
+  p_cancellation_cutoff_days_before smallint,
+  p_cancellation_cutoff_time time,
+  p_location_ids uuid[],
+  p_is_active boolean,
+  p_sort_order integer
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_schedule_id uuid;
+  v_existing_key text;
+  v_location_count integer;
+  v_active_location_count integer;
+BEGIN
+  IF v_user_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.user_profiles p
+    WHERE p.id = v_user_id AND p.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Admin authorization required' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_schedule_key IS NULL OR btrim(p_schedule_key) = ''
+     OR p_schedule_key !~ '^[a-z0-9]+(?:_[a-z0-9]+)*$' THEN
+    RAISE EXCEPTION 'A stable lowercase schedule key is required';
+  END IF;
+  IF p_label_en IS NULL OR btrim(p_label_en) = '' THEN
+    RAISE EXCEPTION 'English schedule label is required';
+  END IF;
+  IF p_pickup_weekday IS NULL OR p_pickup_weekday NOT BETWEEN 0 AND 6
+     OR p_order_cutoff_days_before IS NULL OR p_order_cutoff_days_before NOT BETWEEN 0 AND 6
+     OR p_cancellation_cutoff_days_before IS NULL OR p_cancellation_cutoff_days_before NOT BETWEEN 0 AND 6
+     OR p_order_cutoff_time IS NULL OR p_cancellation_cutoff_time IS NULL THEN
+    RAISE EXCEPTION 'Invalid weekday/cutoff configuration';
+  END IF;
+  IF COALESCE(cardinality(p_location_ids), 0) < 1 THEN
+    RAISE EXCEPTION 'At least one pickup location is required';
+  END IF;
+
+  SELECT count(DISTINCT u.location_id)
+  INTO v_location_count
+  FROM unnest(p_location_ids) AS u(location_id);
+  IF v_location_count <> cardinality(p_location_ids) THEN
+    RAISE EXCEPTION 'Duplicate pickup locations are not allowed';
+  END IF;
+
+  /*
+    Location rows are always locked before the schedule row. Include both the
+    requested locations and the schedule's currently linked locations so a
+    concurrent global location deactivation cannot race schedule activation or
+    reconfiguration.
+  */
+  PERFORM l.id
+  FROM public.cms_pickup_locations l
+  WHERE l.id = ANY(p_location_ids)
+     OR (
+       p_schedule_id IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM public.pickup_schedule_locations sl
+         WHERE sl.schedule_id = p_schedule_id
+           AND sl.location_id = l.id
+       )
+     )
+  ORDER BY l.id
+  FOR SHARE;
+
+  SELECT
+    count(*),
+    count(*) FILTER (WHERE COALESCE(l.is_active, false) = true)
+  INTO v_location_count, v_active_location_count
+  FROM public.cms_pickup_locations l
+  WHERE l.id = ANY(p_location_ids);
+
+  IF v_location_count <> cardinality(p_location_ids) THEN
+    RAISE EXCEPTION 'One or more pickup locations do not exist';
+  END IF;
+  IF COALESCE(p_is_active, false)
+     AND v_active_location_count <> cardinality(p_location_ids) THEN
+    RAISE EXCEPTION 'Every location assigned to an active pickup schedule must be globally active';
+  END IF;
+
+  IF p_schedule_id IS NULL THEN
+    INSERT INTO public.pickup_schedules (
+      schedule_key, legacy_day_key, label_en, label_th, label_zh,
+      pickup_weekday, order_cutoff_days_before, order_cutoff_time,
+      cancellation_cutoff_days_before, cancellation_cutoff_time,
+      is_active, sort_order
+    ) VALUES (
+      p_schedule_key, NULL, btrim(p_label_en),
+      NULLIF(btrim(COALESCE(p_label_th, '')), ''),
+      NULLIF(btrim(COALESCE(p_label_zh, '')), ''),
+      p_pickup_weekday, p_order_cutoff_days_before, p_order_cutoff_time,
+      p_cancellation_cutoff_days_before, p_cancellation_cutoff_time,
+      COALESCE(p_is_active, false), COALESCE(p_sort_order, 0)
+    ) RETURNING id INTO v_schedule_id;
+  ELSE
+    SELECT schedule_key INTO v_existing_key
+    FROM public.pickup_schedules
+    WHERE id = p_schedule_id
+    FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Pickup schedule not found'; END IF;
+    IF v_existing_key <> p_schedule_key THEN
+      RAISE EXCEPTION 'schedule_key is immutable after creation';
+    END IF;
+
+    UPDATE public.pickup_schedules
+    SET label_en = btrim(p_label_en),
+        label_th = NULLIF(btrim(COALESCE(p_label_th, '')), ''),
+        label_zh = NULLIF(btrim(COALESCE(p_label_zh, '')), ''),
+        pickup_weekday = p_pickup_weekday,
+        order_cutoff_days_before = p_order_cutoff_days_before,
+        order_cutoff_time = p_order_cutoff_time,
+        cancellation_cutoff_days_before = p_cancellation_cutoff_days_before,
+        cancellation_cutoff_time = p_cancellation_cutoff_time,
+        is_active = COALESCE(p_is_active, false),
+        sort_order = COALESCE(p_sort_order, 0),
+        updated_at = now()
+    WHERE id = p_schedule_id;
+    v_schedule_id := p_schedule_id;
+  END IF;
+
+  UPDATE public.pickup_schedule_locations
+  SET is_active = false, updated_at = now()
+  WHERE schedule_id = v_schedule_id;
+
+  INSERT INTO public.pickup_schedule_locations (schedule_id, location_id, is_active, sort_order)
+  SELECT v_schedule_id, u.location_id, true, u.ordinality::integer
+  FROM unnest(p_location_ids) WITH ORDINALITY AS u(location_id, ordinality)
+  ON CONFLICT (schedule_id, location_id)
+  DO UPDATE SET is_active = true,
+                sort_order = EXCLUDED.sort_order,
+                updated_at = now();
+
+  RETURN v_schedule_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_upsert_pickup_schedule_v2(
+  uuid, text, text, text, text, smallint, smallint, time, smallint, time, uuid[], boolean, integer
+) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_upsert_pickup_schedule_v2(
+  uuid, text, text, text, text, smallint, smallint, time, smallint, time, uuid[], boolean, integer
+) TO authenticated;
+
+/* -------------------------------------------------------------------------- */
+/* Recurring product capacity / availability Admin                            */
+/* -------------------------------------------------------------------------- */
+
+CREATE OR REPLACE FUNCTION public.admin_set_product_schedule_capacity_v2(
+  p_schedule_id uuid,
+  p_product_id uuid,
+  p_capacity integer,
+  p_apply_to_future_dates boolean DEFAULT true
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_today date := timezone('Asia/Bangkok', now())::date;
+  v_result public.product_schedule_capacity%ROWTYPE;
+BEGIN
+  IF v_user_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.user_profiles p
+    WHERE p.id = v_user_id AND p.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Admin authorization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_capacity IS NULL OR p_capacity < 0 THEN
+    RAISE EXCEPTION 'Capacity must be zero or greater';
+  END IF;
+
+  /* Capacity mutations serialize with schedule edits and materialization. */
+  PERFORM 1
+  FROM public.pickup_schedules
+  WHERE id = p_schedule_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Pickup schedule not found'; END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.cms_products WHERE id = p_product_id) THEN
+    RAISE EXCEPTION 'Product not found';
+  END IF;
+
+  IF COALESCE(p_apply_to_future_dates, true) AND EXISTS (
+    SELECT 1
+    FROM public.product_date_inventory i
+    JOIN public.pickup_dates d ON d.id = i.pickup_date_id
+    WHERE d.schedule_id = p_schedule_id
+      AND d.pickup_date >= v_today
+      AND i.product_id = p_product_id
+      AND i.capacity_source = 'recurring_default'
+      AND i.reserved_quantity > p_capacity
+  ) THEN
+    RAISE EXCEPTION 'Cannot reduce recurring capacity below already reserved quantity on a future pickup date';
+  END IF;
+
+  INSERT INTO public.product_schedule_capacity (schedule_id, product_id, capacity, is_active, updated_at)
+  VALUES (p_schedule_id, p_product_id, p_capacity, true, now())
+  ON CONFLICT (schedule_id, product_id)
+  DO UPDATE SET capacity = EXCLUDED.capacity,
+                is_active = true,
+                updated_at = now()
+  RETURNING * INTO v_result;
+
+  IF COALESCE(p_apply_to_future_dates, true) THEN
+    INSERT INTO public.product_date_inventory (
+      pickup_date_id, product_id, capacity, reserved_quantity, capacity_source
+    )
+    SELECT d.id, p_product_id, p_capacity, 0, 'recurring_default'
+    FROM public.pickup_dates d
+    WHERE d.schedule_id = p_schedule_id
+      AND d.pickup_date >= v_today
+    ON CONFLICT (pickup_date_id, product_id) DO NOTHING;
+
+    UPDATE public.product_date_inventory i
+    SET capacity = p_capacity,
+        updated_at = now()
+    FROM public.pickup_dates d
+    WHERE d.id = i.pickup_date_id
+      AND d.schedule_id = p_schedule_id
+      AND d.pickup_date >= v_today
+      AND i.product_id = p_product_id
+      AND i.capacity_source = 'recurring_default';
+  END IF;
+
+  RETURN to_jsonb(v_result);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_set_product_schedule_capacity_v2(uuid, uuid, integer, boolean)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_product_schedule_capacity_v2(uuid, uuid, integer, boolean)
+TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.admin_set_product_schedule_availability_v2(
+  p_schedule_id uuid,
+  p_product_id uuid,
+  p_is_active boolean,
+  p_apply_to_future_dates boolean DEFAULT true
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_today date := timezone('Asia/Bangkok', now())::date;
+  v_capacity public.product_schedule_capacity%ROWTYPE;
+BEGIN
+  IF v_user_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.user_profiles p
+    WHERE p.id = v_user_id AND p.role = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Admin authorization required' USING ERRCODE = '42501';
+  END IF;
+  IF p_schedule_id IS NULL OR p_product_id IS NULL OR p_is_active IS NULL THEN
+    RAISE EXCEPTION 'Schedule, product and active state are required';
+  END IF;
+
+  /* Availability mutations serialize with schedule edits and materialization. */
+  PERFORM 1
+  FROM public.pickup_schedules
+  WHERE id = p_schedule_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Pickup schedule not found'; END IF;
+
+  SELECT * INTO v_capacity
+  FROM public.product_schedule_capacity
+  WHERE schedule_id = p_schedule_id
+    AND product_id = p_product_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Configure recurring product capacity before changing availability';
+  END IF;
+
+  UPDATE public.product_schedule_capacity
+  SET is_active = p_is_active,
+      updated_at = now()
+  WHERE schedule_id = p_schedule_id
+    AND product_id = p_product_id
+  RETURNING * INTO v_capacity;
+
+  IF COALESCE(p_apply_to_future_dates, true) THEN
+    IF p_is_active THEN
+      IF EXISTS (
+        SELECT 1
+        FROM public.product_date_inventory i
+        JOIN public.pickup_dates d ON d.id = i.pickup_date_id
+        WHERE d.schedule_id = p_schedule_id
+          AND d.pickup_date >= v_today
+          AND i.product_id = p_product_id
+          AND i.capacity_source = 'recurring_default'
+          AND i.reserved_quantity > v_capacity.capacity
+      ) THEN
+        RAISE EXCEPTION 'Recurring capacity is below an existing reservation on a future pickup date';
+      END IF;
+
+      INSERT INTO public.product_date_inventory (
+        pickup_date_id, product_id, capacity, reserved_quantity, capacity_source
+      )
+      SELECT d.id, p_product_id, v_capacity.capacity, 0, 'recurring_default'
+      FROM public.pickup_dates d
+      WHERE d.schedule_id = p_schedule_id
+        AND d.pickup_date >= v_today
+      ON CONFLICT (pickup_date_id, product_id) DO NOTHING;
+
+      UPDATE public.product_date_inventory i
+      SET capacity = v_capacity.capacity,
+          updated_at = now()
+      FROM public.pickup_dates d
+      WHERE d.id = i.pickup_date_id
+        AND d.schedule_id = p_schedule_id
+        AND d.pickup_date >= v_today
+        AND i.product_id = p_product_id
+        AND i.capacity_source = 'recurring_default';
+    ELSE
+      UPDATE public.product_date_inventory i
+      SET capacity = i.reserved_quantity,
+          updated_at = now()
+      FROM public.pickup_dates d
+      WHERE d.id = i.pickup_date_id
+        AND d.schedule_id = p_schedule_id
+        AND d.pickup_date >= v_today
+        AND i.product_id = p_product_id
+        AND i.capacity_source = 'recurring_default';
+    END IF;
+  END IF;
+
+  RETURN to_jsonb(v_capacity);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_set_product_schedule_availability_v2(uuid, uuid, boolean, boolean)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_product_schedule_availability_v2(uuid, uuid, boolean, boolean)
+TO authenticated;
+
+/* -------------------------------------------------------------------------- */
+/* Concrete pickup-date Admin                                                  */
+/* -------------------------------------------------------------------------- */
 
 CREATE OR REPLACE FUNCTION public.admin_update_pickup_date_v2(
   p_pickup_date_id uuid,
@@ -116,32 +498,37 @@ BEGIN
     RAISE EXCEPTION 'Concrete order and cancellation cutoffs are required';
   END IF;
 
-  /* Serialize status changes with date-location mutations. */
+  /*
+    Lock every currently linked global location first, in deterministic order,
+    before taking the pickup-date row lock. This matches the deactivation trigger
+    and date-location RPC lock order.
+  */
+  PERFORM l.id
+  FROM public.cms_pickup_locations l
+  WHERE EXISTS (
+    SELECT 1
+    FROM public.pickup_date_locations dl
+    WHERE dl.pickup_date_id = p_pickup_date_id
+      AND dl.location_id = l.id
+  )
+  ORDER BY l.id
+  FOR SHARE;
+
   SELECT d.* INTO v_existing
   FROM public.pickup_dates d
   WHERE d.id = p_pickup_date_id
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Pickup date not found'; END IF;
 
-  IF p_status = 'open' THEN
-    /*
-      Lock at least one usable location while reopening/keeping the date open.
-      Global location deactivation takes an UPDATE lock and therefore cannot
-      silently race this validation without one transaction being retried.
-    */
-    PERFORM dl.location_id
+  IF p_status = 'open' AND NOT EXISTS (
+    SELECT 1
     FROM public.pickup_date_locations dl
     JOIN public.cms_pickup_locations l ON l.id = dl.location_id
     WHERE dl.pickup_date_id = p_pickup_date_id
       AND dl.is_active = true
       AND l.is_active = true
-    ORDER BY dl.sort_order, dl.location_id
-    LIMIT 1
-    FOR SHARE OF dl, l;
-
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'An open pickup date requires at least one active pickup location';
-    END IF;
+  ) THEN
+    RAISE EXCEPTION 'An open pickup date requires at least one active pickup location';
   END IF;
 
   UPDATE public.pickup_dates
@@ -190,26 +577,37 @@ BEGIN
   END IF;
 
   /*
-    Every date-location mutation takes the same date row lock first. Concurrent
-    Admin toggles for one date are therefore serialized before the final
-    open-date invariant is checked.
+    Lock all existing global locations for this date plus the requested location
+    before taking the pickup-date lock. Concurrent toggles therefore serialize
+    without creating the inverse date -> location order used by the old version.
   */
-  SELECT d.* INTO v_date
-  FROM public.pickup_dates d
-  WHERE d.id = p_pickup_date_id
-  FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Pickup date not found'; END IF;
+  PERFORM l.id
+  FROM public.cms_pickup_locations l
+  WHERE l.id = p_location_id
+     OR EXISTS (
+       SELECT 1
+       FROM public.pickup_date_locations dl
+       WHERE dl.pickup_date_id = p_pickup_date_id
+         AND dl.location_id = l.id
+     )
+  ORDER BY l.id
+  FOR SHARE;
 
   SELECT l.is_active INTO v_location_active
   FROM public.cms_pickup_locations l
-  WHERE l.id = p_location_id
-  FOR SHARE;
+  WHERE l.id = p_location_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Pickup location not found'; END IF;
 
   IF COALESCE(p_is_active, false) = true
      AND COALESCE(v_location_active, false) = false THEN
     RAISE EXCEPTION 'A globally inactive pickup location cannot be enabled for a concrete date';
   END IF;
+
+  SELECT d.* INTO v_date
+  FROM public.pickup_dates d
+  WHERE d.id = p_pickup_date_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Pickup date not found'; END IF;
 
   INSERT INTO public.pickup_date_locations (
     pickup_date_id, location_id, is_active, note_en, updated_at
@@ -223,21 +621,16 @@ BEGIN
                 updated_at = now()
   RETURNING * INTO v_result;
 
-  IF v_date.status = 'open' THEN
-    PERFORM dl.location_id
+  IF v_date.status = 'open' AND NOT EXISTS (
+    SELECT 1
     FROM public.pickup_date_locations dl
     JOIN public.cms_pickup_locations l ON l.id = dl.location_id
     WHERE dl.pickup_date_id = p_pickup_date_id
       AND dl.is_active = true
       AND l.is_active = true
-    ORDER BY dl.sort_order, dl.location_id
-    LIMIT 1
-    FOR SHARE OF dl, l;
-
-    IF NOT FOUND THEN
-      /* Raising here rolls back the upsert above in the same RPC transaction. */
-      RAISE EXCEPTION 'An open pickup date requires at least one active pickup location';
-    END IF;
+  ) THEN
+    /* Raising rolls back the upsert in the same RPC transaction. */
+    RAISE EXCEPTION 'An open pickup date requires at least one active pickup location';
   END IF;
 
   RETURN to_jsonb(v_result);
@@ -248,6 +641,10 @@ REVOKE ALL ON FUNCTION public.admin_set_pickup_date_location_v2(uuid, uuid, bool
 FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_set_pickup_date_location_v2(uuid, uuid, boolean, text)
 TO authenticated;
+
+/* -------------------------------------------------------------------------- */
+/* Concrete-date materializer                                                  */
+/* -------------------------------------------------------------------------- */
 
 CREATE OR REPLACE FUNCTION public.materialize_pickup_dates_v2(
   p_start_date date,
@@ -286,7 +683,40 @@ BEGIN
     RAISE EXCEPTION 'Pickup date materialization is limited to 366 inclusive days per call';
   END IF;
 
-  /* Fail closed before creating open dates from an unusable recurring schedule. */
+  /*
+    Stabilize the complete recurring configuration for the whole materializer
+    transaction. Lock locations first, then schedules, matching every other v2
+    Admin configuration writer. Capacity Admin RPCs also lock their schedule, so
+    holding all schedule rows prevents capacity/availability changes until this
+    snapshot finishes.
+  */
+  PERFORM l.id
+  FROM public.cms_pickup_locations l
+  ORDER BY l.id
+  FOR SHARE;
+
+  PERFORM s.id
+  FROM public.pickup_schedules s
+  ORDER BY s.id
+  FOR UPDATE;
+
+  PERFORM sl.schedule_id, sl.location_id
+  FROM public.pickup_schedule_locations sl
+  ORDER BY sl.schedule_id, sl.location_id
+  FOR SHARE;
+
+  PERFORM c.schedule_id, c.product_id
+  FROM public.product_schedule_capacity c
+  ORDER BY c.schedule_id, c.product_id
+  FOR SHARE;
+
+  /* Existing dates in the requested range follow the same later lock level. */
+  PERFORM d.id
+  FROM public.pickup_dates d
+  WHERE d.pickup_date BETWEEN p_start_date AND p_end_date
+  ORDER BY d.id
+  FOR UPDATE;
+
   IF EXISTS (
     SELECT 1
     FROM public.pickup_schedules s
@@ -386,6 +816,7 @@ BEGIN
     WHERE d.pickup_date BETWEEN p_start_date AND p_end_date
       AND s.legacy_day_key IS NOT NULL
       AND d.source <> 'manual'
+    ORDER BY d.id
   LOOP
     SELECT o.* INTO v_override
     FROM public.pickup_overrides o
@@ -406,7 +837,8 @@ BEGIN
             note_th = NULLIF(v_override.note_th, ''),
             source = 'legacy_override',
             updated_at = now()
-        WHERE id = v_date.id;
+        WHERE id = v_date.id
+          AND source <> 'manual';
       ELSIF v_override.override_type = 'sold_out' THEN
         UPDATE public.pickup_dates
         SET status = 'sold_out',
@@ -414,7 +846,8 @@ BEGIN
             note_th = NULLIF(v_override.note_th, ''),
             source = 'legacy_override',
             updated_at = now()
-        WHERE id = v_date.id;
+        WHERE id = v_date.id
+          AND source <> 'manual';
       ELSIF v_override.override_type = 'custom_cutoff' THEN
         v_custom_cutoff_weekday := CASE v_override.custom_cutoff_day
           WHEN 'Sunday' THEN 0 WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2
@@ -433,7 +866,8 @@ BEGIN
             note_th = NULLIF(v_override.note_th, ''),
             source = 'legacy_override',
             updated_at = now()
-        WHERE id = v_date.id;
+        WHERE id = v_date.id
+          AND source <> 'manual';
       END IF;
     END IF;
   END LOOP;
