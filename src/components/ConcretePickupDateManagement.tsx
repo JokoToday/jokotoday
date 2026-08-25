@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Edit3, RefreshCw, Save, ShieldCheck, WandSparkles, X } from 'lucide-react';
+import { CalendarDays, Edit3, RefreshCw, Save, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface PickupScheduleRow {
@@ -51,7 +51,6 @@ interface DateDraft {
   noteEn: string;
   noteTh: string;
   noteZh: string;
-  locationIds: string[];
 }
 
 function bangkokToday(): string {
@@ -69,6 +68,14 @@ function addDays(dateValue: string, days: number): string {
   const [year, month, day] = dateValue.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return date.toISOString().slice(0, 10);
+}
+
+function dayDifference(start: string, end: string): number {
+  const [startYear, startMonth, startDay] = start.split('-').map(Number);
+  const [endYear, endMonth, endDay] = end.split('-').map(Number);
+  const startUtc = Date.UTC(startYear, startMonth - 1, startDay);
+  const endUtc = Date.UTC(endYear, endMonth - 1, endDay);
+  return Math.round((endUtc - startUtc) / 86_400_000);
 }
 
 function toBangkokInput(value: string): { date: string; time: string } {
@@ -126,6 +133,7 @@ export function ConcretePickupDateManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [materializing, setMaterializing] = useState(false);
+  const [locationSavingKey, setLocationSavingKey] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -205,10 +213,19 @@ export function ConcretePickupDateManagement() {
     await loadData();
   };
 
+  const validateRange = (): string | null => {
+    if (!startDate || !endDate) return 'Start and end dates are required.';
+    if (endDate < startDate) return 'End date must be on or after start date.';
+    if (dayDifference(startDate, endDate) > 366) return 'Materialization is limited to 366 days per operation.';
+    if (startDate < initialStart) return 'The Admin materializer does not create past pickup dates. Use a reviewed reconciliation workflow for historical data.';
+    return null;
+  };
+
   const handleMaterialize = async () => {
-    if (materializing || !startDate || !endDate) return;
-    if (endDate < startDate) {
-      setError('End date must be on or after start date.');
+    if (materializing) return;
+    const rangeError = validateRange();
+    if (rangeError) {
+      setError(rangeError);
       return;
     }
 
@@ -242,10 +259,6 @@ export function ConcretePickupDateManagement() {
   const startEdit = (pickupDate: PickupDateRow) => {
     const orderCutoff = toBangkokInput(pickupDate.order_cutoff_at);
     const cancellationCutoff = toBangkokInput(pickupDate.cancellation_cutoff_at);
-    const activeLocationIds = dateLocations
-      .filter((link) => link.pickup_date_id === pickupDate.id && link.is_active)
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((link) => link.location_id);
 
     setError('');
     setNotice('');
@@ -261,20 +274,6 @@ export function ConcretePickupDateManagement() {
       noteEn: pickupDate.note_en || '',
       noteTh: pickupDate.note_th || '',
       noteZh: pickupDate.note_zh || '',
-      locationIds: activeLocationIds,
-    });
-  };
-
-  const toggleLocation = (locationId: string) => {
-    setDraft((current) => {
-      if (!current) return current;
-      const selected = current.locationIds.includes(locationId);
-      return {
-        ...current,
-        locationIds: selected
-          ? current.locationIds.filter((id) => id !== locationId)
-          : [...current.locationIds, locationId],
-      };
     });
   };
 
@@ -282,19 +281,14 @@ export function ConcretePickupDateManagement() {
     event.preventDefault();
     if (!draft || saving) return;
 
-    if (draft.status === 'open') {
-      if (draft.locationIds.length === 0) {
-        setError('An open pickup date needs at least one pickup location.');
-        return;
-      }
-      if (!draft.locationIds.some((id) => locationById.get(id)?.is_active)) {
-        setError('An open pickup date needs at least one globally active pickup location.');
-        return;
-      }
+    const currentActiveLocations = dateLocations.filter((link) => link.pickup_date_id === draft.id && link.is_active);
+    if (draft.status === 'open' && currentActiveLocations.length === 0) {
+      setError('An open pickup date needs at least one active pickup location. Add a location before reopening this date.');
+      return;
     }
 
     const confirmed = window.confirm(
-      `Save changes to ${draft.pickupDate}?\n\n` +
+      `Save date settings for ${draft.pickupDate}?\n\n` +
       'This changes the live concrete v2 pickup-date snapshot. Existing orders keep their pickup-date identity.'
     );
     if (!confirmed) return;
@@ -302,7 +296,6 @@ export function ConcretePickupDateManagement() {
     setSaving(true);
     setError('');
     setNotice('');
-
     try {
       const orderCutoffAt = bangkokInputToIso(draft.orderCutoffDate, draft.orderCutoffTime);
       const cancellationCutoffAt = draft.sameCancellationCutoff
@@ -320,27 +313,6 @@ export function ConcretePickupDateManagement() {
       });
       if (dateError) throw dateError;
 
-      const currentLinks = dateLocations.filter((link) => link.pickup_date_id === draft.id);
-      const currentByLocation = new Map(currentLinks.map((link) => [link.location_id, link]));
-      const relevantLocationIds = new Set([
-        ...currentLinks.map((link) => link.location_id),
-        ...draft.locationIds,
-      ]);
-
-      for (const locationId of relevantLocationIds) {
-        const desiredActive = draft.locationIds.includes(locationId);
-        const currentActive = currentByLocation.get(locationId)?.is_active ?? false;
-        if (desiredActive === currentActive) continue;
-
-        const { error: locationError } = await supabase.rpc('admin_set_pickup_date_location_v2', {
-          p_pickup_date_id: draft.id,
-          p_location_id: locationId,
-          p_is_active: desiredActive,
-          p_note_en: null,
-        });
-        if (locationError) throw locationError;
-      }
-
       setDraft(null);
       setNotice(`Pickup date ${draft.pickupDate} updated.`);
       await loadData();
@@ -351,6 +323,51 @@ export function ConcretePickupDateManagement() {
       setSaving(false);
     }
   };
+
+  const handleLocationToggle = async (pickupDate: PickupDateRow, location: PickupLocationRow, desiredActive: boolean) => {
+    const key = `${pickupDate.id}:${location.id}`;
+    if (locationSavingKey) return;
+
+    if (desiredActive && !location.is_active) {
+      setError('Reactivate this pickup location globally before enabling it for a concrete date.');
+      return;
+    }
+
+    const currentActiveLinks = dateLocations.filter((link) => link.pickup_date_id === pickupDate.id && link.is_active);
+    if (!desiredActive && pickupDate.status === 'open' && currentActiveLinks.length <= 1) {
+      setError('An open pickup date must keep at least one active location. Close the date first or enable another location.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${desiredActive ? 'Enable' : 'Disable'} ${location.name_en} for ${pickupDate.pickup_date}?\n\n` +
+      'This is a live concrete-date location change.'
+    );
+    if (!confirmed) return;
+
+    setLocationSavingKey(key);
+    setError('');
+    setNotice('');
+    try {
+      const { error: locationError } = await supabase.rpc('admin_set_pickup_date_location_v2', {
+        p_pickup_date_id: pickupDate.id,
+        p_location_id: location.id,
+        p_is_active: desiredActive,
+        p_note_en: null,
+      });
+      if (locationError) throw locationError;
+
+      setNotice(`${location.name_en} ${desiredActive ? 'enabled' : 'disabled'} for ${pickupDate.pickup_date}.`);
+      await loadData();
+    } catch (err) {
+      console.error('Error updating pickup-date location:', err);
+      setError(err instanceof Error ? err.message : 'Could not update pickup-date location.');
+    } finally {
+      setLocationSavingKey(null);
+    }
+  };
+
+  const editedPickupDate = draft ? dates.find((date) => date.id === draft.id) || null : null;
 
   return (
     <div>
@@ -364,7 +381,7 @@ export function ConcretePickupDateManagement() {
         <button
           type="button"
           onClick={() => void handleRefresh()}
-          disabled={loading || saving || materializing}
+          disabled={loading || saving || materializing || Boolean(locationSavingKey)}
           className="inline-flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium shrink-0 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -377,18 +394,18 @@ export function ConcretePickupDateManagement() {
         <div>
           <p className="font-semibold">Recurring rules and concrete dates are separate on purpose.</p>
           <p className="mt-1 leading-relaxed">
-            Materialization creates only missing dates for currently active schedules. A date edited here becomes a manual snapshot and is not silently reset by later materializer runs.
+            Materialization creates only missing dates for currently active schedules. Date settings and each date-location change are saved as separate admin-only RPC actions so a failed action cannot partially apply several unrelated changes.
           </p>
         </div>
       </div>
 
       <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
         <div className="flex items-center gap-2 mb-3">
-          <WandSparkles className="w-5 h-5 text-primary-600" />
+          <Sparkles className="w-5 h-5 text-primary-600" />
           <h3 className="font-semibold text-gray-900">Materialize / extend calendar</h3>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          The default view is eight weeks, but the range is editable. Only active recurring schedules produce dates.
+          The default view is eight weeks, but the range is editable. Only active recurring schedules produce dates; manual concrete-date overrides are preserved.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <label className="block">
@@ -396,6 +413,7 @@ export function ConcretePickupDateManagement() {
             <input
               type="date"
               value={startDate}
+              min={initialStart}
               onChange={(event) => setStartDate(event.target.value)}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
@@ -405,6 +423,7 @@ export function ConcretePickupDateManagement() {
             <input
               type="date"
               value={endDate}
+              min={startDate || initialStart}
               onChange={(event) => setEndDate(event.target.value)}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
@@ -438,12 +457,12 @@ export function ConcretePickupDateManagement() {
         <div className="mb-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>
       )}
 
-      {draft && (
+      {draft && editedPickupDate && (
         <form onSubmit={handleSave} className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-5 space-y-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="font-semibold text-gray-900">Edit {formatPickupDate(draft.pickupDate)}</h3>
-              <p className="text-xs text-gray-500 mt-1">This creates/updates a manual concrete-date snapshot.</p>
+              <p className="text-xs text-gray-500 mt-1">Date settings save atomically through `admin_update_pickup_date_v2`.</p>
             </div>
             <button
               type="button"
@@ -530,24 +549,33 @@ export function ConcretePickupDateManagement() {
             )}
           </div>
 
-          <div>
-            <span className="text-sm font-medium text-gray-700">Pickup locations for this date</span>
-            <p className="text-xs text-gray-500 mt-0.5">This is a date-specific snapshot and may differ from the recurring schedule.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-              {locations.map((location) => (
-                <label key={location.id} className={`flex items-start gap-3 rounded-lg border px-3 py-3 cursor-pointer ${draft.locationIds.includes(location.id) ? 'border-primary-300 bg-primary-50' : 'border-gray-200 bg-white'}`}>
-                  <input
-                    type="checkbox"
-                    checked={draft.locationIds.includes(location.id)}
-                    onChange={() => toggleLocation(location.id)}
-                    className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-gray-800">
-                    <span className="font-medium">{location.name_en}</span>
-                    {!location.is_active && <span className="ml-2 text-xs text-amber-700">location inactive</span>}
-                  </span>
-                </label>
-              ))}
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="mb-3">
+              <span className="text-sm font-medium text-gray-700">Pickup locations for this date</span>
+              <p className="text-xs text-gray-500 mt-0.5">Location toggles save immediately as separate atomic Admin actions.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {locations.map((location) => {
+                const link = dateLocations.find((item) => item.pickup_date_id === draft.id && item.location_id === location.id);
+                const checked = Boolean(link?.is_active);
+                const savingKey = `${draft.id}:${location.id}`;
+                return (
+                  <label key={location.id} className={`flex items-start gap-3 rounded-lg border px-3 py-3 ${checked ? 'border-primary-300 bg-primary-50' : 'border-gray-200 bg-white'}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={Boolean(locationSavingKey) || saving}
+                      onChange={(event) => void handleLocationToggle(editedPickupDate, location, event.target.checked)}
+                      className="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                    />
+                    <span className="text-sm text-gray-800">
+                      <span className="font-medium">{location.name_en}</span>
+                      {!location.is_active && <span className="ml-2 text-xs text-amber-700">location inactive</span>}
+                      {locationSavingKey === savingKey && <span className="ml-2 text-xs text-gray-500">saving…</span>}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -592,11 +620,11 @@ export function ConcretePickupDateManagement() {
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || Boolean(locationSavingKey)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white font-medium hover:bg-primary-700 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {saving ? 'Saving…' : 'Save Date'}
+              {saving ? 'Saving…' : 'Save Date Settings'}
             </button>
           </div>
         </form>
@@ -664,7 +692,7 @@ export function ConcretePickupDateManagement() {
                     <button
                       type="button"
                       onClick={() => startEdit(pickupDate)}
-                      disabled={saving || materializing}
+                      disabled={saving || materializing || Boolean(locationSavingKey)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary-700 hover:bg-primary-50 rounded-lg disabled:opacity-50"
                     >
                       <Edit3 className="w-4 h-4" />
@@ -679,7 +707,7 @@ export function ConcretePickupDateManagement() {
       </div>
 
       <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-700">
-        Date-level edits use admin-only transactional RPCs. Product capacity overrides remain a separate product/inventory Admin workflow and are not changed from this screen.
+        Product capacity overrides remain a separate product/inventory Admin workflow and are not changed from this screen. Customer v2 ordering remains disabled until the separately reviewed frontend cutover.
       </div>
     </div>
   );
