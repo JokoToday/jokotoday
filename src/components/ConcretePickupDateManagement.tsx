@@ -216,7 +216,7 @@ export function ConcretePickupDateManagement() {
   const validateRange = (): string | null => {
     if (!startDate || !endDate) return 'Start and end dates are required.';
     if (endDate < startDate) return 'End date must be on or after start date.';
-    if (dayDifference(startDate, endDate) > 366) return 'Materialization is limited to 366 days per operation.';
+    if (dayDifference(startDate, endDate) >= 366) return 'Materialization is limited to 366 days per operation.';
     if (startDate < initialStart) return 'The Admin materializer does not create past pickup dates. Use a reviewed reconciliation workflow for historical data.';
     return null;
   };
