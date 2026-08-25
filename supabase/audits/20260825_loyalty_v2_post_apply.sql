@@ -121,8 +121,8 @@ WHERE schemaname = 'public'
 ORDER BY tablename, policyname;
 
 -- 10. Loyalty v2 function execution posture.
--- Internal balance helper must be dark; Admin RPCs may be executable by
--- authenticated but perform their own DB-derived admin authorization.
+-- Internal balance helper must be dark; Admin RPCs and the one staff redemption
+-- RPC may be executable by authenticated, but must perform DB-derived role checks.
 SELECT
   p.proname,
   pg_get_function_identity_arguments(p.oid) AS arguments,
@@ -140,12 +140,21 @@ WHERE n.nspname = 'public'
     'admin_upsert_loyalty_reward_v2',
     'admin_set_loyalty_reward_active_v2',
     'admin_update_loyalty_earning_rule_v2',
-    'admin_adjust_loyalty_points_v2'
+    'admin_adjust_loyalty_points_v2',
+    'staff_redeem_loyalty_reward_v2'
   )
 ORDER BY p.proname, arguments;
 
--- 11. Customer redemption must remain dark. This intentionally catches any
--- future function with redeem/redemption semantics that has client EXECUTE.
+-- Expected:
+-- - apply_loyalty_points_delta_v2: anon/authenticated/public=false
+-- - Admin RPCs: authenticated=true, anon/public=false, SECURITY DEFINER
+-- - staff_redeem_loyalty_reward_v2: authenticated=true, anon/public=false,
+--   SECURITY DEFINER and search_path=public.
+
+-- 11. Customer/self-service redemption must remain dark. The one intentional
+-- authenticated redemption entry point is staff_redeem_loyalty_reward_v2,
+-- which authorizes staff/admin internally. Any OTHER client-executable
+-- redeem/redemption function is unexpected.
 SELECT
   p.proname,
   pg_get_function_identity_arguments(p.oid) AS arguments,
@@ -155,6 +164,7 @@ FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND (p.proname ILIKE '%redeem%' OR p.proname ILIKE '%redemption%')
+  AND p.proname <> 'staff_redeem_loyalty_reward_v2'
   AND (
     has_function_privilege('anon', p.oid, 'EXECUTE')
     OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
@@ -162,6 +172,21 @@ WHERE n.nspname = 'public'
 ORDER BY p.proname;
 
 -- Expected: zero rows.
+
+-- 11b. Staff redemption must retain its internal DB-derived staff/admin guard.
+SELECT
+  p.proname,
+  pg_get_functiondef(p.oid) ILIKE '%is_staff_or_admin%' AS has_staff_admin_guard,
+  pg_get_functiondef(p.oid) ILIKE '%auth.uid()%' AS has_authenticated_actor_guard,
+  p.prosecdef AS security_definer,
+  p.proconfig AS function_config
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'staff_redeem_loyalty_reward_v2';
+
+-- Expected: one row, both guards=true, security_definer=true,
+-- function_config contains search_path=public.
 
 -- 12. Pickup v2 customer rollout gates must remain unchanged/dark.
 SELECT
