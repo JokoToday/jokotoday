@@ -1,0 +1,36 @@
+name: Loyalty Staff Fulfillment Migration Once
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-staff-fulfillment-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  create-migration:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/loyalty-v2-staff-fulfillment-20260826
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Create migration with pinned Supabase CLI
+        shell: bash
+        run: |
+          npx --yes supabase@2.115.0 migration new loyalty_v2_staff_fulfillment
+          test "$(find supabase/migrations -maxdepth 1 -type f -name '*_loyalty_v2_staff_fulfillment.sql' | wc -l)" -eq 1
+      - name: Commit migration skeleton and remove one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/loyalty-staff-fulfillment-migration-once.yml
+          git config user.name "JOKO TODAY"
+          git config user.email "jokotoday@gmail.com"
+          git add supabase/migrations/*_loyalty_v2_staff_fulfillment.sql .github/workflows/loyalty-staff-fulfillment-migration-once.yml
+          git commit -m "chore: create loyalty staff fulfillment migration"
+          git push origin HEAD:feat/loyalty-v2-staff-fulfillment-20260826
