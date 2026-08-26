@@ -27,7 +27,7 @@ import {
 } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHistory';
-import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemption';
+import { LoyaltyRewardSelector } from '../components/staff/LoyaltyRewardSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -46,9 +46,18 @@ interface Customer {
 interface PurchaseResult {
   order_id: string;
   order_number: string;
-  amount: number;
+  gross_amount: number;
+  discount_amount: number;
+  amount_paid: number;
+  points_redeemed: number;
   points_earned: number;
   updated_balance: number;
+  reward_id: string | null;
+  reward_type: string | null;
+  reward_name_en: string | null;
+  reward_name_th: string | null;
+  manual_fulfillment_required: boolean;
+  idempotent_replay: boolean;
 }
 
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -65,17 +74,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [saving, setSaving] = useState(false);
   const [loyaltyMultiplier, setLoyaltyMultiplier] = useState(0);
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
+  const [selectedRewardId, setSelectedRewardId] = useState('');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
   const purchaseReferenceRef = useRef<string | null>(null);
+  const purchaseRequestKeyRef = useRef<string | null>(null);
 
   const parsedAmount = Number.parseFloat(amount);
   const calculationAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
   const currentBalance = customer?.loyalty_points ?? 0;
   const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
-  const projectedNewBalance = currentBalance + projectedPointsEarned;
 
   const clearCustomerState = () => {
     setCustomer(null);
@@ -85,7 +95,9 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setManualCode('');
     setError(null);
     setPurchaseResult(null);
+    setSelectedRewardId('');
     purchaseReferenceRef.current = null;
+    purchaseRequestKeyRef.current = null;
   };
 
   const handleLogout = async () => {
@@ -131,6 +143,9 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setCustomer(null);
       setAmount('');
       setPurchaseResult(null);
+      setSelectedRewardId('');
+      purchaseReferenceRef.current = null;
+      purchaseRequestKeyRef.current = null;
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -239,17 +254,21 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setError(null);
       const amountNum = Number.parseFloat(amount);
       if (!Number.isFinite(amountNum) || amountNum <= 0) {
-        setError(language === 'en' ? 'Please enter a valid amount' : 'กรุณากรอกจำนวนเงินที่ถูกต้อง');
+        setError(language === 'en' ? 'Please enter a valid purchase total' : 'กรุณากรอกยอดซื้อที่ถูกต้อง');
         return;
       }
 
       const orderNumber = purchaseReferenceRef.current ?? `WI-${crypto.randomUUID()}`;
+      const requestKey = purchaseRequestKeyRef.current ?? crypto.randomUUID();
       purchaseReferenceRef.current = orderNumber;
+      purchaseRequestKeyRef.current = requestKey;
 
-      const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase', {
+      const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v2', {
         p_customer_id: customer.id,
         p_amount: amountNum,
         p_order_number: orderNumber,
+        p_reward_id: selectedRewardId || null,
+        p_request_key: requestKey,
       });
 
       if (purchaseError) throw purchaseError;
@@ -257,7 +276,10 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         !data
         || typeof data.order_id !== 'string'
         || data.order_id.length === 0
-        || typeof data.amount !== 'number'
+        || typeof data.gross_amount !== 'number'
+        || typeof data.discount_amount !== 'number'
+        || typeof data.amount_paid !== 'number'
+        || typeof data.points_redeemed !== 'number'
         || typeof data.points_earned !== 'number'
         || typeof data.updated_balance !== 'number'
       ) {
@@ -280,7 +302,9 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setAmount('');
     setError(null);
     setPurchaseResult(null);
+    setSelectedRewardId('');
     purchaseReferenceRef.current = null;
+    purchaseRequestKeyRef.current = null;
   };
 
   const handleFinishAndGoHome = () => {
@@ -551,10 +575,22 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         {language === 'en' ? 'Purchase saved successfully' : 'บันทึกรายการซื้อสำเร็จ'}
                       </h3>
                     </div>
-                    <div className="grid sm:grid-cols-3 gap-3">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div className="bg-slate-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Purchase amount' : 'ยอดซื้อ'}</p>
-                        <p className="text-xl font-bold text-gray-900 mt-1">฿{purchaseResult.amount.toFixed(2)}</p>
+                        <p className="text-sm text-gray-600">{language === 'en' ? 'Gross purchase' : 'ยอดซื้อก่อนส่วนลด'}</p>
+                        <p className="text-xl font-bold text-gray-900 mt-1">฿{purchaseResult.gross_amount.toFixed(2)}</p>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">{language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'}</p>
+                        <p className="text-xl font-bold text-amber-700 mt-1">−฿{purchaseResult.discount_amount.toFixed(2)}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">{language === 'en' ? 'Amount paid' : 'ยอดชำระจริง'}</p>
+                        <p className="text-xl font-bold text-green-800 mt-1">฿{purchaseResult.amount_paid.toFixed(2)}</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-600">{language === 'en' ? 'Points used' : 'แต้มที่ใช้'}</p>
+                        <p className="text-xl font-bold text-amber-700 mt-1">{purchaseResult.points_redeemed > 0 ? `−${purchaseResult.points_redeemed}` : '0'}</p>
                       </div>
                       <div className="bg-slate-50 rounded-lg p-4 text-center">
                         <p className="text-sm text-gray-600">{language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}</p>
@@ -565,20 +601,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         <p className="text-xl font-bold text-green-700 mt-1">{purchaseResult.updated_balance}</p>
                       </div>
                     </div>
-                    <LoyaltyRewardRedemption
-                      customerId={customer.id}
-                      currentBalance={customer.loyalty_points}
-                      channel="walk_in"
-                      language={staffLanguage}
-                      contextAmount={purchaseResult.amount}
-                      walkInOrderId={purchaseResult.order_id}
-                      onRedeemed={(result) => {
-                        setCustomer((current) => current
-                          ? { ...current, loyalty_points: result.new_balance }
-                          : current);
-                        setHistoryRefreshKey((value) => value + 1);
-                      }}
-                    />
+                    {purchaseResult.reward_id && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <p className="font-semibold text-amber-900">
+                          {language === 'th' ? purchaseResult.reward_name_th : purchaseResult.reward_name_en}
+                        </p>
+                        <p className="mt-1 text-sm text-amber-800">
+                          {purchaseResult.manual_fulfillment_required
+                            ? (language === 'en' ? 'Reward recorded. Give the customer the manual goodie/reward now.' : 'บันทึกรางวัลแล้ว กรุณามอบของแถมหรือรางวัลให้ลูกค้าทันที')
+                            : (language === 'en' ? 'Monetary reward was applied to the amount paid.' : 'ส่วนลดรางวัลถูกหักจากยอดชำระแล้ว')}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       <button type="button" onClick={handleAnotherPurchase} className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
@@ -604,7 +638,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     <form onSubmit={handleSaveWalkIn} className="space-y-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-3">
-                          {language === 'en' ? 'Enter paid amount (in-store purchase)' : 'กรอกยอดชำระเงิน (ซื้อหน้าร้าน)'}
+                          {language === 'en' ? 'Purchase total before loyalty reward' : 'ยอดซื้อก่อนหักรางวัลสะสมแต้ม'}
                         </label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold text-gray-400">฿</span>
@@ -630,25 +664,32 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         )}
                       </div>
 
+                      <LoyaltyRewardSelector
+                        currentBalance={currentBalance}
+                        language={staffLanguage}
+                        contextAmount={calculationAmount}
+                        selectedRewardId={selectedRewardId}
+                        onChange={(rewardId) => {
+                          setSelectedRewardId(rewardId);
+                          setError(null);
+                          purchaseReferenceRef.current = null;
+                          purchaseRequestKeyRef.current = null;
+                        }}
+                      />
+
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-gray-700 mb-4">
-                          {language === 'en' ? 'Loyalty Points Calculation' : 'การคำนวณคะแนนสะสม'}
+                        <p className="text-sm font-semibold text-gray-700 mb-3">
+                          {language === 'en' ? 'Loyalty earning preview' : 'ตัวอย่างการรับแต้ม'}
                         </p>
-                        <div className="space-y-3">
-                          <div className="flex items-baseline justify-between gap-4">
-                            <span className="text-sm text-gray-600">{language === 'en' ? 'Current Balance' : 'คะแนนปัจจุบัน'}</span>
-                            <span className="font-medium text-gray-900">{currentBalance} {language === 'en' ? 'points' : 'คะแนน'}</span>
-                          </div>
-                          <div className="flex items-baseline justify-between gap-4">
-                            <span className="text-sm text-gray-600">{language === 'en' ? 'Points Earned' : 'คะแนนที่ได้รับ'}</span>
-                            <span className="font-semibold text-green-700">{projectedPointsEarned > 0 ? '+' : ''}{projectedPointsEarned} {language === 'en' ? 'points' : 'คะแนน'}</span>
-                          </div>
-                          <div className="border-t border-green-200 pt-3 flex items-baseline justify-between gap-4">
-                            <span className="font-semibold text-gray-800">{language === 'en' ? 'New Balance' : 'คะแนนใหม่'}</span>
-                            <span className="text-3xl font-bold text-green-700">{projectedNewBalance} <span className="text-base font-semibold">{language === 'en' ? 'points' : 'คะแนน'}</span></span>
-                          </div>
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-sm text-gray-600">{language === 'en' ? 'Without a monetary reward' : 'กรณีไม่มีส่วนลดเงิน'}</span>
+                          <span className="font-semibold text-green-700">+{projectedPointsEarned} {language === 'en' ? 'points' : 'คะแนน'}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">{calculationAmount.toFixed(2)} ฿ × {loyaltyMultiplier}x</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {language === 'en'
+                            ? `Final points are calculated on the actual amount paid after any loyalty discount (${loyaltyMultiplier}×).`
+                            : `แต้มจริงจะคำนวณจากยอดชำระหลังหักส่วนลดสะสมแต้ม (${loyaltyMultiplier}×)`}
+                        </p>
                       </div>
 
                       <button
@@ -659,7 +700,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
                         {saving
                           ? (language === 'en' ? 'Saving purchase…' : 'กำลังบันทึกรายการซื้อ…')
-                          : (language === 'en' ? 'Save Walk-In Purchase' : 'บันทึกการซื้อหน้าร้าน')}
+                          : (language === 'en' ? 'Save Sale & Apply Reward' : 'บันทึกการขายและใช้รางวัล')}
                       </button>
                     </form>
                   </div>
