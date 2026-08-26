@@ -19,7 +19,7 @@ SELECT 'paid_walk_in_missing_payment_method' AS check_name, count(*)::bigint AS 
 FROM public.orders o
 WHERE o.purchase_type = 'walk_in'
   AND o.payment_status = 'paid'
-  AND o.payment_method NOT IN ('cash', 'qr_code', 'qr');
+  AND (o.payment_method IS NULL OR o.payment_method NOT IN ('cash', 'qr_code', 'qr'));
 
 -- Any paid discounted order created after this rollout must record exact net paid.
 SELECT 'paid_discount_amount_mismatch' AS check_name, count(*)::bigint AS issue_count
@@ -139,8 +139,11 @@ FROM (
 SELECT
   has_function_privilege('authenticated', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS authenticated_staff_redeem_execute_expected_true,
   has_function_privilege('authenticated', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS authenticated_staff_payment_execute_expected_true,
-  has_function_privilege('authenticated', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid)', 'EXECUTE') AS authenticated_walkin_v2_execute_expected_true,
+  has_function_privilege('authenticated', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS authenticated_walkin_v2_execute_expected_true,
+  has_function_privilege('authenticated', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS authenticated_payment_repair_execute_expected_true,
   has_function_privilege('authenticated', 'public.cancel_online_order_v2(uuid)', 'EXECUTE') AS authenticated_pickup_v2_cancel_execute_expected_false,
   has_function_privilege('authenticated', 'public.create_online_order_v2(text,uuid,uuid,jsonb,text)', 'EXECUTE') AS authenticated_pickup_v2_create_execute_expected_false,
   has_function_privilege('anon', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS anon_staff_redeem_execute_expected_false,
-  has_function_privilege('anon', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS anon_staff_payment_execute_expected_false;
+  has_function_privilege('anon', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS anon_staff_payment_execute_expected_false,
+  has_function_privilege('anon', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS anon_walkin_v2_execute_expected_false,
+  has_function_privilege('anon', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS anon_payment_repair_execute_expected_false;
