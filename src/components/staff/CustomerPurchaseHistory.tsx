@@ -391,7 +391,8 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                     const location = order.pickup_location_id ? locations[order.pickup_location_id] : undefined;
                     const handledBy = order.staff_id ? staffNames[order.staff_id] : undefined;
                     const items = Array.isArray(order.order_items) ? order.order_items : [];
-                    const paymentComplete = order.payment_status === 'paid' && Boolean(order.payment_method);
+                    const paymentComplete = order.payment_status === 'paid'
+                      && ['cash', 'qr_code', 'qr'].includes(order.payment_method ?? '');
 
                     return (
                       <div key={order.id} className={`rounded-xl border bg-white shadow-sm overflow-hidden ${isCancelled ? 'border-red-200' : 'border-slate-200'}`}>
@@ -480,7 +481,7 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                               </Detail>
                             )}
 
-                            {!isCancelled && !paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
+                            {!isCancelled && order.payment_status === 'paid' && !paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
                               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                                 <p className="text-sm font-bold text-amber-900">
                                   {language === 'en' ? 'Complete payment record' : 'บันทึกการชำระเงินให้สมบูรณ์'}

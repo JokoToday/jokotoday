@@ -544,7 +544,7 @@ BEGIN
     RAISE EXCEPTION 'Staff access required' USING ERRCODE = '42501';
   END IF;
   IF p_order_id IS NULL THEN RAISE EXCEPTION 'Order id is required'; END IF;
-  IF p_payment_method NOT IN ('cash', 'qr_code') THEN
+  IF p_payment_method IS NULL OR p_payment_method NOT IN ('cash', 'qr_code') THEN
     RAISE EXCEPTION 'Payment method must be cash or qr_code';
   END IF;
 
@@ -668,7 +668,7 @@ BEGIN
   IF p_order_number IS NULL OR p_order_number !~ '^WI-[A-Za-z0-9-]+$' THEN
     RAISE EXCEPTION 'Invalid walk-in purchase reference';
   END IF;
-  IF p_payment_method NOT IN ('cash', 'qr_code') THEN
+  IF p_payment_method IS NULL OR p_payment_method NOT IN ('cash', 'qr_code') THEN
     RAISE EXCEPTION 'Walk-in payment method must be cash or qr_code';
   END IF;
 
@@ -1014,7 +1014,7 @@ BEGIN
     RAISE EXCEPTION 'Staff access required' USING ERRCODE = '42501';
   END IF;
   IF p_order_id IS NULL THEN RAISE EXCEPTION 'Order id is required'; END IF;
-  IF p_payment_method NOT IN ('cash', 'qr_code') THEN
+  IF p_payment_method IS NULL OR p_payment_method NOT IN ('cash', 'qr_code') THEN
     RAISE EXCEPTION 'Payment method must be cash or qr_code';
   END IF;
 
