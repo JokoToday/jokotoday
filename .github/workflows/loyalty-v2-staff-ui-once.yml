@@ -24,7 +24,9 @@ jobs:
           cache: npm
 
       - name: Patch staff desk pages
-        run: python3 scripts/patch-loyalty-staff-ui.py
+        run: |
+          python3 scripts/fix-loyalty-staff-patch.py
+          python3 scripts/patch-loyalty-staff-ui.py
 
       - name: Install dependencies
         run: npm ci
@@ -53,10 +55,10 @@ jobs:
       - name: Remove one-shot helpers and commit
         shell: bash
         run: |
-          rm -f .github/workflows/loyalty-v2-staff-ui-once.yml scripts/patch-loyalty-staff-ui.py
+          rm -f .github/workflows/loyalty-v2-staff-ui-once.yml scripts/patch-loyalty-staff-ui.py scripts/fix-loyalty-staff-patch.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/pages/WalkInDeskPage.tsx src/pages/PickupDeskPage.tsx .github/workflows/loyalty-v2-staff-ui-once.yml scripts/patch-loyalty-staff-ui.py
+          git add src/pages/WalkInDeskPage.tsx src/pages/PickupDeskPage.tsx .github/workflows/loyalty-v2-staff-ui-once.yml scripts/patch-loyalty-staff-ui.py scripts/fix-loyalty-staff-patch.py
           git diff --cached --check
           if git diff --cached --quiet; then
             echo "No patch changes to commit"
