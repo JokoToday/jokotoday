@@ -63,6 +63,14 @@ BEGIN
     RAISE EXCEPTION 'Payment must be recorded before pickup';
   END IF;
 
+  -- A paid flag alone is not sufficient: stale/direct staff clients may still
+  -- have column-level UPDATE access to payment fields. Require the same valid
+  -- payment methods accepted by the staff UI, including legacy `qr` rows.
+  IF v_order.payment_method IS NULL
+     OR v_order.payment_method NOT IN ('cash', 'qr_code', 'qr') THEN
+    RAISE EXCEPTION 'Valid payment method must be recorded before pickup';
+  END IF;
+
   IF COALESCE(v_order.loyalty_discount_amount, 0) > 0 THEN
     IF v_order.amount_paid IS DISTINCT FROM round(v_order.total_amount - v_order.loyalty_discount_amount, 2) THEN
       RAISE EXCEPTION 'Discounted order payment amount is inconsistent';
