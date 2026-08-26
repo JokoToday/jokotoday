@@ -39,6 +39,8 @@ type HistoryOrder = {
   order_number: string;
   order_items: OrderItem[] | null;
   total_amount: number;
+  loyalty_discount_amount?: number | null;
+  amount_paid?: number | null;
   pickup_date: string | null;
   pickup_location_id: string | null;
   status: string;
@@ -90,7 +92,7 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
       const { data, error: orderError } = await supabase
         .from('orders')
         .select(
-          'id, order_number, order_items, total_amount, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at, staff_id'
+          'id, order_number, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at, staff_id'
         )
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
@@ -232,9 +234,18 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
     return item.product_name || item.product_name_en || item.name || item.product_name_th || item.name_th || '—';
   };
 
-  const orderAmount = (order: HistoryOrder) => (
+  const orderGrossAmount = (order: HistoryOrder) => (
     order.purchase_type === 'walk_in' ? order.walk_in_amount ?? order.total_amount : order.total_amount
   );
+
+  const orderDiscountAmount = (order: HistoryOrder) => Math.max(0, Number(order.loyalty_discount_amount || 0));
+
+  const orderPaidAmount = (order: HistoryOrder) => {
+    if (order.amount_paid !== null && order.amount_paid !== undefined && Number.isFinite(Number(order.amount_paid))) {
+      return Number(order.amount_paid);
+    }
+    return Math.max(0, Number(orderGrossAmount(order) || 0) - orderDiscountAmount(order));
+  };
 
   const recordPayment = async (order: HistoryOrder, method: 'qr_code' | 'cash') => {
     if (order.status === 'cancelled') return;
@@ -399,7 +410,14 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <p className="text-lg font-bold text-slate-800">฿{money(orderAmount(order))}</p>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-slate-800">฿{money(orderPaidAmount(order))}</p>
+                                {orderDiscountAmount(order) > 0 && (
+                                  <p className="text-xs font-medium text-amber-700">
+                                    {language === 'en' ? 'Gross' : 'ก่อนส่วนลด'} ฿{money(orderGrossAmount(order))}
+                                  </p>
+                                )}
+                              </div>
                               {expanded ? <ChevronUp className="w-5 h-5 text-slate-500" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
                             </div>
                           </div>
@@ -521,9 +539,23 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                                   })}
                                 </div>
                               )}
-                              <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                                <span className="text-sm font-semibold text-gray-700">{language === 'en' ? 'Total' : 'รวม'}</span>
-                                <span className="text-base font-bold text-gray-900">฿{money(orderAmount(order))}</span>
+                              <div className="mt-3 space-y-1.5 border-t border-slate-200 pt-3">
+                                {orderDiscountAmount(order) > 0 && (
+                                  <>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-gray-600">{language === 'en' ? 'Gross total' : 'ยอดก่อนส่วนลด'}</span>
+                                      <span className="text-sm font-semibold text-gray-800">฿{money(orderGrossAmount(order))}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-amber-700">
+                                      <span className="text-sm">{language === 'en' ? 'Loyalty reward discount' : 'ส่วนลดรางวัลสะสมแต้ม'}</span>
+                                      <span className="text-sm font-semibold">−฿{money(orderDiscountAmount(order))}</span>
+                                    </div>
+                                  </>
+                                )}
+                                <div className="flex items-center justify-between pt-1">
+                                  <span className="text-sm font-semibold text-gray-700">{language === 'en' ? 'Total paid' : 'ยอดชำระจริง'}</span>
+                                  <span className="text-base font-bold text-gray-900">฿{money(orderPaidAmount(order))}</span>
+                                </div>
                               </div>
                             </div>
 

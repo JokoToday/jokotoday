@@ -984,10 +984,11 @@ REVOKE ALL ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) FROM 
 GRANT EXECUTE ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) TO authenticated;
 
 -- -----------------------------------------------------------------------------
--- Cancellation wrappers: existing cancellation implementations keep their stock,
--- cutoff, inventory, and lock semantics. Their locks remain held until the outer
--- transaction commits, so refunding immediately after the internal cancellation
--- preserves the canonical customer -> order ordering.
+-- Cancellation wrappers: refund an unused reserved monetary reward before the
+-- nested cancellation reverses any grandfathered legacy earning. The wrapper owns
+-- the canonical customer -> order locks first, and the whole function is one
+-- transaction, so any later cutoff/inventory/cancellation failure rolls the refund
+-- back atomically.
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.cancel_online_order(p_order_id uuid)
@@ -997,28 +998,48 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_user_id uuid := auth.uid();
+  v_customer_id uuid;
   v_pickup_date_id uuid;
   v_result jsonb;
 BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000';
+  END IF;
+
   IF p_order_id IS NOT NULL THEN
-    SELECT o.pickup_date_id
-    INTO v_pickup_date_id
+    SELECT o.customer_id, o.pickup_date_id
+    INTO v_customer_id, v_pickup_date_id
     FROM public.orders o
     WHERE o.id = p_order_id;
 
-    IF FOUND AND v_pickup_date_id IS NOT NULL THEN
-      RAISE EXCEPTION
-        'This order uses the v2 pickup inventory system; refresh the application before cancelling'
-        USING ERRCODE = 'P0001';
+    IF FOUND THEN
+      IF v_customer_id IS DISTINCT FROM v_user_id THEN
+        RAISE EXCEPTION 'You may only cancel your own order' USING ERRCODE = '42501';
+      END IF;
+      IF v_pickup_date_id IS NOT NULL THEN
+        RAISE EXCEPTION
+          'This order uses the v2 pickup inventory system; refresh the application before cancelling'
+          USING ERRCODE = 'P0001';
+      END IF;
+
+      IF v_customer_id IS NOT NULL THEN
+        PERFORM 1
+        FROM public.customers c
+        WHERE c.id = v_customer_id
+        FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
+      END IF;
+
+      PERFORM public.refund_reserved_order_loyalty_reward_v2(
+        p_order_id,
+        v_user_id,
+        'Customer cancelled before pickup payment'
+      );
     END IF;
   END IF;
 
   v_result := public.cancel_online_order_legacy_v1(p_order_id);
-  PERFORM public.refund_reserved_order_loyalty_reward_v2(
-    p_order_id,
-    auth.uid(),
-    'Customer cancelled before pickup payment'
-  );
 
   SELECT to_jsonb(o) INTO v_result
   FROM public.orders o
@@ -1045,14 +1066,33 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_customer_id uuid;
   v_result jsonb;
 BEGIN
+  IF p_order_id IS NOT NULL THEN
+    SELECT o.customer_id
+    INTO v_customer_id
+    FROM public.orders o
+    WHERE o.id = p_order_id;
+
+    IF FOUND THEN
+      IF v_customer_id IS NOT NULL THEN
+        PERFORM 1
+        FROM public.customers c
+        WHERE c.id = v_customer_id
+        FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
+      END IF;
+
+      PERFORM public.refund_reserved_order_loyalty_reward_v2(
+        p_order_id,
+        auth.uid(),
+        'Customer cancelled Pickup v2 order before payment'
+      );
+    END IF;
+  END IF;
+
   v_result := public.cancel_online_order_v2_inventory_v1(p_order_id);
-  PERFORM public.refund_reserved_order_loyalty_reward_v2(
-    p_order_id,
-    auth.uid(),
-    'Customer cancelled Pickup v2 order before payment'
-  );
 
   SELECT to_jsonb(o) INTO v_result
   FROM public.orders o
