@@ -255,6 +255,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       if (purchaseError) throw purchaseError;
       if (
         !data
+        || typeof data.order_id !== 'string'
+        || data.order_id.length === 0
         || typeof data.amount !== 'number'
         || typeof data.points_earned !== 'number'
         || typeof data.updated_balance !== 'number'
