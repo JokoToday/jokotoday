@@ -50,17 +50,22 @@ jobs:
       - name: Preflight lock assertions
         shell: bash
         run: |
-          set -euo pipefail
-          file='supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql'
-          test "$(grep -c '^LOCK TABLE public.loyalty_redemptions IN SHARE MODE;$' "$file")" -eq 1
-          lock_line=$(grep -n '^LOCK TABLE public.loyalty_redemptions IN SHARE MODE;$' "$file" | cut -d: -f1)
-          preflight_line=$(awk -v start="$lock_line" 'NR > start && /^DO \$\$$/ { print NR; exit }' "$file")
-          index_line=$(grep -n '^CREATE UNIQUE INDEX IF NOT EXISTS loyalty_redemptions_one_active_monetary_per_order_uq$' "$file" | cut -d: -f1)
-          test -n "$lock_line"
-          test -n "$preflight_line"
-          test -n "$index_line"
-          test "$lock_line" -lt "$preflight_line"
-          test "$preflight_line" -lt "$index_line"
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql';
+          const text = fs.readFileSync(file, 'utf8');
+          const lock = 'LOCK TABLE public.loyalty_redemptions IN SHARE MODE;';
+          const diagnostic = "DO $$\nDECLARE\n  v_duplicate_order_count integer;";
+          const index = 'CREATE UNIQUE INDEX IF NOT EXISTS loyalty_redemptions_one_active_monetary_per_order_uq';
+          const lockCount = text.split(lock).length - 1;
+          const lockAt = text.indexOf(lock);
+          const diagnosticAt = text.indexOf(diagnostic, lockAt + lock.length);
+          const indexAt = text.indexOf(index, diagnosticAt + diagnostic.length);
+          if (lockCount !== 1 || lockAt < 0 || diagnosticAt <= lockAt || indexAt <= diagnosticAt) {
+            throw new Error(`Invalid preflight lock ordering: count=${lockCount} lock=${lockAt} diagnostic=${diagnosticAt} index=${indexAt}`);
+          }
+          console.log(`Validated preflight lock ordering: lock=${lockAt}, diagnostic=${diagnosticAt}, index=${indexAt}`);
+          NODE
 
       - name: Remove one-shot helpers and commit
         shell: bash
