@@ -54,8 +54,11 @@ jobs:
           file='supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql'
           test "$(grep -c '^LOCK TABLE public.loyalty_redemptions IN SHARE MODE;$' "$file")" -eq 1
           lock_line=$(grep -n '^LOCK TABLE public.loyalty_redemptions IN SHARE MODE;$' "$file" | cut -d: -f1)
-          preflight_line=$(grep -n '^DO \$\$$' "$file" | head -1 | cut -d: -f1)
+          preflight_line=$(awk '/^DO \$\$$/ { print NR; exit }' "$file")
           index_line=$(grep -n '^CREATE UNIQUE INDEX IF NOT EXISTS loyalty_redemptions_one_active_monetary_per_order_uq$' "$file" | cut -d: -f1)
+          test -n "$lock_line"
+          test -n "$preflight_line"
+          test -n "$index_line"
           test "$lock_line" -lt "$preflight_line"
           test "$preflight_line" -lt "$index_line"
 
