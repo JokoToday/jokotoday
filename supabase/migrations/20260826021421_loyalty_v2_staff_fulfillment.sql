@@ -48,7 +48,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS orders_staff_request_key_uq
 -- not let CREATE UNIQUE INDEX fail with an opaque constraint error and do not
 -- silently choose which reward to keep. Abort with an actionable diagnostic so
 -- production reconciliation can be reviewed explicitly before retrying.
-DO $$
+-- Supabase applies each migration file transactionally. Take the same SHARE lock
+-- required by CREATE INDEX before inspecting the predicate so concurrent foundation
+-- redemption writes cannot slip in between the diagnostic preflight and index build.
+-- The lock is retained through the following CREATE UNIQUE INDEX until commit.
+LOCK TABLE public.loyalty_redemptions IN SHARE MODE;
+
+DO $
 DECLARE
   v_duplicate_order_count integer;
   v_duplicate_order_ids text;
