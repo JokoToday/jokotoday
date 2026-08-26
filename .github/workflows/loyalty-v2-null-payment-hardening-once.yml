@@ -1,0 +1,81 @@
+name: Loyalty v2 nullable payment hardening one-shot
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-staff-fulfillment-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/loyalty-v2-staff-fulfillment-20260826
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Harden nullable payment status invariant
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}')
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              Path('supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql'),
+              "CHECK (payment_status <> 'unpaid' OR amount_paid IS NULL);",
+              "CHECK (COALESCE(payment_status, 'unpaid') <> 'unpaid' OR amount_paid IS NULL);",
+          )
+          replace_once(
+              Path('supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql'),
+              "OR (o.payment_status = 'unpaid' AND o.amount_paid IS NOT NULL);",
+              "OR (COALESCE(o.payment_status, 'unpaid') = 'unpaid' AND o.amount_paid IS NOT NULL);",
+          )
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Invariant assertion
+        run: grep -q "COALESCE(payment_status, 'unpaid') <> 'unpaid'" supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql
+
+      - name: Remove one-shot helper and commit
+        shell: bash
+        run: |
+          rm -f .github/workflows/loyalty-v2-null-payment-hardening-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql .github/workflows/loyalty-v2-null-payment-hardening-once.yml
+          git diff --cached --check
+          git commit -m "fix: treat null payment status as unpaid"
+          git push origin HEAD:feat/loyalty-v2-staff-fulfillment-20260826
