@@ -54,7 +54,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS orders_staff_request_key_uq
 -- The lock is retained through the following CREATE UNIQUE INDEX until commit.
 LOCK TABLE public.loyalty_redemptions IN SHARE MODE;
 
-DO $
+DO $$
 DECLARE
   v_duplicate_order_count integer;
   v_duplicate_order_ids text;
