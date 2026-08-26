@@ -557,7 +557,11 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                                   </>
                                 )}
                                 <div className="flex items-center justify-between pt-1">
-                                  <span className="text-sm font-semibold text-gray-700">{language === 'en' ? 'Total paid' : 'ยอดชำระจริง'}</span>
+                                  <span className="text-sm font-semibold text-gray-700">
+                                    {order.payment_status === 'paid'
+                                      ? (language === 'en' ? 'Total paid' : 'ยอดชำระจริง')
+                                      : (language === 'en' ? 'Amount due' : 'ยอดที่ต้องชำระ')}
+                                  </span>
                                   <span className="text-base font-bold text-gray-900">฿{money(orderPaidAmount(order))}</span>
                                 </div>
                               </div>
