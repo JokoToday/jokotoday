@@ -55,7 +55,7 @@ jobs:
           const file = 'supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql';
           const text = fs.readFileSync(file, 'utf8');
           const lock = 'LOCK TABLE public.loyalty_redemptions IN SHARE MODE;';
-          const diagnostic = "DO $$\nDECLARE\n  v_duplicate_order_count integer;";
+          const diagnostic = 'Cannot enforce one active monetary reward per order:';
           const index = 'CREATE UNIQUE INDEX IF NOT EXISTS loyalty_redemptions_one_active_monetary_per_order_uq';
           const lockCount = text.split(lock).length - 1;
           const lockAt = text.indexOf(lock);
