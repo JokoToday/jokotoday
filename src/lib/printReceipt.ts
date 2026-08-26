@@ -151,8 +151,11 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
     ? order.walk_in_amount ?? order.total_amount
     : order.total_amount) || 0;
   const discount = Math.max(0, Number(order.loyalty_discount_amount) || 0);
+  const hasStoredAmountPaid = order.amount_paid !== null
+    && order.amount_paid !== undefined
+    && order.amount_paid !== '';
   const paidValue = Number(order.amount_paid);
-  const netTotal = Number.isFinite(paidValue)
+  const netTotal = hasStoredAmountPaid && Number.isFinite(paidValue)
     ? paidValue
     : Math.max(0, grossTotal - discount);
 
