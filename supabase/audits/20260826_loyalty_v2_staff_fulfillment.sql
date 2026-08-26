@@ -11,7 +11,7 @@ FROM public.orders o
 WHERE COALESCE(o.loyalty_discount_amount, 0) < 0
    OR COALESCE(o.loyalty_discount_amount, 0) > o.total_amount
    OR (o.amount_paid IS NOT NULL AND (o.amount_paid < 0 OR o.amount_paid > o.total_amount))
-   OR (o.payment_status = 'unpaid' AND o.amount_paid IS NOT NULL);
+   OR (COALESCE(o.payment_status, 'unpaid') = 'unpaid' AND o.amount_paid IS NOT NULL);
 
 -- Any paid discounted order created after this rollout must record exact net paid.
 SELECT 'paid_discount_amount_mismatch' AS check_name, count(*)::bigint AS issue_count

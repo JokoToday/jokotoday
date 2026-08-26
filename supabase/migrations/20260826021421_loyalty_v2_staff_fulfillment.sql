@@ -34,7 +34,7 @@ ALTER TABLE public.orders
   ADD CONSTRAINT orders_amount_paid_not_above_gross
     CHECK (amount_paid IS NULL OR amount_paid <= total_amount),
   ADD CONSTRAINT orders_unpaid_has_no_amount_paid
-    CHECK (payment_status <> 'unpaid' OR amount_paid IS NULL);
+    CHECK (COALESCE(payment_status, 'unpaid') <> 'unpaid' OR amount_paid IS NULL);
 
 CREATE UNIQUE INDEX IF NOT EXISTS orders_staff_request_key_uq
   ON public.orders (staff_request_key)
