@@ -1,0 +1,94 @@
+name: Loyalty v2 final P1 one-shot
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-staff-fulfillment-20260826
+    paths:
+      - tools/patch-loyalty-v2-final-p1.cjs
+      - .github/workflows/loyalty-v2-final-p1-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: feat/loyalty-v2-staff-fulfillment-20260826
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Apply final P1 fixes
+        run: node tools/patch-loyalty-v2-final-p1.cjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Targeted P1 assertions
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const sql = fs.readFileSync('supabase/migrations/20260826021421_loyalty_v2_staff_fulfillment.sql', 'utf8');
+          const lockAndBlock = 'LOCK TABLE public.loyalty_redemptions IN SHARE MODE;\n\nDO $$\nDECLARE';
+          if (!sql.includes(lockAndBlock)) throw new Error('Valid DO $$ opener is not immediately after the preflight lock');
+          if (sql.includes('\nDO $\nDECLARE')) throw new Error('Malformed DO $ opener still exists');
+
+          const walkIn = fs.readFileSync('src/pages/WalkInDeskPage.tsx', 'utf8');
+          const forbidden = [
+            `setPaymentMethod('qr_code');\n                              setError(null);\n                              purchaseReferenceRef.current = null;`,
+            `setPaymentMethod('cash');\n                              setError(null);\n                              purchaseReferenceRef.current = null;`,
+            `setSelectedRewardId(rewardId);\n                          setError(null);\n                          purchaseReferenceRef.current = null;`,
+          ];
+          for (const snippet of forbidden) {
+            if (walkIn.includes(snippet)) throw new Error(`Retry identifier clearing remains in selection handler: ${snippet}`);
+          }
+
+          const generatedRefs = [
+            'const orderNumber = purchaseReferenceRef.current ?? `WI-${crypto.randomUUID()}`;',
+            'const requestKey = purchaseRequestKeyRef.current ?? crypto.randomUUID();',
+            'purchaseReferenceRef.current = orderNumber;',
+            'purchaseRequestKeyRef.current = requestKey;',
+          ];
+          for (const snippet of generatedRefs) {
+            if (!walkIn.includes(snippet)) throw new Error(`Expected retry identifier logic missing: ${snippet}`);
+          }
+
+          console.log('Validated SQL delimiter and Walk-In retry identifier preservation.');
+          NODE
+
+      - name: Remove one-shot helpers and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm tools/patch-loyalty-v2-final-p1.cjs
+          rm .github/workflows/loyalty-v2-final-p1-once.yml
+          git config user.name 'JOKO TODAY'
+          git config user.email 'jokotoday@gmail.com'
+          git add -A
+          git commit -m 'fix: close final loyalty staff-fulfillment P1s'
+          git push origin HEAD:feat/loyalty-v2-staff-fulfillment-20260826
