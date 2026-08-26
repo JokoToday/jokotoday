@@ -683,8 +683,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             onClick={() => {
                               setPaymentMethod('qr_code');
                               setError(null);
-                              purchaseReferenceRef.current = null;
-                              purchaseRequestKeyRef.current = null;
                             }}
                             className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 font-semibold transition-colors ${paymentMethod === 'qr_code'
                               ? 'border-green-700 bg-green-700 text-white'
@@ -698,8 +696,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             onClick={() => {
                               setPaymentMethod('cash');
                               setError(null);
-                              purchaseReferenceRef.current = null;
-                              purchaseRequestKeyRef.current = null;
                             }}
                             className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 font-semibold transition-colors ${paymentMethod === 'cash'
                               ? 'border-green-700 bg-green-700 text-white'
@@ -719,8 +715,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         onChange={(rewardId) => {
                           setSelectedRewardId(rewardId);
                           setError(null);
-                          purchaseReferenceRef.current = null;
-                          purchaseRequestKeyRef.current = null;
                         }}
                       />
 
