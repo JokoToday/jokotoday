@@ -403,16 +403,33 @@ BEGIN
     FROM public.loyalty_settings ls
     WHERE ls.purchase_type = 'online';
     v_rate := COALESCE(v_rate, 0);
-    v_points_earned := round(v_net_due * v_rate);
 
-    UPDATE public.orders
-    SET
-      loyalty_discount_amount = v_discount_amount,
-      loyalty_multiplier = v_rate,
-      loyalty_points_earned = v_points_earned,
-      updated_at = now()
-    WHERE id = p_order_id
-    RETURNING * INTO v_order;
+    -- Orders that already have an award marker were credited under the legacy
+    -- insert-time model before the v2 cutover. Grandfather that issued award so
+    -- the cached balance, opening ledger, and later cancellation reversal stay
+    -- mathematically consistent. Only unawarded/post-cutover orders are repriced
+    -- to the actual net amount due after the monetary reward.
+    IF v_order.loyalty_points_awarded_at IS NULL THEN
+      v_points_earned := round(v_net_due * v_rate);
+
+      UPDATE public.orders
+      SET
+        loyalty_discount_amount = v_discount_amount,
+        loyalty_multiplier = v_rate,
+        loyalty_points_earned = v_points_earned,
+        updated_at = now()
+      WHERE id = p_order_id
+      RETURNING * INTO v_order;
+    ELSE
+      v_points_earned := COALESCE(v_order.loyalty_points_earned, 0);
+
+      UPDATE public.orders
+      SET
+        loyalty_discount_amount = v_discount_amount,
+        updated_at = now()
+      WHERE id = p_order_id
+      RETURNING * INTO v_order;
+    END IF;
 
     v_status := 'reserved';
   ELSE
@@ -438,6 +455,8 @@ BEGIN
     'context_amount', v_context_amount,
     'discount_amount', v_discount_amount,
     'net_due', v_net_due,
+    'loyalty_earning_grandfathered', (v_order.loyalty_points_awarded_at IS NOT NULL),
+    'loyalty_points_earned_after_reward', v_points_earned,
     'channel', 'pickup',
     'request_key', p_request_key,
     'fulfillment', CASE WHEN v_status = 'reserved' THEN 'payment_pending' ELSE 'staff_manual' END
@@ -466,6 +485,8 @@ BEGIN
       'channel', 'pickup',
       'discount_amount', v_discount_amount,
       'net_due', v_net_due,
+      'loyalty_earning_grandfathered', (v_order.loyalty_points_awarded_at IS NOT NULL),
+      'loyalty_points_earned_after_reward', v_points_earned,
       'request_key', p_request_key,
       'redemption_status', v_status
     )

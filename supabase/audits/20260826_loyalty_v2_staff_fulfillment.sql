@@ -45,6 +45,28 @@ WHERE (r.reward_snapshot ->> 'reward_type') IN ('fixed_discount', 'percentage_di
     OR COALESCE(NULLIF(r.reward_snapshot ->> 'discount_amount', '')::numeric, 0) > o.total_amount
   );
 
+-- Unawarded/post-cutover discounted orders must use the actual net amount for
+-- their prospective earning snapshot. Legacy-awarded rows are intentionally
+-- grandfathered and are checked separately below.
+SELECT 'unawarded_discount_points_mismatch' AS check_name, count(*)::bigint AS issue_count
+FROM public.orders o
+WHERE COALESCE(o.loyalty_discount_amount, 0) > 0
+  AND o.loyalty_points_awarded_at IS NULL
+  AND COALESCE(o.loyalty_points_earned, 0) IS DISTINCT FROM round(
+    round(o.total_amount - o.loyalty_discount_amount, 2) * COALESCE(o.loyalty_multiplier, 0)
+  );
+
+-- Any discounted order that was already credited under the legacy model must
+-- preserve that issued award explicitly in its immutable reward snapshot.
+SELECT 'legacy_awarded_discount_missing_grandfather_marker' AS check_name, count(*)::bigint AS issue_count
+FROM public.orders o
+JOIN public.loyalty_redemptions r ON r.order_id = o.id
+WHERE o.loyalty_points_awarded_at IS NOT NULL
+  AND COALESCE(o.loyalty_discount_amount, 0) > 0
+  AND r.status <> 'reversed'
+  AND (r.reward_snapshot ->> 'reward_type') IN ('fixed_discount', 'percentage_discount')
+  AND COALESCE((r.reward_snapshot ->> 'loyalty_earning_grandfathered')::boolean, false) IS NOT TRUE;
+
 -- A reserved pickup discount is unconsumed and therefore must still be unpaid.
 SELECT 'reserved_reward_on_consumed_order' AS check_name, count(*)::bigint AS issue_count
 FROM public.loyalty_redemptions r
