@@ -253,13 +253,17 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
     try {
       setUpdatingPaymentId(order.id);
       setPaymentErrorId(null);
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ payment_method: method, payment_status: 'paid' })
-        .eq('id', order.id);
+      const { data, error: updateError } = await supabase.rpc('staff_repair_completed_order_payment_method_v2', {
+        p_order_id: order.id,
+        p_payment_method: method,
+      });
       if (updateError) throw updateError;
+      if (!data || typeof data.id !== 'string' || !['cash', 'qr_code', 'qr'].includes(data.payment_method)) {
+        throw new Error('Payment method repair returned an invalid response.');
+      }
+      const returnedOrder = data as HistoryOrder;
       setOrders((current) => current.map((item) => (
-        item.id === order.id ? { ...item, payment_method: method, payment_status: 'paid' } : item
+        item.id === order.id ? returnedOrder : item
       )));
     } catch (err) {
       console.error('Error recording history payment:', err);

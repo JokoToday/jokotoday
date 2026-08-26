@@ -13,6 +13,14 @@ WHERE COALESCE(o.loyalty_discount_amount, 0) < 0
    OR (o.amount_paid IS NOT NULL AND (o.amount_paid < 0 OR o.amount_paid > o.total_amount))
    OR (COALESCE(o.payment_status, 'unpaid') = 'unpaid' AND o.amount_paid IS NOT NULL);
 
+-- Completed paid Walk-In sales created by the v2 flow must persist how
+-- payment was actually received in the same atomic transaction.
+SELECT 'paid_walk_in_missing_payment_method' AS check_name, count(*)::bigint AS issue_count
+FROM public.orders o
+WHERE o.purchase_type = 'walk_in'
+  AND o.payment_status = 'paid'
+  AND o.payment_method NOT IN ('cash', 'qr_code', 'qr');
+
 -- Any paid discounted order created after this rollout must record exact net paid.
 SELECT 'paid_discount_amount_mismatch' AS check_name, count(*)::bigint AS issue_count
 FROM public.orders o

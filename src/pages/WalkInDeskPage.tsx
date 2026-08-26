@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Award,
+  Banknote,
   Check,
   DollarSign,
   Home,
@@ -13,6 +14,7 @@ import {
   MessageCircle,
   Package,
   Phone,
+  QrCode,
   ShoppingCart,
   Upload,
   User,
@@ -57,6 +59,7 @@ interface PurchaseResult {
   reward_name_en: string | null;
   reward_name_th: string | null;
   manual_fulfillment_required: boolean;
+  payment_method: 'cash' | 'qr_code';
   idempotent_replay: boolean;
 }
 
@@ -69,6 +72,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [manualCode, setManualCode] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr_code' | ''>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -90,6 +94,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const clearCustomerState = () => {
     setCustomer(null);
     setAmount('');
+    setPaymentMethod('');
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -142,6 +147,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setError(null);
       setCustomer(null);
       setAmount('');
+      setPaymentMethod('');
       setPurchaseResult(null);
       setSelectedRewardId('');
       purchaseReferenceRef.current = null;
@@ -246,7 +252,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const handleSaveWalkIn = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!customer || !amount || savingRef.current) return;
+    if (!customer || !amount || !paymentMethod || savingRef.current) return;
 
     try {
       savingRef.current = true;
@@ -269,6 +275,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         p_order_number: orderNumber,
         p_reward_id: selectedRewardId || null,
         p_request_key: requestKey,
+        p_payment_method: paymentMethod,
       });
 
       if (purchaseError) throw purchaseError;
@@ -282,6 +289,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         || typeof data.points_redeemed !== 'number'
         || typeof data.points_earned !== 'number'
         || typeof data.updated_balance !== 'number'
+        || !['cash', 'qr_code'].includes(data.payment_method)
       ) {
         throw new Error('Purchase was saved but the confirmation response was invalid.');
       }
@@ -300,6 +308,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const handleAnotherPurchase = () => {
     setAmount('');
+    setPaymentMethod('');
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
@@ -664,6 +673,44 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         )}
                       </div>
 
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          {language === 'en' ? 'Payment received by' : 'รับชำระเงินด้วย'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethod('qr_code');
+                              setError(null);
+                              purchaseReferenceRef.current = null;
+                              purchaseRequestKeyRef.current = null;
+                            }}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 font-semibold transition-colors ${paymentMethod === 'qr_code'
+                              ? 'border-green-700 bg-green-700 text-white'
+                              : 'border-green-200 bg-white text-green-800 hover:border-green-500'}`}
+                          >
+                            <QrCode className="w-4 h-4" />
+                            {language === 'en' ? 'QR received' : 'รับชำระ QR'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethod('cash');
+                              setError(null);
+                              purchaseReferenceRef.current = null;
+                              purchaseRequestKeyRef.current = null;
+                            }}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 font-semibold transition-colors ${paymentMethod === 'cash'
+                              ? 'border-green-700 bg-green-700 text-white'
+                              : 'border-green-200 bg-white text-green-800 hover:border-green-500'}`}
+                          >
+                            <Banknote className="w-4 h-4" />
+                            {language === 'en' ? 'Cash received' : 'รับเงินสด'}
+                          </button>
+                        </div>
+                      </div>
+
                       <LoyaltyRewardSelector
                         currentBalance={currentBalance}
                         language={staffLanguage}
@@ -694,7 +741,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
                       <button
                         type="submit"
-                        disabled={saving || !amount}
+                        disabled={saving || !amount || !paymentMethod}
                         className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                       >
                         {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}

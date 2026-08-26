@@ -628,7 +628,8 @@ CREATE OR REPLACE FUNCTION public.record_walk_in_purchase_v2(
   p_amount numeric,
   p_order_number text,
   p_reward_id uuid,
-  p_request_key uuid
+  p_request_key uuid,
+  p_payment_method text
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -667,6 +668,9 @@ BEGIN
   IF p_order_number IS NULL OR p_order_number !~ '^WI-[A-Za-z0-9-]+$' THEN
     RAISE EXCEPTION 'Invalid walk-in purchase reference';
   END IF;
+  IF p_payment_method NOT IN ('cash', 'qr_code') THEN
+    RAISE EXCEPTION 'Walk-in payment method must be cash or qr_code';
+  END IF;
 
   v_gross := round(p_amount, 2);
 
@@ -681,7 +685,8 @@ BEGIN
     IF v_existing_order.customer_id IS DISTINCT FROM p_customer_id
        OR v_existing_order.purchase_type IS DISTINCT FROM 'walk_in'
        OR round(v_existing_order.total_amount, 2) IS DISTINCT FROM v_gross
-       OR v_existing_order.order_number IS DISTINCT FROM p_order_number THEN
+       OR v_existing_order.order_number IS DISTINCT FROM p_order_number
+       OR v_existing_order.payment_method IS DISTINCT FROM p_payment_method THEN
       RAISE EXCEPTION 'Walk-in purchase request conflicts with an existing sale';
     END IF;
 
@@ -705,6 +710,7 @@ BEGIN
       'gross_amount', v_existing_order.total_amount,
       'discount_amount', COALESCE(v_existing_order.loyalty_discount_amount, 0),
       'amount_paid', COALESCE(v_existing_order.amount_paid, v_existing_order.total_amount),
+      'payment_method', v_existing_order.payment_method,
       'points_redeemed', COALESCE(v_existing_redemption.points_spent, 0),
       'points_earned', COALESCE(v_existing_order.loyalty_points_earned, 0),
       'updated_balance', v_balance,
@@ -734,7 +740,8 @@ BEGIN
     IF v_existing_order.customer_id IS DISTINCT FROM p_customer_id
        OR v_existing_order.purchase_type IS DISTINCT FROM 'walk_in'
        OR round(v_existing_order.total_amount, 2) IS DISTINCT FROM v_gross
-       OR v_existing_order.order_number IS DISTINCT FROM p_order_number THEN
+       OR v_existing_order.order_number IS DISTINCT FROM p_order_number
+       OR v_existing_order.payment_method IS DISTINCT FROM p_payment_method THEN
       RAISE EXCEPTION 'Walk-in purchase request conflicts with an existing sale';
     END IF;
     SELECT * INTO v_existing_redemption
@@ -752,6 +759,7 @@ BEGIN
       'gross_amount', v_existing_order.total_amount,
       'discount_amount', COALESCE(v_existing_order.loyalty_discount_amount, 0),
       'amount_paid', COALESCE(v_existing_order.amount_paid, v_existing_order.total_amount),
+      'payment_method', v_existing_order.payment_method,
       'points_redeemed', COALESCE(v_existing_redemption.points_spent, 0),
       'points_earned', COALESCE(v_existing_order.loyalty_points_earned, 0),
       'updated_balance', COALESCE(v_customer.loyalty_points, 0),
@@ -839,7 +847,7 @@ BEGIN
     customer_id, purchase_type, walk_in_amount, staff_id,
     order_number, order_items, total_amount,
     loyalty_discount_amount, amount_paid, staff_request_key,
-    status, payment_status,
+    status, payment_status, payment_method,
     customer_name, customer_phone, customer_email,
     loyalty_multiplier, loyalty_points_earned,
     created_at, updated_at
@@ -847,7 +855,7 @@ BEGIN
     v_customer.id, 'walk_in', v_gross, v_actor_id,
     p_order_number, '[]'::jsonb, v_gross,
     v_discount, v_net_paid, p_request_key,
-    'completed', 'paid',
+    'completed', 'paid', p_payment_method,
     v_customer.name, v_customer.phone, v_customer.email,
     v_rate, v_points_earned,
     now(), now()
@@ -939,6 +947,7 @@ BEGIN
     'gross_amount', v_gross,
     'discount_amount', v_discount,
     'amount_paid', v_net_paid,
+    'payment_method', p_payment_method,
     'points_redeemed', v_points_redeemed,
     'points_earned', v_points_earned,
     'updated_balance', v_balance,
@@ -952,13 +961,14 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_walk_in_purchase_v2(uuid, numeric, text, uuid, uuid)
+REVOKE ALL ON FUNCTION public.record_walk_in_purchase_v2(uuid, numeric, text, uuid, uuid, text)
 FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.record_walk_in_purchase_v2(uuid, numeric, text, uuid, uuid)
+GRANT EXECUTE ON FUNCTION public.record_walk_in_purchase_v2(uuid, numeric, text, uuid, uuid, text)
 TO authenticated;
 
--- Backward-compatible staff path: old clients create the same atomic v2 sale
--- without selecting a reward. Idempotency still uses the existing WI reference.
+-- Old Walk-In clients cannot provide the now-required payment method. Fail
+-- closed with a refresh instruction instead of creating a paid-but-incomplete
+-- sale during the staff deployment transition.
 CREATE OR REPLACE FUNCTION public.record_walk_in_purchase(
   p_customer_id uuid,
   p_amount numeric,
@@ -970,18 +980,94 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RETURN public.record_walk_in_purchase_v2(
-    p_customer_id,
-    p_amount,
-    p_order_number,
-    NULL,
-    gen_random_uuid()
-  );
+  IF auth.uid() IS NULL OR NOT public.is_staff_or_admin() THEN
+    RAISE EXCEPTION 'Staff access required' USING ERRCODE = '42501';
+  END IF;
+  RAISE EXCEPTION
+    'Walk-In payment capture has been upgraded; refresh the staff application before recording a sale'
+    USING ERRCODE = 'P0001';
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_walk_in_purchase(uuid, numeric, text) TO authenticated;
+
+-- Repair only the payment METHOD for an already-paid completed/picked-up order.
+-- This is a staff recovery path for historical incomplete rows; it never changes
+-- the commercial amount, discount, payment status, loyalty balance, or ledger.
+CREATE OR REPLACE FUNCTION public.staff_repair_completed_order_payment_method_v2(
+  p_order_id uuid,
+  p_payment_method text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_actor_id uuid := auth.uid();
+  v_customer_id uuid;
+  v_order public.orders%ROWTYPE;
+  v_expected_paid numeric(10, 2);
+BEGIN
+  IF v_actor_id IS NULL OR NOT public.is_staff_or_admin() THEN
+    RAISE EXCEPTION 'Staff access required' USING ERRCODE = '42501';
+  END IF;
+  IF p_order_id IS NULL THEN RAISE EXCEPTION 'Order id is required'; END IF;
+  IF p_payment_method NOT IN ('cash', 'qr_code') THEN
+    RAISE EXCEPTION 'Payment method must be cash or qr_code';
+  END IF;
+
+  SELECT o.customer_id INTO v_customer_id
+  FROM public.orders o
+  WHERE o.id = p_order_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;
+
+  IF v_customer_id IS NOT NULL THEN
+    PERFORM 1 FROM public.customers c WHERE c.id = v_customer_id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Customer record not found'; END IF;
+  END IF;
+
+  SELECT * INTO v_order
+  FROM public.orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Order not found'; END IF;
+  IF v_order.customer_id IS DISTINCT FROM v_customer_id THEN
+    RAISE EXCEPTION 'Order customer changed while repairing payment method; retry';
+  END IF;
+  IF v_order.status NOT IN ('picked_up', 'completed')
+     OR v_order.payment_status IS DISTINCT FROM 'paid' THEN
+    RAISE EXCEPTION 'Only completed paid orders can use payment-method repair';
+  END IF;
+
+  v_expected_paid := round(v_order.total_amount - COALESCE(v_order.loyalty_discount_amount, 0), 2);
+  IF v_order.amount_paid IS NOT NULL AND v_order.amount_paid IS DISTINCT FROM v_expected_paid THEN
+    RAISE EXCEPTION 'Stored amount paid does not match the order net total';
+  END IF;
+
+  IF v_order.payment_method IN ('cash', 'qr_code', 'qr') THEN
+    IF (v_order.payment_method = 'qr' AND p_payment_method = 'qr_code')
+       OR v_order.payment_method = p_payment_method THEN
+      RETURN to_jsonb(v_order) || jsonb_build_object('idempotent_replay', true);
+    END IF;
+    RAISE EXCEPTION 'A valid payment method is already recorded and cannot be changed';
+  END IF;
+
+  UPDATE public.orders
+  SET payment_method = p_payment_method,
+      updated_at = now()
+  WHERE id = p_order_id
+  RETURNING * INTO v_order;
+
+  RETURN to_jsonb(v_order) || jsonb_build_object('idempotent_replay', false);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.staff_repair_completed_order_payment_method_v2(uuid, text)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.staff_repair_completed_order_payment_method_v2(uuid, text)
+TO authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Cancellation wrappers: refund an unused reserved monetary reward before the
