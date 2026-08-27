@@ -14,39 +14,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout current Loyalty branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: feat/loyalty-v2-foundation-20260825
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: project/package-lock.json
 
       - name: Apply scoped consistency patch
         run: node tools/patch-loyalty-final-consistency.cjs
 
       - name: Install locked dependencies
-        working-directory: project
         run: npm ci
 
       - name: Dependency audit
-        working-directory: project
         run: npm audit --audit-level=high
 
       - name: Typecheck
-        working-directory: project
         run: npm run typecheck
 
       - name: Lint
-        working-directory: project
         run: npm run lint
 
       - name: Production build
-        working-directory: project
         run: npm run build
 
       - name: Diff check
