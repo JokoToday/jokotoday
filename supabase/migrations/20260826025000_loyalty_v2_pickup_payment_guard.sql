@@ -143,3 +143,43 @@ $$;
 
 REVOKE ALL ON FUNCTION public.confirm_order_pickup(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.confirm_order_pickup(uuid) TO authenticated;
+
+-- Monetary rewards must provide actual commercial value after currency rounding.
+-- This invariant sits on the redemption table so it protects both Pickup and
+-- Walk-In execution paths. Both staff RPCs insert the redemption before mutating
+-- the points ledger, and PostgreSQL transactions roll back their earlier order
+-- changes if this trigger rejects the insert.
+CREATE OR REPLACE FUNCTION public.reject_zero_value_monetary_loyalty_redemption_v2()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  v_reward_type text := NEW.reward_snapshot ->> 'reward_type';
+  v_discount_amount numeric;
+BEGIN
+  IF v_reward_type IN ('fixed_discount', 'percentage_discount') THEN
+    v_discount_amount := COALESCE(
+      NULLIF(NEW.reward_snapshot ->> 'discount_amount', '')::numeric,
+      0
+    );
+
+    IF v_discount_amount <= 0 THEN
+      RAISE EXCEPTION 'Monetary loyalty reward must produce a positive discount';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.reject_zero_value_monetary_loyalty_redemption_v2()
+FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS reject_zero_value_monetary_loyalty_redemption_v2
+ON public.loyalty_redemptions;
+
+CREATE TRIGGER reject_zero_value_monetary_loyalty_redemption_v2
+BEFORE INSERT ON public.loyalty_redemptions
+FOR EACH ROW
+EXECUTE FUNCTION public.reject_zero_value_monetary_loyalty_redemption_v2();
