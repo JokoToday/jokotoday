@@ -1,0 +1,25 @@
+const fs = require('fs');
+
+function replaceOnce(path, before, after) {
+  const source = fs.readFileSync(path, 'utf8');
+  const count = source.split(before).length - 1;
+  if (count !== 1) throw new Error(`${path}: expected exactly one match, found ${count}`);
+  fs.writeFileSync(path, source.replace(before, after));
+}
+
+const foundation = 'supabase/migrations/20260825172000_loyalty_v2_foundation.sql';
+replaceOnce(
+  foundation,
+  `REVOKE ALL ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text) FROM PUBLIC, anon;\nGRANT EXECUTE ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text) TO authenticated;`,
+  `-- Keep point-adjustment mutation dark until the atomic opening-balance cutover\n-- in 20260825172500 has committed. 20260825172600 re-enables authenticated\n-- execution; the RPC still performs DB-derived Admin authorization internally.\nREVOKE ALL ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text)\nFROM PUBLIC, anon, authenticated;`
+);
+
+const audit = 'supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql';
+const source = fs.readFileSync(audit, 'utf8');
+const marker = `-- A zero-delta reverse_earn is permitted only for a grandfathered legacy award`;
+const idx = source.indexOf(marker);
+if (idx < 0) throw new Error(`${audit}: marker not found`);
+const prefix = source.slice(0, idx);
+const tail = `-- A zero-delta reverse_earn is permitted only for a grandfathered legacy award\n-- whose entire issued award had already been spent before cancellation. The\n-- immutable metadata must make that unrecoverable shortfall explicit.\nSELECT 'invalid_legacy_reversal_shortfall_event' AS check_name, count(*)::bigint AS issue_count\nFROM public.loyalty_point_events e\nWHERE e.event_type = 'reverse_earn'\n  AND e.points_delta = 0\n  AND NOT (\n    e.metadata ->> 'legacy_grandfathered' = 'true'\n    AND e.metadata ->> 'applied_reversal_points' = '0'\n    AND COALESCE(e.metadata ->> 'legacy_spent_shortfall', '') ~ '^[1-9][0-9]*$'\n  );\n\n-- Cached balance must match the latest ledger balance when a customer has events.\nWITH latest AS (\n  SELECT DISTINCT ON (e.customer_id)\n    e.customer_id,\n    e.balance_after\n  FROM public.loyalty_point_events e\n  ORDER BY e.customer_id, e.event_sequence DESC\n)\nSELECT 'cached_balance_mismatch' AS check_name, count(*)::bigint AS issue_count\nFROM latest l\nJOIN public.customers c ON c.id = l.customer_id\nWHERE COALESCE(c.loyalty_points, 0) IS DISTINCT FROM l.balance_after;\n\n-- Unique-event semantics should make all of these impossible.\nSELECT 'duplicate_order_point_events' AS check_name, count(*)::bigint AS issue_count\nFROM (\n  SELECT e.order_id, e.event_type\n  FROM public.loyalty_point_events e\n  WHERE e.order_id IS NOT NULL AND e.event_type IN ('earn', 'reverse_earn')\n  GROUP BY e.order_id, e.event_type\n  HAVING COUNT(*) > 1\n) duplicates;\n\nSELECT 'duplicate_redemption_point_events' AS check_name, count(*)::bigint AS issue_count\nFROM (\n  SELECT e.redemption_id, e.event_type\n  FROM public.loyalty_point_events e\n  WHERE e.redemption_id IS NOT NULL AND e.event_type IN ('redeem', 'refund_redemption')\n  GROUP BY e.redemption_id, e.event_type\n  HAVING COUNT(*) > 1\n) duplicates;\n\n-- Permission gates. Expected: staff RPCs true for authenticated; customer reward\n-- self-service absent; Pickup v2 create/cancel remain false for authenticated.\nSELECT\n  has_function_privilege('authenticated', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS authenticated_staff_redeem_execute_expected_true,\n  has_function_privilege('authenticated', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS authenticated_staff_payment_execute_expected_true,\n  has_function_privilege('authenticated', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS authenticated_walkin_v2_execute_expected_true,\n  has_function_privilege('authenticated', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS authenticated_payment_repair_execute_expected_true,\n  has_function_privilege('authenticated', 'public.cancel_online_order_v2(uuid)', 'EXECUTE') AS authenticated_pickup_v2_cancel_execute_expected_false,\n  has_function_privilege('authenticated', 'public.create_online_order_v2(text,uuid,uuid,jsonb,text)', 'EXECUTE') AS authenticated_pickup_v2_create_execute_expected_false,\n  has_function_privilege('anon', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS anon_staff_redeem_execute_expected_false,\n  has_function_privilege('anon', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS anon_staff_payment_execute_expected_false,\n  has_function_privilege('anon', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS anon_walkin_v2_execute_expected_false,\n  has_function_privilege('anon', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS anon_payment_repair_execute_expected_false;\n`;
+fs.writeFileSync(audit, prefix + tail);
+console.log('Cutover ordering and audit tail patched.');
