@@ -1,0 +1,71 @@
+name: Loyalty v2 final cutover review one-shot
+
+on:
+  push:
+    branches:
+      - feat/loyalty-v2-foundation-20260825
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current Loyalty branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/loyalty-v2-foundation-20260825
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Apply final audit patches
+        run: node tools/patch-loyalty-final-cutover-review.cjs
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Targeted Loyalty assertions
+        run: |
+          grep -F "legacy_spent_shortfall" supabase/migrations/20260826030000_loyalty_v2_legacy_reversal_hardening.sql
+          grep -F "v_effective_delta := -v_applied_reversal;" supabase/migrations/20260826030000_loyalty_v2_legacy_reversal_hardening.sql
+          grep -F "AND NOT EXISTS (" supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql
+          grep -F "e.event_type = 'earn'" supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql
+          grep -F "Walk-in rewards must be applied atomically when the sale is recorded" supabase/audits/20260825_loyalty_v2_post_apply.sql
+          grep -F "invalid_legacy_reversal_shortfall_event" supabase/audits/20260826_loyalty_v2_staff_fulfillment.sql
+
+      - name: Remove one-shot helpers and commit
+        run: |
+          rm -f tools/patch-loyalty-final-cutover-review.cjs
+          rm -f .github/workflows/loyalty-v2-final-cutover-review-once.yml
+          git config user.name "JOKO TODAY"
+          git config user.email "jokotoday@gmail.com"
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No patch changes to commit" >&2
+            exit 1
+          fi
+          git commit -m "fix: close final loyalty cutover review gaps"
+          git push origin HEAD:feat/loyalty-v2-foundation-20260825
