@@ -667,7 +667,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text) TO authenticated;
+-- Keep point-adjustment mutation dark until the atomic opening-balance cutover
+-- in 20260825172500 has committed. 20260825172600 re-enables authenticated
+-- execution; the RPC still performs DB-derived Admin authorization internally.
+REVOKE ALL ON FUNCTION public.admin_adjust_loyalty_points_v2(uuid, integer, text)
+FROM PUBLIC, anon, authenticated;
 
 -- No customer redemption RPC or customer EXECUTE grant is created by this migration.
