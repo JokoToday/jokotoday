@@ -158,6 +158,7 @@ CREATE INDEX IF NOT EXISTS loyalty_redemptions_order_idx
 
 CREATE TABLE IF NOT EXISTS public.loyalty_point_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_sequence bigint GENERATED ALWAYS AS IDENTITY,
   customer_id uuid NOT NULL REFERENCES public.customers(id) ON DELETE RESTRICT,
   order_id uuid REFERENCES public.orders(id) ON DELETE SET NULL,
   redemption_id uuid REFERENCES public.loyalty_redemptions(id) ON DELETE SET NULL,
@@ -185,6 +186,9 @@ CREATE TABLE IF NOT EXISTS public.loyalty_point_events (
   CONSTRAINT loyalty_point_events_metadata_object
     CHECK (jsonb_typeof(metadata) = 'object')
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS loyalty_point_events_event_sequence_uq
+  ON public.loyalty_point_events (event_sequence);
 
 CREATE INDEX IF NOT EXISTS loyalty_point_events_customer_created_idx
   ON public.loyalty_point_events (customer_id, created_at DESC);

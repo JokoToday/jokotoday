@@ -36,6 +36,43 @@ ALTER TABLE public.orders
   ADD CONSTRAINT orders_unpaid_has_no_amount_paid
     CHECK (COALESCE(payment_status, 'unpaid') <> 'unpaid' OR amount_paid IS NULL);
 
+-- Rebind the retained order calculator after amount_paid exists. Legacy and online
+-- orders still calculate from gross total_amount; v2 Walk-In orders persist their
+-- actual net-paid earning snapshot so the order row, ledger, and replay response agree.
+CREATE OR REPLACE FUNCTION public.calculate_loyalty_points_on_order()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_rate numeric;
+  v_purchase_type text;
+  v_earning_amount numeric;
+BEGIN
+  v_purchase_type := COALESCE(NEW.purchase_type, 'online');
+
+  SELECT ls.points_per_baht
+  INTO v_rate
+  FROM public.loyalty_settings ls
+  WHERE ls.purchase_type = v_purchase_type;
+
+  v_rate := COALESCE(v_rate, 0);
+  v_earning_amount := CASE
+    WHEN v_purchase_type = 'walk_in' AND NEW.amount_paid IS NOT NULL
+      THEN NEW.amount_paid
+    ELSE NEW.total_amount
+  END;
+
+  NEW.loyalty_points_earned := round(COALESCE(v_earning_amount, 0) * v_rate);
+  NEW.loyalty_multiplier := v_rate;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.calculate_loyalty_points_on_order() FROM PUBLIC, anon, authenticated;
+
 CREATE UNIQUE INDEX IF NOT EXISTS orders_staff_request_key_uq
   ON public.orders (staff_request_key)
   WHERE staff_request_key IS NOT NULL;
@@ -914,6 +951,9 @@ BEGIN
   )
   RETURNING * INTO v_order;
 
+  -- The retained BEFORE INSERT calculator is authoritative for the persisted
+  -- earning snapshot. Reuse its returned value for the ledger and RPC response.
+  v_points_earned := COALESCE(v_order.loyalty_points_earned, 0);
   v_balance := COALESCE(v_customer.loyalty_points, 0);
 
   IF p_reward_id IS NOT NULL THEN

@@ -70,6 +70,7 @@ SELECT 'legacy_awarded_discount_missing_grandfather_marker' AS check_name, count
 FROM public.orders o
 JOIN public.loyalty_redemptions r ON r.order_id = o.id
 WHERE o.loyalty_points_awarded_at IS NOT NULL
+  AND COALESCE(o.purchase_type, 'online') = 'online'
   AND COALESCE(o.loyalty_discount_amount, 0) > 0
   AND r.status <> 'reversed'
   AND (r.reward_snapshot ->> 'reward_type') IN ('fixed_discount', 'percentage_discount')
@@ -108,7 +109,7 @@ WITH latest AS (
     e.customer_id,
     e.balance_after
   FROM public.loyalty_point_events e
-  ORDER BY e.customer_id, e.created_at DESC, e.id DESC
+  ORDER BY e.customer_id, e.event_sequence DESC
 )
 SELECT 'cached_balance_mismatch' AS check_name, count(*)::bigint AS issue_count
 FROM latest l
