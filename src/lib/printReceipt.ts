@@ -17,6 +17,8 @@ type ReceiptOrder = {
   order_items?: unknown[] | null;
   total_amount?: number | string | null;
   walk_in_amount?: number | string | null;
+  loyalty_discount_amount?: number | string | null;
+  amount_paid?: number | string | null;
   purchase_type?: string | null;
   pickup_date?: string | null;
   picked_up_at?: string | null;
@@ -92,7 +94,9 @@ const labelsFor = (language: ReceiptLanguage) => {
       pickedUp: 'รับสินค้าจริง',
       payment: 'ชำระโดย',
       items: 'รายการ',
-      total: 'รวม',
+      gross: 'ยอดก่อนส่วนลด',
+      discount: 'ส่วนลดรางวัลสะสมแต้ม',
+      total: 'ยอดชำระจริง',
       thanks: 'ขอบคุณค่ะ/ครับ',
       print: 'พิมพ์',
       language: 'ภาษาใบเสร็จ',
@@ -109,7 +113,9 @@ const labelsFor = (language: ReceiptLanguage) => {
       pickedUp: '实际取货时间',
       payment: '付款方式',
       items: '商品',
-      total: '合计',
+      gross: '折扣前金额',
+      discount: '积分奖励折扣',
+      total: '实付金额',
       thanks: '谢谢！',
       print: '打印',
       language: '收据语言',
@@ -125,7 +131,9 @@ const labelsFor = (language: ReceiptLanguage) => {
     pickedUp: 'Picked up',
     payment: 'Payment',
     items: 'Items',
-    total: 'Total',
+    gross: 'Gross total',
+    discount: 'Loyalty reward discount',
+    total: 'Total paid',
     thanks: 'Thank you.',
     print: 'Print',
     language: 'Receipt language',
@@ -139,9 +147,17 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
   }
 
   const items = (Array.isArray(order.order_items) ? order.order_items : []) as ReceiptItem[];
-  const total = order.purchase_type === 'walk_in'
+  const grossTotal = Number(order.purchase_type === 'walk_in'
     ? order.walk_in_amount ?? order.total_amount
-    : order.total_amount;
+    : order.total_amount) || 0;
+  const discount = Math.max(0, Number(order.loyalty_discount_amount) || 0);
+  const hasStoredAmountPaid = order.amount_paid !== null
+    && order.amount_paid !== undefined
+    && order.amount_paid !== '';
+  const paidValue = Number(order.amount_paid);
+  const netTotal = hasStoredAmountPaid && Number.isFinite(paidValue)
+    ? paidValue
+    : Math.max(0, grossTotal - discount);
 
   const renderReceipt = (receiptLanguage: ReceiptLanguage) => {
     const labels = labelsFor(receiptLanguage);
@@ -175,7 +191,10 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     th, td { padding: 9px 0; border-bottom: 1px solid #ddd; vertical-align: top; text-align: left; }
     .right { text-align: right; white-space: nowrap; }
-    .total { font-size: 16px; font-weight: 700; padding-top: 14px; }
+    .summary { margin-top: 14px; border-top: 1px solid #ddd; padding-top: 10px; }
+    .summary-row { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; }
+    .discount { color: #8a4b08; }
+    .total { font-size: 16px; font-weight: 700; padding-top: 8px; }
     .footer { margin-top: 28px; text-align: center; }
     @media print { body { padding: 8mm; } .toolbar { display: none; } }
   </style>
@@ -202,7 +221,11 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
     <thead><tr><th>${escapeHtml(labels.items)}</th><th class="right"></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="2" class="muted">—</td></tr>`}</tbody>
   </table>
-  <div class="right total">${escapeHtml(labels.total)}: ฿${money(total)}</div>
+  <div class="summary">
+    ${discount > 0 ? `<div class="summary-row"><span>${escapeHtml(labels.gross)}</span><strong>฿${money(grossTotal)}</strong></div>` : ''}
+    ${discount > 0 ? `<div class="summary-row discount"><span>${escapeHtml(labels.discount)}</span><strong>−฿${money(discount)}</strong></div>` : ''}
+    <div class="summary-row total"><span>${escapeHtml(labels.total)}</span><span>฿${money(netTotal)}</span></div>
+  </div>
   <div class="footer">${escapeHtml(labels.thanks)}</div>
 </body>
 </html>`);

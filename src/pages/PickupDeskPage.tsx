@@ -52,6 +52,8 @@ interface Order {
   order_number: string;
   order_items: unknown[];
   total_amount: number;
+  loyalty_discount_amount?: number | null;
+  amount_paid?: number | null;
   pickup_date: string | null;
   status: string;
   payment_status: string;
@@ -77,6 +79,11 @@ const getBangkokToday = () => {
 
 const paymentComplete = (order: Order) => (
   order.payment_status === 'paid' && ['cash', 'qr_code', 'qr'].includes(order.payment_method || '')
+);
+
+const amountDue = (order: Order) => Math.max(
+  0,
+  Number(order.total_amount || 0) - Number(order.loyalty_discount_amount || 0)
 );
 
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -273,24 +280,30 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setActionError(null);
       setActionSuccess(null);
       setLastReceiptOrder(null);
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ payment_method: method, payment_status: 'paid' })
-        .eq('id', order.id);
+      const { data, error: updateError } = await supabase.rpc('staff_record_order_payment_v2', {
+        p_order_id: order.id,
+        p_payment_method: method,
+      });
       if (updateError) throw updateError;
+      if (!data || typeof data.id !== 'string' || data.payment_status !== 'paid') {
+        throw new Error('Payment was recorded but the confirmation response was invalid.');
+      }
 
+      const returnedOrder = data as Order;
       const applyPayment = (item: Order) => (
-        item.id === order.id ? { ...item, payment_method: method, payment_status: 'paid' } : item
+        item.id === order.id ? returnedOrder : item
       );
       setOrders((current) => current.map(applyPayment));
       setUpcomingOrders((current) => current.map(applyPayment));
       setEarlyPickupOrder((current) => current?.id === order.id ? applyPayment(current) : current);
       setActionSuccess(language === 'en'
-        ? `${method === 'cash' ? 'Cash' : 'QR'} payment recorded.`
-        : `บันทึกการชำระเงิน${method === 'cash' ? 'สด' : ' QR'}แล้ว`);
+        ? `${method === 'cash' ? 'Cash' : 'QR'} payment recorded: ฿${amountDue(returnedOrder).toFixed(2)}.`
+        : `บันทึกการชำระ${method === 'cash' ? 'เงินสด' : ' QR'} ฿${amountDue(returnedOrder).toFixed(2)} แล้ว`);
     } catch (err) {
       console.error('Error recording payment:', err);
-      setActionError(language === 'en' ? 'Could not record payment.' : 'ไม่สามารถบันทึกการชำระเงินได้');
+      setActionError(err instanceof Error
+        ? err.message
+        : (language === 'en' ? 'Could not record payment.' : 'ไม่สามารถบันทึกการชำระเงินได้'));
     } finally {
       setUpdatingOrder(null);
     }
@@ -607,7 +620,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   channel="pickup"
                   language={staffLanguage}
                   pickupOrders={[...orders, ...upcomingOrders]
-                    .filter((order) => order.status !== 'cancelled')
+                    .filter((order) => (
+                      ['pending', 'confirmed'].includes(order.status)
+                      && order.payment_status !== 'paid'
+                      && !order.picked_up_at
+                    ))
                     .map((order) => ({
                       id: order.id,
                       orderNumber: order.order_number,
@@ -619,10 +636,15 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       ? { ...current, loyalty_points: result.new_balance }
                       : current);
                     setHistoryRefreshKey((value) => value + 1);
+                    void loadOrders(customer.id);
                     setActionError(null);
-                    setActionSuccess(language === 'en'
-                      ? `${result.points_spent} loyalty points redeemed. Balance: ${result.new_balance} points.`
-                      : `แลก ${result.points_spent} แต้มแล้ว ยอดคงเหลือ ${result.new_balance} แต้ม`);
+                    setActionSuccess(result.redemption_status === 'reserved'
+                      ? (language === 'en'
+                        ? `${result.points_spent} loyalty points reserved. Discount: ฿${result.discount_amount.toFixed(2)}. Amount due: ฿${Number(result.net_due || 0).toFixed(2)}.`
+                        : `สำรอง ${result.points_spent} แต้ม ส่วนลด ฿${result.discount_amount.toFixed(2)} ยอดชำระ ฿${Number(result.net_due || 0).toFixed(2)}`)
+                      : (language === 'en'
+                        ? `${result.points_spent} loyalty points redeemed. Fulfill the reward now. Balance: ${result.new_balance} points.`
+                        : `แลก ${result.points_spent} แต้มแล้ว กรุณามอบรางวัลให้ลูกค้าทันที ยอดคงเหลือ ${result.new_balance} แต้ม`));
                   }}
                 />
 
@@ -680,9 +702,14 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                           <div className="flex items-start justify-between mb-4">
                             <div>
                               <p className="font-bold text-gray-900 text-lg">#{order.order_number}</p>
-                              <p className="text-sm text-gray-500">
-                                {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} &bull; ฿{Number(order.total_amount || 0).toFixed(2)}
-                              </p>
+                              <div className="text-sm text-gray-500">
+                                <p>{order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} · {Number(order.loyalty_discount_amount || 0) > 0 ? (language === 'en' ? 'Gross' : 'ก่อนส่วนลด') : ''} ฿{Number(order.total_amount || 0).toFixed(2)}</p>
+                                {Number(order.loyalty_discount_amount || 0) > 0 && (
+                                  <p className="mt-1 font-semibold text-amber-700">
+                                    {language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'} −฿{Number(order.loyalty_discount_amount || 0).toFixed(2)} · {language === 'en' ? 'Amount due' : 'ยอดชำระ'} ฿{amountDue(order).toFixed(2)}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                               order.status === 'picked_up' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
@@ -710,7 +737,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             <div className="grid grid-cols-2 gap-3">
                               <button
                                 onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up'}
+                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'qr_code'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -722,7 +749,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </button>
                               <button
                                 onClick={() => void recordPayment(order, 'cash')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up'}
+                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'cash'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -779,9 +806,14 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                   <Calendar className="w-4 h-4 text-slate-500" />
                                   <span>{formatPickupDate(order.pickup_date)}</span>
                                 </div>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  {order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} &bull; ฿{Number(order.total_amount || 0).toFixed(2)}
-                                </p>
+                                <div className="mt-1 text-sm text-gray-500">
+                                  <p>{order.order_items?.length || 0} {language === 'en' ? 'items' : 'รายการ'} · {Number(order.loyalty_discount_amount || 0) > 0 ? (language === 'en' ? 'Gross' : 'ก่อนส่วนลด') : ''} ฿{Number(order.total_amount || 0).toFixed(2)}</p>
+                                  {Number(order.loyalty_discount_amount || 0) > 0 && (
+                                    <p className="mt-1 font-semibold text-amber-700">
+                                      {language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'} −฿{Number(order.loyalty_discount_amount || 0).toFixed(2)} · {language === 'en' ? 'Amount due' : 'ยอดชำระ'} ฿{amountDue(order).toFixed(2)}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -803,7 +835,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               <button
                                 type="button"
                                 onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={Boolean(updatingOrder)}
+                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
                                   order.payment_status === 'paid' && order.payment_method === 'qr_code'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -816,7 +848,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               <button
                                 type="button"
                                 onClick={() => void recordPayment(order, 'cash')}
-                                disabled={Boolean(updatingOrder)}
+                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
                                   order.payment_status === 'paid' && order.payment_method === 'cash'
                                     ? 'border-slate-700 bg-slate-700 text-white'
