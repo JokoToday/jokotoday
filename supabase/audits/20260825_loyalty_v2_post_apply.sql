@@ -186,7 +186,7 @@ SELECT
   p.proname,
   pg_get_functiondef(p.oid) ILIKE '%is_staff_or_admin%' AS has_staff_admin_guard,
   pg_get_functiondef(p.oid) ILIKE '%auth.uid()%' AS has_authenticated_actor_guard,
-  pg_get_functiondef(p.oid) ILIKE '%Walk-in redemption requires a persisted sale%' AS has_persisted_walk_in_guard,
+  pg_get_functiondef(p.oid) ILIKE '%Walk-in rewards must be applied atomically when the sale is recorded%' AS has_persisted_walk_in_guard,
   p.prosecdef AS security_definer,
   p.proconfig AS function_config
 FROM pg_proc p

@@ -71,6 +71,12 @@ FROM public.orders o
 JOIN public.loyalty_redemptions r ON r.order_id = o.id
 WHERE o.loyalty_points_awarded_at IS NOT NULL
   AND COALESCE(o.purchase_type, 'online') = 'online'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.loyalty_point_events e
+    WHERE e.order_id = o.id
+      AND e.event_type = 'earn'
+  )
   AND COALESCE(o.loyalty_discount_amount, 0) > 0
   AND r.status <> 'reversed'
   AND (r.reward_snapshot ->> 'reward_type') IN ('fixed_discount', 'percentage_discount')
@@ -102,6 +108,64 @@ SELECT 'staff_free_product_redemptions' AS check_name, count(*)::bigint AS issue
 FROM public.loyalty_redemptions r
 WHERE r.status <> 'reversed'
   AND (r.reward_snapshot ->> 'reward_type') = 'free_product';
+
+-- A zero-delta reverse_earn is permitted only for a grandfathered legacy award
+-- whose entire issued award had already been spent before cancellation. The
+-- immutable metadata must make that unrecoverable shortfall explicit.
+SELECT 'invalid_legacy_reversal_shortfall_event' AS check_name, count(*)::bigint AS issue_count
+FROM public.loyalty_point_events e
+WHERE e.event_type = 'reverse_earn'
+  AND e.points_delta = 0
+  AND NOT (
+    e.metadata ->> 'legacy_grandfathered' = 'true'
+    AND e.metadata ->> 'applied_reversal_points' = '0'
+    AND COALESCE(e.metadata ->> 'legacy_spent_shortfall', '') ~ '^[1-9][0-9]*
+WITH latest AS (
+  SELECT DISTINCT ON (e.customer_id)
+    e.customer_id,
+    e.balance_after
+  FROM public.loyalty_point_events e
+  ORDER BY e.customer_id, e.event_sequence DESC
+)
+SELECT 'cached_balance_mismatch' AS check_name, count(*)::bigint AS issue_count
+FROM latest l
+JOIN public.customers c ON c.id = l.customer_id
+WHERE COALESCE(c.loyalty_points, 0) IS DISTINCT FROM l.balance_after;
+
+-- Unique-event semantics should make all of these impossible.
+SELECT 'duplicate_order_point_events' AS check_name, count(*)::bigint AS issue_count
+FROM (
+  SELECT e.order_id, e.event_type
+  FROM public.loyalty_point_events e
+  WHERE e.order_id IS NOT NULL AND e.event_type IN ('earn', 'reverse_earn')
+  GROUP BY e.order_id, e.event_type
+  HAVING count(*) > 1
+) duplicates;
+
+SELECT 'duplicate_redemption_point_events' AS check_name, count(*)::bigint AS issue_count
+FROM (
+  SELECT e.redemption_id, e.event_type
+  FROM public.loyalty_point_events e
+  WHERE e.redemption_id IS NOT NULL AND e.event_type IN ('redeem', 'refund_redemption')
+  GROUP BY e.redemption_id, e.event_type
+  HAVING count(*) > 1
+) duplicates;
+
+-- Permission gates. Expected: staff RPCs true for authenticated; customer reward
+-- self-service absent; Pickup v2 create/cancel remain false for authenticated.
+SELECT
+  has_function_privilege('authenticated', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS authenticated_staff_redeem_execute_expected_true,
+  has_function_privilege('authenticated', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS authenticated_staff_payment_execute_expected_true,
+  has_function_privilege('authenticated', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS authenticated_walkin_v2_execute_expected_true,
+  has_function_privilege('authenticated', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS authenticated_payment_repair_execute_expected_true,
+  has_function_privilege('authenticated', 'public.cancel_online_order_v2(uuid)', 'EXECUTE') AS authenticated_pickup_v2_cancel_execute_expected_false,
+  has_function_privilege('authenticated', 'public.create_online_order_v2(text,uuid,uuid,jsonb,text)', 'EXECUTE') AS authenticated_pickup_v2_create_execute_expected_false,
+  has_function_privilege('anon', 'public.staff_redeem_loyalty_reward_v2(uuid,uuid,text,uuid,numeric,uuid)', 'EXECUTE') AS anon_staff_redeem_execute_expected_false,
+  has_function_privilege('anon', 'public.staff_record_order_payment_v2(uuid,text)', 'EXECUTE') AS anon_staff_payment_execute_expected_false,
+  has_function_privilege('anon', 'public.record_walk_in_purchase_v2(uuid,numeric,text,uuid,uuid,text)', 'EXECUTE') AS anon_walkin_v2_execute_expected_false,
+  has_function_privilege('anon', 'public.staff_repair_completed_order_payment_method_v2(uuid,text)', 'EXECUTE') AS anon_payment_repair_execute_expected_false;
+
+  );
 
 -- Cached balance must match the latest ledger balance when a customer has events.
 WITH latest AS (
