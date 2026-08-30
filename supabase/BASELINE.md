@@ -54,6 +54,20 @@ It deliberately excludes production/customer state including:
 
 Those belong to disaster-recovery data restoration, not clean application bootstrap.
 
+## Not included in this database baseline
+
+This baseline is the canonical database/bootstrap layer, not a complete Supabase-project restoration by itself. It does not recreate:
+
+- Supabase Auth project settings, providers, redirect URLs or email-hook configuration
+- Edge Function deployments
+- Edge Function secrets
+- Storage object bytes/files
+- external infrastructure or credentials
+
+Those remain separate deployment/disaster-recovery concerns and must be restored or configured through their documented operational procedures.
+
+The baseline intentionally reproduces the current production schema, privileges and Storage policies. Reproducing a production setting here is not an endorsement of that setting as the final security posture; hardening changes should be made separately through reviewed forward migrations.
+
 ## Validation
 
 The baseline was validated against the production state by:
@@ -76,8 +90,10 @@ Final result:
 
 Archiving the historical migration files in Git does NOT by itself change the production database.
 
-Production currently retains the original applied migration history.
+Production currently retains the original 111 applied migration-history records, while this branch has one active local migration version: `20260826030000`.
 
 Do not run a production migration push or migration-history repair solely because this repository baseline exists.
 
-Any normalization of the production `supabase_migrations.schema_migrations` history is a separate controlled operational action and requires explicit approval and verification.
+Do not merge this baseline cutover into `main` until the production migration-history normalization runbook has been reviewed, explicitly approved and is ready to execute as the controlled follow-up cutover. Otherwise the repository migration set and production `supabase_migrations.schema_migrations` history will remain intentionally divergent, which can cause migration sync failures on future production pushes.
+
+Any normalization of the production `supabase_migrations.schema_migrations` history is a separate controlled operational action and requires explicit approval and verification. After normalization, verify that local and remote migration versions match exactly before creating or pushing the next production migration.
