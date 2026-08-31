@@ -8,7 +8,7 @@ import CartSidebar from './components/CartSidebar';
 import HomePage from './pages/HomePage';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
-const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
