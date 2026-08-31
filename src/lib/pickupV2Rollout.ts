@@ -21,3 +21,17 @@ export async function getPickupV2CustomerEnabled(): Promise<boolean> {
 
   return parseBooleanSetting(data?.value);
 }
+
+export async function setPickupV2CustomerEnabled(enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('cms_settings')
+    .upsert(
+      {
+        setting_key: PICKUP_V2_CUSTOMER_ENABLED_KEY,
+        value: enabled ? 'true' : 'false',
+      },
+      { onConflict: 'setting_key' },
+    );
+
+  if (error) throw error;
+}
