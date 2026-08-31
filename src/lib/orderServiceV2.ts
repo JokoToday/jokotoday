@@ -29,6 +29,11 @@ export interface OnlineOrderRpcResult {
   loyalty_points_earned?: number | null;
 }
 
+export interface CancellableOnlineOrder {
+  id: string;
+  pickup_date_id?: string | null;
+}
+
 export async function createOnlineOrderV2(
   input: CreateOnlineOrderV2Input,
 ): Promise<OnlineOrderRpcResult> {
@@ -50,19 +55,38 @@ export async function createOnlineOrderV2(
   return order;
 }
 
-export async function cancelOnlineOrderByVersion(
-  orderId: string,
-  pickupDateId?: string | null,
-): Promise<{ id: string; status: string }> {
-  const rpcName = pickupDateId ? 'cancel_online_order_v2' : 'cancel_online_order';
-  const { data, error } = await supabase.rpc(rpcName, { p_order_id: orderId });
+export async function cancelOnlineOrderCompatible<T extends CancellableOnlineOrder>(
+  order: T,
+): Promise<T & { status?: string }> {
+  const rpcName = order.pickup_date_id
+    ? 'cancel_online_order_v2'
+    : 'cancel_online_order';
+
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_order_id: order.id,
+  });
 
   if (error) throw new Error(error.message);
 
-  const cancelledOrder = data as { id?: string; status?: string } | null;
+  const cancelledOrder = data as (T & { status?: string }) | null;
   if (!cancelledOrder?.id || cancelledOrder.status !== 'cancelled') {
     throw new Error('Cancellation returned an invalid order result.');
   }
 
-  return { id: cancelledOrder.id, status: cancelledOrder.status };
+  return cancelledOrder;
+}
+
+export async function cancelOnlineOrderByVersion(
+  orderId: string,
+  pickupDateId?: string | null,
+): Promise<{ id: string; status: string }> {
+  const cancelledOrder = await cancelOnlineOrderCompatible({
+    id: orderId,
+    pickup_date_id: pickupDateId,
+  });
+
+  return {
+    id: cancelledOrder.id,
+    status: cancelledOrder.status || 'cancelled',
+  };
 }
