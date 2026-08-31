@@ -75,3 +75,18 @@ export async function cancelOnlineOrderCompatible<T extends CancellableOnlineOrd
 
   return cancelledOrder;
 }
+
+export async function cancelOnlineOrderByVersion(
+  orderId: string,
+  pickupDateId?: string | null,
+): Promise<{ id: string; status: string }> {
+  const cancelledOrder = await cancelOnlineOrderCompatible({
+    id: orderId,
+    pickup_date_id: pickupDateId,
+  });
+
+  return {
+    id: cancelledOrder.id,
+    status: cancelledOrder.status || 'cancelled',
+  };
+}
