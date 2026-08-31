@@ -70,6 +70,9 @@ begin
 end;
 $$;
 
+comment on function public.cancel_online_order_v2(uuid) is
+  'Pickup v2 customer cancellation wrapper. Hardened 20260831: validates authenticated order ownership before authoritative cancellation and reserved-loyalty refund.';
+
 -- Customer Pickup v2 remains dark until the separately reviewed cutover grant.
 revoke execute on function public.cancel_online_order_v2(uuid) from public;
 revoke execute on function public.cancel_online_order_v2(uuid) from anon;
