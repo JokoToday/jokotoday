@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { CalendarDays, Gift, LayoutDashboard } from 'lucide-react';
+import { CalendarDays, Gift, LayoutDashboard, PackageCheck } from 'lucide-react';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
+import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 
 interface AdminWorkspaceProps {
   onNavigate: (page: string) => void;
 }
 
-type WorkspaceTab = 'cms' | 'pickup-dates' | 'loyalty';
+type WorkspaceTab = 'cms' | 'pickup-products' | 'pickup-dates' | 'loyalty';
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('cms');
@@ -29,6 +30,18 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             >
               <LayoutDashboard className="w-4 h-4" />
               CMS & Recurring Setup
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('pickup-products')}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === 'pickup-products'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <PackageCheck className="w-4 h-4" />
+              Product Pickup Capacity
             </button>
             <button
               type="button"
@@ -59,6 +72,16 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
       </div>
 
       {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
+
+      {activeTab === 'pickup-products' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Product Pickup Capacity</h1>
+            <p className="text-gray-600 mt-2">Manage Pickup v2 product availability, recurring shared capacity and date-specific exceptions.</p>
+          </div>
+          <ProductPickupAvailabilityManagement />
+        </div>
+      )}
 
       {activeTab === 'pickup-dates' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
