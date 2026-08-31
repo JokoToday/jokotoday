@@ -35,7 +35,6 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 const ALLOWED_ORIGINS = new Set([
   "https://joko.today",
   "https://www.joko.today",
-  "https://jokotoday.pages.dev",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5173",
@@ -49,12 +48,7 @@ export function isValidUuid(value: unknown): value is string {
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.has(origin)) return true;
-  try {
-    const url = new URL(origin);
-    return url.protocol === "https:" && url.hostname.endsWith(".jokotoday.pages.dev");
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 export function corsHeaders(req: Request): Record<string, string> {

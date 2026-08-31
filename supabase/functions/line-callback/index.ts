@@ -110,7 +110,17 @@ Deno.serve(async (req: Request) => {
 
     const profileData: LineProfileResponse = await profileResponse.json();
 
-    const appOrigin = req.headers.get("origin") || "https://joko-today-pre-order-yamv.bolt.host";
+    const configuredAppUrl = Deno.env.get("APP_URL");
+    if (!configuredAppUrl) {
+      throw new Error("APP_URL is not configured");
+    }
+
+    const parsedAppUrl = new URL(configuredAppUrl);
+    if (parsedAppUrl.protocol !== "https:" && parsedAppUrl.protocol !== "http:") {
+      throw new Error("APP_URL has an unsupported protocol");
+    }
+
+    const appOrigin = parsedAppUrl.origin;
 
     const params = new URLSearchParams({
       line_user_id: profileData.userId,
