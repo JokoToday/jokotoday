@@ -4,26 +4,19 @@
 
   Purpose
   -------
-  This audit is stricter than the original Pickup v2 foundation audits. The
-  foundation correctly allowed product capacity configuration to remain empty;
-  customer cutover does not.
+  The original Pickup v2 foundation audits correctly allowed product capacity
+  configuration to remain empty. Customer cutover does not: every active
+  product/schedule pair must have an explicit Admin-managed configuration.
 
-  This file contains SELECT statements only. It must never seed capacities,
-  infer business rules from legacy stock, or modify production state.
+  This file contains SELECT statements only. It never seeds capacities, infers
+  business rules from legacy stock, or modifies production state.
 
-  Business configuration remains Admin-owned. In particular, this audit does
-  NOT hard-code launch weekdays, locations, products, capacities or cutoffs.
-  It validates the active configuration that exists in the database.
+  No launch weekday, location, product, capacity or cutoff is hard-coded here.
+  The audit validates whatever business configuration is active in Admin.
 */
 
 -- A. Compact rollout/readiness summary.
--- Before customer cutover, the important expectations are:
---   missing_explicit_product_schedule_rows = 0
---   active_offering_missing_future_inventory_rows = 0
---   future_open_date_safety_blockers = 0
---   inventory_bounds_blockers = 0
---   inventory_ledger_blockers = 0
---   active_future_legacy_reservations = 0
+-- Before customer cutover the blocker counts below must all be zero.
 WITH active_schedules AS (
   SELECT id
   FROM public.pickup_schedules
@@ -74,8 +67,8 @@ future_date_safety AS (
     AND d.status = 'open'
     AND (
       s.is_active = false
-      OR d.order_cutoff_at >= (d.pickup_date::timestamp AT TIME ZONE 'Asia/Bangkok')
-      OR d.cancellation_cutoff_at >= (d.pickup_date::timestamp AT TIME ZONE 'Asia/Bangkok')
+      OR timezone('Asia/Bangkok', d.order_cutoff_at)::date > d.pickup_date
+      OR timezone('Asia/Bangkok', d.cancellation_cutoff_at)::date > d.pickup_date
       OR NOT EXISTS (
         SELECT 1
         FROM public.pickup_date_locations dl
@@ -101,13 +94,17 @@ SELECT
   (SELECT count(*) FROM expected_product_schedule) AS expected_explicit_product_schedule_rows,
   (SELECT count(*) FROM missing_explicit_configuration) AS missing_explicit_product_schedule_rows,
   (SELECT count(*) FROM future_open_dates) AS future_open_date_count,
-  (SELECT count(*) FROM public.product_date_inventory i
-    JOIN public.pickup_dates d ON d.id = i.pickup_date_id
-    WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date) AS future_inventory_row_count,
+  (SELECT count(*)
+   FROM public.product_date_inventory i
+   JOIN public.pickup_dates d ON d.id = i.pickup_date_id
+   WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date) AS future_inventory_row_count,
   (SELECT count(*) FROM missing_active_inventory) AS active_offering_missing_future_inventory_rows,
   (SELECT count(*) FROM future_date_safety) AS future_open_date_safety_blockers,
-  (SELECT count(*) FROM public.product_date_inventory i
-    WHERE i.capacity < 0 OR i.reserved_quantity < 0 OR i.reserved_quantity > i.capacity) AS inventory_bounds_blockers,
+  (SELECT count(*)
+   FROM public.product_date_inventory i
+   WHERE i.capacity < 0
+      OR i.reserved_quantity < 0
+      OR i.reserved_quantity > i.capacity) AS inventory_bounds_blockers,
   (SELECT count(*) FROM ledger_mismatch) AS inventory_ledger_blockers,
   (SELECT count(*)
    FROM public.orders o
@@ -119,8 +116,8 @@ SELECT
   (SELECT count(*) FROM public.orders WHERE pickup_date_id IS NOT NULL) AS v2_order_count;
 
 -- B. HARD STOP: every active product must have an explicit Admin configuration
--- row for every active schedule. "Not offered" is represented by a configured
--- row with is_active=false, not by relying on missing/implicit configuration.
+-- row for every active schedule. A deliberately unavailable product is a real
+-- row with is_active=false, not an implicit missing row.
 -- Must return ZERO rows before customer cutover.
 WITH active_schedules AS (
   SELECT id, schedule_key, label_en, sort_order
@@ -146,8 +143,7 @@ LEFT JOIN public.product_schedule_capacity c
 WHERE c.product_id IS NULL
 ORDER BY p.sort_order, p.name_en, s.sort_order, s.schedule_key;
 
--- C. Configured product/schedule matrix. Review business state; these values are
--- Admin-owned and intentionally not encoded in this audit.
+-- C. Admin-owned recurring product configuration snapshot.
 SELECT
   p.id AS product_id,
   p.name_en,
@@ -165,8 +161,8 @@ WHERE s.is_active = true
 ORDER BY p.sort_order, p.name_en, s.sort_order, s.schedule_key;
 
 -- D. HARD STOP: every active recurring offering must have materialized inventory
--- for every future OPEN date on that schedule. An explicit date override counts
--- as inventory and is preserved by recurring changes.
+-- for every future OPEN date on that schedule. A date override counts as valid
+-- inventory and remains independent of the recurring default.
 -- Must return ZERO rows before customer cutover.
 SELECT
   d.id AS pickup_date_id,
@@ -201,8 +197,7 @@ SELECT
   i.product_id,
   p.name_en,
   i.capacity,
-  i.reserved_quantity,
-  i.capacity_source
+  i.reserved_quantity
 FROM public.product_date_inventory i
 JOIN public.pickup_dates d ON d.id = i.pickup_date_id
 JOIN public.pickup_schedules s ON s.id = d.schedule_id
@@ -214,54 +209,43 @@ WHERE i.capacity_source = 'recurring_default'
   AND c.product_id IS NULL
 ORDER BY d.pickup_date, p.name_en;
 
--- F1. HARD STOP: every future OPEN date must belong to an active recurring
--- schedule. Must return ZERO rows.
+-- F. HARD STOP: future OPEN concrete dates must remain structurally valid.
+-- Same-day cutoffs are allowed because days_before=0 is a valid Admin setting;
+-- only a cutoff whose Bangkok calendar date is AFTER pickup_date is invalid.
+-- Must return ZERO rows.
 SELECT
   d.id AS pickup_date_id,
   d.pickup_date,
   s.schedule_key,
-  s.is_active AS schedule_active
-FROM public.pickup_dates d
-JOIN public.pickup_schedules s ON s.id = d.schedule_id
-WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date
-  AND d.status = 'open'
-  AND s.is_active = false
-ORDER BY d.pickup_date, s.schedule_key;
-
--- F2. HARD STOP: every future OPEN date must expose at least one active concrete
--- location whose CMS location is also active. Must return ZERO rows.
-SELECT
-  d.id AS pickup_date_id,
-  d.pickup_date,
-  s.schedule_key
-FROM public.pickup_dates d
-JOIN public.pickup_schedules s ON s.id = d.schedule_id
-WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date
-  AND d.status = 'open'
-  AND NOT EXISTS (
+  s.is_active AS schedule_active,
+  d.order_cutoff_at,
+  d.cancellation_cutoff_at,
+  timezone('Asia/Bangkok', d.order_cutoff_at)::date AS order_cutoff_bangkok_date,
+  timezone('Asia/Bangkok', d.cancellation_cutoff_at)::date AS cancellation_cutoff_bangkok_date,
+  EXISTS (
     SELECT 1
     FROM public.pickup_date_locations dl
     JOIN public.cms_pickup_locations l ON l.id = dl.location_id
     WHERE dl.pickup_date_id = d.id
       AND dl.is_active = true
       AND l.is_active = true
-  )
-ORDER BY d.pickup_date, s.schedule_key;
-
--- F3. HARD STOP: materialized order/cancellation cutoffs must precede the pickup
--- date in Bangkok. Must return ZERO rows.
-SELECT
-  d.id AS pickup_date_id,
-  d.pickup_date,
-  s.schedule_key,
-  d.order_cutoff_at,
-  d.cancellation_cutoff_at
+  ) AS has_active_customer_location
 FROM public.pickup_dates d
 JOIN public.pickup_schedules s ON s.id = d.schedule_id
 WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date
+  AND d.status = 'open'
   AND (
-    d.order_cutoff_at >= (d.pickup_date::timestamp AT TIME ZONE 'Asia/Bangkok')
-    OR d.cancellation_cutoff_at >= (d.pickup_date::timestamp AT TIME ZONE 'Asia/Bangkok')
+    s.is_active = false
+    OR timezone('Asia/Bangkok', d.order_cutoff_at)::date > d.pickup_date
+    OR timezone('Asia/Bangkok', d.cancellation_cutoff_at)::date > d.pickup_date
+    OR NOT EXISTS (
+      SELECT 1
+      FROM public.pickup_date_locations dl
+      JOIN public.cms_pickup_locations l ON l.id = dl.location_id
+      WHERE dl.pickup_date_id = d.id
+        AND dl.is_active = true
+        AND l.is_active = true
+    )
   )
 ORDER BY d.pickup_date, s.schedule_key;
 
@@ -334,8 +318,7 @@ WHERE COALESCE(o.purchase_type, 'online') = 'online'
   AND o.pickup_date_id IS NULL
 ORDER BY o.pickup_date, o.created_at;
 
--- I. V2 order snapshot. After cutover this provides the population that must be
--- backed by the v2 inventory ledger. Before cutover zero rows is expected.
+-- I. V2 order snapshot. Zero rows is expected before customer cutover.
 SELECT
   o.id,
   o.order_number,
@@ -350,12 +333,11 @@ FROM public.orders o
 WHERE o.pickup_date_id IS NOT NULL
 ORDER BY o.created_at DESC;
 
--- J1. Rollout function privilege snapshot.
--- Pre-cutover expectations:
---   create_online_order_v2: anon=false, authenticated=false, PUBLIC=false
---   cancel_online_order_v2: anon=false, authenticated=false, PUBLIC=false
--- After the final separately approved cutover grant migration, authenticated
--- should become true for the customer order RPCs; anon and PUBLIC remain false.
+-- J1. Customer v2 order RPC privilege snapshot.
+-- Before final cutover:
+--   create/cancel v2: anon=false, authenticated=false, PUBLIC=false
+-- After the separately approved final cutover grant:
+--   create/cancel v2: anon=false, authenticated=true, PUBLIC=false
 SELECT
   n.nspname AS schema_name,
   p.oid::regprocedure AS function_signature,
@@ -378,10 +360,8 @@ ORDER BY p.proname, p.oid::regprocedure::text;
 -- J2. Customer availability API privilege snapshot.
 -- Before the Phase 3.3 availability migration, zero rows is expected.
 -- After that separately approved migration:
---   public.get_customer_pickup_availability_v2 = SECURITY INVOKER,
---       anon=true, authenticated=true, PUBLIC=false
---   private.customer_pickup_availability_v2 = SECURITY DEFINER,
---       anon=true, authenticated=true, PUBLIC=false
+--   public wrapper: SECURITY INVOKER, anon=true, auth=true, PUBLIC=false
+--   private helper: SECURITY DEFINER, anon=true, auth=true, PUBLIC=false
 SELECT
   n.nspname AS schema_name,
   p.oid::regprocedure AS function_signature,
@@ -401,8 +381,7 @@ WHERE (n.nspname = 'public' AND p.proname = 'get_customer_pickup_availability_v2
    OR (n.nspname = 'private' AND p.proname = 'customer_pickup_availability_v2')
 ORDER BY n.nspname, p.proname, p.oid::regprocedure::text;
 
--- K. Invariant-trigger snapshot. These trigger rows should remain present and
--- enabled throughout the cutover.
+-- K. Invariant-trigger snapshot. These rows should remain present and enabled.
 SELECT
   c.relname AS table_name,
   t.tgname AS trigger_name,
@@ -422,8 +401,8 @@ WHERE n.nspname = 'public'
   )
 ORDER BY c.relname, t.tgname;
 
--- L. Concrete-date horizon review. The horizon length itself is intentionally
--- Admin/materializer-driven; this query only reports current state.
+-- L. Concrete-date horizon review. The horizon length is materializer/Admin
+-- driven; this query reports it rather than imposing a hard-coded duration.
 SELECT
   min(d.pickup_date) FILTER (
     WHERE d.pickup_date >= timezone('Asia/Bangkok', now())::date
