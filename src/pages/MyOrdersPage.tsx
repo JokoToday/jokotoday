@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { CMSProduct } from '../lib/cmsService';
+import { cancelOnlineOrderCompatible } from '../lib/orderServiceV2';
 import { Order, PickupDay, PickupLocation } from '../components/orders/OrderTypes';
 import { MyOrdersList } from '../components/orders/MyOrdersList';
 
@@ -38,7 +39,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, order_items, total_amount, pickup_day, pickup_date, pickup_location_id, status, payment_status, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
+          .select('id, order_number, order_items, total_amount, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),
@@ -88,20 +89,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
     setIsCancelling(true);
     setCancelError('');
     try {
-      const { data, error } = await supabase.rpc('cancel_online_order', {
-        p_order_id: cancelTarget.id,
-      });
-
-      if (error) {
-        console.error('Cancel order RPC error:', error);
-        setCancelError(error.message || 'This order can no longer be cancelled.');
-        return;
-      }
-
-      const cancelledOrder = data as Order | null;
-      if (!cancelledOrder?.id || cancelledOrder.status !== 'cancelled') {
-        throw new Error('Cancellation returned an invalid order result');
-      }
+      const cancelledOrder = await cancelOnlineOrderCompatible(cancelTarget);
 
       setOrders(prev => prev.map(order => (
         order.id === cancelledOrder.id

@@ -12,6 +12,7 @@ export interface Order {
   total_amount: number;
   pickup_day: string;
   pickup_date: string;
+  pickup_date_id?: string | null;
   pickup_location_id: string | null;
   status: string;
   payment_status: string;
