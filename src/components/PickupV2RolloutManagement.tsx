@@ -117,7 +117,7 @@ export function PickupV2RolloutManagement() {
           <div>
             <p className="text-sm font-semibold text-blue-950">Fail-closed rollout</p>
             <p className="text-xs text-blue-900 mt-1 leading-relaxed">
-              If the setting does not exist, cannot be read, or is not a recognized true value, customers remain on the legacy flow.
+              If the setting does not exist, cannot be read, or is not a recognized true value, customers remain on the legacy flow. This switch does not create backend APIs or grant RPC permissions.
             </p>
           </div>
         </div>
