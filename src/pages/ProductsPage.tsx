@@ -9,6 +9,7 @@ import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { getCategories, getProducts, getProductBySlug, CMSCategory, CMSProduct } from '../lib/cmsService';
 import {
   getPickupDays,
@@ -19,6 +20,10 @@ import {
 } from '../lib/availabilityService';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
 import { PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
+import {
+  readPreferredPickupDateV2,
+  writePreferredPickupDateV2,
+} from '../lib/pickupV2PreferredSelection';
 
 interface ProductsPageProps {
   initialProductSlug?: string | null;
@@ -34,6 +39,7 @@ type V2ProductDisplayState = {
 
 export default function ProductsPage({ initialProductSlug, qrSource, onProductOpened }: ProductsPageProps) {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const { selectedPickupDay, setSelectedPickupDay, selectedCategory, setSelectedCategory } = useCart();
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [products, setProducts] = useState<CMSProduct[]>([]);
@@ -70,6 +76,21 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       setV2AvailabilityRows([]);
     }
   }, [rolloutResolved, pickupV2Enabled, selectedPickupDay, selectedPickupV2]);
+
+  useEffect(() => {
+    if (!rolloutResolved || !pickupV2Enabled) return;
+    const stored = readPreferredPickupDateV2(user?.id ?? null);
+    if (!stored) return;
+    setSelectedPickupV2({
+      pickupDateId: stored.pickupDateId,
+      pickupDate: stored.pickupDate,
+      scheduleId: stored.scheduleId,
+      scheduleKey: stored.scheduleKey,
+      scheduleLabelEn: stored.scheduleLabelEn || stored.scheduleKey,
+      scheduleLabelTh: stored.scheduleLabelTh || null,
+      scheduleLabelZh: stored.scheduleLabelZh || null,
+    });
+  }, [rolloutResolved, pickupV2Enabled, user?.id]);
 
   useEffect(() => {
     if (initialProductSlug && !loading && products.length > 0) {
@@ -117,6 +138,11 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       setLoading(false);
     }
   }
+
+  const handlePickupV2Change = (next: PickupBrowseSelectionV2 | null) => {
+    setSelectedPickupV2(next);
+    writePreferredPickupDateV2(user?.id ?? null, next);
+  };
 
   const selectedPickupSlot = pickupDays.find((day) =>
     day.day_key === selectedPickupDay || day.label === selectedPickupDay,
@@ -264,7 +290,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           <PickupBrowseDateSelectorV2
             productIds={products.map((product) => product.id)}
             value={selectedPickupV2}
-            onChange={setSelectedPickupV2}
+            onChange={handlePickupV2Change}
             onAvailabilityRowsChange={setV2AvailabilityRows}
           />
         ) : (
