@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useLikes } from '../context/LikesContext';
-import { getAvailabilityStatus } from '../lib/availabilityService';
+import { getAvailabilityStatus, ProductAvailability } from '../lib/availabilityService';
 import { getPublicImageUrl } from '../lib/storage';
 import AlsoLikedSection from './AlsoLikedSection';
 
@@ -16,6 +16,9 @@ interface ProductDetailModalProps {
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
+  availabilityOverride?: ProductAvailability;
+  stockRemainingOverride?: number | null;
+  quantityLimitOverride?: number | null;
 }
 
 export default function ProductDetailModal({
@@ -25,6 +28,9 @@ export default function ProductDetailModal({
   selectedDay,
   selectedDayDisplay,
   onLoginRequired,
+  availabilityOverride,
+  stockRemainingOverride,
+  quantityLimitOverride,
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -47,7 +53,7 @@ export default function ProductDetailModal({
 
   if (!isOpen || !product) return null;
 
-  const availability = getAvailabilityStatus(product, selectedDay || null);
+  const availability = availabilityOverride ?? getAvailabilityStatus(product, selectedDay || null);
   const pickupDisplay = selectedDayDisplay || selectedDay;
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
@@ -88,8 +94,13 @@ export default function ProductDetailModal({
     return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
   };
 
-  const stockRemaining = product.stock_remaining;
-  const isSoldOut = product.is_sold_out || stockRemaining === 0;
+  const stockRemaining = stockRemainingOverride !== undefined
+    ? stockRemainingOverride
+    : product.stock_remaining;
+  const quantityLimit = quantityLimitOverride !== undefined
+    ? quantityLimitOverride
+    : stockRemaining;
+  const isSoldOut = product.is_sold_out || stockRemaining === 0 || quantityLimit === 0;
 
   const handleRecommendedProductClick = (recommendedProduct: CMSProduct) => {
     onClose();
@@ -212,7 +223,7 @@ export default function ProductDetailModal({
                     </button>
                     <span className="text-xl font-semibold w-16 text-center">{quantity}</span>
                     <button
-                      onClick={() => setQuantity(Math.min(stockRemaining || 999, quantity + 1))}
+                      onClick={() => setQuantity(Math.min(quantityLimit ?? 999, quantity + 1))}
                       className="p-2 rounded-full bg-white text-primary-900 hover:bg-primary-100 transition-colors shadow-sm"
                     >
                       <Plus className="h-5 w-5" />

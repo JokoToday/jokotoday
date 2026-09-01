@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useLikes } from '../context/LikesContext';
-import { getAvailabilityStatus } from '../lib/availabilityService';
+import { getAvailabilityStatus, ProductAvailability } from '../lib/availabilityService';
 import { getPublicImageUrl } from '../lib/storage';
 
 type ProductCardProps = {
@@ -14,9 +14,20 @@ type ProductCardProps = {
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
+  availabilityOverride?: ProductAvailability;
+  stockRemainingOverride?: number | null;
+  quantityLimitOverride?: number | null;
 };
 
-export default function ProductCard({ product, selectedDay, selectedDayDisplay, onLoginRequired }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  selectedDay,
+  selectedDayDisplay,
+  onLoginRequired,
+  availabilityOverride,
+  stockRemainingOverride,
+  quantityLimitOverride,
+}: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { addToCart } = useCart();
@@ -24,7 +35,7 @@ export default function ProductCard({ product, selectedDay, selectedDayDisplay, 
   const { user } = useAuth();
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
-  const availability = getAvailabilityStatus(product, selectedDay || null);
+  const availability = availabilityOverride ?? getAvailabilityStatus(product, selectedDay || null);
   const pickupDisplay = selectedDayDisplay || selectedDay;
 
   const productId = product.id;
@@ -73,8 +84,14 @@ export default function ProductCard({ product, selectedDay, selectedDayDisplay, 
   const productName = getProductName();
   const productDescription = getProductDescription();
 
-  const stockRemaining = product.stock_remaining ?? null;
-  const isSoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || stockRemaining === 0;
+  const stockRemaining = stockRemainingOverride !== undefined
+    ? stockRemainingOverride
+    : product.stock_remaining ?? null;
+  const quantityLimit = quantityLimitOverride !== undefined
+    ? quantityLimitOverride
+    : stockRemaining;
+  const globallySoldOut = 'is_sold_out' in product ? product.is_sold_out : !product.is_available;
+  const isSoldOut = globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
 
   const getProductImage = () => {
     if ('image' in product) {
@@ -185,7 +202,7 @@ export default function ProductCard({ product, selectedDay, selectedDayDisplay, 
               </button>
               <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(stockRemaining ?? 999, quantity + 1))}
+                onClick={() => setQuantity(Math.min(quantityLimit ?? 999, quantity + 1))}
                 className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />
