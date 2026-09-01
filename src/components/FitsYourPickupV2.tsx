@@ -169,6 +169,8 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
               <button
                 type="button"
                 onClick={() => addToCart(product, 1)}
+                aria-label={`${addLabel} ${name}`}
+                title={`${addLabel} ${name}`}
                 className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
