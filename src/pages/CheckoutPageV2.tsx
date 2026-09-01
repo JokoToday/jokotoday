@@ -6,6 +6,16 @@ import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import {
+  CommonPickupDateAvailability,
+  getCommonPickupDates,
+  getCustomerPickupAvailabilityV2,
+} from '../lib/pickupAvailabilityV2';
+import {
+  clearPreferredPickupDateV2,
+  readPreferredPickupDateV2,
+  writePreferredPickupDateV2,
+} from '../lib/pickupV2PreferredSelection';
 import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderServiceV2';
 import { supabase } from '../lib/supabase';
 
@@ -42,6 +52,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const { language, t } = useLanguage();
 
   const [selection, setSelection] = useState<PickupSelectionV2 | null>(null);
+  const [checkoutDates, setCheckoutDates] = useState<CommonPickupDateAvailability[]>([]);
+  const [preferredSelectionResolved, setPreferredSelectionResolved] = useState(false);
+  const [showPickupEditor, setShowPickupEditor] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -78,6 +91,106 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       }
     }
   }, [user, userProfile, profileLoading]);
+
+  useEffect(() => {
+    let cancelledLoad = false;
+
+    async function resolvePreferredSelection() {
+      if (requirements.length === 0) {
+        setCheckoutDates([]);
+        setPreferredSelectionResolved(true);
+        return;
+      }
+
+      setPreferredSelectionResolved(false);
+      try {
+        const productIds = Array.from(new Set(requirements.map(({ productId }) => productId)));
+        const rows = await getCustomerPickupAvailabilityV2(productIds);
+        if (cancelledLoad) return;
+
+        const dates = getCommonPickupDates(rows, requirements);
+        setCheckoutDates(dates);
+
+        const preferred = readPreferredPickupDateV2(user?.id ?? null);
+        if (!preferred) {
+          setSelection(null);
+          setShowPickupEditor(true);
+          return;
+        }
+
+        const preferredDate = dates.find((date) => date.pickupDateId === preferred.pickupDateId);
+        if (!preferredDate) {
+          clearPreferredPickupDateV2(user?.id ?? null);
+          setSelection(null);
+          setShowPickupEditor(true);
+          return;
+        }
+
+        if (preferredDate.locations.length !== 1) {
+          setSelection(null);
+          setShowPickupEditor(true);
+          return;
+        }
+
+        setSelection({
+          pickupDateId: preferredDate.pickupDateId,
+          pickupDate: preferredDate.pickupDate,
+          pickupLocationId: preferredDate.locations[0].id,
+          scheduleId: preferredDate.scheduleId,
+          scheduleKey: preferredDate.scheduleKey,
+        });
+        setShowPickupEditor(false);
+      } catch (error) {
+        if (!cancelledLoad) {
+          console.error('Could not resolve preferred Pickup v2 selection:', error);
+          setCheckoutDates([]);
+          setSelection(null);
+          setShowPickupEditor(true);
+        }
+      } finally {
+        if (!cancelledLoad) setPreferredSelectionResolved(true);
+      }
+    }
+
+    void resolvePreferredSelection();
+    return () => {
+      cancelledLoad = true;
+    };
+  }, [requirements, user?.id]);
+
+  const selectedCheckoutDate = selection
+    ? checkoutDates.find((date) => date.pickupDateId === selection.pickupDateId) || null
+    : null;
+  const selectedCheckoutLocation = selectedCheckoutDate && selection
+    ? selectedCheckoutDate.locations.find((location) => location.id === selection.pickupLocationId) || null
+    : null;
+
+  const getPickupLocationName = () => {
+    if (!selectedCheckoutLocation) return '';
+    if (language === 'th') return selectedCheckoutLocation.name_th || selectedCheckoutLocation.name_en;
+    if (language === 'zh') return selectedCheckoutLocation.name_zh || selectedCheckoutLocation.name_en;
+    return selectedCheckoutLocation.name_en;
+  };
+
+  const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
+    setSelection(next);
+    if (!next) {
+      setShowPickupEditor(true);
+      return;
+    }
+
+    const date = checkoutDates.find((candidate) => candidate.pickupDateId === next.pickupDateId);
+    writePreferredPickupDateV2(user?.id ?? null, {
+      pickupDateId: next.pickupDateId,
+      pickupDate: next.pickupDate,
+      scheduleId: next.scheduleId,
+      scheduleKey: next.scheduleKey,
+      scheduleLabelEn: date?.scheduleLabelEn || next.scheduleKey,
+      scheduleLabelTh: date?.scheduleLabelTh || null,
+      scheduleLabelZh: date?.scheduleLabelZh || null,
+    });
+    setShowPickupEditor(false);
+  };
 
   const getItemName = (item: SecureOrderItem) => {
     if (language === 'th') return item.product_name_th || item.product_name || '';
@@ -159,6 +272,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
 
       setOrderAttemptReference('');
       setOrderComplete(true);
+      clearPreferredPickupDateV2(user.id);
       clearCart();
 
       void supabase.functions.invoke('send-order-confirmation', {
@@ -336,6 +450,22 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     );
   }
 
+  const confirmTitle = language === 'th'
+    ? 'ยืนยันวันที่และสถานที่รับสินค้า'
+    : language === 'zh'
+      ? '确认取货日期和地点'
+      : 'Confirm pickup date and location';
+  const confirmHelper = language === 'th'
+    ? 'นี่คือวันที่รับสินค้าที่คุณเลือกไว้ กรุณาตรวจสอบก่อนยืนยันคำสั่งซื้อ'
+    : language === 'zh'
+      ? '这是您之前选择的取货安排。下单前请确认日期和地点。'
+      : 'This is the pickup choice you selected while shopping. Please confirm it before placing your order.';
+  const changeLabel = language === 'th'
+    ? 'เปลี่ยนวันที่หรือสถานที่'
+    : language === 'zh'
+      ? '更改日期或地点'
+      : 'Change date or location';
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -371,7 +501,50 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               <p className="text-sm text-gray-700">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user.email || '')}</p>
             </div>
 
-            <PickupDateSelectorV2 requirements={requirements} value={selection} onChange={setSelection} />
+            {!preferredSelectionResolved ? (
+              <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 py-10 text-center text-sm text-gray-500">
+                {language === 'th' ? 'กำลังตรวจสอบวันที่รับสินค้า…' : language === 'zh' ? '正在确认取货安排…' : 'Confirming your pickup selection…'}
+              </div>
+            ) : selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor ? (
+              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div>
+                    <h2 className="font-semibold text-gray-900">{confirmTitle}</h2>
+                    <p className="text-sm text-gray-600 mt-1">{confirmHelper}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPickupEditor(true)}
+                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-50"
+                  >
+                    {changeLabel}
+                  </button>
+                </div>
+
+                <div className="mt-5 grid sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-amber-100 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupDay}</p>
+                    <p className="flex items-start gap-2 font-semibold text-gray-900">
+                      <Calendar className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      {formatStoredPickupDate(selection.pickupDate, language)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-amber-100 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupLocation}</p>
+                    <p className="flex items-start gap-2 font-semibold text-gray-900">
+                      <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      {getPickupLocationName()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <PickupDateSelectorV2
+                requirements={requirements}
+                value={selection}
+                onChange={handlePickupSelectionChange}
+              />
+            )}
 
             <div>
               <label htmlFor="pickup-v2-notes" className="block text-sm font-medium text-gray-700 mb-2">
