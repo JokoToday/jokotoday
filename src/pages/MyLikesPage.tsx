@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Heart, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -6,15 +6,26 @@ import { fetchLikedProducts } from '../lib/likesService';
 import { CMSProduct } from '../lib/cmsService';
 import ProductCard from '../components/ProductCard';
 import { AuthModal } from '../components/AuthModal';
+import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
+import { getCustomerPickupAvailabilityV2, PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
+import { ProductAvailability } from '../lib/availabilityService';
 
 interface MyLikesPageProps {
   onNavigate: (page: string) => void;
 }
 
+type V2LikedProductState = {
+  availability: ProductAvailability;
+  stockRemaining: number | null;
+  quantityLimit: number | null;
+};
+
 export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const [likedProducts, setLikedProducts] = useState<CMSProduct[]>([]);
+  const [pickupV2Enabled, setPickupV2Enabled] = useState(false);
+  const [v2AvailabilityRows, setV2AvailabilityRows] = useState<PickupAvailabilityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -55,9 +66,11 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   useEffect(() => {
     if (user) {
-      loadLikedProducts();
+      void loadLikedProducts();
     } else if (!authLoading) {
       setLoading(false);
+      setLikedProducts([]);
+      setV2AvailabilityRows([]);
     }
   }, [user, authLoading]);
 
@@ -67,11 +80,53 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     try {
       const products = await fetchLikedProducts(user.id);
       setLikedProducts(products);
+
+      const v2Enabled = await getPickupV2CustomerEnabled();
+      setPickupV2Enabled(v2Enabled);
+
+      if (v2Enabled && products.length > 0) {
+        try {
+          const rows = await getCustomerPickupAvailabilityV2(products.map((product) => product.id));
+          setV2AvailabilityRows(rows);
+        } catch (availabilityError) {
+          console.error('Error loading Pickup v2 availability for favorites:', availabilityError);
+          setV2AvailabilityRows([]);
+        }
+      } else {
+        setV2AvailabilityRows([]);
+      }
     } catch (error) {
       console.error('Error loading liked products:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const v2RowsByProduct = useMemo(() => {
+    const map = new Map<string, PickupAvailabilityRow[]>();
+    v2AvailabilityRows.forEach((row) => {
+      const current = map.get(row.product_id) || [];
+      current.push(row);
+      map.set(row.product_id, current);
+    });
+    return map;
+  }, [v2AvailabilityRows]);
+
+  const getV2LikedProductState = (productId: string): V2LikedProductState => {
+    const rows = v2RowsByProduct.get(productId) || [];
+    const maxRemaining = rows.reduce((maximum, row) => Math.max(maximum, row.remaining_quantity), 0);
+    const hasFutureAvailability = maxRemaining > 0;
+
+    return {
+      availability: {
+        isAvailable: hasFutureAvailability,
+        isSoldOut: !hasFutureAvailability,
+        isNotOfferedToday: rows.length === 0,
+        remainingStock: maxRemaining,
+      },
+      stockRemaining: hasFutureAvailability ? null : 0,
+      quantityLimit: hasFutureAvailability ? maxRemaining : 0,
+    };
   };
 
   if (authLoading) {
@@ -167,13 +222,19 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {likedProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onLoginRequired={() => setShowAuthModal(true)}
-              />
-            ))}
+            {likedProducts.map((product) => {
+              const v2State = pickupV2Enabled ? getV2LikedProductState(product.id) : null;
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  availabilityOverride={v2State?.availability}
+                  stockRemainingOverride={v2State?.stockRemaining}
+                  quantityLimitOverride={v2State?.quantityLimit}
+                  onLoginRequired={() => setShowAuthModal(true)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
