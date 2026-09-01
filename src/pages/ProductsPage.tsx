@@ -4,6 +4,7 @@ import ProductCard from '../components/ProductCard';
 import { PickupDaySelector } from '../components/PickupDaySelector';
 import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
+import { PickupBasketFitDisplay } from '../components/PickupIntelligenceBadges';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
@@ -17,6 +18,7 @@ import {
 } from '../lib/availabilityService';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
 import {
+  getCommonPickupDates,
   getCustomerPickupAvailabilityV2,
   PickupAvailabilityRow,
 } from '../lib/pickupAvailabilityV2';
@@ -33,10 +35,38 @@ type V2ProductDisplayState = {
   quantityLimit: number | null;
 };
 
+type SupportedLanguage = 'en' | 'th' | 'zh';
+
+function formatPickupDate(value: string, language: SupportedLanguage): string {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)));
+}
+
+function localizedScheduleLabel(row: PickupAvailabilityRow, language: SupportedLanguage): string {
+  if (language === 'th') return row.schedule_label_th || row.schedule_label_en;
+  if (language === 'zh') return row.schedule_label_zh || row.schedule_label_en;
+  return row.schedule_label_en;
+}
+
+function localizedLocationLabel(row: PickupAvailabilityRow, language: SupportedLanguage): string | null {
+  if (row.locations.length !== 1) return null;
+  const location = row.locations[0];
+  if (language === 'th') return location.name_th || location.name_en;
+  if (language === 'zh') return location.name_zh || location.name_en;
+  return location.name_en;
+}
+
 export default function ProductsPage({ initialProductSlug, qrSource, onProductOpened }: ProductsPageProps) {
   const { t, language } = useLanguage();
   const { getLabel } = useCMSLabels();
-  const { selectedPickupDay, setSelectedPickupDay, selectedCategory, setSelectedCategory } = useCart();
+  const { items, selectedPickupDay, setSelectedPickupDay, selectedCategory, setSelectedCategory } = useCart();
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
@@ -159,8 +189,14 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       current.push(row);
       map.set(row.product_id, current);
     });
+    map.forEach((rows) => rows.sort((a, b) => a.pickup_date.localeCompare(b.pickup_date)));
     return map;
   }, [v2AvailabilityRows]);
+
+  const cartRequirements = useMemo(
+    () => items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+    [items],
+  );
 
   const getV2ProductDisplayState = (productId: string): V2ProductDisplayState => {
     const productRows = v2RowsByProduct.get(productId) || [];
@@ -179,6 +215,64 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       },
       stockRemaining: hasFutureAvailability ? null : 0,
       quantityLimit: hasFutureAvailability ? maxRemaining : 0,
+    };
+  };
+
+  const nextPickupTemplate = getLabel(
+    'pickup_intelligence.next_pickup',
+    language,
+    language === 'th' ? 'รับครั้งถัดไป: {{pickup}}' : language === 'zh' ? '下次取货：{{pickup}}' : 'Next pickup: {{pickup}}',
+  );
+  const basketFitTemplate = getLabel(
+    'pickup_intelligence.basket_fit',
+    language,
+    language === 'th'
+      ? 'เข้ากับตะกร้าของคุณ · {{count}} ตัวเลือกรับสินค้า'
+      : language === 'zh'
+        ? '适合当前购物篮 · {{count}} 个取货选项'
+        : 'Fits your basket · {{count}} pickup options',
+  );
+  const basketConflictLabel = getLabel(
+    'pickup_intelligence.basket_conflict',
+    language,
+    language === 'th'
+      ? 'ไม่มีวันรับสินค้าร่วมกันสำหรับตะกร้านี้'
+      : language === 'zh'
+        ? '与当前购物篮没有共同取货日期'
+        : 'No common pickup date with this basket',
+  );
+
+  const getNextPickupLabel = (productId: string): string | null => {
+    if (!pickupV2Enabled) return null;
+    const nextRow = (v2RowsByProduct.get(productId) || []).find((row) => row.remaining_quantity > 0);
+    if (!nextRow) return null;
+
+    const dateLabel = formatPickupDate(nextRow.pickup_date, language);
+    const destinationLabel = localizedLocationLabel(nextRow, language)
+      || localizedScheduleLabel(nextRow, language);
+    return nextPickupTemplate.replace('{{pickup}}', `${dateLabel} · ${destinationLabel}`);
+  };
+
+  const getBasketFit = (productId: string, quantity: number): PickupBasketFitDisplay | null => {
+    if (!pickupV2Enabled || cartRequirements.length === 0 || !Number.isFinite(quantity) || quantity <= 0) {
+      return null;
+    }
+
+    const commonDates = getCommonPickupDates(v2AvailabilityRows, [
+      ...cartRequirements,
+      { productId, quantity },
+    ]);
+
+    if (commonDates.length > 0) {
+      return {
+        tone: 'positive',
+        label: basketFitTemplate.replace('{{count}}', String(commonDates.length)),
+      };
+    }
+
+    return {
+      tone: 'warning',
+      label: basketConflictLabel,
     };
   };
 
@@ -216,6 +310,9 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
   const selectedProductV2State = selectedProduct && pickupV2Enabled
     ? getV2ProductDisplayState(selectedProduct.id)
+    : null;
+  const selectedProductNextPickupLabel = selectedProduct && pickupV2Enabled
+    ? getNextPickupLabel(selectedProduct.id)
     : null;
 
   const browseTitle = getLabel(
@@ -338,6 +435,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => {
               const v2State = pickupV2Enabled ? getV2ProductDisplayState(product.id) : null;
+              const nextPickupLabel = pickupV2Enabled ? getNextPickupLabel(product.id) : null;
+              const canShowBasketFit = Boolean(pickupV2Enabled && v2State?.availability.isAvailable);
               return (
                 <div
                   key={product.id}
@@ -351,6 +450,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                     availabilityOverride={v2State?.availability}
                     stockRemainingOverride={v2State?.stockRemaining}
                     quantityLimitOverride={v2State?.quantityLimit}
+                    nextPickupLabel={nextPickupLabel}
+                    getBasketFit={canShowBasketFit ? (quantity) => getBasketFit(product.id, quantity) : undefined}
                     onLoginRequired={() => setShowAuthModal(true)}
                   />
                 </div>
@@ -374,6 +475,10 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         availabilityOverride={selectedProductV2State?.availability}
         stockRemainingOverride={selectedProductV2State?.stockRemaining}
         quantityLimitOverride={selectedProductV2State?.quantityLimit}
+        nextPickupLabel={selectedProductNextPickupLabel}
+        getBasketFit={selectedProduct && selectedProductV2State?.availability.isAvailable
+          ? (quantity) => getBasketFit(selectedProduct.id, quantity)
+          : undefined}
         onLoginRequired={() => setShowAuthModal(true)}
       />
     </div>

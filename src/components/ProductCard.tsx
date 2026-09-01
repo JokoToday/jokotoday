@@ -8,6 +8,10 @@ import { useAuth } from '../context/AuthContext';
 import { useLikes } from '../context/LikesContext';
 import { getAvailabilityStatus, ProductAvailability } from '../lib/availabilityService';
 import { getPublicImageUrl } from '../lib/storage';
+import {
+  PickupBasketFitDisplay,
+  PickupIntelligenceBadges,
+} from './PickupIntelligenceBadges';
 
 type ProductCardProps = {
   product: Product | CMSProduct;
@@ -17,6 +21,8 @@ type ProductCardProps = {
   availabilityOverride?: ProductAvailability;
   stockRemainingOverride?: number | null;
   quantityLimitOverride?: number | null;
+  nextPickupLabel?: string | null;
+  getBasketFit?: (quantity: number) => PickupBasketFitDisplay | null;
 };
 
 export default function ProductCard({
@@ -27,6 +33,8 @@ export default function ProductCard({
   availabilityOverride,
   stockRemainingOverride,
   quantityLimitOverride,
+  nextPickupLabel,
+  getBasketFit,
 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -41,6 +49,7 @@ export default function ProductCard({
   const productId = product.id;
   const liked = isLiked(productId);
   const likeCount = getLikeCount(productId);
+  const basketFit = getBasketFit?.(quantity) ?? null;
 
   const handleLikeClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -148,6 +157,15 @@ export default function ProductCard({
       <div className="p-4">
         <h3 className="text-lg font-semibold text-primary-900 mb-2">{productName}</h3>
         <p className="text-sm text-gray-600 mb-4 line-clamp-2">{productDescription}</p>
+
+        {(nextPickupLabel || basketFit) && (
+          <div className="mb-3">
+            <PickupIntelligenceBadges
+              nextPickupLabel={nextPickupLabel}
+              basketFit={basketFit}
+            />
+          </div>
+        )}
 
         {selectedDay && (
           <div className="mb-3">
