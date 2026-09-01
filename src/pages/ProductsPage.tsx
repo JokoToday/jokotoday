@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { RefreshCw, ShoppingBag } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { PickupDaySelector } from '../components/PickupDaySelector';
-import {
-  PickupBrowseDateSelectorV2,
-  PickupBrowseSelectionV2,
-} from '../components/PickupBrowseDateSelectorV2';
 import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
+import { useCMSLabels } from '../hooks/useCMSLabels';
 import { getCategories, getProducts, getProductBySlug, CMSCategory, CMSProduct } from '../lib/cmsService';
 import {
   getPickupDays,
@@ -19,11 +16,10 @@ import {
   ProductAvailability,
 } from '../lib/availabilityService';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
-import { PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
 import {
-  readPreferredPickupDateV2,
-  writePreferredPickupDateV2,
-} from '../lib/pickupV2PreferredSelection';
+  getCustomerPickupAvailabilityV2,
+  PickupAvailabilityRow,
+} from '../lib/pickupAvailabilityV2';
 
 interface ProductsPageProps {
   initialProductSlug?: string | null;
@@ -39,15 +35,16 @@ type V2ProductDisplayState = {
 
 export default function ProductsPage({ initialProductSlug, qrSource, onProductOpened }: ProductsPageProps) {
   const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { getLabel } = useCMSLabels();
   const { selectedPickupDay, setSelectedPickupDay, selectedCategory, setSelectedCategory } = useCart();
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
   const [pickupV2Enabled, setPickupV2Enabled] = useState(false);
   const [rolloutResolved, setRolloutResolved] = useState(false);
-  const [selectedPickupV2, setSelectedPickupV2] = useState<PickupBrowseSelectionV2 | null>(null);
   const [v2AvailabilityRows, setV2AvailabilityRows] = useState<PickupAvailabilityRow[]>([]);
+  const [v2AvailabilityLoading, setV2AvailabilityLoading] = useState(false);
+  const [v2AvailabilityError, setV2AvailabilityError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CMSProduct | null>(null);
@@ -71,26 +68,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     if (rolloutResolved && pickupV2Enabled && selectedPickupDay) {
       setSelectedPickupDay(null);
     }
-    if (rolloutResolved && !pickupV2Enabled && selectedPickupV2) {
-      setSelectedPickupV2(null);
-      setV2AvailabilityRows([]);
-    }
-  }, [rolloutResolved, pickupV2Enabled, selectedPickupDay, selectedPickupV2]);
-
-  useEffect(() => {
-    if (!rolloutResolved || !pickupV2Enabled) return;
-    const stored = readPreferredPickupDateV2(user?.id ?? null);
-    if (!stored) return;
-    setSelectedPickupV2({
-      pickupDateId: stored.pickupDateId,
-      pickupDate: stored.pickupDate,
-      scheduleId: stored.scheduleId,
-      scheduleKey: stored.scheduleKey,
-      scheduleLabelEn: stored.scheduleLabelEn || stored.scheduleKey,
-      scheduleLabelTh: stored.scheduleLabelTh || null,
-      scheduleLabelZh: stored.scheduleLabelZh || null,
-    });
-  }, [rolloutResolved, pickupV2Enabled, user?.id]);
+  }, [rolloutResolved, pickupV2Enabled, selectedPickupDay]);
 
   useEffect(() => {
     if (initialProductSlug && !loading && products.length > 0) {
@@ -115,6 +93,27 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     }
   }, [initialProductSlug, loading, products, qrSource, onProductOpened]);
 
+  async function loadV2Availability(productIds: string[]) {
+    if (productIds.length === 0) {
+      setV2AvailabilityRows([]);
+      setV2AvailabilityError('');
+      return;
+    }
+
+    setV2AvailabilityLoading(true);
+    setV2AvailabilityError('');
+    try {
+      const rows = await getCustomerPickupAvailabilityV2(productIds);
+      setV2AvailabilityRows(rows);
+    } catch (error) {
+      console.error('Error loading Pickup v2 product availability:', error);
+      setV2AvailabilityRows([]);
+      setV2AvailabilityError(error instanceof Error ? error.message : 'Could not load Pickup v2 availability.');
+    } finally {
+      setV2AvailabilityLoading(false);
+    }
+  }
+
   async function loadData() {
     setLoading(true);
     try {
@@ -130,6 +129,13 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       setPickupDays(days);
       setPickupV2Enabled(v2Enabled);
       setRolloutResolved(true);
+
+      if (v2Enabled) {
+        await loadV2Availability(cmsProducts.map((product) => product.id));
+      } else {
+        setV2AvailabilityRows([]);
+        setV2AvailabilityError('');
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       setPickupV2Enabled(false);
@@ -138,11 +144,6 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       setLoading(false);
     }
   }
-
-  const handlePickupV2Change = (next: PickupBrowseSelectionV2 | null) => {
-    setSelectedPickupV2(next);
-    writePreferredPickupDateV2(user?.id ?? null, next);
-  };
 
   const selectedPickupSlot = pickupDays.find((day) =>
     day.day_key === selectedPickupDay || day.label === selectedPickupDay,
@@ -163,35 +164,6 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
   const getV2ProductDisplayState = (productId: string): V2ProductDisplayState => {
     const productRows = v2RowsByProduct.get(productId) || [];
-
-    if (selectedPickupV2) {
-      const row = productRows.find((candidate) => candidate.pickup_date_id === selectedPickupV2.pickupDateId);
-      if (!row) {
-        return {
-          availability: {
-            isAvailable: false,
-            isSoldOut: false,
-            isNotOfferedToday: true,
-            remainingStock: 0,
-          },
-          stockRemaining: 0,
-          quantityLimit: 0,
-        };
-      }
-
-      const remaining = Math.max(0, row.remaining_quantity);
-      return {
-        availability: {
-          isAvailable: remaining > 0,
-          isSoldOut: remaining <= 0,
-          isNotOfferedToday: false,
-          remainingStock: remaining,
-        },
-        stockRemaining: remaining,
-        quantityLimit: remaining,
-      };
-    }
-
     const maxRemaining = productRows.reduce(
       (maximum, row) => Math.max(maximum, row.remaining_quantity),
       0,
@@ -214,13 +186,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     const matchesCategory = !selectedCategory || selectedCategory === 'all' || product.category_id === selectedCategory;
     if (!matchesCategory) return false;
 
-    if (pickupV2Enabled) {
-      if (v2AvailabilityRows.length === 0) return true;
-      const productRows = v2RowsByProduct.get(product.id) || [];
-      if (!selectedPickupV2) return productRows.length > 0;
-      return productRows.some((row) => row.pickup_date_id === selectedPickupV2.pickupDateId);
-    }
-
+    if (pickupV2Enabled) return true;
     if (!selectedPickupDay) return true;
 
     const selectedDay = pickupDays.find((day) =>
@@ -248,27 +214,24 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   const availableDays = dayOptions.filter(d => getIsOpen(d.label)).map(d => d.label);
   const closedDays = dayOptions.filter(d => !getIsOpen(d.label)).map(d => d.label);
 
-  const v2SelectedDisplay = useMemo(() => {
-    if (!selectedPickupV2) return null;
-    const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
-    const date = new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    }).format(new Date(`${selectedPickupV2.pickupDate}T12:00:00Z`));
-    const schedule = language === 'th'
-      ? selectedPickupV2.scheduleLabelTh || selectedPickupV2.scheduleLabelEn
-      : language === 'zh'
-        ? selectedPickupV2.scheduleLabelZh || selectedPickupV2.scheduleLabelEn
-        : selectedPickupV2.scheduleLabelEn;
-    return `${date} · ${schedule}`;
-  }, [selectedPickupV2, language]);
-
   const selectedProductV2State = selectedProduct && pickupV2Enabled
     ? getV2ProductDisplayState(selectedProduct.id)
     : null;
+
+  const browseTitle = getLabel(
+    'products.browse_everything_title',
+    language,
+    language === 'th' ? 'เลือกดูสินค้าทั้งหมด' : language === 'zh' ? '浏览全部商品' : 'Browse everything',
+  );
+  const browseHelper = getLabel(
+    'products.browse_everything_helper',
+    language,
+    language === 'th'
+      ? 'เลือกสินค้าที่คุณชอบได้เลย แล้ว Pickup Finder ในตะกร้าจะหาวันที่สินค้าทุกชิ้นมีพร้อมให้รับในครั้งเดียว'
+      : language === 'zh'
+        ? '先挑选您喜欢的商品。购物篮里的 Pickup Finder 会查找所有商品都能一起取货的日期。'
+        : 'Choose what you like first. Pickup Finder in your basket will find dates when everything can be collected together.',
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background">
@@ -284,15 +247,36 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
         {!rolloutResolved ? (
           <div className="max-w-3xl mx-auto mb-8 rounded-2xl border-2 border-amber-200 bg-amber-50 py-12 text-center text-sm text-gray-500">
-            {language === 'th' ? 'กำลังโหลดวันรับสินค้า…' : language === 'zh' ? '正在加载取货日期…' : 'Loading pickup dates…'}
+            {language === 'th' ? 'กำลังโหลดสินค้า…' : language === 'zh' ? '正在加载商品…' : 'Loading products…'}
           </div>
         ) : pickupV2Enabled ? (
-          <PickupBrowseDateSelectorV2
-            productIds={products.map((product) => product.id)}
-            value={selectedPickupV2}
-            onChange={handlePickupV2Change}
-            onAvailabilityRowsChange={setV2AvailabilityRows}
-          />
+          <div className="max-w-3xl mx-auto mb-8 rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center shrink-0">
+                  <ShoppingBag className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-gray-900">{browseTitle}</h2>
+                  <p className="text-sm text-gray-600 mt-1">{browseHelper}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadV2Availability(products.map((product) => product.id))}
+                disabled={v2AvailabilityLoading || products.length === 0}
+                className="p-2 rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 disabled:opacity-40 shrink-0"
+                aria-label="Refresh product availability"
+              >
+                <RefreshCw className={`w-4 h-4 ${v2AvailabilityLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            {v2AvailabilityError && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {v2AvailabilityError}
+              </div>
+            )}
+          </div>
         ) : (
           <PickupDaySelector
             selectedPickupDay={selectedPickupDay}
@@ -337,7 +321,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
         </div>
 
-        {loading ? (
+        {loading || (pickupV2Enabled && v2AvailabilityLoading && v2AvailabilityRows.length === 0) ? (
           <div className="text-center py-20">
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
             <p className="mt-4 text-gray-600">Loading delicious items...</p>
@@ -345,7 +329,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-xl text-gray-600">
-              {(pickupV2Enabled ? selectedPickupV2 : selectedPickupDay)
+              {selectedPickupDay && !pickupV2Enabled
                 ? 'No products available for this pickup date and category.'
                 : 'No products are currently available in this category.'}
             </p>
@@ -362,8 +346,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                 >
                   <ProductCard
                     product={product}
-                    selectedDay={pickupV2Enabled ? selectedPickupV2?.pickupDate || null : selectedPickupDay}
-                    selectedDayDisplay={pickupV2Enabled ? v2SelectedDisplay : selectedLegacyPickupDisplay}
+                    selectedDay={pickupV2Enabled ? null : selectedPickupDay}
+                    selectedDayDisplay={pickupV2Enabled ? null : selectedLegacyPickupDisplay}
                     availabilityOverride={v2State?.availability}
                     stockRemainingOverride={v2State?.stockRemaining}
                     quantityLimitOverride={v2State?.quantityLimit}
@@ -385,8 +369,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         product={selectedProduct}
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
-        selectedDay={pickupV2Enabled ? selectedPickupV2?.pickupDate || null : selectedPickupDay}
-        selectedDayDisplay={pickupV2Enabled ? v2SelectedDisplay : selectedLegacyPickupDisplay}
+        selectedDay={pickupV2Enabled ? null : selectedPickupDay}
+        selectedDayDisplay={pickupV2Enabled ? null : selectedLegacyPickupDisplay}
         availabilityOverride={selectedProductV2State?.availability}
         stockRemainingOverride={selectedProductV2State?.stockRemaining}
         quantityLimitOverride={selectedProductV2State?.quantityLimit}
