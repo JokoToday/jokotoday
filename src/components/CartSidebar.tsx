@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { AuthRequiredModal } from './AuthRequiredModal';
+import { PickupFinderStateV2, PickupFinderV2 } from './PickupFinderV2';
 import { getPublicImageUrl } from '../lib/storage';
 
 type CartSidebarProps = {
@@ -11,11 +12,19 @@ type CartSidebarProps = {
   onStartShopping: () => void;
 };
 
+const INITIAL_PICKUP_FINDER_STATE: PickupFinderStateV2 = {
+  enabled: false,
+  loading: false,
+  hasCommonDates: null,
+  selectedPickupDateId: null,
+};
+
 export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebarProps) {
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pickupFinderState, setPickupFinderState] = useState<PickupFinderStateV2>(INITIAL_PICKUP_FINDER_STATE);
 
   if (!isCartOpen) return null;
 
@@ -25,6 +34,8 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
       : language === 'zh'
         ? '开始选购'
         : 'Start shopping';
+  const checkoutBlockedByFinder = pickupFinderState.enabled
+    && (pickupFinderState.loading || pickupFinderState.hasCommonDates === false);
 
   return (
     <>
@@ -127,6 +138,8 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                   </div>
                 );
               })}
+
+              <PickupFinderV2 onStateChange={setPickupFinderState} />
             </div>
           )}
         </div>
@@ -145,9 +158,12 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                     setIsCartOpen(false);
                     onCheckout();
                   }}
-                  className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                  disabled={checkoutBlockedByFinder}
+                  className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {t.cart.checkout}
+                  {pickupFinderState.loading
+                    ? (language === 'th' ? 'กำลังตรวจสอบวันรับสินค้า…' : language === 'zh' ? '正在检查取货日期…' : 'Checking pickup dates…')
+                    : t.cart.checkout}
                 </button>
               </>
             ) : (
