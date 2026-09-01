@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { AuthRequiredModal } from './AuthRequiredModal';
+import { FitsYourPickupV2 } from './FitsYourPickupV2';
 import { PickupFinderStateV2, PickupFinderV2 } from './PickupFinderV2';
 import { getPublicImageUrl } from '../lib/storage';
 
@@ -140,6 +141,13 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
               })}
 
               <PickupFinderV2 onStateChange={setPickupFinderState} />
+
+              {pickupFinderState.enabled
+                && !pickupFinderState.loading
+                && pickupFinderState.hasCommonDates === true
+                && pickupFinderState.selectedPickupDateId && (
+                  <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} />
+                )}
             </div>
           )}
         </div>
