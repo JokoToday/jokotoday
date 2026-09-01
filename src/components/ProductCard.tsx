@@ -16,6 +16,7 @@ type ProductCardProps = {
   onLoginRequired?: () => void;
   availabilityOverride?: ProductAvailability;
   stockRemainingOverride?: number | null;
+  quantityLimitOverride?: number | null;
 };
 
 export default function ProductCard({
@@ -25,6 +26,7 @@ export default function ProductCard({
   onLoginRequired,
   availabilityOverride,
   stockRemainingOverride,
+  quantityLimitOverride,
 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -85,8 +87,11 @@ export default function ProductCard({
   const stockRemaining = stockRemainingOverride !== undefined
     ? stockRemainingOverride
     : product.stock_remaining ?? null;
+  const quantityLimit = quantityLimitOverride !== undefined
+    ? quantityLimitOverride
+    : stockRemaining;
   const globallySoldOut = 'is_sold_out' in product ? product.is_sold_out : !product.is_available;
-  const isSoldOut = globallySoldOut || stockRemaining === 0;
+  const isSoldOut = globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
 
   const getProductImage = () => {
     if ('image' in product) {
@@ -197,7 +202,7 @@ export default function ProductCard({
               </button>
               <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(stockRemaining ?? 999, quantity + 1))}
+                onClick={() => setQuantity(Math.min(quantityLimit ?? 999, quantity + 1))}
                 className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
               >
                 <Plus className="h-4 w-4" />
