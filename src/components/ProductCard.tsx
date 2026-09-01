@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useLikes } from '../context/LikesContext';
-import { getAvailabilityStatus } from '../lib/availabilityService';
+import { getAvailabilityStatus, ProductAvailability } from '../lib/availabilityService';
 import { getPublicImageUrl } from '../lib/storage';
 
 type ProductCardProps = {
@@ -14,9 +14,18 @@ type ProductCardProps = {
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
+  availabilityOverride?: ProductAvailability;
+  stockRemainingOverride?: number | null;
 };
 
-export default function ProductCard({ product, selectedDay, selectedDayDisplay, onLoginRequired }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  selectedDay,
+  selectedDayDisplay,
+  onLoginRequired,
+  availabilityOverride,
+  stockRemainingOverride,
+}: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { addToCart } = useCart();
@@ -24,7 +33,7 @@ export default function ProductCard({ product, selectedDay, selectedDayDisplay, 
   const { user } = useAuth();
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
-  const availability = getAvailabilityStatus(product, selectedDay || null);
+  const availability = availabilityOverride ?? getAvailabilityStatus(product, selectedDay || null);
   const pickupDisplay = selectedDayDisplay || selectedDay;
 
   const productId = product.id;
@@ -73,8 +82,11 @@ export default function ProductCard({ product, selectedDay, selectedDayDisplay, 
   const productName = getProductName();
   const productDescription = getProductDescription();
 
-  const stockRemaining = product.stock_remaining ?? null;
-  const isSoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || stockRemaining === 0;
+  const stockRemaining = stockRemainingOverride !== undefined
+    ? stockRemainingOverride
+    : product.stock_remaining ?? null;
+  const globallySoldOut = 'is_sold_out' in product ? product.is_sold_out : !product.is_available;
+  const isSoldOut = globallySoldOut || stockRemaining === 0;
 
   const getProductImage = () => {
     if ('image' in product) {
