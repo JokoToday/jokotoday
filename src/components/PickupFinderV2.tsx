@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, Check, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useCMSLabels } from '../hooks/useCMSLabels';
 import {
   CommonPickupDateAvailability,
   getCommonPickupDates,
@@ -43,6 +44,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
   const { items } = useCart();
   const { user } = useAuth();
   const { language } = useLanguage();
+  const { getLabel } = useCMSLabels();
   const [enabled, setEnabled] = useState(false);
   const [rolloutResolved, setRolloutResolved] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,21 +125,61 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
 
   if (!rolloutResolved || !enabled || items.length === 0) return null;
 
-  const title = language === 'th'
-    ? 'ค้นหาวันรับสินค้าร่วมกัน'
-    : language === 'zh'
-      ? '取货日期查找器'
-      : 'Pickup Finder';
-  const helper = language === 'th'
-    ? 'เราจะหาวันที่สินค้าทุกชิ้นในตะกร้ามีจำนวนเพียงพอและรับพร้อมกันได้'
-    : language === 'zh'
-      ? '我们会查找购物篮中所有商品库存都足够、可以一起取货的日期。'
-      : 'Find dates when every item in your basket has enough stock to be picked up together.';
-  const noMatch = language === 'th'
-    ? 'ขณะนี้ไม่มีวันเดียวที่มีสินค้าทุกชิ้นในจำนวนที่คุณเลือก ลองลดจำนวนหรือนำบางรายการออก'
-    : language === 'zh'
-      ? '目前没有一个取货日期能满足购物篮中所有商品及其数量。请减少数量或移除部分商品。'
-      : 'There is currently no single pickup date with enough stock for every item in this basket. Reduce quantities or remove an item.';
+  const title = getLabel(
+    'pickup_finder.title',
+    language,
+    language === 'th' ? 'ค้นหาวันรับสินค้าร่วมกัน' : language === 'zh' ? '取货日期查找器' : 'Pickup Finder',
+  );
+  const helper = getLabel(
+    'pickup_finder.helper',
+    language,
+    language === 'th'
+      ? 'เราจะหาวันที่สินค้าทุกชิ้นในตะกร้ามีจำนวนเพียงพอและรับพร้อมกันได้'
+      : language === 'zh'
+        ? '我们会查找购物篮中所有商品库存都足够、可以一起取货的日期。'
+        : 'Find dates when every item in your basket has enough stock to be picked up together.',
+  );
+  const noMatch = getLabel(
+    'pickup_finder.no_common_date',
+    language,
+    language === 'th'
+      ? 'ขณะนี้ไม่มีวันเดียวที่มีสินค้าทุกชิ้นในจำนวนที่คุณเลือก ลองลดจำนวนหรือนำบางรายการออก'
+      : language === 'zh'
+        ? '目前没有一个取货日期能满足购物篮中所有商品及其数量。请减少数量或移除部分商品。'
+        : 'There is currently no single pickup date with enough stock for every item in this basket. Reduce quantities or remove an item.',
+  );
+  const loadingLabel = getLabel(
+    'pickup_finder.loading',
+    language,
+    language === 'th' ? 'กำลังค้นหาวันที่รับพร้อมกัน…' : language === 'zh' ? '正在查找共同取货日期…' : 'Finding common pickup dates…',
+  );
+  const foundTemplate = getLabel(
+    'pickup_finder.common_dates_found',
+    language,
+    language === 'th'
+      ? 'พบ {{count}} วันที่รับสินค้าทุกชิ้นพร้อมกันได้'
+      : language === 'zh'
+        ? '找到 {{count}} 个可一起取货的日期'
+        : '{{count}} common pickup dates found',
+  );
+  const selectedHelper = getLabel(
+    'pickup_finder.selected_helper',
+    language,
+    language === 'th'
+      ? 'วันที่เลือกจะถูกนำไปยืนยันในหน้าชำระเงิน'
+      : language === 'zh'
+        ? '所选日期将在结账时自动带入并再次确认。'
+        : 'Your selected date will be carried into checkout and revalidated there.',
+  );
+  const chooseHelper = getLabel(
+    'pickup_finder.choose_helper',
+    language,
+    language === 'th'
+      ? 'เลือกวันที่ตอนนี้ หรือเลือกภายหลังในหน้าชำระเงินก็ได้'
+      : language === 'zh'
+        ? '您可以现在选择日期，也可以在结账时再选择。'
+        : 'Choose a date now, or choose one at checkout.',
+  );
 
   const selectDate = (date: CommonPickupDateAvailability) => {
     setSelectedPickupDateId(date.pickupDateId);
@@ -179,7 +221,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
         </div>
       ) : loading ? (
         <div className="rounded-lg bg-white/80 p-3 text-xs text-gray-500 text-center">
-          {language === 'th' ? 'กำลังค้นหาวันที่รับพร้อมกัน…' : language === 'zh' ? '正在查找共同取货日期…' : 'Finding common pickup dates…'}
+          {loadingLabel}
         </div>
       ) : commonDates.length === 0 ? (
         <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 flex items-start gap-2 text-xs text-orange-800">
@@ -189,11 +231,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
       ) : (
         <>
           <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
-            {language === 'th'
-              ? `พบ ${commonDates.length} วันที่รับสินค้าทุกชิ้นพร้อมกันได้`
-              : language === 'zh'
-                ? `找到 ${commonDates.length} 个可一起取货的日期`
-                : `${commonDates.length} common pickup ${commonDates.length === 1 ? 'date' : 'dates'} found`}
+            {foundTemplate.replace('{{count}}', String(commonDates.length))}
           </div>
 
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
@@ -242,9 +280,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
           </div>
 
           <p className="text-[11px] text-gray-500">
-            {selectedPickupDateId
-              ? (language === 'th' ? 'วันที่เลือกจะถูกนำไปยืนยันในหน้าชำระเงิน' : language === 'zh' ? '所选日期将在结账时自动带入并再次确认。' : 'Your selected date will be carried into checkout and revalidated there.')
-              : (language === 'th' ? 'เลือกวันที่ตอนนี้ หรือเลือกภายหลังในหน้าชำระเงินก็ได้' : language === 'zh' ? '您可以现在选择日期，也可以在结账时再选择。' : 'Choose a date now, or choose one at checkout.')}
+            {selectedPickupDateId ? selectedHelper : chooseHelper}
           </p>
         </>
       )}
