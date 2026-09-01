@@ -10,7 +10,7 @@ interface CheckoutRouterPageProps {
 }
 
 export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPageProps) {
-  const { user, userProfile, profileLoading } = useAuth();
+  const { user, userRole, profileLoading } = useAuth();
   const { language, t } = useLanguage();
   const [pickupV2Enabled, setPickupV2Enabled] = useState<boolean | null>(null);
 
@@ -30,7 +30,7 @@ export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPagePro
     return <div className="min-h-[40vh]" aria-busy="true" />;
   }
 
-  if (user && userProfile && userProfile.role !== 'customer') {
+  if (user && userRole) {
     const title = language === 'th'
       ? 'ต้องใช้บัญชีลูกค้าสำหรับการสั่งซื้อ'
       : language === 'zh'
