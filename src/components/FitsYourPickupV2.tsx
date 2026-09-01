@@ -1,0 +1,183 @@
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Plus } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useCMSLabels } from '../hooks/useCMSLabels';
+import { CMSProduct, getProducts } from '../lib/cmsService';
+import { getCustomerPickupAvailabilityV2, PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
+import { getPublicImageUrl } from '../lib/storage';
+
+interface FitsYourPickupV2Props {
+  pickupDateId: string;
+}
+
+function formatPickupDate(value: string, language: 'en' | 'th' | 'zh'): string {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)));
+}
+
+function productImage(product: CMSProduct): string {
+  if (product.image) {
+    if (product.image.startsWith('http')) return product.image;
+    return getPublicImageUrl(`products/${product.image}`);
+  }
+  return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
+}
+
+export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
+  const { items, addToCart } = useCart();
+  const { language } = useLanguage();
+  const { getLabel } = useCMSLabels();
+  const [products, setProducts] = useState<CMSProduct[]>([]);
+  const [rows, setRows] = useState<PickupAvailabilityRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const cartProductIds = useMemo(
+    () => new Set(items.map((item) => item.product.id)),
+    [items],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const catalog = await getProducts();
+        if (cancelled) return;
+        setProducts(catalog);
+
+        if (catalog.length === 0) {
+          setRows([]);
+          return;
+        }
+
+        const availability = await getCustomerPickupAvailabilityV2(
+          catalog.map((product) => product.id),
+        );
+        if (!cancelled) setRows(availability);
+      } catch (error) {
+        console.error('Could not load Fits your pickup recommendations:', error);
+        if (!cancelled) {
+          setProducts([]);
+          setRows([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [pickupDateId]);
+
+  const selectedDateRows = useMemo(
+    () => rows.filter((row) => row.pickup_date_id === pickupDateId && row.remaining_quantity > 0),
+    [rows, pickupDateId],
+  );
+
+  const remainingByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    selectedDateRows.forEach((row) => {
+      map.set(row.product_id, Math.max(map.get(row.product_id) || 0, row.remaining_quantity));
+    });
+    return map;
+  }, [selectedDateRows]);
+
+  const recommendations = products
+    .filter((product) => !cartProductIds.has(product.id) && (remainingByProduct.get(product.id) || 0) > 0)
+    .slice(0, 3);
+
+  if (loading || recommendations.length === 0) return null;
+
+  const selectedDate = selectedDateRows[0]?.pickup_date || null;
+  const title = getLabel(
+    'fits_your_pickup.title',
+    language,
+    language === 'th' ? 'เข้ากับวันรับสินค้าของคุณ' : language === 'zh' ? '适合您的取货日期' : 'Fits your pickup',
+  );
+  const helper = getLabel(
+    'fits_your_pickup.helper',
+    language,
+    language === 'th'
+      ? 'เพิ่มสินค้าเหล่านี้ได้โดยไม่ต้องเปลี่ยนวันรับสินค้าที่เลือก'
+      : language === 'zh'
+        ? '添加这些商品不会改变您已选择的取货日期。'
+        : 'Add any of these without changing your selected pickup date.',
+  );
+  const addLabel = getLabel(
+    'fits_your_pickup.add',
+    language,
+    language === 'th' ? 'เพิ่ม' : language === 'zh' ? '添加' : 'Add',
+  );
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+      <div className="flex items-start gap-2.5">
+        <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5 shrink-0" />
+        <div>
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+            {helper}
+            {selectedDate ? ` ${formatPickupDate(selectedDate, language)}.` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {recommendations.map((product) => {
+          const name = language === 'th'
+            ? product.name_th
+            : language === 'zh'
+              ? product.name_zh || product.name_en
+              : product.name_en;
+          const remaining = remainingByProduct.get(product.id) || 0;
+
+          return (
+            <div
+              key={product.id}
+              className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-white p-2.5"
+            >
+              <img
+                src={productImage(product)}
+                alt={name}
+                className="w-12 h-12 rounded-md object-cover shrink-0"
+                loading="lazy"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs font-medium text-primary-800">฿{product.price}</span>
+                  <span className="text-[11px] text-gray-500">
+                    {language === 'th'
+                      ? `เหลือ ${remaining}`
+                      : language === 'zh'
+                        ? `剩余 ${remaining}`
+                        : `${remaining} available`}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => addToCart(product, 1)}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {addLabel}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
