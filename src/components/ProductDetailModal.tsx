@@ -8,6 +8,10 @@ import { useLikes } from '../context/LikesContext';
 import { getAvailabilityStatus, ProductAvailability } from '../lib/availabilityService';
 import { getPublicImageUrl } from '../lib/storage';
 import AlsoLikedSection from './AlsoLikedSection';
+import {
+  PickupBasketFitDisplay,
+  PickupIntelligenceBadges,
+} from './PickupIntelligenceBadges';
 
 interface ProductDetailModalProps {
   product: CMSProduct | null;
@@ -19,6 +23,8 @@ interface ProductDetailModalProps {
   availabilityOverride?: ProductAvailability;
   stockRemainingOverride?: number | null;
   quantityLimitOverride?: number | null;
+  nextPickupLabel?: string | null;
+  getBasketFit?: (quantity: number) => PickupBasketFitDisplay | null;
 }
 
 export default function ProductDetailModal({
@@ -31,6 +37,8 @@ export default function ProductDetailModal({
   availabilityOverride,
   stockRemainingOverride,
   quantityLimitOverride,
+  nextPickupLabel,
+  getBasketFit,
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -57,6 +65,7 @@ export default function ProductDetailModal({
   const pickupDisplay = selectedDayDisplay || selectedDay;
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
+  const basketFit = getBasketFit?.(quantity) ?? null;
 
   const handleLikeClick = async () => {
     if (!user) {
@@ -168,6 +177,16 @@ export default function ProductDetailModal({
             <p className="text-gray-600 mb-6 leading-relaxed">
               {getProductDescription()}
             </p>
+
+            {(nextPickupLabel || basketFit) && (
+              <div className="mb-4">
+                <PickupIntelligenceBadges
+                  nextPickupLabel={nextPickupLabel}
+                  basketFit={basketFit}
+                  size="detail"
+                />
+              </div>
+            )}
 
             {selectedDay && (
               <div className="mb-4">
