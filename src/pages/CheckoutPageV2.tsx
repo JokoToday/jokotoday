@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Calendar, CheckCircle, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Calendar, CheckCircle, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
@@ -47,7 +47,7 @@ function formatStoredPickupDate(isoDate: string, language: 'en' | 'th' | 'zh'): 
 }
 
 export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, updateQuantity, removeFromCart } = useCart();
   const { user, userProfile, profileLoading } = useAuth();
   const { language, t } = useLanguage();
 
@@ -55,6 +55,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [checkoutDates, setCheckoutDates] = useState<CommonPickupDateAvailability[]>([]);
   const [preferredSelectionResolved, setPreferredSelectionResolved] = useState(false);
   const [showPickupEditor, setShowPickupEditor] = useState(false);
+  const pickupEditSessionRef = useRef(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -77,7 +78,13 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [cancelled, setCancelled] = useState(false);
 
   const requirements = useMemo(
-    () => items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+    () => items.map((item) => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      nameEn: item.product.name_en,
+      nameTh: item.product.name_th,
+      nameZh: item.product.name_zh || null,
+    })),
     [items],
   );
 
@@ -102,7 +109,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         return;
       }
 
-      setPreferredSelectionResolved(false);
+      if (!pickupEditSessionRef.current) setPreferredSelectionResolved(false);
       try {
         const productIds = Array.from(new Set(requirements.map(({ productId }) => productId)));
         const rows = await getCustomerPickupAvailabilityV2(productIds);
@@ -111,9 +118,14 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         const dates = getCommonPickupDates(rows, requirements);
         setCheckoutDates(dates);
 
+        // While the customer is actively repairing or changing a pickup,
+        // keep the editor open and do not yank them back to a stored preference.
+        if (pickupEditSessionRef.current) return;
+
         const preferred = readPreferredPickupDateV2(user?.id ?? null);
         if (!preferred) {
           setSelection(null);
+          pickupEditSessionRef.current = true;
           setShowPickupEditor(true);
           return;
         }
@@ -122,12 +134,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         if (!preferredDate) {
           clearPreferredPickupDateV2(user?.id ?? null);
           setSelection(null);
+          pickupEditSessionRef.current = true;
           setShowPickupEditor(true);
           return;
         }
 
-        if (preferredDate.locations.length !== 1) {
+        const preferredLocation = preferred.pickupLocationId
+          ? preferredDate.locations.find((location) => location.id === preferred.pickupLocationId) || null
+          : null;
+        const resolvedLocation = preferredLocation
+          || (preferredDate.locations.length === 1 ? preferredDate.locations[0] : null);
+
+        if (!resolvedLocation) {
           setSelection(null);
+          pickupEditSessionRef.current = true;
           setShowPickupEditor(true);
           return;
         }
@@ -135,16 +155,18 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         setSelection({
           pickupDateId: preferredDate.pickupDateId,
           pickupDate: preferredDate.pickupDate,
-          pickupLocationId: preferredDate.locations[0].id,
+          pickupLocationId: resolvedLocation.id,
           scheduleId: preferredDate.scheduleId,
           scheduleKey: preferredDate.scheduleKey,
         });
+        pickupEditSessionRef.current = false;
         setShowPickupEditor(false);
       } catch (error) {
         if (!cancelledLoad) {
           console.error('Could not resolve preferred Pickup v2 selection:', error);
           setCheckoutDates([]);
           setSelection(null);
+          pickupEditSessionRef.current = true;
           setShowPickupEditor(true);
         }
       } finally {
@@ -172,9 +194,15 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     return selectedCheckoutLocation.name_en;
   };
 
+  const beginPickupEdit = () => {
+    pickupEditSessionRef.current = true;
+    setShowPickupEditor(true);
+  };
+
   const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
     setSelection(next);
     if (!next) {
+      pickupEditSessionRef.current = true;
       setShowPickupEditor(true);
       return;
     }
@@ -183,12 +211,14 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     writePreferredPickupDateV2(user?.id ?? null, {
       pickupDateId: next.pickupDateId,
       pickupDate: next.pickupDate,
+      pickupLocationId: next.pickupLocationId,
       scheduleId: next.scheduleId,
       scheduleKey: next.scheduleKey,
       scheduleLabelEn: date?.scheduleLabelEn || next.scheduleKey,
       scheduleLabelTh: date?.scheduleLabelTh || null,
       scheduleLabelZh: date?.scheduleLabelZh || null,
     });
+    pickupEditSessionRef.current = false;
     setShowPickupEditor(false);
   };
 
@@ -451,20 +481,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   }
 
   const confirmTitle = language === 'th'
-    ? 'ยืนยันวันที่และสถานที่รับสินค้า'
+    ? 'ยืนยันการรับสินค้า'
     : language === 'zh'
-      ? '确认取货日期和地点'
-      : 'Confirm pickup date and location';
+      ? '确认取货安排'
+      : 'Confirm pickup';
   const confirmHelper = language === 'th'
-    ? 'นี่คือวันที่รับสินค้าที่คุณเลือกไว้ กรุณาตรวจสอบก่อนยืนยันคำสั่งซื้อ'
+    ? 'นี่คือการรับสินค้าที่คุณเลือกไว้ กรุณาตรวจสอบก่อนยืนยันคำสั่งซื้อ'
     : language === 'zh'
       ? '这是您之前选择的取货安排。下单前请确认日期和地点。'
       : 'This is the pickup choice you selected while shopping. Please confirm it before placing your order.';
   const changeLabel = language === 'th'
-    ? 'เปลี่ยนวันที่หรือสถานที่'
+    ? 'เปลี่ยนการรับสินค้า'
     : language === 'zh'
-      ? '更改日期或地点'
-      : 'Change date or location';
+      ? '更改取货安排'
+      : 'Change pickup';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
@@ -514,7 +544,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowPickupEditor(true)}
+                    onClick={beginPickupEdit}
                     className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-50"
                   >
                     {changeLabel}
@@ -531,10 +561,23 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   </div>
                   <div className="rounded-xl border border-amber-100 bg-white p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupLocation}</p>
-                    <p className="flex items-start gap-2 font-semibold text-gray-900">
-                      <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                      {getPickupLocationName()}
-                    </p>
+                    {selectedCheckoutLocation.maps_url ? (
+                      <a
+                        href={selectedCheckoutLocation.maps_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-start gap-2 font-semibold text-amber-800 hover:underline"
+                      >
+                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <span>{getPickupLocationName()}</span>
+                        <ExternalLink className="w-4 h-4 shrink-0 mt-0.5" />
+                      </a>
+                    ) : (
+                      <p className="flex items-start gap-2 font-semibold text-gray-900">
+                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        {getPickupLocationName()}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -543,6 +586,8 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 requirements={requirements}
                 value={selection}
                 onChange={handlePickupSelectionChange}
+                onQuantityChange={updateQuantity}
+                onRemoveProduct={removeFromCart}
               />
             )}
 
