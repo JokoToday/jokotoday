@@ -188,8 +188,12 @@ export function PickupDateSelectorV2({
         onChange(null);
         return;
       }
-      if (activeDateId === null) setActiveDateId(value.pickupDateId);
-      setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
+      if (activeDateId === null) {
+        setActiveDateId(value.pickupDateId);
+        setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
+      } else if (activeDateId === value.pickupDateId) {
+        setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
+      }
       return;
     }
 

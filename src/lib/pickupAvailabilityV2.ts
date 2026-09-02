@@ -118,7 +118,7 @@ export async function getCustomerPickupAvailabilityV2(
   });
 
   if (error) {
-    throw new Error(`Could not load Pickup v2 availability: ${error.message}`);
+    throw new Error(`Could not load pickup availability: ${error.message}`);
   }
 
   return normalizeRows(data);
