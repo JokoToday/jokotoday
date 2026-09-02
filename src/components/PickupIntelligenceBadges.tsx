@@ -24,14 +24,35 @@ export function PickupIntelligenceBadges({
   const { getLabel } = useCMSLabels();
   if (!nextPickupLabel && !basketFit) return null;
 
-  const textSize = size === 'detail' ? 'text-sm' : 'text-xs';
-  const padding = size === 'detail' ? 'px-3 py-2' : 'px-2.5 py-1.5';
-  const iconSize = size === 'detail' ? 'w-4 h-4' : 'w-3.5 h-3.5';
   const seeAllDates = getLabel(
     'pickup_intelligence.see_all_dates',
     language,
-    language === 'th' ? 'ดูวันทั้งหมด' : language === 'zh' ? '查看所有日期' : 'See all dates',
+    language === 'th' ? 'ดูวันรับสินค้า' : language === 'zh' ? '查看取货日期' : 'Pickup dates',
   );
+
+  // Catalogue cards stay intentionally quiet. The richer availability and
+  // basket-fit intelligence remains available in the product detail modal.
+  if (size === 'compact' && onOpenPickupCalendar) {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onOpenPickupCalendar();
+        }}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-800 hover:text-amber-950 transition-colors"
+      >
+        <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+        <span>{seeAllDates}</span>
+        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+      </button>
+    );
+  }
+
+  const textSize = size === 'detail' ? 'text-sm' : 'text-xs';
+  const padding = size === 'detail' ? 'px-3 py-2' : 'px-2.5 py-1.5';
+  const iconSize = size === 'detail' ? 'w-4 h-4' : 'w-3.5 h-3.5';
 
   return (
     <div className="flex flex-wrap gap-2">
