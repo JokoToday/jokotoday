@@ -194,12 +194,6 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                     <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} />
                   )}
               </div>
-
-              {!pickupToolsOpen && (
-                <div className="hidden" aria-hidden="true">
-                  <PickupFinderV2 onStateChange={setPickupFinderState} />
-                </div>
-              )}
             </div>
           )}
         </div>
