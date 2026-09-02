@@ -31,6 +31,10 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
   const [pickupToolsOpen, setPickupToolsOpen] = useState(false);
 
   useEffect(() => {
+    if (isCartOpen) setPickupToolsOpen(false);
+  }, [isCartOpen]);
+
+  useEffect(() => {
     if (pickupFinderState.enabled && pickupFinderState.hasCommonDates === false) {
       setPickupToolsOpen(true);
     }
@@ -58,8 +62,18 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
         ? '查找共同取货日期，并查看不会改变已选日期的可加购商品。'
         : 'Find common pickup dates and compatible add-ons when you need them.',
   );
+  const keepShoppingLabel = getLabel(
+    'cart.keep_shopping_prompt',
+    language,
+    language === 'th' ? 'อยากเพิ่มอะไรอีกไหม? เลือกซื้อสินค้าต่อ' : language === 'zh' ? '还需要什么吗？继续选购' : 'Need anything else? Keep shopping',
+  );
   const checkoutBlockedByFinder = pickupFinderState.enabled
     && (pickupFinderState.loading || pickupFinderState.hasCommonDates === false);
+
+  const keepShopping = () => {
+    setIsCartOpen(false);
+    onStartShopping();
+  };
 
   return (
     <>
@@ -88,10 +102,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
               <ShoppingBag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-6">{t.cart.empty}</p>
               <button
-                onClick={() => {
-                  setIsCartOpen(false);
-                  onStartShopping();
-                }}
+                onClick={keepShopping}
                 className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
               >
                 {startShoppingLabel}
@@ -125,12 +136,8 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                     />
 
                     <div className="flex-1">
-                      <h3 className="font-semibold text-primary-900 text-sm">
-                        {productName}
-                      </h3>
-                      <p className="text-primary-700 font-bold mt-1">
-                        ฿{item.product.price}
-                      </p>
+                      <h3 className="font-semibold text-primary-900 text-sm">{productName}</h3>
+                      <p className="text-primary-700 font-bold mt-1">฿{item.product.price}</p>
 
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center space-x-2">
@@ -140,9 +147,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                           >
                             <Minus className="h-3 w-3 text-primary-900" />
                           </button>
-                          <span className="text-sm font-medium w-8 text-center">
-                            {item.quantity}
-                          </span>
+                          <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                             className="p-1 rounded bg-background hover:bg-primary-100 transition-colors"
@@ -191,7 +196,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                   && !pickupFinderState.loading
                   && pickupFinderState.hasCommonDates === true
                   && pickupFinderState.selectedPickupDateId && (
-                    <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} />
+                    <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} placement="cart" />
                   )}
               </div>
             </div>
@@ -199,27 +204,33 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-gray-200 p-4 space-y-4">
-            {user ? (
-              <>
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span className="text-gray-700">{t.cart.total}:</span>
-                  <span className="text-primary-900">฿{totalPrice.toFixed(2)}</span>
-                </div>
+          <div className="border-t border-gray-200 p-4 space-y-3">
+            <div className="flex justify-between items-center text-lg font-bold">
+              <span className="text-gray-700">{t.cart.total}:</span>
+              <span className="text-primary-900">฿{totalPrice.toFixed(2)}</span>
+            </div>
 
-                <button
-                  onClick={() => {
-                    setIsCartOpen(false);
-                    onCheckout();
-                  }}
-                  disabled={checkoutBlockedByFinder}
-                  className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {pickupFinderState.loading
-                    ? (language === 'th' ? 'กำลังตรวจสอบวันรับสินค้า…' : language === 'zh' ? '正在检查取货日期…' : 'Checking pickup dates…')
-                    : t.cart.checkout}
-                </button>
-              </>
+            <button
+              type="button"
+              onClick={keepShopping}
+              className="w-full bg-white border border-amber-200 text-amber-900 py-3 rounded-lg font-semibold hover:bg-amber-50 transition-colors"
+            >
+              {keepShoppingLabel}
+            </button>
+
+            {user ? (
+              <button
+                onClick={() => {
+                  setIsCartOpen(false);
+                  onCheckout();
+                }}
+                disabled={checkoutBlockedByFinder}
+                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {pickupFinderState.loading
+                  ? (language === 'th' ? 'กำลังตรวจสอบวันรับสินค้า…' : language === 'zh' ? '正在检查取货日期…' : 'Checking pickup dates…')
+                  : t.cart.checkout}
+              </button>
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
@@ -238,13 +249,6 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                 {t.auth.signIn}
               </button>
             )}
-
-            <button
-              onClick={() => setIsCartOpen(false)}
-              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-            >
-              {t.cart.continueShopping}
-            </button>
           </div>
         )}
 
