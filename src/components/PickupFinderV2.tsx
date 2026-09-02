@@ -51,6 +51,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
   const [error, setError] = useState('');
   const [commonDates, setCommonDates] = useState<CommonPickupDateAvailability[]>([]);
   const [selectedPickupDateId, setSelectedPickupDateId] = useState<string | null>(null);
+  const [resolvedRequirementsKey, setResolvedRequirementsKey] = useState<string | null>(null);
 
   const requirements = useMemo(
     () => items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
@@ -78,11 +79,13 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
     if (!enabled || requirements.length === 0) {
       setCommonDates([]);
       setSelectedPickupDateId(null);
+      setResolvedRequirementsKey(requirementsKey);
       setLoading(false);
       setError('');
       return;
     }
 
+    setResolvedRequirementsKey(null);
     setLoading(true);
     setError('');
     try {
@@ -98,10 +101,12 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
         if (preferred) clearPreferredPickupDateV2(user?.id ?? null);
         setSelectedPickupDateId(null);
       }
+      setResolvedRequirementsKey(requirementsKey);
     } catch (err) {
       setCommonDates([]);
       setSelectedPickupDateId(null);
       setError(err instanceof Error ? err.message : 'Could not find a common pickup date.');
+      setResolvedRequirementsKey(requirementsKey);
     } finally {
       setLoading(false);
     }
@@ -113,15 +118,16 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
   }, [rolloutResolved, enabled, requirementsKey, user?.id]);
 
   useEffect(() => {
+    const fullyResolved = rolloutResolved && resolvedRequirementsKey === requirementsKey;
     onStateChange?.({
       enabled,
-      loading: !rolloutResolved || (enabled && loading),
-      hasCommonDates: enabled && rolloutResolved && !loading && !error
+      loading: !rolloutResolved || (enabled && (!fullyResolved || loading)),
+      hasCommonDates: enabled && fullyResolved && !loading && !error
         ? commonDates.length > 0
         : null,
       selectedPickupDateId,
     });
-  }, [enabled, rolloutResolved, loading, error, commonDates.length, selectedPickupDateId, onStateChange]);
+  }, [enabled, rolloutResolved, loading, error, commonDates.length, selectedPickupDateId, onStateChange, requirementsKey, resolvedRequirementsKey]);
 
   if (!rolloutResolved || !enabled || items.length === 0) return null;
 
@@ -216,13 +222,9 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-          {error}
-        </div>
-      ) : loading ? (
-        <div className="rounded-lg bg-white/80 p-3 text-xs text-gray-500 text-center">
-          {loadingLabel}
-        </div>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>
+      ) : loading || resolvedRequirementsKey !== requirementsKey ? (
+        <div className="rounded-lg bg-white/80 p-3 text-xs text-gray-500 text-center">{loadingLabel}</div>
       ) : commonDates.length === 0 ? (
         <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 flex items-start gap-2 text-xs text-orange-800">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -255,18 +257,12 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
                   key={date.pickupDateId}
                   type="button"
                   onClick={() => selectDate(date)}
-                  className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
-                    selected
-                      ? 'border-amber-500 bg-amber-100'
-                      : 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50'
-                  }`}
+                  className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${selected ? 'border-amber-500 bg-amber-100' : 'border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50'}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{formatPickupDate(date.pickupDate, language)}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {scheduleLabel}{locationLabel ? ` · ${locationLabel}` : ''}
-                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{scheduleLabel}{locationLabel ? ` · ${locationLabel}` : ''}</p>
                     </div>
                     {selected && (
                       <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center shrink-0">
@@ -279,9 +275,7 @@ export function PickupFinderV2({ onStateChange }: PickupFinderV2Props) {
             })}
           </div>
 
-          <p className="text-[11px] text-gray-500">
-            {selectedPickupDateId ? selectedHelper : chooseHelper}
-          </p>
+          <p className="text-[11px] text-gray-500">{selectedPickupDateId ? selectedHelper : chooseHelper}</p>
         </>
       )}
     </div>

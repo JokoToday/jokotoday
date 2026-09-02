@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, Plus, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
@@ -7,7 +7,9 @@ import { CMSProduct, getProducts } from '../lib/cmsService';
 import {
   FitsYourPickupConfig,
   getFitsYourPickupConfig,
+  getRecommendationPlacementConfig,
   rankFitsYourPickupProducts,
+  RecommendationPlacement,
 } from '../lib/commerceIntelligence';
 import { fetchAllLikeCounts } from '../lib/likesService';
 import { getCustomerPickupAvailabilityV2, PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
@@ -15,6 +17,7 @@ import { getPublicImageUrl } from '../lib/storage';
 
 interface FitsYourPickupV2Props {
   pickupDateId: string;
+  placement?: RecommendationPlacement;
 }
 
 function formatPickupDate(value: string, language: 'en' | 'th' | 'zh'): string {
@@ -37,7 +40,7 @@ function productImage(product: CMSProduct): string {
   return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
 }
 
-export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
+export function FitsYourPickupV2({ pickupDateId, placement = 'cart' }: FitsYourPickupV2Props) {
   const { items, addToCart } = useCart();
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
@@ -84,7 +87,7 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
         );
         if (!cancelled) setRows(availability);
       } catch (error) {
-        console.error('Could not load Fits your pickup recommendations:', error);
+        console.error('Could not load pickup recommendations:', error);
         if (!cancelled) {
           setProducts([]);
           setRows([]);
@@ -115,31 +118,41 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
     return map;
   }, [selectedDateRows]);
 
+  const placementConfig = config ? getRecommendationPlacementConfig(config, placement) : null;
   const recommendations = useMemo(() => {
-    if (!config) return [];
+    if (!config || !placementConfig?.enabled) return [];
     const eligible = products.filter(
       (product) => !cartProductIds.has(product.id) && (remainingByProduct.get(product.id) || 0) > 0,
     );
     return rankFitsYourPickupProducts(eligible, cartCategoryIds, likeCounts, config)
-      .slice(0, config.maxSuggestions);
-  }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config]);
+      .slice(0, placementConfig.maxSuggestions);
+  }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config, placementConfig?.enabled, placementConfig?.maxSuggestions]);
 
-  if (loading || !config || recommendations.length === 0) return null;
+  if (loading || !config || !placementConfig?.enabled || recommendations.length === 0) return null;
 
   const selectedDate = selectedDateRows[0]?.pickup_date || null;
+  const isCheckout = placement === 'checkout';
   const title = getLabel(
-    'fits_your_pickup.title',
+    isCheckout ? 'checkout_recommendations.title' : 'fits_your_pickup.title',
     language,
-    language === 'th' ? 'เข้ากับวันรับสินค้าของคุณ' : language === 'zh' ? '适合您的取货日期' : 'Fits your pickup',
+    isCheckout
+      ? (language === 'th' ? 'เพิ่มอะไรอีกนิดไหม?' : language === 'zh' ? '最后再加一点？' : 'One last thing?')
+      : (language === 'th' ? 'เข้ากับวันรับสินค้าของคุณ' : language === 'zh' ? '适合您的取货日期' : 'Fits your pickup'),
   );
   const helper = getLabel(
-    'fits_your_pickup.helper',
+    isCheckout ? 'checkout_recommendations.helper' : 'fits_your_pickup.helper',
     language,
-    language === 'th'
-      ? 'เพิ่มสินค้าเหล่านี้ได้โดยไม่ต้องเปลี่ยนวันรับสินค้าที่เลือก'
-      : language === 'zh'
-        ? '添加这些商品不会改变您已选择的取货日期。'
-        : 'Add any of these without changing your selected pickup date.',
+    isCheckout
+      ? (language === 'th'
+        ? 'สินค้าเหล่านี้ยังเพิ่มได้โดยไม่เปลี่ยนวันรับสินค้าที่คุณยืนยันไว้'
+        : language === 'zh'
+          ? '这些商品仍可加入，并且不会改变您已确认的取货日期。'
+          : 'These can still be added without changing your confirmed pickup.')
+      : (language === 'th'
+        ? 'เพิ่มสินค้าเหล่านี้ได้โดยไม่ต้องเปลี่ยนวันรับสินค้าที่เลือก'
+        : language === 'zh'
+          ? '添加这些商品不会改变您已选择的取货日期。'
+          : 'Add any of these without changing your selected pickup date.'),
   );
   const addLabel = getLabel(
     'fits_your_pickup.add',
@@ -148,9 +161,11 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
   );
 
   return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+    <div className={`rounded-xl border p-4 space-y-3 ${isCheckout ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-200 bg-emerald-50/70'}`}>
       <div className="flex items-start gap-2.5">
-        <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5 shrink-0" />
+        {isCheckout
+          ? <Sparkles className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+          : <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5 shrink-0" />}
         <div>
           <h3 className="font-semibold text-gray-900">{title}</h3>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
@@ -160,7 +175,7 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className={isCheckout ? 'grid gap-2 sm:grid-cols-2' : 'space-y-2'}>
         {recommendations.map((product) => {
           const name = language === 'th'
             ? product.name_th
@@ -172,7 +187,7 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
           return (
             <div
               key={product.id}
-              className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-white p-2.5"
+              className={`flex items-center gap-3 rounded-lg border bg-white p-2.5 ${isCheckout ? 'border-amber-100' : 'border-emerald-100'}`}
             >
               <img
                 src={productImage(product)}
@@ -198,7 +213,7 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
                 onClick={() => addToCart(product, 1)}
                 aria-label={`${addLabel} ${name}`}
                 title={`${addLabel} ${name}`}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-2 text-xs font-semibold text-white hover:bg-emerald-800 transition-colors shrink-0"
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-white transition-colors shrink-0 ${isCheckout ? 'bg-amber-700 hover:bg-amber-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 {addLabel}

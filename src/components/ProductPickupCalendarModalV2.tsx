@@ -55,10 +55,10 @@ export function ProductPickupCalendarModalV2({
       ? `${name} 的取货日期`
       : `Pickup dates for ${name}`;
   const helper = language === 'th'
-    ? `ปฏิทินนี้แสดง Pickup v2 สำหรับสินค้านี้โดยเฉพาะ จำนวน ${quantity} ชิ้น`
+    ? `ดูวันและสถานที่รับสินค้าสำหรับ ${name} จำนวน ${quantity} ชิ้น`
     : language === 'zh'
-      ? `此日历仅显示该商品的 Pickup v2 取货情况，数量 ${quantity}。`
-      : `This Pickup v2 calendar is scoped to this product and your current quantity of ${quantity}.`;
+      ? `查看 ${quantity} 件 ${name} 可选择的取货日期和地点。`
+      : `See pickup dates and locations available for your current quantity of ${quantity}.`;
   const usePickupLabel = language === 'th'
     ? 'ใช้การรับสินค้านี้'
     : language === 'zh'
