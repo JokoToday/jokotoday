@@ -209,7 +209,7 @@ export function getPickupDateProductIssues(
   const rowsForDate = rows.filter((row) => row.pickup_date_id === pickupDateId);
   const byProduct = new Map(rowsForDate.map((row) => [row.product_id, row]));
 
-  return Array.from(requiredByProduct.values()).flatMap((requirement) => {
+  return Array.from(requiredByProduct.values()).flatMap<PickupDateProductIssue>((requirement): PickupDateProductIssue[] => {
     const row = byProduct.get(requirement.productId);
     const availableQuantity = Math.max(0, row?.remaining_quantity || 0);
     if (!row) {
@@ -217,7 +217,7 @@ export function getPickupDateProductIssues(
         productId: requirement.productId,
         requestedQuantity: requirement.quantity,
         availableQuantity: 0,
-        reason: 'not_offered' as const,
+        reason: 'not_offered',
         nameEn: requirement.nameEn || null,
         nameTh: requirement.nameTh || null,
         nameZh: requirement.nameZh || null,
@@ -228,7 +228,7 @@ export function getPickupDateProductIssues(
         productId: requirement.productId,
         requestedQuantity: requirement.quantity,
         availableQuantity,
-        reason: 'insufficient_quantity' as const,
+        reason: 'insufficient_quantity',
         nameEn: requirement.nameEn || null,
         nameTh: requirement.nameTh || null,
         nameZh: requirement.nameZh || null,
