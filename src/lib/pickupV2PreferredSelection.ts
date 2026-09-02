@@ -1,6 +1,7 @@
 export interface PreferredPickupDateV2 {
   pickupDateId: string;
   pickupDate: string;
+  pickupLocationId?: string | null;
   scheduleId: string;
   scheduleKey: string;
   scheduleLabelEn?: string | null;
@@ -29,6 +30,7 @@ function parseStored(value: string | null): PreferredPickupDateV2 | null {
     return {
       pickupDateId: parsed.pickupDateId,
       pickupDate: parsed.pickupDate,
+      pickupLocationId: typeof parsed.pickupLocationId === 'string' ? parsed.pickupLocationId : null,
       scheduleId: parsed.scheduleId,
       scheduleKey: parsed.scheduleKey,
       scheduleLabelEn: typeof parsed.scheduleLabelEn === 'string' ? parsed.scheduleLabelEn : null,

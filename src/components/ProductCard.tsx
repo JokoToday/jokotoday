@@ -23,6 +23,7 @@ type ProductCardProps = {
   quantityLimitOverride?: number | null;
   nextPickupLabel?: string | null;
   getBasketFit?: (quantity: number) => PickupBasketFitDisplay | null;
+  onOpenPickupCalendar?: (quantity: number) => void;
 };
 
 export default function ProductCard({
@@ -35,6 +36,7 @@ export default function ProductCard({
   quantityLimitOverride,
   nextPickupLabel,
   getBasketFit,
+  onOpenPickupCalendar,
 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -163,6 +165,7 @@ export default function ProductCard({
             <PickupIntelligenceBadges
               nextPickupLabel={nextPickupLabel}
               basketFit={basketFit}
+              onOpenPickupCalendar={onOpenPickupCalendar ? () => onOpenPickupCalendar(quantity) : undefined}
             />
           </div>
         )}

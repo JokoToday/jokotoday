@@ -29,6 +29,9 @@ export interface PickupAvailabilityRow {
 export interface CartAvailabilityRequirement {
   productId: string;
   quantity: number;
+  nameEn?: string | null;
+  nameTh?: string | null;
+  nameZh?: string | null;
 }
 
 export interface CommonPickupDateAvailability {
@@ -42,6 +45,16 @@ export interface CommonPickupDateAvailability {
   scheduleLabelZh: string | null;
   locations: PickupAvailabilityLocation[];
   remainingByProduct: Record<string, number>;
+}
+
+export interface PickupDateProductIssue {
+  productId: string;
+  requestedQuantity: number;
+  availableQuantity: number;
+  reason: 'not_offered' | 'insufficient_quantity';
+  nameEn: string | null;
+  nameTh: string | null;
+  nameZh: string | null;
 }
 
 function parseLocations(value: unknown): PickupAvailabilityLocation[] {
@@ -111,16 +124,34 @@ export async function getCustomerPickupAvailabilityV2(
   return normalizeRows(data);
 }
 
+function aggregateRequirements(requirements: CartAvailabilityRequirement[]): Map<string, CartAvailabilityRequirement> {
+  const requiredByProduct = new Map<string, CartAvailabilityRequirement>();
+
+  requirements.forEach((requirement) => {
+    const { productId, quantity } = requirement;
+    if (!productId || !Number.isFinite(quantity) || quantity <= 0) return;
+    const current = requiredByProduct.get(productId);
+    if (current) {
+      requiredByProduct.set(productId, {
+        ...current,
+        quantity: current.quantity + quantity,
+        nameEn: current.nameEn || requirement.nameEn,
+        nameTh: current.nameTh || requirement.nameTh,
+        nameZh: current.nameZh || requirement.nameZh,
+      });
+      return;
+    }
+    requiredByProduct.set(productId, { ...requirement });
+  });
+
+  return requiredByProduct;
+}
+
 export function getCommonPickupDates(
   rows: PickupAvailabilityRow[],
   requirements: CartAvailabilityRequirement[],
 ): CommonPickupDateAvailability[] {
-  const requiredByProduct = new Map<string, number>();
-
-  requirements.forEach(({ productId, quantity }) => {
-    if (!productId || !Number.isFinite(quantity) || quantity <= 0) return;
-    requiredByProduct.set(productId, (requiredByProduct.get(productId) || 0) + quantity);
-  });
+  const requiredByProduct = aggregateRequirements(requirements);
 
   if (requiredByProduct.size === 0) return [];
 
@@ -136,7 +167,7 @@ export function getCommonPickupDates(
   rowsByDate.forEach((dateRows) => {
     const byProduct = new Map(dateRows.map((row) => [row.product_id, row]));
 
-    const supportsEveryProduct = Array.from(requiredByProduct.entries()).every(([productId, quantity]) => {
+    const supportsEveryProduct = Array.from(requiredByProduct.values()).every(({ productId, quantity }) => {
       const row = byProduct.get(productId);
       return Boolean(row && row.remaining_quantity >= quantity);
     });
@@ -164,4 +195,45 @@ export function getCommonPickupDates(
   });
 
   return commonDates.sort((a, b) => a.pickupDate.localeCompare(b.pickupDate));
+}
+
+export function getPickupDateProductIssues(
+  rows: PickupAvailabilityRow[],
+  requirements: CartAvailabilityRequirement[],
+  pickupDateId: string,
+): PickupDateProductIssue[] {
+  if (!pickupDateId) return [];
+  const requiredByProduct = aggregateRequirements(requirements);
+  if (requiredByProduct.size === 0) return [];
+
+  const rowsForDate = rows.filter((row) => row.pickup_date_id === pickupDateId);
+  const byProduct = new Map(rowsForDate.map((row) => [row.product_id, row]));
+
+  return Array.from(requiredByProduct.values()).flatMap<PickupDateProductIssue>((requirement): PickupDateProductIssue[] => {
+    const row = byProduct.get(requirement.productId);
+    const availableQuantity = Math.max(0, row?.remaining_quantity || 0);
+    if (!row) {
+      return [{
+        productId: requirement.productId,
+        requestedQuantity: requirement.quantity,
+        availableQuantity: 0,
+        reason: 'not_offered',
+        nameEn: requirement.nameEn || null,
+        nameTh: requirement.nameTh || null,
+        nameZh: requirement.nameZh || null,
+      }];
+    }
+    if (availableQuantity < requirement.quantity) {
+      return [{
+        productId: requirement.productId,
+        requestedQuantity: requirement.quantity,
+        availableQuantity,
+        reason: 'insufficient_quantity',
+        nameEn: requirement.nameEn || null,
+        nameTh: requirement.nameTh || null,
+        nameZh: requirement.nameZh || null,
+      }];
+    }
+    return [];
+  });
 }

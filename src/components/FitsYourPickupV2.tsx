@@ -4,6 +4,12 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct, getProducts } from '../lib/cmsService';
+import {
+  FitsYourPickupConfig,
+  getFitsYourPickupConfig,
+  rankFitsYourPickupProducts,
+} from '../lib/commerceIntelligence';
+import { fetchAllLikeCounts } from '../lib/likesService';
 import { getCustomerPickupAvailabilityV2, PickupAvailabilityRow } from '../lib/pickupAvailabilityV2';
 import { getPublicImageUrl } from '../lib/storage';
 
@@ -37,10 +43,18 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
   const { getLabel } = useCMSLabels();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [rows, setRows] = useState<PickupAvailabilityRow[]>([]);
+  const [config, setConfig] = useState<FitsYourPickupConfig | null>(null);
+  const [likeCounts, setLikeCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const cartProductIds = useMemo(
     () => new Set(items.map((item) => item.product.id)),
+    [items],
+  );
+  const cartCategoryIds = useMemo(
+    () => new Set(items
+      .map((item) => item.product.category_id)
+      .filter((categoryId): categoryId is string => Boolean(categoryId))),
     [items],
   );
 
@@ -50,9 +64,15 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
     const load = async () => {
       setLoading(true);
       try {
-        const catalog = await getProducts();
+        const [catalog, nextConfig, nextLikeCounts] = await Promise.all([
+          getProducts(),
+          getFitsYourPickupConfig(),
+          fetchAllLikeCounts(),
+        ]);
         if (cancelled) return;
         setProducts(catalog);
+        setConfig(nextConfig);
+        setLikeCounts(nextLikeCounts);
 
         if (catalog.length === 0) {
           setRows([]);
@@ -68,6 +88,8 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
         if (!cancelled) {
           setProducts([]);
           setRows([]);
+          setConfig(null);
+          setLikeCounts(new Map());
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -93,11 +115,16 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
     return map;
   }, [selectedDateRows]);
 
-  const recommendations = products
-    .filter((product) => !cartProductIds.has(product.id) && (remainingByProduct.get(product.id) || 0) > 0)
-    .slice(0, 3);
+  const recommendations = useMemo(() => {
+    if (!config) return [];
+    const eligible = products.filter(
+      (product) => !cartProductIds.has(product.id) && (remainingByProduct.get(product.id) || 0) > 0,
+    );
+    return rankFitsYourPickupProducts(eligible, cartCategoryIds, likeCounts, config)
+      .slice(0, config.maxSuggestions);
+  }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config]);
 
-  if (loading || recommendations.length === 0) return null;
+  if (loading || !config || recommendations.length === 0) return null;
 
   const selectedDate = selectedDateRows[0]?.pickup_date || null;
   const title = getLabel(

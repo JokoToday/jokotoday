@@ -25,6 +25,7 @@ interface ProductDetailModalProps {
   quantityLimitOverride?: number | null;
   nextPickupLabel?: string | null;
   getBasketFit?: (quantity: number) => PickupBasketFitDisplay | null;
+  onOpenPickupCalendar?: (quantity: number) => void;
 }
 
 export default function ProductDetailModal({
@@ -39,6 +40,7 @@ export default function ProductDetailModal({
   quantityLimitOverride,
   nextPickupLabel,
   getBasketFit,
+  onOpenPickupCalendar,
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
@@ -184,6 +186,7 @@ export default function ProductDetailModal({
                   nextPickupLabel={nextPickupLabel}
                   basketFit={basketFit}
                   size="detail"
+                  onOpenPickupCalendar={onOpenPickupCalendar ? () => onOpenPickupCalendar(quantity) : undefined}
                 />
               </div>
             )}
