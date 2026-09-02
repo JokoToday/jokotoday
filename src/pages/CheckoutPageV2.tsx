@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Calendar, CheckCircle, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
+import { FitsYourPickupV2 } from '../components/FitsYourPickupV2';
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { useAuth } from '../context/AuthContext';
@@ -47,7 +48,7 @@ function formatStoredPickupDate(isoDate: string, language: 'en' | 'th' | 'zh'): 
 }
 
 export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
-  const { items, totalPrice, clearCart, updateQuantity, removeFromCart } = useCart();
+  const { items, totalPrice, clearCart, updateQuantity, removeFromCart, setIsCartOpen } = useCart();
   const { user, userProfile, profileLoading } = useAuth();
   const { language, t } = useLanguage();
 
@@ -118,8 +119,6 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         const dates = getCommonPickupDates(rows, requirements);
         setCheckoutDates(dates);
 
-        // While the customer is actively repairing or changing a pickup,
-        // keep the editor open and do not yank them back to a stored preference.
         if (pickupEditSessionRef.current) return;
 
         const preferred = readPreferredPickupDateV2(user?.id ?? null);
@@ -197,6 +196,17 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const beginPickupEdit = () => {
     pickupEditSessionRef.current = true;
     setShowPickupEditor(true);
+  };
+
+  const cancelPickupEdit = () => {
+    if (!selection) return;
+    pickupEditSessionRef.current = false;
+    setShowPickupEditor(false);
+  };
+
+  const backToCart = () => {
+    onNavigate('products');
+    window.setTimeout(() => setIsCartOpen(true), 0);
   };
 
   const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
@@ -495,10 +505,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     : language === 'zh'
       ? '更改取货安排'
       : 'Change pickup';
+  const backToCartLabel = language === 'th' ? 'กลับไปที่ตะกร้า' : language === 'zh' ? '返回购物篮' : 'Back to cart';
+  const cancelChangeLabel = language === 'th' ? 'ยกเลิกการเปลี่ยนแปลง' : language === 'zh' ? '取消更改' : 'Cancel pickup change';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <button
+          type="button"
+          onClick={backToCart}
+          className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-amber-800 hover:text-amber-950"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {backToCartLabel}
+        </button>
         <h1 className="text-3xl md:text-4xl font-header font-bold text-primary-900 mb-8 text-center">{t.checkout.title}</h1>
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="space-y-6">
@@ -582,21 +602,37 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 </div>
               </div>
             ) : (
-              <PickupDateSelectorV2
-                requirements={requirements}
-                value={selection}
-                onChange={handlePickupSelectionChange}
-                onQuantityChange={updateQuantity}
-                onRemoveProduct={removeFromCart}
-              />
+              <div>
+                {selection && (
+                  <button
+                    type="button"
+                    onClick={cancelPickupEdit}
+                    className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    {cancelChangeLabel}
+                  </button>
+                )}
+                <PickupDateSelectorV2
+                  requirements={requirements}
+                  value={selection}
+                  onChange={handlePickupSelectionChange}
+                  onQuantityChange={updateQuantity}
+                  onRemoveProduct={removeFromCart}
+                />
+              </div>
+            )}
+
+            {selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor && (
+              <FitsYourPickupV2 pickupDateId={selection.pickupDateId} placement="checkout" />
             )}
 
             <div>
-              <label htmlFor="pickup-v2-notes" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="pickup-notes" className="block text-sm font-medium text-gray-700 mb-2">
                 {language === 'th' ? 'หมายเหตุ (ไม่บังคับ)' : language === 'zh' ? '备注（可选）' : 'Notes (optional)'}
               </label>
               <textarea
-                id="pickup-v2-notes"
+                id="pickup-notes"
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
