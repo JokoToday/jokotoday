@@ -102,7 +102,7 @@ export function CommerceIntelligenceManagement() {
     setConfig((current) => {
       if (!current) return current;
       const enabled = current.rankingOrder.includes(signal);
-      const rankingOrder = enabled
+      const rankingOrder: RecommendationSignal[] = enabled
         ? current.rankingOrder.filter((candidate) => candidate !== signal)
         : [...current.rankingOrder.filter((candidate) => candidate !== 'catalogue_order'), signal, 'catalogue_order'];
       return { ...current, rankingOrder };
