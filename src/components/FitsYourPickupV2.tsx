@@ -52,7 +52,9 @@ export function FitsYourPickupV2({ pickupDateId }: FitsYourPickupV2Props) {
     [items],
   );
   const cartCategoryIds = useMemo(
-    () => new Set(items.map((item) => item.product.category_id).filter(Boolean)),
+    () => new Set(items
+      .map((item) => item.product.category_id)
+      .filter((categoryId): categoryId is string => Boolean(categoryId))),
     [items],
   );
 
