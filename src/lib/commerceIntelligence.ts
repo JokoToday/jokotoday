@@ -9,6 +9,8 @@ export type RecommendationSignal =
   | 'popularity'
   | 'catalogue_order';
 
+export type RecommendationPlacement = 'cart' | 'checkout';
+
 export interface SeasonalProductBoost {
   productId: string;
   priority: number;
@@ -22,17 +24,28 @@ export interface ComplementaryCategoryRule {
   priority: number;
 }
 
-export interface FitsYourPickupConfig {
-  version: 1;
+export interface RecommendationPlacementConfig {
+  enabled: boolean;
   maxSuggestions: number;
+}
+
+export interface FitsYourPickupConfig {
+  version: 2;
+  /** Legacy compatibility fallback for configurations saved before placements existed. */
+  maxSuggestions: number;
+  placements: Record<RecommendationPlacement, RecommendationPlacementConfig>;
   rankingOrder: RecommendationSignal[];
   seasonalBoosts: SeasonalProductBoost[];
   complementaryCategoryRules: ComplementaryCategoryRule[];
 }
 
 export const DEFAULT_FITS_YOUR_PICKUP_CONFIG: FitsYourPickupConfig = {
-  version: 1,
+  version: 2,
   maxSuggestions: 3,
+  placements: {
+    cart: { enabled: true, maxSuggestions: 3 },
+    checkout: { enabled: true, maxSuggestions: 3 },
+  },
   rankingOrder: [
     'seasonal_priority',
     'complementary_category',
@@ -56,11 +69,34 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
   return Math.min(max, Math.max(min, Math.round(parsed)));
 }
 
+function parsePlacement(
+  value: unknown,
+  fallback: RecommendationPlacementConfig,
+  legacyMax: number,
+): RecommendationPlacementConfig {
+  if (!value || typeof value !== 'object') {
+    return { ...fallback, maxSuggestions: legacyMax };
+  }
+  const candidate = value as Partial<RecommendationPlacementConfig>;
+  return {
+    enabled: typeof candidate.enabled === 'boolean' ? candidate.enabled : fallback.enabled,
+    maxSuggestions: clampInteger(candidate.maxSuggestions, legacyMax, 1, 12),
+  };
+}
+
 export function parseFitsYourPickupConfig(value: string | null | undefined): FitsYourPickupConfig {
   if (!value) return DEFAULT_FITS_YOUR_PICKUP_CONFIG;
 
   try {
-    const parsed = JSON.parse(value) as Partial<FitsYourPickupConfig>;
+    const parsed = JSON.parse(value) as Partial<FitsYourPickupConfig> & {
+      placements?: Partial<Record<RecommendationPlacement, RecommendationPlacementConfig>>;
+    };
+    const legacyMax = clampInteger(
+      parsed.maxSuggestions,
+      DEFAULT_FITS_YOUR_PICKUP_CONFIG.maxSuggestions,
+      1,
+      12,
+    );
     const rankingOrder = Array.isArray(parsed.rankingOrder)
       ? parsed.rankingOrder.filter((signal): signal is RecommendationSignal => VALID_SIGNALS.has(signal as RecommendationSignal))
       : [];
@@ -100,8 +136,12 @@ export function parseFitsYourPickupConfig(value: string | null | undefined): Fit
       : [];
 
     return {
-      version: 1,
-      maxSuggestions: clampInteger(parsed.maxSuggestions, DEFAULT_FITS_YOUR_PICKUP_CONFIG.maxSuggestions, 1, 12),
+      version: 2,
+      maxSuggestions: legacyMax,
+      placements: {
+        cart: parsePlacement(parsed.placements?.cart, DEFAULT_FITS_YOUR_PICKUP_CONFIG.placements.cart, legacyMax),
+        checkout: parsePlacement(parsed.placements?.checkout, DEFAULT_FITS_YOUR_PICKUP_CONFIG.placements.checkout, legacyMax),
+      },
       rankingOrder: dedupedRanking.length > 0 ? dedupedRanking : DEFAULT_FITS_YOUR_PICKUP_CONFIG.rankingOrder,
       seasonalBoosts,
       complementaryCategoryRules,
@@ -134,6 +174,16 @@ export async function saveFitsYourPickupConfig(config: FitsYourPickupConfig): Pr
     );
 
   if (error) throw error;
+}
+
+export function getRecommendationPlacementConfig(
+  config: FitsYourPickupConfig,
+  placement: RecommendationPlacement,
+): RecommendationPlacementConfig {
+  return config.placements[placement] || {
+    enabled: true,
+    maxSuggestions: config.maxSuggestions,
+  };
 }
 
 function isDateWithinBoost(boost: SeasonalProductBoost, now: Date): boolean {
