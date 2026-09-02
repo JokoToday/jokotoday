@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, MapPin, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import {
   getCustomerPickupAvailabilityV2,
+  PickupAvailabilityLocation,
   PickupAvailabilityRow,
 } from '../lib/pickupAvailabilityV2';
 
 export interface PickupBrowseSelectionV2 {
   pickupDateId: string;
   pickupDate: string;
+  pickupLocationId?: string | null;
   scheduleId: string;
   scheduleKey: string;
   scheduleLabelEn: string;
@@ -32,6 +34,7 @@ interface BrowseDate {
   scheduleLabelTh: string | null;
   scheduleLabelZh: string | null;
   availableProductCount: number;
+  locations: PickupAvailabilityLocation[];
 }
 
 function utcDateFromKey(value: string): Date {
@@ -56,6 +59,12 @@ function monthFromIndex(index: number): Date {
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 12));
+}
+
+function localizedLocationName(location: PickupAvailabilityLocation, language: 'en' | 'th' | 'zh'): string {
+  if (language === 'th') return location.name_th || location.name_en;
+  if (language === 'zh') return location.name_zh || location.name_en;
+  return location.name_en;
 }
 
 export function PickupBrowseDateSelectorV2({
@@ -98,6 +107,7 @@ export function PickupBrowseDateSelectorV2({
           scheduleLabelTh: representative.schedule_label_th,
           scheduleLabelZh: representative.schedule_label_zh,
           availableProductCount: new Set(availableRows.map((row) => row.product_id)).size,
+          locations: representative.locations,
         }];
       })
       .sort((a, b) => a.pickupDate.localeCompare(b.pickupDate));
@@ -146,13 +156,17 @@ export function PickupBrowseDateSelectorV2({
       return;
     }
     if (value) {
+      const date = browseDateById.get(value.pickupDateId);
+      if (value.pickupLocationId && !date?.locations.some((location) => location.id === value.pickupLocationId)) {
+        onChange({ ...value, pickupLocationId: null });
+      }
       setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
       return;
     }
     if (browseDates.length > 0) {
       setVisibleMonth(monthStart(utcDateFromKey(browseDates[0].pickupDate)));
     }
-  }, [value?.pickupDateId, browseDates, browseDateById]);
+  }, [value?.pickupDateId, value?.pickupLocationId, browseDates, browseDateById]);
 
   const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
   const calendarMonthIndices = browseDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
@@ -185,15 +199,15 @@ export function PickupBrowseDateSelectorV2({
   });
 
   const title = language === 'th'
-    ? 'เลือกวันที่รับสินค้า'
+    ? 'เลือกวันและสถานที่รับสินค้า'
     : language === 'zh'
-      ? '选择取货日期'
-      : 'Choose your pickup date';
+      ? '选择取货日期和地点'
+      : 'Choose pickup date and location';
   const helper = language === 'th'
-    ? 'เลือกวันที่เพื่อดูสินค้าที่มีจำหน่ายจริงตามสต็อก Pickup v2'
+    ? 'เลือกวันก่อน แล้วเลือกจุดรับสินค้า เพื่อดูสินค้าที่มีจริงสำหรับ Pickup v2 วันนั้น'
     : language === 'zh'
-      ? '选择日期以查看 Pickup v2 实际库存中可订购的商品。'
-      : 'Choose a date to see products that are actually available in Pickup v2 inventory.';
+      ? '先选择日期，再选择取货地点，以查看该 Pickup v2 日期实际可订购的商品。'
+      : 'Choose a date, then a pickup location, to browse products available for that concrete Pickup v2 date.';
 
   const selectedDate = value ? browseDateById.get(value.pickupDateId) || null : null;
   const selectedScheduleLabel = selectedDate
@@ -203,6 +217,25 @@ export function PickupBrowseDateSelectorV2({
         ? selectedDate.scheduleLabelZh || selectedDate.scheduleLabelEn
         : selectedDate.scheduleLabelEn)
     : null;
+
+  const selectDate = (browseDate: BrowseDate) => {
+    const automaticLocationId = browseDate.locations.length === 1 ? browseDate.locations[0].id : null;
+    onChange({
+      pickupDateId: browseDate.pickupDateId,
+      pickupDate: browseDate.pickupDate,
+      pickupLocationId: automaticLocationId,
+      scheduleId: browseDate.scheduleId,
+      scheduleKey: browseDate.scheduleKey,
+      scheduleLabelEn: browseDate.scheduleLabelEn,
+      scheduleLabelTh: browseDate.scheduleLabelTh,
+      scheduleLabelZh: browseDate.scheduleLabelZh,
+    });
+  };
+
+  const selectLocation = (locationId: string) => {
+    if (!value || !selectedDate) return;
+    onChange({ ...value, pickupLocationId: locationId });
+  };
 
   return (
     <div className="max-w-3xl mx-auto mb-8">
@@ -289,15 +322,7 @@ export function PickupBrowseDateSelectorV2({
                     <button
                       key={key}
                       type="button"
-                      onClick={() => browseDate && onChange({
-                        pickupDateId: browseDate.pickupDateId,
-                        pickupDate: browseDate.pickupDate,
-                        scheduleId: browseDate.scheduleId,
-                        scheduleKey: browseDate.scheduleKey,
-                        scheduleLabelEn: browseDate.scheduleLabelEn,
-                        scheduleLabelTh: browseDate.scheduleLabelTh,
-                        scheduleLabelZh: browseDate.scheduleLabelZh,
-                      })}
+                      onClick={() => browseDate && selectDate(browseDate)}
                       disabled={!browseDate}
                       className={`aspect-square rounded-xl border flex flex-col items-center justify-center transition-all ${
                         isSelected
@@ -318,9 +343,38 @@ export function PickupBrowseDateSelectorV2({
             </div>
 
             {selectedDate && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-gray-700">
-                <span className="font-semibold">{selectedScheduleLabel}</span>
-                <span className="text-gray-500"> · {selectedDate.availableProductCount} {language === 'th' ? 'สินค้า' : language === 'zh' ? '件商品' : 'products available'}</span>
+              <div className="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-4 text-sm text-gray-700">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-amber-700" />
+                  <span className="font-semibold">{selectedScheduleLabel}</span>
+                  <span className="text-gray-500">· {selectedDate.availableProductCount} {language === 'th' ? 'สินค้า' : language === 'zh' ? '件商品' : 'products available'}</span>
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {selectedDate.locations.map((location) => {
+                    const selected = value?.pickupLocationId === location.id;
+                    const name = localizedLocationName(location, language);
+                    const description = language === 'th'
+                      ? location.description_th || location.description_en
+                      : language === 'zh'
+                        ? location.description_zh || location.description_en
+                        : location.description_en;
+                    return (
+                      <div key={location.id} className={`rounded-xl border overflow-hidden ${selected ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300' : 'border-gray-200 bg-white'}`}>
+                        <button type="button" onClick={() => selectLocation(location.id)} className="w-full text-left px-4 py-3 hover:bg-amber-50/50">
+                          <p className="font-medium text-gray-900">{name}</p>
+                          {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+                        </button>
+                        {location.maps_url && (
+                          <a href={location.maps_url} target="_blank" rel="noreferrer" className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 flex items-center gap-1.5">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            {language === 'th' ? 'ดูแผนที่' : language === 'zh' ? '查看地图' : 'View map'}
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </>
