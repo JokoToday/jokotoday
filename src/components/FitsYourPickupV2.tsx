@@ -18,6 +18,7 @@ import { getPublicImageUrl } from '../lib/storage';
 interface FitsYourPickupV2Props {
   pickupDateId: string;
   placement?: RecommendationPlacement;
+  onProductClick?: (product: CMSProduct) => void;
 }
 
 function formatPickupDate(value: string, language: 'en' | 'th' | 'zh'): string {
@@ -40,7 +41,7 @@ function productImage(product: CMSProduct): string {
   return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
 }
 
-export function FitsYourPickupV2({ pickupDateId, placement = 'cart' }: FitsYourPickupV2Props) {
+export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductClick }: FitsYourPickupV2Props) {
   const { items, addToCart } = useCart();
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
@@ -159,6 +160,11 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart' }: FitsYourP
     language,
     language === 'th' ? 'เพิ่ม' : language === 'zh' ? '添加' : 'Add',
   );
+  const viewDetailsLabel = getLabel(
+    'recommendations.view_details',
+    language,
+    language === 'th' ? 'ดูรายละเอียด' : language === 'zh' ? '查看详情' : 'View details',
+  );
 
   return (
     <div className={`rounded-xl border p-4 space-y-3 ${isCheckout ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-200 bg-emerald-50/70'}`}>
@@ -189,28 +195,36 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart' }: FitsYourP
               key={product.id}
               className={`flex items-center gap-3 rounded-lg border bg-white p-2.5 ${isCheckout ? 'border-amber-100' : 'border-emerald-100'}`}
             >
-              <img
-                src={productImage(product)}
-                alt={name}
-                className="w-12 h-12 rounded-md object-cover shrink-0"
-                loading="lazy"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs font-medium text-primary-800">฿{product.price}</span>
-                  <span className="text-[11px] text-gray-500">
-                    {language === 'th'
-                      ? `เหลือ ${remaining}`
-                      : language === 'zh'
-                        ? `剩余 ${remaining}`
-                        : `${remaining} available`}
-                  </span>
-                </div>
-              </div>
               <button
                 type="button"
-                onClick={() => addToCart(product, 1)}
+                onClick={() => onProductClick?.(product)}
+                disabled={!onProductClick}
+                className={`min-w-0 flex flex-1 items-center gap-3 rounded-md text-left ${onProductClick ? 'hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400' : 'cursor-default'}`}
+              >
+                <img
+                  src={productImage(product)}
+                  alt={name}
+                  className="w-12 h-12 rounded-md object-cover shrink-0"
+                  loading="lazy"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-medium text-primary-800">฿{product.price}</span>
+                    <span className="text-[11px] text-gray-500">
+                      {language === 'th'
+                        ? `เหลือ ${remaining}`
+                        : language === 'zh'
+                          ? `剩余 ${remaining}`
+                          : `${remaining} available`}
+                    </span>
+                  </div>
+                  {onProductClick && <p className="mt-1 text-[11px] font-semibold text-amber-700">{viewDetailsLabel}</p>}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => addToCart(product, 1, { openCart: !isCheckout })}
                 aria-label={`${addLabel} ${name}`}
                 title={`${addLabel} ${name}`}
                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-white transition-colors shrink-0 ${isCheckout ? 'bg-amber-700 hover:bg-amber-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}

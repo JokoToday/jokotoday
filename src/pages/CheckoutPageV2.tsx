@@ -4,6 +4,8 @@ import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { FitsYourPickupV2 } from '../components/FitsYourPickupV2';
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
+import { useCMSLabels } from '../hooks/useCMSLabels';
+import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -51,6 +53,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const { items, totalPrice, clearCart, updateQuantity, removeFromCart, setIsCartOpen } = useCart();
   const { user, userProfile, profileLoading } = useAuth();
   const { language, t } = useLanguage();
+  const { getLabel } = useCMSLabels();
 
   const [selection, setSelection] = useState<PickupSelectionV2 | null>(null);
   const [checkoutDates, setCheckoutDates] = useState<CommonPickupDateAvailability[]>([]);
@@ -207,6 +210,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const backToCart = () => {
     onNavigate('products');
     window.setTimeout(() => setIsCartOpen(true), 0);
+  };
+
+  const continueShopping = () => {
+    setIsCartOpen(false);
+    onNavigate('products');
+  };
+
+  const openRecommendedProduct = (product: CMSProduct) => {
+    setIsCartOpen(false);
+    if (product.slug) {
+      onNavigate(`product/${product.slug}`);
+      return;
+    }
+    onNavigate('products');
   };
 
   const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
@@ -507,6 +524,11 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       : 'Change pickup';
   const backToCartLabel = language === 'th' ? 'กลับไปที่ตะกร้า' : language === 'zh' ? '返回购物篮' : 'Back to cart';
   const cancelChangeLabel = language === 'th' ? 'ยกเลิกการเปลี่ยนแปลง' : language === 'zh' ? '取消更改' : 'Cancel pickup change';
+  const forgotSomethingLabel = getLabel(
+    'checkout.continue_shopping',
+    language,
+    language === 'th' ? 'ลืมอะไรไหม? เลือกซื้อสินค้าต่อ' : language === 'zh' ? '忘了什么吗？继续选购' : 'Forgot something? Continue shopping',
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
@@ -624,7 +646,11 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             {selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor && (
-              <FitsYourPickupV2 pickupDateId={selection.pickupDateId} placement="checkout" />
+              <FitsYourPickupV2
+                pickupDateId={selection.pickupDateId}
+                placement="checkout"
+                onProductClick={openRecommendedProduct}
+              />
             )}
 
             <div>
@@ -644,6 +670,14 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             {submitError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{submitError}</div>
             )}
+
+            <button
+              type="button"
+              onClick={continueShopping}
+              className="w-full border border-amber-200 bg-white text-amber-900 py-3 rounded-lg font-semibold hover:bg-amber-50 transition-colors"
+            >
+              {forgotSomethingLabel}
+            </button>
 
             <button
               type="submit"

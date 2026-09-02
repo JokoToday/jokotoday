@@ -21,9 +21,13 @@ export type CartItem = {
   quantity: number;
 };
 
+export type AddToCartOptions = {
+  openCart?: boolean;
+};
+
 type CartContextType = {
   items: CartItem[];
-  addToCart: (product: CartProduct, quantity: number) => void;
+  addToCart: (product: CartProduct, quantity: number, options?: AddToCartOptions) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -230,7 +234,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [selectedPickupDay, stateOwnerId, storageReady, user?.id]);
 
-  const addToCart = (product: CartProduct, quantity: number) => {
+  const addToCart = (product: CartProduct, quantity: number, options: AddToCartOptions = {}) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.product.id === product.id);
       if (existingItem) {
@@ -242,7 +246,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...currentItems, { product, quantity }];
     });
-    setIsCartOpen(true);
+    if (options.openCart !== false) setIsCartOpen(true);
   };
 
   const removeFromCart = (productId: string) => {

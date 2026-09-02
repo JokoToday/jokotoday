@@ -626,10 +626,13 @@ export function PickupDateSelectorV2({
                           >
                             <p className="font-medium text-gray-900">{name}</p>
                             {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
-                            {canSelectLocation && !isLocationSelected && (
-                              <p className="text-xs font-medium text-amber-700 mt-1.5">
-                                {language === 'th' ? 'เลือกสถานที่นี้' : language === 'zh' ? '选择此地点' : 'Use this location'}
-                              </p>
+                            {canSelectLocation && (
+                              <span className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold ${isLocationSelected ? 'border border-amber-300 bg-amber-100 text-amber-900' : 'bg-amber-600 text-white shadow-sm'}`}>
+                                {isLocationSelected && <CheckCircle2 className="w-4 h-4" />}
+                                {isLocationSelected
+                                  ? (language === 'th' ? 'เลือกแล้ว' : language === 'zh' ? '已选择' : 'Selected')
+                                  : (language === 'th' ? 'ใช้สถานที่นี้' : language === 'zh' ? '使用此地点' : 'Use this location')}
+                              </span>
                             )}
                           </button>
                           {location.maps_url && (
