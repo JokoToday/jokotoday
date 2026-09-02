@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, MapPin, RefreshCw } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, MapPin, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import {
   getCustomerPickupAvailabilityV2,
@@ -67,6 +67,12 @@ function localizedLocationName(location: PickupAvailabilityLocation, language: '
   return location.name_en;
 }
 
+function localizedScheduleLabel(date: BrowseDate, language: 'en' | 'th' | 'zh'): string {
+  if (language === 'th') return date.scheduleLabelTh || date.scheduleLabelEn;
+  if (language === 'zh') return date.scheduleLabelZh || date.scheduleLabelEn;
+  return date.scheduleLabelEn;
+}
+
 export function PickupBrowseDateSelectorV2({
   productIds,
   value,
@@ -78,6 +84,8 @@ export function PickupBrowseDateSelectorV2({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthStart(new Date()));
+  const [showFullCalendar, setShowFullCalendar] = useState(false);
+  const [locationFilterId, setLocationFilterId] = useState<string>('all');
 
   const uniqueProductIds = useMemo(
     () => Array.from(new Set(productIds.filter(Boolean))).sort(),
@@ -113,13 +121,28 @@ export function PickupBrowseDateSelectorV2({
       .sort((a, b) => a.pickupDate.localeCompare(b.pickupDate));
   }, [rows]);
 
+  const locations = useMemo(() => {
+    const byId = new Map<string, PickupAvailabilityLocation>();
+    browseDates.forEach((date) => {
+      date.locations.forEach((location) => byId.set(location.id, location));
+    });
+    return Array.from(byId.values()).sort((a, b) => a.sort_order - b.sort_order);
+  }, [browseDates]);
+
+  const filteredBrowseDates = useMemo(
+    () => locationFilterId === 'all'
+      ? browseDates
+      : browseDates.filter((date) => date.locations.some((location) => location.id === locationFilterId)),
+    [browseDates, locationFilterId],
+  );
+
   const browseDateById = useMemo(
     () => new Map(browseDates.map((date) => [date.pickupDateId, date])),
     [browseDates],
   );
   const dateIdByKey = useMemo(
-    () => new Map(browseDates.map((date) => [date.pickupDate, date.pickupDateId])),
-    [browseDates],
+    () => new Map(filteredBrowseDates.map((date) => [date.pickupDate, date.pickupDateId])),
+    [filteredBrowseDates],
   );
 
   const loadAvailability = async () => {
@@ -159,17 +182,18 @@ export function PickupBrowseDateSelectorV2({
       const date = browseDateById.get(value.pickupDateId);
       if (value.pickupLocationId && !date?.locations.some((location) => location.id === value.pickupLocationId)) {
         onChange({ ...value, pickupLocationId: null });
+        return;
       }
       setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
       return;
     }
-    if (browseDates.length > 0) {
-      setVisibleMonth(monthStart(utcDateFromKey(browseDates[0].pickupDate)));
+    if (filteredBrowseDates.length > 0) {
+      setVisibleMonth(monthStart(utcDateFromKey(filteredBrowseDates[0].pickupDate)));
     }
-  }, [value?.pickupDateId, value?.pickupLocationId, browseDates, browseDateById]);
+  }, [value?.pickupDateId, value?.pickupLocationId, browseDates, filteredBrowseDates, browseDateById]);
 
   const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
-  const calendarMonthIndices = browseDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
+  const calendarMonthIndices = filteredBrowseDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
   const currentMonthIndex = monthIndex(visibleMonth);
   const minMonthIndex = calendarMonthIndices.length > 0 ? Math.min(...calendarMonthIndices) : currentMonthIndex;
   const maxMonthIndex = calendarMonthIndices.length > 0 ? Math.max(...calendarMonthIndices) : currentMonthIndex;
@@ -204,22 +228,23 @@ export function PickupBrowseDateSelectorV2({
       ? '选择取货日期和地点'
       : 'Choose pickup date and location';
   const helper = language === 'th'
-    ? 'เลือกวันก่อน แล้วเลือกจุดรับสินค้า เพื่อดูสินค้าที่มีจริงสำหรับ Pickup v2 วันนั้น'
+    ? 'เลือกสถานที่และวันที่รับสินค้า เพื่อดูสินค้าที่สั่งได้สำหรับวันนั้น'
     : language === 'zh'
-      ? '先选择日期，再选择取货地点，以查看该 Pickup v2 日期实际可订购的商品。'
-      : 'Choose a date, then a pickup location, to browse products available for that concrete Pickup v2 date.';
+      ? '选择取货地点和日期，查看当天可以订购的商品。'
+      : 'Choose a pickup location and date to browse the products available that day.';
+  const allLocationsLabel = language === 'th' ? 'ทุกสถานที่' : language === 'zh' ? '全部地点' : 'All locations';
+  const upcomingLabel = language === 'th' ? 'วันรับสินค้าที่กำลังจะมาถึง' : language === 'zh' ? '即将到来的取货日期' : 'Upcoming pickup dates';
+  const fullCalendarLabel = language === 'th' ? 'ปฏิทินเต็ม' : language === 'zh' ? '完整日历' : 'Full calendar';
 
   const selectedDate = value ? browseDateById.get(value.pickupDateId) || null : null;
-  const selectedScheduleLabel = selectedDate
-    ? (language === 'th'
-      ? selectedDate.scheduleLabelTh || selectedDate.scheduleLabelEn
-      : language === 'zh'
-        ? selectedDate.scheduleLabelZh || selectedDate.scheduleLabelEn
-        : selectedDate.scheduleLabelEn)
-    : null;
+  const selectedScheduleLabel = selectedDate ? localizedScheduleLabel(selectedDate, language) : null;
 
   const selectDate = (browseDate: BrowseDate) => {
-    const automaticLocationId = browseDate.locations.length === 1 ? browseDate.locations[0].id : null;
+    const filteredLocation = locationFilterId !== 'all'
+      ? browseDate.locations.find((location) => location.id === locationFilterId) || null
+      : null;
+    const automaticLocationId = filteredLocation?.id
+      || (browseDate.locations.length === 1 ? browseDate.locations[0].id : null);
     onChange({
       pickupDateId: browseDate.pickupDateId,
       pickupDate: browseDate.pickupDate,
@@ -237,10 +262,26 @@ export function PickupBrowseDateSelectorV2({
     onChange({ ...value, pickupLocationId: locationId });
   };
 
+  const changeLocationFilter = (nextLocationId: string) => {
+    setLocationFilterId(nextLocationId);
+    if (!value || nextLocationId === 'all') return;
+    const selected = browseDateById.get(value.pickupDateId);
+    if (!selected?.locations.some((location) => location.id === nextLocationId)) {
+      onChange(null);
+    }
+  };
+
+  const formatCompactDate = (value: string) => new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(utcDateFromKey(value));
+
   return (
-    <div className="max-w-3xl mx-auto mb-8">
-      <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4 mb-5">
+    <div className="max-w-4xl mx-auto mb-8">
+      <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-4 sm:p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center shrink-0">
               <CalendarDays className="w-5 h-5 text-amber-700" />
@@ -268,7 +309,7 @@ export function PickupBrowseDateSelectorV2({
         )}
 
         {loading ? (
-          <div className="bg-white/70 rounded-xl py-12 text-center text-sm text-gray-500">
+          <div className="bg-white/70 rounded-xl py-10 text-center text-sm text-gray-500">
             {language === 'th' ? 'กำลังโหลดวันรับสินค้า…' : language === 'zh' ? '正在加载取货日期…' : 'Loading pickup dates…'}
           </div>
         ) : browseDates.length === 0 ? (
@@ -277,74 +318,133 @@ export function PickupBrowseDateSelectorV2({
           </div>
         ) : (
           <>
-            <div className="bg-white border border-amber-100 rounded-2xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100">
+            <div className="mb-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                {language === 'th' ? 'สถานที่รับสินค้า' : language === 'zh' ? '取货地点' : 'Pickup location'}
+              </p>
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex - 1))}
-                  disabled={currentMonthIndex <= minMonthIndex}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
-                  aria-label="Previous month"
+                  onClick={() => changeLocationFilter('all')}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  {allLocationsLabel}
                 </button>
-                <p className="font-semibold text-gray-900 capitalize">
-                  {new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(visibleMonth)}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex + 1))}
-                  disabled={currentMonthIndex >= maxMonthIndex}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
-                  aria-label="Next month"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-7 px-2 pt-3">
-                {weekdayLabels.map((label, index) => (
-                  <div key={`${label}-${index}`} className="text-center text-[11px] sm:text-xs font-semibold text-gray-400 py-1">
-                    {label}
-                  </div>
+                {locations.map((location) => (
+                  <button
+                    key={location.id}
+                    type="button"
+                    onClick={() => changeLocationFilter(location.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
+                  >
+                    {localizedLocationName(location, language)}
+                  </button>
                 ))}
               </div>
+            </div>
 
-              <div className="grid grid-cols-7 gap-1 p-2 sm:p-3 pt-1">
-                {calendarCells.map((date, index) => {
-                  if (!date) return <div key={`blank-${index}`} className="aspect-square" />;
-                  const key = dateKey(date);
-                  const pickupDateId = dateIdByKey.get(key);
-                  const browseDate = pickupDateId ? browseDateById.get(pickupDateId) || null : null;
-                  const isSelected = Boolean(browseDate && value?.pickupDateId === browseDate.pickupDateId);
+            <div className="rounded-xl border border-amber-100 bg-white p-3 sm:p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-sm font-semibold text-gray-900">{upcomingLabel}</p>
+                <button
+                  type="button"
+                  onClick={() => setShowFullCalendar((open) => !open)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 hover:text-amber-950"
+                >
+                  {fullCalendarLabel}
+                  {showFullCalendar ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              </div>
 
+              <div className="flex gap-2 overflow-x-auto pb-1 snap-x">
+                {filteredBrowseDates.slice(0, 12).map((date) => {
+                  const selected = value?.pickupDateId === date.pickupDateId;
                   return (
                     <button
-                      key={key}
+                      key={date.pickupDateId}
                       type="button"
-                      onClick={() => browseDate && selectDate(browseDate)}
-                      disabled={!browseDate}
-                      className={`aspect-square rounded-xl border flex flex-col items-center justify-center transition-all ${
-                        isSelected
-                          ? 'bg-amber-600 border-amber-600 text-white shadow-md'
-                          : browseDate
-                            ? 'bg-amber-50 border-amber-200 text-gray-900 hover:bg-amber-100 hover:border-amber-400'
-                            : 'bg-white border-transparent text-gray-300 cursor-default'
-                      }`}
+                      onClick={() => selectDate(date)}
+                      className={`min-w-[116px] snap-start rounded-xl border px-3 py-2.5 text-left transition-colors ${selected ? 'border-amber-600 bg-amber-600 text-white shadow-sm' : 'border-amber-200 bg-amber-50 text-gray-900 hover:bg-amber-100'}`}
                     >
-                      <span className="text-sm sm:text-base font-semibold">{date.getUTCDate()}</span>
-                      {browseDate && (
-                        <span className={`mt-1 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-green-500'}`} />
-                      )}
+                      <p className="text-sm font-semibold">{formatCompactDate(date.pickupDate)}</p>
+                      <p className={`text-[11px] mt-1 truncate ${selected ? 'text-amber-50' : 'text-gray-500'}`}>
+                        {localizedScheduleLabel(date, language)}
+                      </p>
                     </button>
                   );
                 })}
               </div>
+
+              {filteredBrowseDates.length === 0 && (
+                <p className="text-sm text-gray-500 py-3">
+                  {language === 'th' ? 'ไม่มีวันรับสินค้าสำหรับสถานที่นี้ในขณะนี้' : language === 'zh' ? '该地点目前没有可用取货日期。' : 'No upcoming pickup dates are available for this location.'}
+                </p>
+              )}
             </div>
 
+            {showFullCalendar && filteredBrowseDates.length > 0 && (
+              <div className="mt-3 bg-white border border-amber-100 rounded-xl overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-amber-100">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex - 1))}
+                    disabled={currentMonthIndex <= minMonthIndex}
+                    className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <p className="text-sm font-semibold text-gray-900 capitalize">
+                    {new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(visibleMonth)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex + 1))}
+                    disabled={currentMonthIndex >= maxMonthIndex}
+                    className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 px-2 pt-2">
+                  {weekdayLabels.map((label, index) => (
+                    <div key={`${label}-${index}`} className="text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 py-1">
+                      {label}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 p-2 pt-1">
+                  {calendarCells.map((date, index) => {
+                    if (!date) return <div key={`blank-${index}`} className="h-11" />;
+                    const key = dateKey(date);
+                    const pickupDateId = dateIdByKey.get(key);
+                    const browseDate = pickupDateId ? browseDateById.get(pickupDateId) || null : null;
+                    const isSelected = Boolean(browseDate && value?.pickupDateId === browseDate.pickupDateId);
+
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => browseDate && selectDate(browseDate)}
+                        disabled={!browseDate}
+                        className={`h-11 rounded-lg border flex flex-col items-center justify-center transition-all ${isSelected ? 'bg-amber-600 border-amber-600 text-white shadow-sm' : browseDate ? 'bg-amber-50 border-amber-200 text-gray-900 hover:bg-amber-100 hover:border-amber-400' : 'bg-white border-transparent text-gray-300 cursor-default'}`}
+                      >
+                        <span className="text-xs sm:text-sm font-semibold">{date.getUTCDate()}</span>
+                        {browseDate && <span className={`mt-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-green-500'}`} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {selectedDate && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-white px-4 py-4 text-sm text-gray-700">
-                <div className="flex items-center gap-2">
+              <div className="mt-3 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-gray-700">
+                <div className="flex items-center gap-2 flex-wrap">
                   <MapPin className="w-4 h-4 text-amber-700" />
                   <span className="font-semibold">{selectedScheduleLabel}</span>
                   <span className="text-gray-500">· {selectedDate.availableProductCount} {language === 'th' ? 'สินค้า' : language === 'zh' ? '件商品' : 'products available'}</span>
@@ -361,7 +461,7 @@ export function PickupBrowseDateSelectorV2({
                         : location.description_en;
                     return (
                       <div key={location.id} className={`rounded-xl border overflow-hidden ${selected ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300' : 'border-gray-200 bg-white'}`}>
-                        <button type="button" onClick={() => selectLocation(location.id)} className="w-full text-left px-4 py-3 hover:bg-amber-50/50">
+                        <button type="button" onClick={() => selectLocation(location.id)} className="w-full text-left px-4 py-2.5 hover:bg-amber-50/50">
                           <p className="font-medium text-gray-900">{name}</p>
                           {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
                         </button>
