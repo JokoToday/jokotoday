@@ -93,7 +93,7 @@ export function PickupDateSelectorV2({
   const [error, setError] = useState('');
   const [activeDateId, setActiveDateId] = useState<string | null>(value?.pickupDateId || null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthStart(new Date()));
-  const [previousLocationId, setPreviousLocationId] = useState<string | null>(value?.pickupLocationId || null);
+  const [locationFilterId, setLocationFilterId] = useState<string>('all');
 
   const productIds = useMemo(
     () => Array.from(new Set(requirements.map(({ productId }) => productId).filter(Boolean))).sort(),
@@ -136,6 +136,19 @@ export function PickupDateSelectorV2({
     return Array.from(byId.values()).sort((a, b) => a.pickupDate.localeCompare(b.pickupDate));
   }, [rows]);
 
+  const locations = useMemo(() => {
+    const byId = new Map<string, PickupAvailabilityLocation>();
+    calendarDates.forEach((date) => date.locations.forEach((location) => byId.set(location.id, location)));
+    return Array.from(byId.values()).sort((a, b) => a.sort_order - b.sort_order);
+  }, [calendarDates]);
+
+  const visibleCalendarDates = useMemo(
+    () => locationFilterId === 'all'
+      ? calendarDates
+      : calendarDates.filter((date) => date.locations.some((location) => location.id === locationFilterId)),
+    [calendarDates, locationFilterId],
+  );
+
   const calendarDateById = useMemo(
     () => new Map(calendarDates.map((date) => [date.pickupDateId, date])),
     [calendarDates],
@@ -152,8 +165,8 @@ export function PickupDateSelectorV2({
     setLoading(true);
     setError('');
     try {
-      // Load the safe customer availability horizon, not only the cart products,
-      // so unavailable materialized dates remain inspectable with an explanation.
+      // Load the full safe customer horizon so otherwise-unavailable dates can
+      // still be inspected and explained without exposing private inventory data.
       setRows(await getCustomerPickupAvailabilityV2());
     } catch (err) {
       setRows([]);
@@ -164,36 +177,7 @@ export function PickupDateSelectorV2({
   };
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (productIds.length === 0) {
-        if (!cancelled) {
-          setRows([]);
-          setLoading(false);
-          setError('');
-        }
-        return;
-      }
-      setLoading(true);
-      setError('');
-      try {
-        const nextRows = await getCustomerPickupAvailabilityV2();
-        if (!cancelled) setRows(nextRows);
-      } catch (err) {
-        if (!cancelled) {
-          setRows([]);
-          setError(err instanceof Error ? err.message : 'Could not load pickup availability.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    void loadAvailability();
   }, [productIdsKey]);
 
   useEffect(() => {
@@ -204,8 +188,7 @@ export function PickupDateSelectorV2({
         onChange(null);
         return;
       }
-      setActiveDateId(value.pickupDateId);
-      setPreviousLocationId(value.pickupLocationId);
+      if (activeDateId === null) setActiveDateId(value.pickupDateId);
       setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
       return;
     }
@@ -213,7 +196,7 @@ export function PickupDateSelectorV2({
     if (calendarDates.length > 0 && activeDateId === null) {
       setVisibleMonth(monthStart(utcDateFromKey(calendarDates[0].pickupDate)));
     }
-  }, [value?.pickupDateId, value?.pickupLocationId, commonDates, commonDateById, calendarDates]);
+  }, [value?.pickupDateId, value?.pickupLocationId, commonDates, commonDateById, calendarDates, activeDateId]);
 
   const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
   const activeCalendarDate = activeDateId ? calendarDateById.get(activeDateId) || null : null;
@@ -223,32 +206,29 @@ export function PickupDateSelectorV2({
     [rows, requirements, activeDateId],
   );
 
-  const previousLocation = useMemo(() => {
-    if (!previousLocationId) return null;
+  const committedLocation = useMemo(() => {
+    if (!value?.pickupLocationId) return null;
     for (const row of rows) {
-      const found = row.locations.find((location) => location.id === previousLocationId);
+      const found = row.locations.find((location) => location.id === value.pickupLocationId);
       if (found) return found;
     }
     return null;
-  }, [rows, previousLocationId]);
-  const previousLocationUnavailable = Boolean(
+  }, [rows, value?.pickupLocationId]);
+  const committedLocationUnavailableOnDraft = Boolean(
     activeCalendarDate
-      && previousLocationId
-      && !activeCalendarDate.locations.some((location) => location.id === previousLocationId),
+      && value?.pickupLocationId
+      && activeCalendarDate.pickupDateId !== value.pickupDateId
+      && !activeCalendarDate.locations.some((location) => location.id === value.pickupLocationId),
   );
 
-  const calendarMonthIndices = calendarDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
+  const calendarMonthIndices = visibleCalendarDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
   const currentMonthIndex = monthIndex(visibleMonth);
-  const minMonthIndex = calendarMonthIndices.length > 0
-    ? Math.min(...calendarMonthIndices)
-    : currentMonthIndex;
-  const maxMonthIndex = calendarMonthIndices.length > 0
-    ? Math.max(...calendarMonthIndices)
-    : currentMonthIndex;
+  const minMonthIndex = calendarMonthIndices.length > 0 ? Math.min(...calendarMonthIndices) : currentMonthIndex;
+  const maxMonthIndex = calendarMonthIndices.length > 0 ? Math.max(...calendarMonthIndices) : currentMonthIndex;
 
   const dateIdByKey = useMemo(
-    () => new Map(calendarDates.map((date) => [date.pickupDate, date.pickupDateId])),
-    [calendarDates],
+    () => new Map(visibleCalendarDates.map((date) => [date.pickupDate, date.pickupDateId])),
+    [visibleCalendarDates],
   );
 
   const firstWeekday = new Date(Date.UTC(
@@ -276,14 +256,11 @@ export function PickupDateSelectorV2({
   });
 
   const handleDateSelection = (date: CalendarPickupDate) => {
-    if (value?.pickupLocationId) setPreviousLocationId(value.pickupLocationId);
     setActiveDateId(date.pickupDateId);
     setVisibleMonth(monthStart(utcDateFromKey(date.pickupDate)));
-    if (value?.pickupDateId !== date.pickupDateId) onChange(null);
   };
 
   const selectLocation = (date: CommonPickupDateAvailability, locationId: string) => {
-    setPreviousLocationId(locationId);
     onChange({
       pickupDateId: date.pickupDateId,
       pickupDate: date.pickupDate,
@@ -293,21 +270,33 @@ export function PickupDateSelectorV2({
     });
   };
 
+  const changeLocationFilter = (nextLocationId: string) => {
+    setLocationFilterId(nextLocationId);
+    if (nextLocationId === 'all') return;
+    if (activeCalendarDate?.locations.some((location) => location.id === nextLocationId)) return;
+    const firstDate = calendarDates.find((date) => date.locations.some((location) => location.id === nextLocationId));
+    if (firstDate) {
+      setActiveDateId(firstDate.pickupDateId);
+      setVisibleMonth(monthStart(utcDateFromKey(firstDate.pickupDate)));
+    }
+  };
+
   const title = language === 'th'
     ? 'เลือกวันและสถานที่รับสินค้า'
     : language === 'zh'
       ? '选择取货日期和地点'
       : 'Choose pickup date and location';
   const helper = language === 'th'
-    ? 'วันที่ที่ไม่เหมาะกับตะกร้ายังเปิดดูได้ เพื่อให้คุณเห็นสาเหตุและแก้ไขได้ทันที'
+    ? 'เลือกสถานที่หรือวันที่ใหม่ได้ โดยการรับสินค้าที่คุณยืนยันไว้จะยังไม่เปลี่ยนจนกว่าคุณจะเลือกสถานที่สำหรับวันใหม่'
     : language === 'zh'
-      ? '无法满足整个购物篮的日期仍可打开，以查看原因并直接调整订单。'
-      : 'Dates that cannot fulfill the whole basket can still be opened so you can see why and adjust the order.';
+      ? '您可以先查看新的地点或日期；在为新日期选择取货地点之前，原已确认的取货安排不会改变。'
+      : 'Explore another location or date first. Your confirmed pickup stays unchanged until you choose a location for the new date.';
+  const allLocationsLabel = language === 'th' ? 'ทุกสถานที่' : language === 'zh' ? '全部地点' : 'All locations';
 
   return (
     <div className="max-w-3xl mx-auto mb-8">
-      <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4 mb-5">
+      <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-4 sm:p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center shrink-0">
               <CalendarDays className="w-5 h-5 text-amber-700" />
@@ -329,13 +318,11 @@ export function PickupDateSelectorV2({
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         )}
 
         {loading ? (
-          <div className="bg-white/70 rounded-xl py-12 text-center text-sm text-gray-500">
+          <div className="bg-white/70 rounded-xl py-10 text-center text-sm text-gray-500">
             {language === 'th' ? 'กำลังโหลดวันรับสินค้า…' : language === 'zh' ? '正在加载取货日期…' : 'Loading pickup dates…'}
           </div>
         ) : productIds.length === 0 ? (
@@ -348,49 +335,74 @@ export function PickupDateSelectorV2({
           </div>
         ) : (
           <>
-            <div className="bg-white border border-amber-100 rounded-2xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100">
+            <div className="mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-amber-700" />
+                {language === 'th' ? 'เลือกสถานที่' : language === 'zh' ? '选择地点' : 'Choose location'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => changeLocationFilter('all')}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
+                >
+                  {allLocationsLabel}
+                </button>
+                {locations.map((location) => (
+                  <button
+                    key={location.id}
+                    type="button"
+                    onClick={() => changeLocationFilter(location.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
+                  >
+                    {localizedLocationName(location, language)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white border border-amber-100 rounded-xl overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-amber-100">
                 <button
                   type="button"
                   onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex - 1))}
                   disabled={currentMonthIndex <= minMonthIndex}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                  className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
                   aria-label="Previous month"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
-                <p className="font-semibold text-gray-900 capitalize">
+                <p className="text-sm font-semibold text-gray-900 capitalize">
                   {new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(visibleMonth)}
                 </p>
                 <button
                   type="button"
                   onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex + 1))}
                   disabled={currentMonthIndex >= maxMonthIndex}
-                  className="p-2 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                  className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
                   aria-label="Next month"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-7 px-2 pt-3">
+              <div className="grid grid-cols-7 px-2 pt-2">
                 {weekdayLabels.map((label, index) => (
-                  <div key={`${label}-${index}`} className="text-center text-[11px] sm:text-xs font-semibold text-gray-400 py-1">
-                    {label}
-                  </div>
+                  <div key={`${label}-${index}`} className="text-center text-[10px] sm:text-[11px] font-semibold text-gray-400 py-1">{label}</div>
                 ))}
               </div>
 
-              <div className="grid grid-cols-7 gap-1 p-2 sm:p-3 pt-1">
+              <div className="grid grid-cols-7 gap-1 p-2 pt-1">
                 {calendarCells.map((date, index) => {
-                  if (!date) return <div key={`blank-${index}`} className="aspect-square" />;
-
+                  if (!date) return <div key={`blank-${index}`} className="h-12" />;
                   const key = dateKey(date);
                   const pickupDateId = dateIdByKey.get(key);
                   const calendarDate = pickupDateId ? calendarDateById.get(pickupDateId) || null : null;
                   const selectableDate = pickupDateId ? commonDateById.get(pickupDateId) || null : null;
                   const isActive = Boolean(calendarDate && activeDateId === calendarDate.pickupDateId);
-                  const isSelected = Boolean(value && calendarDate && value.pickupDateId === calendarDate.pickupDateId);
+                  const isCommitted = Boolean(value && calendarDate && value.pickupDateId === calendarDate.pickupDateId);
+                  const pendingValid = isActive && !isCommitted && Boolean(selectableDate);
+                  const pendingInvalid = isActive && !isCommitted && !selectableDate;
 
                   return (
                     <button
@@ -398,26 +410,24 @@ export function PickupDateSelectorV2({
                       type="button"
                       onClick={() => calendarDate && handleDateSelection(calendarDate)}
                       disabled={!calendarDate}
-                      className={`aspect-square rounded-xl border flex flex-col items-center justify-center transition-all ${
-                        isSelected
-                          ? 'bg-amber-600 border-amber-600 text-white shadow-md'
-                          : isActive && !selectableDate
-                            ? 'bg-orange-100 border-orange-400 text-orange-900 ring-2 ring-orange-200'
-                            : selectableDate
-                              ? 'bg-amber-50 border-amber-200 text-gray-900 hover:bg-amber-100 hover:border-amber-400'
-                              : calendarDate
-                                ? 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-300'
-                                : 'bg-white border-transparent text-gray-300 cursor-default'
+                      className={`h-12 rounded-lg border flex flex-col items-center justify-center transition-all ${
+                        isCommitted
+                          ? 'bg-amber-600 border-amber-600 text-white shadow-sm'
+                          : pendingValid
+                            ? 'bg-amber-200 border-amber-500 text-amber-950 ring-2 ring-amber-200'
+                            : pendingInvalid
+                              ? 'bg-orange-200 border-orange-500 text-orange-950 ring-2 ring-orange-200'
+                              : selectableDate
+                                ? 'bg-amber-50 border-amber-200 text-gray-900 hover:bg-amber-100 hover:border-amber-400'
+                                : calendarDate
+                                  ? 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-300'
+                                  : 'bg-white border-transparent text-gray-300 cursor-default'
                       }`}
-                      aria-label={calendarDate
-                        ? `${key}${selectableDate ? '' : ' - needs basket adjustment'}`
-                        : key}
+                      aria-label={calendarDate ? `${key}${selectableDate ? '' : ' - needs basket adjustment'}` : key}
                     >
-                      <span className="text-sm sm:text-base font-semibold">{date.getUTCDate()}</span>
+                      <span className="text-xs sm:text-sm font-semibold">{date.getUTCDate()}</span>
                       {calendarDate && (
-                        <span className={`mt-1 w-1.5 h-1.5 rounded-full ${
-                          isSelected ? 'bg-white' : selectableDate ? 'bg-green-500' : 'bg-orange-400'
-                        }`} />
+                        <span className={`mt-0.5 w-1 h-1 rounded-full ${isCommitted ? 'bg-white' : selectableDate ? 'bg-green-500' : 'bg-orange-400'}`} />
                       )}
                     </button>
                   );
@@ -483,9 +493,9 @@ export function PickupDateSelectorV2({
                         </p>
                         <p className="text-xs text-orange-800 mt-1">
                           {language === 'th'
-                            ? 'ดูรายการด้านล่าง ปรับจำนวนหรือนำสินค้าที่ไม่มีออก แล้วระบบจะตรวจสอบวันนี้อีกครั้งทันที'
+                            ? 'ปรับสินค้าด้านล่างหรือเลือกวันอื่น ระบบจะตรวจสอบวันที่นี้ใหม่ทันทีหลังทุกการเปลี่ยนแปลง'
                             : language === 'zh'
-                              ? '查看下方商品，调整数量或移除当天没有供应的商品；系统会立即重新检查该日期。'
+                              ? '请调整下方商品或选择其他日期。每次修改购物篮后，系统都会立即重新检查该日期。'
                               : 'Adjust the items below or choose another date. This date is rechecked immediately after every basket change.'}
                         </p>
                       </div>
@@ -564,21 +574,21 @@ export function PickupDateSelectorV2({
                     <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>
                       {language === 'th'
-                        ? 'สินค้าทั้งหมดในตะกร้ามีจำนวนเพียงพอสำหรับวันนี้ เลือกจุดรับสินค้าด้านล่าง'
+                        ? 'สินค้าทั้งหมดในตะกร้ามีจำนวนเพียงพอสำหรับวันนี้ เลือกจุดรับสินค้าด้านล่างเพื่อยืนยันการเปลี่ยนแปลง'
                         : language === 'zh'
-                          ? '购物篮中的所有商品在该日期都有足够库存。请在下方选择取货地点。'
-                          : 'Everything in your basket is available for this date. Choose a pickup location below.'}
+                          ? '购物篮中的所有商品在该日期都有足够库存。请在下方选择取货地点以确认更改。'
+                          : 'Everything in your basket is available for this date. Choose a pickup location below to confirm the change.'}
                     </span>
                   </div>
                 ) : null}
 
-                {previousLocationUnavailable && previousLocation && (
+                {committedLocationUnavailableOnDraft && committedLocation && (
                   <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     {language === 'th'
-                      ? `${localizedLocationName(previousLocation, language)} ไม่มีให้รับในวันนี้ กรุณาเลือกสถานที่ด้านล่างหรือวันอื่น`
+                      ? `${localizedLocationName(committedLocation, language)} ไม่มีให้รับในวันนี้ กรุณาเลือกสถานที่ด้านล่างหรือวันอื่น`
                       : language === 'zh'
-                        ? `${localizedLocationName(previousLocation, language)} 在该日期不提供取货。请选择下方地点或其他日期。`
-                        : `${localizedLocationName(previousLocation, language)} is not offered on this date. Choose one of the locations below or another date.`}
+                        ? `${localizedLocationName(committedLocation, language)} 在该日期不提供取货。请选择下方地点或其他日期。`
+                        : `${localizedLocationName(committedLocation, language)} is not offered on this date. Choose one of the locations below or another date.`}
                   </div>
                 )}
 
@@ -602,11 +612,7 @@ export function PickupDateSelectorV2({
                       return (
                         <div
                           key={location.id}
-                          className={`rounded-xl border overflow-hidden ${
-                            isLocationSelected
-                              ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300'
-                              : 'border-gray-200 bg-white'
-                          }`}
+                          className={`rounded-xl border overflow-hidden ${isLocationSelected ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300' : 'border-gray-200 bg-white'}`}
                         >
                           <button
                             type="button"
@@ -616,6 +622,11 @@ export function PickupDateSelectorV2({
                           >
                             <p className="font-medium text-gray-900">{name}</p>
                             {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+                            {canSelectLocation && !isLocationSelected && (
+                              <p className="text-xs font-medium text-amber-700 mt-1.5">
+                                {language === 'th' ? 'เลือกสถานที่นี้' : language === 'zh' ? '选择此地点' : 'Use this location'}
+                              </p>
+                            )}
                           </button>
                           {location.maps_url && (
                             <a
