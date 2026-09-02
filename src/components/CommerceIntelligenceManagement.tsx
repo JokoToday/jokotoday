@@ -5,6 +5,7 @@ import {
   ComplementaryCategoryRule,
   FitsYourPickupConfig,
   getFitsYourPickupConfig,
+  RecommendationPlacement,
   RecommendationSignal,
   saveFitsYourPickupConfig,
   SeasonalProductBoost,
@@ -26,6 +27,17 @@ const SIGNAL_LABELS: Record<RecommendationSignal, { title: string; helper: strin
   catalogue_order: {
     title: 'Catalogue order',
     helper: 'Deterministic fallback based on the existing Admin product sort order.',
+  },
+};
+
+const PLACEMENT_LABELS: Record<RecommendationPlacement, { title: string; helper: string }> = {
+  cart: {
+    title: 'Cart recommendations',
+    helper: 'Shown inside Pickup tools after the customer has selected a compatible pickup date.',
+  },
+  checkout: {
+    title: 'Checkout last-minute recommendations',
+    helper: 'Shown after pickup is confirmed and immediately before the customer places the order.',
   },
 };
 
@@ -84,6 +96,24 @@ export function CommerceIntelligenceManagement() {
 
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
+
+  const updatePlacement = (
+    placement: RecommendationPlacement,
+    patch: Partial<FitsYourPickupConfig['placements'][RecommendationPlacement]>,
+  ) => {
+    setConfig((current) => {
+      if (!current) return current;
+      const nextPlacement = { ...current.placements[placement], ...patch };
+      return {
+        ...current,
+        maxSuggestions: placement === 'cart' ? nextPlacement.maxSuggestions : current.maxSuggestions,
+        placements: {
+          ...current.placements,
+          [placement]: nextPlacement,
+        },
+      };
+    });
+  };
 
   const moveSignal = (signal: RecommendationSignal, direction: -1 | 1) => {
     setConfig((current) => {
@@ -170,10 +200,10 @@ export function CommerceIntelligenceManagement() {
         <div>
           <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-600" />
-            Fits your pickup recommendations
+            Pickup-aware recommendations
           </h2>
           <p className="text-sm text-gray-500 mt-1 max-w-3xl">
-            Control how many compatible add-ons are shown and how eligible products are ranked. Availability on the selected Pickup v2 date is always the first eligibility rule and cannot be overridden by merchandising.
+            Control where recommendations appear and how eligible products are ranked. Merchandising can rank only products that genuinely fit the customer’s selected pickup.
           </p>
         </div>
         <div className="flex gap-2">
@@ -190,16 +220,42 @@ export function CommerceIntelligenceManagement() {
       {notice && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>}
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <label className="block text-sm font-semibold text-gray-900">Maximum suggestions</label>
-        <p className="text-xs text-gray-500 mt-1 mb-3">The cart remains compact; customers can still browse the full catalogue separately.</p>
-        <input
-          type="number"
-          min={1}
-          max={12}
-          value={config.maxSuggestions}
-          onChange={(event) => setConfig({ ...config, maxSuggestions: Math.min(12, Math.max(1, Number(event.target.value) || 1)) })}
-          className="w-28 rounded-lg border border-gray-300 px-3 py-2"
-        />
+        <h3 className="font-semibold text-gray-900">Recommendation placements</h3>
+        <p className="text-xs text-gray-500 mt-1 mb-4">Each placement can be enabled independently and can show a different maximum number of products.</p>
+        <div className="grid md:grid-cols-2 gap-4">
+          {(['cart', 'checkout'] as RecommendationPlacement[]).map((placement) => {
+            const placementConfig = config.placements[placement];
+            return (
+              <div key={placement} className={`rounded-xl border p-4 ${placementConfig.enabled ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={placementConfig.enabled}
+                    onChange={(event) => updatePlacement(placement, { enabled: event.target.checked })}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-900">{PLACEMENT_LABELS[placement].title}</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">{PLACEMENT_LABELS[placement].helper}</span>
+                  </span>
+                </label>
+                <div className="mt-4">
+                  <label className="text-xs font-medium text-gray-600">Maximum suggestions</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={placementConfig.maxSuggestions}
+                    onChange={(event) => updatePlacement(placement, {
+                      maxSuggestions: Math.min(12, Math.max(1, Number(event.target.value) || 1)),
+                    })}
+                    className="mt-1 block w-28 rounded-lg border border-gray-300 px-3 py-2"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
@@ -255,7 +311,7 @@ export function CommerceIntelligenceManagement() {
         </div>
         <div className="mt-4 space-y-2">
           {config.seasonalBoosts.map((boost) => (
-            <div key={boost.productId} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm">
+            <div key={boost.productId} className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm">
               <span className="font-medium text-gray-900 flex-1">{productById.get(boost.productId)?.name_en || boost.productId}</span>
               <span className="text-gray-500">Priority {boost.priority}</span>
               <span className="text-gray-500">{boost.startsOn || 'Any date'} → {boost.endsOn || 'Any date'}</span>
@@ -290,7 +346,7 @@ export function CommerceIntelligenceManagement() {
         </div>
         <div className="mt-4 space-y-2">
           {config.complementaryCategoryRules.map((rule) => (
-            <div key={`${rule.sourceCategoryId}-${rule.targetCategoryId}`} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm">
+            <div key={`${rule.sourceCategoryId}-${rule.targetCategoryId}`} className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm">
               <span className="font-medium text-gray-900">{categoryById.get(rule.sourceCategoryId)?.title_en || rule.sourceCategoryId}</span>
               <span className="text-gray-400">→</span>
               <span className="font-medium text-gray-900 flex-1">{categoryById.get(rule.targetCategoryId)?.title_en || rule.targetCategoryId}</span>
