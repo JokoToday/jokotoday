@@ -1,8 +1,9 @@
-import { X, ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronUp, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useCMSLabels } from '../hooks/useCMSLabels';
 import { AuthRequiredModal } from './AuthRequiredModal';
 import { FitsYourPickupV2 } from './FitsYourPickupV2';
 import { PickupFinderStateV2, PickupFinderV2 } from './PickupFinderV2';
@@ -24,8 +25,16 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const { getLabel } = useCMSLabels();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [pickupFinderState, setPickupFinderState] = useState<PickupFinderStateV2>(INITIAL_PICKUP_FINDER_STATE);
+  const [pickupToolsOpen, setPickupToolsOpen] = useState(false);
+
+  useEffect(() => {
+    if (pickupFinderState.enabled && pickupFinderState.hasCommonDates === false) {
+      setPickupToolsOpen(true);
+    }
+  }, [pickupFinderState.enabled, pickupFinderState.hasCommonDates]);
 
   if (!isCartOpen) return null;
 
@@ -35,6 +44,20 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
       : language === 'zh'
         ? '开始选购'
         : 'Start shopping';
+  const pickupToolsLabel = getLabel(
+    'pickup_tools.title',
+    language,
+    language === 'th' ? 'เครื่องมือรับสินค้า' : language === 'zh' ? '智能取货工具' : 'Pickup tools',
+  );
+  const pickupToolsHelper = getLabel(
+    'pickup_tools.helper',
+    language,
+    language === 'th'
+      ? 'ค้นหาวันรับร่วมกันและดูสินค้าที่เพิ่มได้โดยไม่เปลี่ยนวันรับ'
+      : language === 'zh'
+        ? '查找共同取货日期，并查看不会改变已选日期的可加购商品。'
+        : 'Find common pickup dates and compatible add-ons when you need them.',
+  );
   const checkoutBlockedByFinder = pickupFinderState.enabled
     && (pickupFinderState.loading || pickupFinderState.hasCommonDates === false);
 
@@ -140,14 +163,43 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                 );
               })}
 
-              <PickupFinderV2 onStateChange={setPickupFinderState} />
+              {pickupFinderState.enabled && (
+                <button
+                  type="button"
+                  onClick={() => setPickupToolsOpen((open) => !open)}
+                  className={`w-full rounded-xl border px-4 py-3 text-left transition-colors ${
+                    pickupFinderState.hasCommonDates === false
+                      ? 'border-orange-300 bg-orange-50'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Sparkles className={`w-5 h-5 mt-0.5 shrink-0 ${pickupFinderState.hasCommonDates === false ? 'text-orange-700' : 'text-amber-700'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{pickupToolsLabel}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{pickupToolsHelper}</p>
+                    </div>
+                    {pickupToolsOpen ? <ChevronUp className="w-4 h-4 text-gray-500 mt-0.5" /> : <ChevronDown className="w-4 h-4 text-gray-500 mt-0.5" />}
+                  </div>
+                </button>
+              )}
 
-              {pickupFinderState.enabled
-                && !pickupFinderState.loading
-                && pickupFinderState.hasCommonDates === true
-                && pickupFinderState.selectedPickupDateId && (
-                  <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} />
-                )}
+              <div className={pickupToolsOpen ? 'space-y-4' : 'hidden'}>
+                <PickupFinderV2 onStateChange={setPickupFinderState} />
+
+                {pickupFinderState.enabled
+                  && !pickupFinderState.loading
+                  && pickupFinderState.hasCommonDates === true
+                  && pickupFinderState.selectedPickupDateId && (
+                    <FitsYourPickupV2 pickupDateId={pickupFinderState.selectedPickupDateId} />
+                  )}
+              </div>
+
+              {!pickupToolsOpen && (
+                <div className="hidden" aria-hidden="true">
+                  <PickupFinderV2 onStateChange={setPickupFinderState} />
+                </div>
+              )}
             </div>
           )}
         </div>
