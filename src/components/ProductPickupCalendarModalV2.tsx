@@ -81,10 +81,10 @@ export function ProductPickupCalendarModalV2({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto px-4 py-8">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-3 sm:px-4 py-3 sm:py-4">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 sm:px-6 py-5">
+      <div className="relative flex max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="shrink-0 flex items-start justify-between gap-4 border-b border-gray-100 px-5 sm:px-6 py-5">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
               <CalendarDays className="w-5 h-5 text-amber-700" />
@@ -99,7 +99,7 @@ export function ProductPickupCalendarModalV2({
           </button>
         </div>
 
-        <div className="px-4 sm:px-6 pt-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 pt-5">
           <PickupDateSelectorV2
             requirements={[{
               productId: product.id,
@@ -113,7 +113,7 @@ export function ProductPickupCalendarModalV2({
           />
         </div>
 
-        <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 backdrop-blur px-5 sm:px-6 py-4">
+        <div className="shrink-0 border-t border-gray-100 bg-white/95 backdrop-blur px-5 sm:px-6 py-4">
           <button
             type="button"
             onClick={confirmPickup}
