@@ -26,6 +26,18 @@ const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 
+const PRIMARY_PAGE_PATHS: Record<string, string> = {
+  home: '/',
+  products: '/products',
+  checkout: '/checkout',
+  about: '/about',
+  'how-it-works': '/how-it-works',
+};
+
+const PRIMARY_PATH_PAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(PRIMARY_PAGE_PATHS).map(([page, path]) => [path, page]),
+);
+
 const ACCOUNT_PAGE_PATHS: Record<string, string> = {
   profile: '/my-profile',
   orders: '/my-orders',
@@ -34,7 +46,7 @@ const ACCOUNT_PAGE_PATHS: Record<string, string> = {
 };
 
 const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
-  Object.entries(ACCOUNT_PAGE_PATHS).map(([page, path]) => [path, page])
+  Object.entries(ACCOUNT_PAGE_PATHS).map(([page, path]) => [path, page]),
 );
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
@@ -44,7 +56,7 @@ const STANDALONE_PAGE_PATHS: Record<string, string> = {
 };
 
 const STANDALONE_PATH_PAGES: Record<string, string> = Object.fromEntries(
-  Object.entries(STANDALONE_PAGE_PATHS).map(([page, path]) => [path, page])
+  Object.entries(STANDALONE_PAGE_PATHS).map(([page, path]) => [path, page]),
 );
 
 function AppContent() {
@@ -78,7 +90,7 @@ function AppContent() {
         setProductSlug(slug);
         if (source) setQrSource(source);
         setCurrentPage('products');
-        window.history.replaceState({}, '', '/');
+        window.history.replaceState({}, '', '/products');
         return;
       }
 
@@ -113,6 +125,12 @@ function AppContent() {
         }
       }
 
+      const primaryPage = PRIMARY_PATH_PAGES[path];
+      if (primaryPage) {
+        setCurrentPage(primaryPage);
+        return;
+      }
+
       const accountPage = ACCOUNT_PATH_PAGES[path];
       if (accountPage) {
         setCurrentPage(accountPage);
@@ -125,9 +143,7 @@ function AppContent() {
         return;
       }
 
-      if (path === '/') {
-        setCurrentPage('home');
-      }
+      if (path === '/') setCurrentPage('home');
     };
 
     syncPageFromLocation();
@@ -150,26 +166,23 @@ function AppContent() {
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
-    const accountPath = ACCOUNT_PAGE_PATHS[page];
-    const standalonePath = STANDALONE_PAGE_PATHS[page];
-    const isLeavingAccountPath =
-      !accountPath && Boolean(ACCOUNT_PATH_PAGES[window.location.pathname]);
-    const isLeavingStandalonePath =
-      !standalonePath && Boolean(STANDALONE_PATH_PAGES[window.location.pathname]);
-
-    if (accountPath && window.location.pathname !== accountPath) {
-      window.history.pushState({}, '', accountPath);
-    } else if (standalonePath && window.location.pathname !== standalonePath) {
-      window.history.pushState({}, '', standalonePath);
-    } else if (isLeavingAccountPath || isLeavingStandalonePath) {
-      window.history.pushState({}, '', '/');
-    }
-
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
       setProductSlug(productNavMatch[1]);
+      if (window.location.pathname !== '/products') {
+        window.history.pushState({}, '', '/products');
+      }
       setCurrentPage('products');
       return;
+    }
+
+    const targetPath = PRIMARY_PAGE_PATHS[page]
+      || ACCOUNT_PAGE_PATHS[page]
+      || STANDALONE_PAGE_PATHS[page]
+      || null;
+
+    if (targetPath && window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
     }
 
     setCurrentPage(page);
