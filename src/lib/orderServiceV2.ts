@@ -55,6 +55,14 @@ export async function createOnlineOrderV2(
   return order;
 }
 
+export async function requestOrderCancellationEmail(orderId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-order-cancellation', {
+    body: { order_id: orderId },
+  });
+
+  if (error) throw error;
+}
+
 export async function cancelOnlineOrderCompatible<T extends CancellableOnlineOrder>(
   order: T,
 ): Promise<T & { status?: string }> {
@@ -72,6 +80,13 @@ export async function cancelOnlineOrderCompatible<T extends CancellableOnlineOrd
   if (!cancelledOrder?.id || cancelledOrder.status !== 'cancelled') {
     throw new Error('Cancellation returned an invalid order result.');
   }
+
+  // Cancellation is authoritative and must not be rolled back in the UI just
+  // because notification delivery is temporarily unavailable. The durable
+  // outbox event can be retried independently.
+  void requestOrderCancellationEmail(cancelledOrder.id).catch((notificationError) => {
+    console.error('Cancellation email could not be requested:', notificationError);
+  });
 
   return cancelledOrder;
 }
