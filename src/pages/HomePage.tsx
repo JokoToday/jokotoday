@@ -5,6 +5,7 @@ import { getImageUrl, getCategories, CMSCategory } from '../lib/cmsService';
 import { useCart } from '../context/CartContext';
 import { getPublicImageUrl } from '../lib/storage';
 import TopLikedSection from '../components/TopLikedSection';
+import { Container, PageCanvas, Section } from '../platform/design-system';
 
 type HomePageProps = {
   onNavigate: (page: string) => void;
@@ -35,12 +36,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const handleCategoryClick = (categoryId: string) => {
     setSelectedCategory(categoryId);
     onNavigate('products');
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background">
-      <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+    <PageCanvas className="bg-gradient-to-b from-primary-50 to-background">
+      <Section spacing="none" className="relative overflow-hidden">
+        <Container width="wide" className="py-12 md:py-20">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <h1 className="text-5xl md:text-6xl font-header font-bold text-primary-900 leading-tight">
@@ -79,13 +80,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       <TopLikedSection onNavigate={onNavigate} onProductClick={() => onNavigate('products')} />
 
-      <section className="py-16 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <Section spacing="spacious" className="bg-background">
+        <Container width="wide">
           <h2 className="text-3xl md:text-4xl font-header font-bold text-center text-primary-900 mb-12">
             {t.whatWeBake.title}
           </h2>
@@ -124,11 +125,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               );
             })}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="py-16 bg-gradient-to-b from-background to-primary-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <Section
+        spacing="spacious"
+        className="bg-gradient-to-b from-background to-primary-50"
+      >
+        <Container width="wide">
           <div className="bg-primary-600 rounded-2xl p-8 md:p-12 text-center text-white shadow-xl">
             <h2 className="text-3xl md:text-4xl font-header font-bold mb-4">
               {t.callToAction.title}
@@ -144,8 +148,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               <ArrowRight className="ml-2 h-6 w-6" />
             </button>
           </div>
-        </div>
-      </section>
-    </div>
+        </Container>
+      </Section>
+    </PageCanvas>
   );
 }

@@ -36,6 +36,7 @@ const renderFiles = [
   path.join(ROOT, 'src', 'App.tsx'),
   ...listTsxFiles(path.join(ROOT, 'src', 'components')),
   ...listTsxFiles(path.join(ROOT, 'src', 'pages')),
+  ...listTsxFiles(path.join(ROOT, 'src', 'platform', 'design-system', 'components')),
 ].filter((filePath) => fs.existsSync(filePath)).sort();
 
 const designInputs = [
@@ -48,6 +49,7 @@ function classifyFile(filePath) {
   const rel = relative(filePath);
   const base = path.basename(filePath, '.tsx');
 
+  if (rel.startsWith('src/platform/design-system/components/')) return 'design-system';
   if (rel === 'src/App.tsx' || base === 'Header' || base === 'Footer') return 'shared-shell';
 
   if (
@@ -98,28 +100,59 @@ function classifyFile(filePath) {
   return 'public-other';
 }
 
+function isDesignSystemSource(sourceFile) {
+  return relative(sourceFile.fileName).startsWith('src/platform/design-system/components/');
+}
+
 function lineFor(sourceFile, node) {
   const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
   return position.line + 1;
 }
 
-function collectStaticConstants(sourceFile) {
-  const constants = new Map();
+function unwrapExpression(expression) {
+  let current = expression;
+  while (
+    current &&
+    (
+      ts.isParenthesizedExpression(current) ||
+      ts.isAsExpression(current) ||
+      ts.isTypeAssertionExpression(current) ||
+      ts.isNonNullExpression(current)
+    )
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function collectStaticKnowledge(sourceFile) {
+  const strings = new Map();
+  const maps = new Map();
 
   function visit(node) {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.initializer &&
-      (ts.isStringLiteral(node.initializer) || ts.isNoSubstitutionTemplateLiteral(node.initializer))
-    ) {
-      constants.set(node.name.text, node.initializer.text);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const initializer = unwrapExpression(node.initializer);
+
+      if (ts.isStringLiteral(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer)) {
+        strings.set(node.name.text, initializer.text);
+      } else if (ts.isObjectLiteralExpression(initializer)) {
+        const values = [];
+        for (const property of initializer.properties) {
+          if (!ts.isPropertyAssignment(property)) continue;
+          const value = unwrapExpression(property.initializer);
+          if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) {
+            values.push(value.text);
+          }
+        }
+        if (values.length) maps.set(node.name.text, values);
+      }
     }
+
     ts.forEachChild(node, visit);
   }
 
   visit(sourceFile);
-  return constants;
+  return { strings, maps };
 }
 
 function safeTemplateFragment(text, trimLeftToken, trimRightToken) {
@@ -136,18 +169,31 @@ function safeTemplateFragment(text, trimLeftToken, trimRightToken) {
   return value;
 }
 
-function extractClassStrings(expression, sourceFile, constants) {
+function mergeExtracted(parts) {
+  return {
+    fragments: parts.flatMap((part) => part.fragments),
+    unresolved: parts.some((part) => part.unresolved),
+  };
+}
+
+function extractClassStrings(expression, sourceFile, knowledge) {
   if (!expression) return { fragments: [], unresolved: false };
+
+  const designSystemSource = isDesignSystemSource(sourceFile);
 
   if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
     return { fragments: [expression.text], unresolved: false };
   }
 
   if (ts.isIdentifier(expression)) {
-    const value = constants.get(expression.text);
-    return value === undefined
-      ? { fragments: [], unresolved: true }
-      : { fragments: [value], unresolved: false };
+    const value = knowledge.strings.get(expression.text);
+    if (value !== undefined) return { fragments: [value], unresolved: false };
+
+    if (designSystemSource && expression.text === 'className') {
+      return { fragments: [], unresolved: false };
+    }
+
+    return { fragments: [], unresolved: true };
   }
 
   if (
@@ -156,25 +202,27 @@ function extractClassStrings(expression, sourceFile, constants) {
     ts.isTypeAssertionExpression(expression) ||
     ts.isNonNullExpression(expression)
   ) {
-    return extractClassStrings(expression.expression, sourceFile, constants);
+    return extractClassStrings(expression.expression, sourceFile, knowledge);
   }
 
   if (ts.isConditionalExpression(expression)) {
-    const whenTrue = extractClassStrings(expression.whenTrue, sourceFile, constants);
-    const whenFalse = extractClassStrings(expression.whenFalse, sourceFile, constants);
-    return {
-      fragments: [...whenTrue.fragments, ...whenFalse.fragments],
-      unresolved: whenTrue.unresolved || whenFalse.unresolved,
-    };
+    return mergeExtracted([
+      extractClassStrings(expression.whenTrue, sourceFile, knowledge),
+      extractClassStrings(expression.whenFalse, sourceFile, knowledge),
+    ]);
   }
 
-  if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-    const left = extractClassStrings(expression.left, sourceFile, constants);
-    const right = extractClassStrings(expression.right, sourceFile, constants);
-    return {
-      fragments: [...left.fragments, ...right.fragments],
-      unresolved: left.unresolved || right.unresolved,
-    };
+  if (ts.isBinaryExpression(expression)) {
+    if (expression.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      return mergeExtracted([
+        extractClassStrings(expression.left, sourceFile, knowledge),
+        extractClassStrings(expression.right, sourceFile, knowledge),
+      ]);
+    }
+
+    if (designSystemSource && expression.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return extractClassStrings(expression.right, sourceFile, knowledge);
+    }
   }
 
   if (ts.isTemplateExpression(expression)) {
@@ -186,7 +234,7 @@ function extractClassStrings(expression, sourceFile, constants) {
 
     let unresolved = false;
     spans.forEach((span, index) => {
-      const nested = extractClassStrings(span.expression, sourceFile, constants);
+      const nested = extractClassStrings(span.expression, sourceFile, knowledge);
       fragments.push(...nested.fragments);
       unresolved ||= nested.unresolved;
 
@@ -202,11 +250,29 @@ function extractClassStrings(expression, sourceFile, constants) {
   }
 
   if (ts.isArrayLiteralExpression(expression)) {
-    const parts = expression.elements.map((element) => extractClassStrings(element, sourceFile, constants));
-    return {
-      fragments: parts.flatMap((part) => part.fragments),
-      unresolved: parts.some((part) => part.unresolved),
-    };
+    return mergeExtracted(
+      expression.elements.map((element) => extractClassStrings(element, sourceFile, knowledge)),
+    );
+  }
+
+  if (
+    designSystemSource &&
+    ts.isElementAccessExpression(expression) &&
+    ts.isIdentifier(expression.expression)
+  ) {
+    const values = knowledge.maps.get(expression.expression.text);
+    if (values) return { fragments: values, unresolved: false };
+  }
+
+  if (
+    designSystemSource &&
+    ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === 'joinClasses'
+  ) {
+    return mergeExtracted(
+      expression.arguments.map((argument) => extractClassStrings(argument, sourceFile, knowledge)),
+    );
   }
 
   return { fragments: [], unresolved: true };
@@ -298,7 +364,7 @@ for (const filePath of renderFiles) {
   const domain = classifyFile(filePath);
   const sourceText = fs.readFileSync(filePath, 'utf8');
   const sourceFile = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const constants = collectStaticConstants(sourceFile);
+  const knowledge = collectStaticKnowledge(sourceFile);
 
   if (!domainStats.has(domain)) domainStats.set(domain, new Map());
 
@@ -341,7 +407,7 @@ for (const filePath of renderFiles) {
       if (ts.isStringLiteral(node.initializer)) {
         recordFragment(node.initializer.text);
       } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-        const result = extractClassStrings(node.initializer.expression, sourceFile, constants);
+        const result = extractClassStrings(node.initializer.expression, sourceFile, knowledge);
         result.fragments.forEach(recordFragment);
         if (result.unresolved) {
           dynamicExpressions.push({
