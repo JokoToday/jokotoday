@@ -50,6 +50,7 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
 );
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
+  admin: '/admin',
   staff: '/staff',
   pickup: '/pickup',
   'walk-in': '/walk-in',
@@ -123,6 +124,11 @@ function AppContent() {
           }
           return;
         }
+      }
+
+      if (path === '/admin' || path.startsWith('/admin/')) {
+        setCurrentPage('admin');
+        return;
       }
 
       const primaryPage = PRIMARY_PATH_PAGES[path];
@@ -243,6 +249,7 @@ function AppContent() {
 
   const isStandalonePage =
     currentPage === 'customer-account' ||
+    currentPage === 'admin' ||
     currentPage === 'staff' ||
     currentPage === 'staff-scanner' ||
     currentPage === 'pickup' ||
