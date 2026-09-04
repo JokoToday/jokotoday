@@ -17,7 +17,7 @@ declare
   v_value jsonb;
   v_locale text;
 begin
-  if jsonb_typeof(p_value) <> 'object' then
+  if jsonb_typeof(p_value) is distinct from 'object' then
     raise exception '% must be a localized text object', p_field using errcode = '22023';
   end if;
 
@@ -29,7 +29,7 @@ begin
     select key, value from jsonb_each(p_value)
   loop
     if btrim(v_key) = ''
-      or jsonb_typeof(v_value) <> 'string'
+      or jsonb_typeof(v_value) is distinct from 'string'
       or btrim(v_value #>> '{}') = ''
     then
       raise exception '% contains an empty locale key or non-empty string requirement violation', p_field
@@ -41,8 +41,8 @@ begin
   loop
     if btrim(v_locale) = ''
       or not (p_value ? v_locale)
-      or jsonb_typeof(p_value -> v_locale) <> 'string'
-      or btrim(p_value ->> v_locale) = ''
+      or jsonb_typeof(p_value -> v_locale) is distinct from 'string'
+      or btrim(coalesce(p_value ->> v_locale, '')) = ''
     then
       raise exception '% is missing required Site locale %', p_field, v_locale
         using errcode = '22023';
@@ -63,7 +63,7 @@ as $$
 declare
   v_type text;
 begin
-  if jsonb_typeof(p_value) <> 'object' then
+  if jsonb_typeof(p_value) is distinct from 'object' then
     raise exception '% must be a typed Builder action object', p_field using errcode = '22023';
   end if;
 
@@ -74,7 +74,7 @@ begin
   end if;
 
   if v_type = 'commerce.browseCategory' then
-    if jsonb_typeof(p_value -> 'categoryId') <> 'string'
+    if jsonb_typeof(p_value -> 'categoryId') is distinct from 'string'
       or btrim(coalesce(p_value ->> 'categoryId', '')) = ''
     then
       raise exception '% category action requires a non-empty categoryId', p_field
@@ -109,7 +109,7 @@ declare
   v_category_grid_count integer := 0;
   v_cta_count integer := 0;
 begin
-  if jsonb_typeof(p_document) <> 'object' then
+  if jsonb_typeof(p_document) is distinct from 'object' then
     raise exception 'Builder document must be a JSON object' using errcode = '22023';
   end if;
 
@@ -129,7 +129,7 @@ begin
     raise exception 'Unsupported Component Registry version' using errcode = '22023';
   end if;
 
-  if jsonb_typeof(p_document -> 'sections') <> 'array' then
+  if jsonb_typeof(p_document -> 'sections') is distinct from 'array' then
     raise exception 'Builder document sections must be an array' using errcode = '22023';
   end if;
 
@@ -140,11 +140,11 @@ begin
   for v_section in
     select value from jsonb_array_elements(p_document -> 'sections')
   loop
-    if jsonb_typeof(v_section) <> 'object' then
+    if jsonb_typeof(v_section) is distinct from 'object' then
       raise exception 'Builder section must be an object' using errcode = '22023';
     end if;
 
-    if jsonb_typeof(v_section -> 'id') <> 'string'
+    if jsonb_typeof(v_section -> 'id') is distinct from 'string'
       or btrim(coalesce(v_section ->> 'id', '')) = ''
     then
       raise exception 'Builder section id must be a non-empty string' using errcode = '22023';
@@ -156,7 +156,7 @@ begin
     end if;
     v_seen_ids := array_append(v_seen_ids, v_id);
 
-    if jsonb_typeof(v_section -> 'type') <> 'string' then
+    if jsonb_typeof(v_section -> 'type') is distinct from 'string' then
       raise exception 'Builder section type must be a string' using errcode = '22023';
     end if;
     v_type := v_section ->> 'type';
@@ -165,18 +165,18 @@ begin
       raise exception 'Unsupported section version for %', v_type using errcode = '22023';
     end if;
 
-    if jsonb_typeof(v_section -> 'visible') <> 'boolean' then
+    if jsonb_typeof(v_section -> 'visible') is distinct from 'boolean' then
       raise exception 'Section visibility must be boolean for %', v_type using errcode = '22023';
     end if;
 
     v_props := v_section -> 'props';
     v_design := v_section -> 'design';
 
-    if jsonb_typeof(v_props) <> 'object' then
+    if jsonb_typeof(v_props) is distinct from 'object' then
       raise exception 'Section props must be an object for %', v_type using errcode = '22023';
     end if;
 
-    if jsonb_typeof(v_design) <> 'object' then
+    if jsonb_typeof(v_design) is distinct from 'object' then
       raise exception 'Section design must be an object for %', v_type using errcode = '22023';
     end if;
 
