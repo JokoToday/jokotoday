@@ -23,9 +23,6 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Dependency audit
-        run: npm audit --audit-level=high
-
       - name: Design system source audit
         run: npm run audit:design-system
 
@@ -37,3 +34,6 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
