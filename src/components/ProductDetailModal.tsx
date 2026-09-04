@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, X, Plus, Minus, Heart } from 'lucide-react';
+import { X, Plus, Minus, Heart } from 'lucide-react';
 import { CMSProduct } from '../lib/cmsService';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -44,8 +44,7 @@ export default function ProductDetailModal({
 }: ProductDetailModalProps) {
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
-  const [justAdded, setJustAdded] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, setIsCartOpen } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
@@ -54,7 +53,6 @@ export default function ProductDetailModal({
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setQuantity(1);
-      setJustAdded(false);
     } else {
       document.body.style.overflow = '';
     }
@@ -70,11 +68,6 @@ export default function ProductDetailModal({
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
   const basketFit = getBasketFit?.(quantity) ?? null;
-  const addedLabel = language === 'th'
-    ? 'เพิ่มลงตะกร้าแล้ว'
-    : language === 'zh'
-      ? '已加入购物车'
-      : 'Added to cart';
 
   const handleLikeClick = async () => {
     if (!user) {
@@ -89,8 +82,8 @@ export default function ProductDetailModal({
   const handleAddToCart = () => {
     addToCart(product, quantity, { openCart: false });
     setQuantity(1);
-    setJustAdded(true);
-    window.setTimeout(() => setJustAdded(false), 1800);
+    onClose();
+    window.setTimeout(() => setIsCartOpen(true), 0);
   };
 
   const getProductName = () => {
@@ -262,17 +255,9 @@ export default function ProductDetailModal({
 
                   <button
                     onClick={handleAddToCart}
-                    disabled={justAdded}
-                    className={`w-full py-3.5 rounded-lg font-semibold text-lg transition-colors shadow-md ${justAdded ? 'bg-emerald-600 text-white' : 'bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg'}`}
+                    className="w-full py-3.5 rounded-lg font-semibold text-lg transition-colors shadow-md bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg"
                   >
-                    {justAdded ? (
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-5 h-5" />
-                        {addedLabel}
-                      </span>
-                    ) : (
-                      `${t.product.addToCart} - ฿${product.price * quantity}`
-                    )}
+                    {`${t.product.addToCart} - ฿${product.price * quantity}`}
                   </button>
                 </div>
               )}
