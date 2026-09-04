@@ -115,10 +115,10 @@ function buildAuthEmail(
     const subject = c.otpSubject;
     const contentHtml = `
       <p style="margin:0 0 24px;font-size:15px;line-height:${language === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(c.otpBody)}</p>
-      <div style="margin:0 0 24px;padding:24px 18px;text-align:center;background:${JOKO_EMAIL_THEME.paper};border:1px solid ${JOKO_EMAIL_THEME.border};border-radius:10px;">
-        <div style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(c.verificationCode)}</div>
+      <div style="margin:0 0 24px;padding:25px 18px 24px;text-align:center;background:${JOKO_EMAIL_THEME.note};border:1px solid ${JOKO_EMAIL_THEME.border};border-radius:6px;">
+        <div style="margin:0 0 10px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.ochre};">${escapeHtml(c.verificationCode)}</div>
         <div style="font-size:38px;line-height:1.1;font-weight:800;letter-spacing:7px;color:${JOKO_EMAIL_THEME.charcoal};font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;">${escapeHtml(token)}</div>
-        <div style="margin-top:12px;font-size:12px;line-height:1.55;color:${JOKO_EMAIL_THEME.subtle};">${escapeHtml(c.codeOnlyOnSite)}</div>
+        <div style="margin-top:12px;font-size:12px;line-height:1.55;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(c.codeOnlyOnSite)}</div>
       </div>
       <p style="margin:0;text-align:center;font-size:12px;line-height:${language === "en" ? "1.6" : "1.8"};color:${JOKO_EMAIL_THEME.subtle};">${escapeHtml(c.ignore)}</p>`;
 
