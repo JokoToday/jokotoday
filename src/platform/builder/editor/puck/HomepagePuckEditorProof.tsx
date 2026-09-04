@@ -12,6 +12,7 @@ import {
   puckDataToBuilderDocument,
 } from './adapter';
 import { createHomepagePuckConfig } from './config';
+import type { HomepagePuckComponents } from './types';
 
 export interface HomepagePuckEditorProofProps {
   document: BuilderDocument;
@@ -69,7 +70,7 @@ export function HomepagePuckEditorProof({
   };
 
   return (
-    <Puck
+    <Puck<HomepagePuckComponents>
       config={config}
       data={initialData}
       height={height}

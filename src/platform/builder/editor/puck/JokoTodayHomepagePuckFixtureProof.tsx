@@ -3,8 +3,10 @@ import {
   jokoTodayFixtureSite,
   jokoTodayHomepageFixture,
 } from '../../fixtures';
-import { fixtureHomepageProviders } from '../../providers';
+import { createFixtureHomepageProviders } from '../../providers';
 import { HomepagePuckEditorProof } from './HomepagePuckEditorProof';
+
+const fixtureHomepageProviders = createFixtureHomepageProviders();
 
 export interface JokoTodayHomepagePuckFixtureProofProps {
   locale?: 'en' | 'th' | 'zh';

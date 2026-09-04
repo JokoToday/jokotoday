@@ -10,7 +10,6 @@ export type HomepagePuckComponentType =
   | 'HomeCta';
 
 export interface HomepagePuckSectionProps {
-  id: string;
   visible: boolean;
   width: BuilderSectionWidth;
   spacing: BuilderSectionSpacing;
