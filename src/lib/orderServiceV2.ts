@@ -1,5 +1,40 @@
 import { supabase } from './supabase';
 
+type SupportedLanguage = 'en' | 'th' | 'zh';
+
+function getActiveLanguage(): SupportedLanguage {
+  if (typeof window === 'undefined') return 'en';
+  const value = window.localStorage.getItem('jt_language');
+  return value === 'th' || value === 'zh' ? value : 'en';
+}
+
+async function syncPreferredLanguageForCurrentUser(): Promise<void> {
+  const language = getActiveLanguage();
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) return;
+
+  const { error } = await supabase
+    .from('user_profiles')
+    .update({
+      preferred_language: language,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.error('Preferred language could not be synced:', error);
+  }
+}
+
+async function syncPreferredLanguageBestEffort(): Promise<void> {
+  try {
+    await syncPreferredLanguageForCurrentUser();
+  } catch (error) {
+    console.error('Preferred language sync failed:', error);
+  }
+}
+
 export interface CreateOnlineOrderV2Item {
   product_id: string;
   quantity: number;
@@ -37,6 +72,11 @@ export interface CancellableOnlineOrder {
 export async function createOnlineOrderV2(
   input: CreateOnlineOrderV2Input,
 ): Promise<OnlineOrderRpcResult> {
+  // The durable notification event records preferred_language inside the order
+  // transaction. Keep that server-side preference aligned with the language the
+  // customer is actually using without ever blocking checkout on preference sync.
+  await syncPreferredLanguageBestEffort();
+
   const { data, error } = await supabase.rpc('create_online_order_v2', {
     p_order_number: input.orderNumber,
     p_pickup_date_id: input.pickupDateId,
@@ -57,7 +97,7 @@ export async function createOnlineOrderV2(
 
 export async function requestOrderCancellationEmail(orderId: string): Promise<void> {
   const { error } = await supabase.functions.invoke('send-order-cancellation', {
-    body: { order_id: orderId },
+    body: { order_id: orderId, language: getActiveLanguage() },
   });
 
   if (error) throw error;
@@ -66,6 +106,10 @@ export async function requestOrderCancellationEmail(orderId: string): Promise<vo
 export async function cancelOnlineOrderCompatible<T extends CancellableOnlineOrder>(
   order: T,
 ): Promise<T & { status?: string }> {
+  // Cancellation also creates its durable email event inside the transaction,
+  // so sync the customer's active language immediately before the RPC.
+  await syncPreferredLanguageBestEffort();
+
   const rpcName = order.pickup_date_id
     ? 'cancel_online_order_v2'
     : 'cancel_online_order';

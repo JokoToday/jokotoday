@@ -15,6 +15,7 @@ import {
   buildTransactionalEmailShell,
   escapeHtml,
   JOKO_EMAIL_THEME,
+  jokoEmailLogoAttachment,
   renderPrimaryButton,
   renderSecondaryLink,
   type TransactionalEmailLanguage,
@@ -422,6 +423,7 @@ Deno.serve(async (req: Request) => {
       subject: email.subject,
       html: email.html,
       text: email.text,
+      attachments: [jokoEmailLogoAttachment()],
     }, { idempotencyKey: notificationIdempotencyKey(TYPE, order.id) });
 
     if (error) {

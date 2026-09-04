@@ -15,6 +15,7 @@ import {
   buildTransactionalEmailShell,
   escapeHtml,
   JOKO_EMAIL_THEME,
+  jokoEmailLogoAttachment,
   renderPrimaryButton,
   type TransactionalEmailLanguage,
 } from "../_shared/transactional-email.ts";
@@ -336,6 +337,7 @@ Deno.serve(async (req: Request) => {
       subject: email.subject,
       html: email.html,
       text: email.text,
+      attachments: [jokoEmailLogoAttachment()],
     }, { idempotencyKey: notificationIdempotencyKey(TYPE, order.id) });
 
     if (error) {
