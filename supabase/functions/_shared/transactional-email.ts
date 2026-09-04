@@ -1,6 +1,6 @@
 export type TransactionalEmailLanguage = "en" | "th" | "zh";
 
-const JOKO_EMAIL_LOGO_URL = "https://joko.today/JOKO.TODAY_logo.transparent.png";
+export const DEFAULT_JOKO_EMAIL_LOGO_URL = "https://joko.today/JOKO.TODAY_logo.transparent.png";
 
 export const JOKO_EMAIL_THEME = {
   paper: "#F7EAD7",
@@ -70,6 +70,8 @@ interface TransactionalEmailShellOptions {
   contentHtml: string;
   footerText: string;
   maxWidth?: number;
+  logoUrl?: string;
+  logoAlt?: string;
 }
 
 export function buildTransactionalEmailShell(options: TransactionalEmailShellOptions): string {
@@ -82,6 +84,8 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
     contentHtml,
     footerText,
     maxWidth = 600,
+    logoUrl = DEFAULT_JOKO_EMAIL_LOGO_URL,
+    logoAlt = "JOKO TODAY",
   } = options;
   const theme = JOKO_EMAIL_THEME;
   const fontFamily = emailFontFamily(language);
@@ -104,7 +108,7 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
         <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${maxWidth}px;background:${theme.surface};border:1px solid ${theme.border};border-radius:14px;overflow:hidden;">
           <tr>
             <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:24px 30px 14px;text-align:center;">
-              <img src="${JOKO_EMAIL_LOGO_URL}" width="150" alt="JOKO TODAY" style="display:block;width:150px;max-width:58%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;" />
+              <img src="${escapeHtml(logoUrl)}" width="150" alt="${escapeHtml(logoAlt)}" style="display:block;width:150px;max-width:58%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;" />
               <div style="margin-top:4px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.ochre};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
             </td>
           </tr>
