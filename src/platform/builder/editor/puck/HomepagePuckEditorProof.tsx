@@ -22,6 +22,7 @@ export interface HomepagePuckEditorProofProps {
   onDocumentChange?: (document: BuilderDocument) => void;
   onApplyDraft?: (document: BuilderDocument) => void | Promise<void>;
   onAdapterError?: (issues: string[]) => void;
+  applyDraftLabel?: string;
   height?: string | number;
 }
 
@@ -34,6 +35,7 @@ export function HomepagePuckEditorProof({
   onDocumentChange,
   onApplyDraft,
   onAdapterError,
+  applyDraftLabel = 'Apply Draft',
   height = '100vh',
 }: HomepagePuckEditorProofProps) {
   const documentRef = useRef(document);
@@ -74,7 +76,7 @@ export function HomepagePuckEditorProof({
       data={initialData}
       height={height}
       headerTitle={`JOKO Homepage Builder — ${site.name}`}
-      dictionary={{ 'header-publish': 'Apply Draft' }}
+      dictionary={{ 'header-publish': applyDraftLabel }}
       permissions={{ insert: false, delete: false, duplicate: false }}
       viewports={[{ width: 1440 }, { width: 768 }, { width: 375 }]}
       onChange={(data) => {
