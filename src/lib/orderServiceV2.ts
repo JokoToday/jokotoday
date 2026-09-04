@@ -97,7 +97,7 @@ export async function createOnlineOrderV2(
 
 export async function requestOrderCancellationEmail(orderId: string): Promise<void> {
   const { error } = await supabase.functions.invoke('send-order-cancellation', {
-    body: { order_id: orderId },
+    body: { order_id: orderId, language: getActiveLanguage() },
   });
 
   if (error) throw error;
