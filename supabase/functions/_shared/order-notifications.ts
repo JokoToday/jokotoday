@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from "npm:@supabase/supabase-js@2";
 
-export type NotificationType = "customer_confirmation" | "admin_new_order";
+export type NotificationType = "customer_confirmation" | "admin_new_order" | "customer_cancellation";
 export type NotificationOutcome =
   | "claimed"
   | "already_sent"
@@ -157,9 +157,9 @@ export async function claimNotification(
     p_notification_type: notificationType,
   });
 
-  // Rollout bridge: before SEC-005B is applied, SEC-005A still protects the
-  // endpoint with JWT + explicit owner checks. Once the RPC exists, only the
-  // server-side secret role can advance durable notification state.
+  // Rollout bridge: before the durable order-notification RPC exists, the
+  // endpoint is still protected by JWT + explicit owner checks. Once the RPC
+  // exists, only the server-side secret role can advance durable state.
   if (error && isMissingClaimRpc(error)) return { mode: "legacy" };
   if (error) return { mode: "error", error };
   if (!data || typeof data !== "object" || Array.isArray(data)) {
