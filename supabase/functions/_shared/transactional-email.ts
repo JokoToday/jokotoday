@@ -1,6 +1,6 @@
 export type TransactionalEmailLanguage = "en" | "th" | "zh";
 
-export const DEFAULT_JOKO_EMAIL_LOGO_URL = "https://joko.today/JOKO.TODAY_logo.transparent.png";
+export const DEFAULT_JOKO_EMAIL_LOGO_URL = "https://joko.today/JOKO.TODAY_email_logo.png";
 
 export const JOKO_EMAIL_THEME = {
   paper: "#F7EAD7",
