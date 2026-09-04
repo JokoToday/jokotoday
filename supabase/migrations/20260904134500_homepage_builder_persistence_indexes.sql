@@ -22,3 +22,9 @@ create index platform_builder_revisions_published_by_idx
 
 create index platform_builder_revisions_restored_from_idx
   on public.platform_builder_page_revisions(restored_from_revision_id);
+
+-- Internal helpers must not inherit PostgreSQL's default EXECUTE privilege for
+-- PUBLIC. They remain usable by their owning private functions / trigger only.
+revoke all on function private.reject_builder_revision_mutation() from public, anon, authenticated;
+revoke all on function private.assert_builder_document_v1(jsonb, text) from public, anon, authenticated;
+revoke all on function private.builder_page_state_v1(uuid) from public, anon, authenticated;
