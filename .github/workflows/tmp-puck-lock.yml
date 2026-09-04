@@ -1,0 +1,34 @@
+name: Generate Puck lockfile
+
+on:
+  push:
+    branches:
+      - feat/homepage-builder-puck-adapter-v1
+    paths:
+      - package.json
+      - .github/workflows/tmp-puck-lock.yml
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit lockfile and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git rm .github/workflows/tmp-puck-lock.yml
+          git commit -m "chore: lock Puck editor dependency"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
