@@ -6,25 +6,46 @@
 
 @layer base {
   :root {
-    --color-primary-50: 254 252 232;
-    --color-primary-100: 254 243 199;
-    --color-primary-200: 253 230 138;
-    --color-primary-300: 252 211 77;
-    --color-primary-400: 251 191 36;
-    --color-primary-500: 245 158 11;
-    --color-primary-600: 217 119 6;
-    --color-primary-700: 180 83 9;
-    --color-primary-800: 146 64 14;
-    --color-primary-900: 120 53 15;
-    --color-primary-950: 69 26 3;
+    --joko-color-brand-50: 254 252 232;
+    --joko-color-brand-100: 254 243 199;
+    --joko-color-brand-200: 253 230 138;
+    --joko-color-brand-300: 252 211 77;
+    --joko-color-brand-400: 251 191 36;
+    --joko-color-brand-500: 245 158 11;
+    --joko-color-brand-600: 217 119 6;
+    --joko-color-brand-700: 180 83 9;
+    --joko-color-brand-800: 146 64 14;
+    --joko-color-brand-900: 120 53 15;
+    --joko-color-brand-950: 69 26 3;
 
-    --color-background: 255 255 255;
-    --color-background-secondary: 254 252 232;
+    --joko-surface-canvas: 255 255 255;
+    --joko-surface-soft: 254 252 232;
 
-    --color-accent: 239 68 68;
+    --joko-accent: 239 68 68;
 
-    --font-header: 'Playfair Display', serif;
-    --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --joko-font-display: 'Playfair Display', serif;
+    --joko-font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --joko-font-cjk: 'Noto Sans SC', 'PingFang SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --color-primary-50: var(--joko-color-brand-50);
+    --color-primary-100: var(--joko-color-brand-100);
+    --color-primary-200: var(--joko-color-brand-200);
+    --color-primary-300: var(--joko-color-brand-300);
+    --color-primary-400: var(--joko-color-brand-400);
+    --color-primary-500: var(--joko-color-brand-500);
+    --color-primary-600: var(--joko-color-brand-600);
+    --color-primary-700: var(--joko-color-brand-700);
+    --color-primary-800: var(--joko-color-brand-800);
+    --color-primary-900: var(--joko-color-brand-900);
+    --color-primary-950: var(--joko-color-brand-950);
+
+    --color-background: var(--joko-surface-canvas);
+    --color-background-secondary: var(--joko-surface-soft);
+
+    --color-accent: var(--joko-accent);
+
+    --font-header: var(--joko-font-display);
+    --font-body: var(--joko-font-body);
   }
 
   body {
