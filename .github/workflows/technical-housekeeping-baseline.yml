@@ -26,6 +26,9 @@ jobs:
       - name: Dependency audit
         run: npm audit --audit-level=high
 
+      - name: Design system source audit
+        run: npm run audit:design-system
+
       - name: Typecheck
         run: npm run typecheck
 
