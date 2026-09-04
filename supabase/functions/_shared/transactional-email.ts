@@ -1,17 +1,20 @@
 export type TransactionalEmailLanguage = "en" | "th" | "zh";
 
+const JOKO_EMAIL_LOGO_URL = "https://joko.today/JOKO.TODAY_logo.transparent.png";
+
 export const JOKO_EMAIL_THEME = {
-  paper: "#F6F1E7",
-  surface: "#FFFEFB",
-  sage: "#74806A",
-  sageDark: "#5F6B57",
-  charcoal: "#2B2A26",
-  muted: "#716F68",
-  subtle: "#9A978E",
-  border: "#DDD5C7",
-  ochre: "#B77935",
-  ochreSoft: "#F3E6D2",
-  successSoft: "#EEF2E9",
+  paper: "#F7EAD7",
+  surface: "#FFF9EF",
+  sage: "#C7C79A",
+  sageDark: "#52603B",
+  charcoal: "#24231F",
+  muted: "#5A554A",
+  subtle: "#8C8477",
+  border: "#E0CBAA",
+  ochre: "#C45A00",
+  ochreSoft: "#F0DBBB",
+  note: "#F0DBBB",
+  successSoft: "#EEF0D9",
 } as const;
 
 export function escapeHtml(value: unknown): string {
@@ -34,14 +37,20 @@ export function emailFontFamily(language: TransactionalEmailLanguage): string {
   if (language === "zh") {
     return "'PingFang SC','Microsoft YaHei','Noto Sans SC',-apple-system,'Segoe UI',Arial,sans-serif";
   }
-  return "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
+  return "'Avenir Next','Trebuchet MS',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
+}
+
+export function emailDisplayFontFamily(language: TransactionalEmailLanguage): string {
+  if (language === "th") return emailFontFamily(language);
+  if (language === "zh") return emailFontFamily(language);
+  return "'Avenir Next','Trebuchet MS','Segoe UI',Arial,sans-serif";
 }
 
 export function renderPrimaryButton(href: string, label: string): string {
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
       <tr>
-        <td bgcolor="${JOKO_EMAIL_THEME.ochre}" style="border-radius:8px;text-align:center;">
+        <td bgcolor="${JOKO_EMAIL_THEME.ochre}" style="border-radius:7px;text-align:center;">
           <a href="${escapeHtml(href)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.2;">${escapeHtml(label)}</a>
         </td>
       </tr>
@@ -49,7 +58,7 @@ export function renderPrimaryButton(href: string, label: string): string {
 }
 
 export function renderSecondaryLink(href: string, label: string): string {
-  return `<a href="${escapeHtml(href)}" style="color:${JOKO_EMAIL_THEME.sageDark};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="color:${JOKO_EMAIL_THEME.ochre};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">${escapeHtml(label)}</a>`;
 }
 
 interface TransactionalEmailShellOptions {
@@ -76,6 +85,7 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
   } = options;
   const theme = JOKO_EMAIL_THEME;
   const fontFamily = emailFontFamily(language);
+  const displayFontFamily = emailDisplayFontFamily(language);
 
   return `<!DOCTYPE html>
 <html lang="${languageAttribute(language)}">
@@ -90,24 +100,29 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
   <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:${theme.paper};">
     <tr>
-      <td align="center" style="padding:32px 16px;">
+      <td align="center" style="padding:28px 16px;">
         <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${maxWidth}px;background:${theme.surface};border:1px solid ${theme.border};border-radius:14px;overflow:hidden;">
           <tr>
-            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:28px 32px 26px;text-align:center;">
-              <div style="font-size:25px;line-height:1.15;font-weight:800;letter-spacing:0.2px;color:#ffffff;">JOKO TODAY</div>
-              <div style="margin-top:7px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#F3F0E8;">${escapeHtml(eyebrow)}</div>
+            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:24px 30px 14px;text-align:center;">
+              <img src="${JOKO_EMAIL_LOGO_URL}" width="150" alt="JOKO TODAY" style="display:block;width:150px;max-width:58%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;" />
+              <div style="margin-top:4px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.ochre};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
             </td>
           </tr>
           <tr>
-            <td style="padding:34px 34px 32px;">
-              <h1 style="margin:0 0 24px;font-size:25px;line-height:1.25;font-weight:750;letter-spacing:-0.2px;color:${theme.charcoal};">${escapeHtml(heading)}</h1>
+            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:0;line-height:0;font-size:0;">
+              <div style="height:30px;background:${theme.surface};border-radius:50% 50% 0 0 / 100% 100% 0 0;line-height:30px;font-size:0;">&nbsp;</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 34px 32px;">
+              <h1 style="margin:0 0 24px;font-size:27px;line-height:1.28;font-weight:600;letter-spacing:0.1px;color:${theme.charcoal};font-family:${displayFontFamily};">${escapeHtml(heading)}</h1>
               ${contentHtml}
             </td>
           </tr>
           <tr>
             <td style="padding:20px 32px;text-align:center;background:${theme.paper};border-top:1px solid ${theme.border};">
               <div style="font-size:12px;line-height:1.6;color:${theme.subtle};">${escapeHtml(footerText)}</div>
-              <div style="margin-top:3px;font-size:12px;line-height:1.6;color:${theme.subtle};">joko.today</div>
+              <div style="margin-top:3px;font-size:12px;line-height:1.6;color:${theme.ochre};">joko.today</div>
             </td>
           </tr>
         </table>
