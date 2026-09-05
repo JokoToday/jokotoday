@@ -120,11 +120,21 @@ export function validateNotebookFixtureBundle(bundle: NotebookFixtureBundle): No
   for (const [index, entry] of bundle.entries.entries()) {
     const field = `entries[${index}]`;
     if (!isNonEmptyString(entry.id)) errors.push(`${field}.id must be non-empty`);
-    if (!isNonEmptyString(entry.slug)) errors.push(`${field}.slug must be non-empty`);
+
+    const normalizedSlug = entry.slug.trim();
+    if (!normalizedSlug) {
+      errors.push(`${field}.slug must be non-empty`);
+    } else {
+      if (entry.slug !== normalizedSlug) errors.push(`${field}.slug must not contain leading or trailing whitespace`);
+      if (normalizedSlug === '.' || normalizedSlug === '..') {
+        errors.push(`${field}.slug must not be a URL dot segment`);
+      }
+    }
+
     if (entryIds.has(entry.id)) errors.push(`${field}.id must be unique`);
     entryIds.add(entry.id);
 
-    const slugKey = `${entry.kind}:${entry.slug}`;
+    const slugKey = `${entry.kind}:${normalizedSlug}`;
     if (entrySlugsByKind.has(slugKey)) errors.push(`${field}.slug must be unique within ${entry.kind}`);
     entrySlugsByKind.add(slugKey);
 
@@ -149,6 +159,9 @@ export function validateNotebookFixtureBundle(bundle: NotebookFixtureBundle): No
 
   if (bundle.today.schemaVersion !== NOTEBOOK_SCHEMA_VERSION) {
     errors.push(`today.schemaVersion must be ${NOTEBOOK_SCHEMA_VERSION}`);
+  }
+  if (!isNonEmptyString(bundle.today.id)) {
+    errors.push('today.id must be non-empty');
   }
   if (bundle.today.siteId !== bundle.site.siteId) {
     errors.push('today.siteId must match site.siteId');
