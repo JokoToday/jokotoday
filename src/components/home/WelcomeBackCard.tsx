@@ -108,8 +108,6 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
   useEffect(() => {
     if (loading || profileLoading) return;
 
-    setVisible(false);
-
     // AuthContext deliberately represents only privileged roles in userRole.
     // A completed authenticated profile with userRole === null is therefore a
     // customer; admin/staff accounts must never receive the customer welcome.
@@ -119,10 +117,15 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
       !userProfile.profile_completed ||
       userRole !== null
     ) {
+      setVisible(false);
       return;
     }
 
     const sessionKey = `${SHOWN_THIS_SESSION_KEY_PREFIX}${user.id}`;
+
+    // A session marker prevents re-presenting the card after it has already
+    // appeared, but it must not hide the currently visible card if this effect
+    // re-runs because AuthContext refreshes the profile object.
     if (getSessionValue(sessionKey) === '1') return;
 
     const now = Date.now();
@@ -139,6 +142,7 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
     setStoredValue(window.localStorage, lastVisitKey, String(now));
 
     if (!returnedAfterGap && !(previousVisit === null && accountIsOldEnough)) {
+      setVisible(false);
       return;
     }
 
@@ -168,27 +172,18 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
     onNavigate('products');
   };
 
-  const scrollToPopular = (attempt = 0) => {
+  const openPopular = () => {
+    dismiss();
     const target = document.getElementById(POPULAR_SECTION_ID);
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
 
-    if (attempt < 8) {
-      window.setTimeout(() => scrollToPopular(attempt + 1), 125);
-      return;
-    }
-
-    // If Most Loved is unavailable (for example, the provider returned no
-    // products), degrade to the full product catalogue instead of dead-ending.
+    // If Most Loved is still loading, unavailable, or empty, go straight to
+    // the catalogue. Avoid delayed retries that can fire after leaving Home.
     setSelectedCategory('all');
     onNavigate('products');
-  };
-
-  const openPopular = () => {
-    dismiss();
-    scrollToPopular();
   };
 
   return (
