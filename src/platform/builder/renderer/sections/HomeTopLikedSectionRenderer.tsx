@@ -65,7 +65,11 @@ export function HomeTopLikedSectionRenderer({
 
   if (products === null) {
     return (
-      <Section spacing="standard" className="bg-gradient-to-b from-primary-50/50 to-transparent">
+      <Section
+        id="popular-right-now"
+        spacing="standard"
+        className="bg-gradient-to-b from-primary-50/50 to-transparent scroll-mt-24"
+      >
         <Container width={section.design.width}>
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent" />
@@ -77,8 +81,9 @@ export function HomeTopLikedSectionRenderer({
 
   return (
     <Section
+      id="popular-right-now"
       spacing={section.design.spacing}
-      className="bg-gradient-to-b from-primary-50/50 to-transparent"
+      className="bg-gradient-to-b from-primary-50/50 to-transparent scroll-mt-24"
     >
       <Container width={section.design.width}>
         <div className="text-center mb-10">
