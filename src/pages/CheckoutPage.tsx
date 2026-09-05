@@ -7,6 +7,7 @@ import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
+import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
 import { getPickupDayLabel, getPickupDays, getNextPickupDate, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
 type CheckoutPageProps = {
@@ -43,7 +44,7 @@ function pickupDayMatches(values: string[], day: PickupDay): boolean {
 export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   const { items, totalPrice, clearCart, selectedPickupDay, setSelectedPickupDay } = useCart();
   const { t, language } = useLanguage();
-  useCMSLabels();
+  const { getLabel } = useCMSLabels();
   const { user, userProfile, profileLoading } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -402,6 +403,12 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
             <div className="px-8 py-5 space-y-3">
               <p className="text-xs text-gray-500 text-center leading-relaxed">{t.confirmation.paymentReminder}</p>
+              <OrderPrintButtonById
+                orderId={orderId}
+                language={language}
+                getLabel={getLabel}
+                className="w-full justify-center py-3 text-sm"
+              />
               <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.confirmation.backToHome}</button>
               <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
             </div>
