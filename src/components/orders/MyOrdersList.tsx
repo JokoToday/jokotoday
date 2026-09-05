@@ -3,6 +3,7 @@ import { ChevronDown, ShoppingBag, Zap, Clock } from 'lucide-react';
 import { Order, PickupDay, PickupLocation, SortOption } from './OrderTypes';
 import { OrderCard } from './OrderCard';
 import { OrderDetailModal } from './OrderDetailModal';
+import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
 
@@ -25,6 +26,11 @@ function isCurrentOrder(order: Order): boolean {
   if (order.purchase_type === 'walk_in') return false;
   if (!CURRENT_STATUSES.has(order.status)) return false;
   return !isPickupDatePast(order.pickup_date);
+}
+
+function canRepeatOrder(order: Order): boolean {
+  const isOnline = order.purchase_type === 'online' || !order.purchase_type;
+  return isOnline && Array.isArray(order.order_items) && order.order_items.length > 0;
 }
 
 function formatDateHeader(dateString: string, language: 'en' | 'th' | 'zh'): string {
@@ -65,6 +71,7 @@ interface OrderColumnProps {
   onSortChange: (s: SortOption) => void;
   sortOptions: { value: SortOption; label: string }[];
   sortLabel: string;
+  allowRepeatOrder: boolean;
 }
 
 function OrderColumn({
@@ -84,6 +91,7 @@ function OrderColumn({
   onSortChange,
   sortOptions,
   sortLabel,
+  allowRepeatOrder,
 }: OrderColumnProps) {
   const [sortOpen, setSortOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -192,13 +200,23 @@ function OrderColumn({
                 </div>
                 <div className="space-y-2">
                   {dayOrders.map(order => (
-                    <OrderCard
-                      key={order.id}
-                      order={order}
-                      language={language}
-                      getLabel={getLabel}
-                      onClick={() => setSelectedOrder(order)}
-                    />
+                    <div key={order.id} className="space-y-1.5">
+                      <OrderCard
+                        order={order}
+                        language={language}
+                        getLabel={getLabel}
+                        onClick={() => setSelectedOrder(order)}
+                      />
+                      {allowRepeatOrder && canRepeatOrder(order) && (
+                        <div className="flex justify-end pr-1">
+                          <RepeatOrderButton
+                            order={order}
+                            language={language}
+                            getLabel={getLabel}
+                          />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -302,6 +320,7 @@ export function MyOrdersList({
         onSortChange={setCurrentSort}
         sortOptions={sortOptions}
         sortLabel={sortLabel}
+        allowRepeatOrder={false}
       />
 
       <OrderColumn
@@ -322,6 +341,7 @@ export function MyOrdersList({
         onSortChange={setPastSort}
         sortOptions={sortOptions}
         sortLabel={sortLabel}
+        allowRepeatOrder
       />
     </div>
   );
