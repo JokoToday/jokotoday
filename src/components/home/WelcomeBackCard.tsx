@@ -90,7 +90,7 @@ function getDisplayName(name: string): string {
 }
 
 export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
-  const { user, userProfile, loading, profileLoading } = useAuth();
+  const { user, userProfile, userRole, loading, profileLoading } = useAuth();
   const { language } = useLanguage();
   const {
     totalItems,
@@ -110,11 +110,14 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
 
     setVisible(false);
 
+    // AuthContext deliberately represents only privileged roles in userRole.
+    // A completed authenticated profile with userRole === null is therefore a
+    // customer; admin/staff accounts must never receive the customer welcome.
     if (
       !user ||
       !userProfile ||
       !userProfile.profile_completed ||
-      userProfile.role !== 'customer'
+      userRole !== null
     ) {
       return;
     }
@@ -143,7 +146,7 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
     // should not re-open the card. We mark this as soon as it is presented.
     setStoredValue(window.sessionStorage, sessionKey, '1');
     setVisible(true);
-  }, [loading, profileLoading, user, userProfile]);
+  }, [loading, profileLoading, user, userProfile, userRole]);
 
   if (!visible || !user || !userProfile) return null;
 
