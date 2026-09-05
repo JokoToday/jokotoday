@@ -243,7 +243,7 @@ export function AuthRequiredModal({
     <div
       ref={backdropRef}
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       style={{ background: 'rgba(10,6,2,0.62)', backdropFilter: 'blur(4px)' }}
       role="dialog"
       aria-modal="true"
@@ -273,8 +273,12 @@ export function AuthRequiredModal({
                 <button
                   key={option.key}
                   onClick={() => handleLanguageChange(option.key)}
-                  className="text-xs font-semibold transition-all"
-                  style={{ padding: '4px 9px', borderRadius: 6, background: lang === option.key ? '#c6a75e' : 'transparent', color: lang === option.key ? '#fff' : '#7a6340', border: 'none', cursor: 'pointer', lineHeight: 1.4 }}
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    lang === option.key
+                      ? 'bg-primary-700 text-white'
+                      : 'text-primary-900 hover:bg-primary-50'
+                  }`}
+                  style={{ border: 'none', cursor: 'pointer', lineHeight: 1.4 }}
                 >
                   {option.label}
                 </button>
@@ -303,21 +307,31 @@ export function AuthRequiredModal({
                   ))}
                 </ul>
               </div>
-              <button onClick={() => handleOpenEmailForm('signin')} className="w-full font-bold text-sm transition-all" style={{ background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', cursor: 'pointer', letterSpacing: '0.03em', boxShadow: '0 4px 16px rgba(198,167,94,0.35)', marginBottom: 10 }}>{g('sign_in_button', 'Sign In')}</button>
-              <button onClick={() => handleOpenEmailForm('signup')} className="w-full font-bold text-sm transition-all" style={{ background: 'transparent', color: '#c6a75e', border: '1.5px solid #c6a75e', borderRadius: 12, padding: '13px 0', cursor: 'pointer', letterSpacing: '0.03em' }}>{g('create_account_button', 'Create Account')}</button>
+              <button
+                onClick={() => handleOpenEmailForm('signin')}
+                className="mb-2.5 w-full rounded-xl bg-primary-700 py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-primary-900/20 transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              >
+                {g('sign_in_button', 'Sign In')}
+              </button>
+              <button
+                onClick={() => handleOpenEmailForm('signup')}
+                className="w-full rounded-xl border-2 border-primary-700 bg-white py-3 text-sm font-bold tracking-[0.03em] text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              >
+                {g('create_account_button', 'Create Account')}
+              </button>
               <p className="text-center text-xs mt-5" style={{ color: '#b0a080' }}>{otpCopy.footer}</p>
             </>
           )}
 
           {view === 'email-form' && (
             <>
-              <button onClick={() => { setView('landing'); setError(''); setNotice(''); }} className="flex items-center gap-1 text-xs font-semibold mb-5 transition-colors" style={{ color: '#c6a75e', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} disabled={loading}>← {g('back_button', 'Back')}</button>
+              <button onClick={() => { setView('landing'); setError(''); setNotice(''); }} className="mb-5 flex items-center gap-1 text-xs font-semibold text-primary-700 transition-colors hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400" style={{ background: 'none', border: 'none', padding: 0 }} disabled={loading}>← {g('back_button', 'Back')}</button>
               <p className="text-sm leading-relaxed mb-5" style={{ color: '#4a3d28' }}>{authMode === 'signup' ? bodyCopy : bodyCopy}</p>
               <form onSubmit={handleSendCode} className="space-y-4">
                 <div>
                   <label htmlFor="auth-email" className="block text-xs font-semibold mb-2" style={{ color: '#6b5730', letterSpacing: '0.05em' }}>{g('email_label', 'Email Address')}</label>
                   <div className="relative">
-                    <Mail className="absolute top-1/2 -translate-y-1/2 left-4 w-4 h-4" style={{ color: '#c6a75e', pointerEvents: 'none' }} />
+                    <Mail className="absolute top-1/2 -translate-y-1/2 left-4 w-4 h-4 text-primary-700" style={{ pointerEvents: 'none' }} />
                     <input
                       id="auth-email"
                       ref={emailInputRef}
@@ -329,12 +343,16 @@ export function AuthRequiredModal({
                       disabled={loading}
                       className="w-full text-sm"
                       style={{ padding: '13px 14px 13px 40px', borderRadius: 12, border: '1.5px solid #e8dcc4', background: '#fffdf8', color: '#1a1208', outline: 'none', transition: 'border-color 0.2s' }}
-                      onFocus={(event) => (event.target.style.borderColor = '#c6a75e')}
+                      onFocus={(event) => (event.target.style.borderColor = '#B45309')}
                       onBlur={(event) => (event.target.style.borderColor = '#e8dcc4')}
                     />
                   </div>
                 </div>
-                <button type="submit" disabled={loading || !email} className="w-full font-bold text-sm flex items-center justify-center gap-2 transition-all" style={{ background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.65 : 1, boxShadow: '0 4px 16px rgba(198,167,94,0.35)', letterSpacing: '0.03em' }}>
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-700 py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-primary-900/20 transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:hover:bg-gray-300"
+                >
                   {loading ? <><Loader2 className="w-4 h-4 animate-spin" />{otpCopy.sending}</> : <><Mail className="w-4 h-4" />{otpCopy.sendCode}</>}
                 </button>
               </form>
@@ -345,20 +363,24 @@ export function AuthRequiredModal({
           {view === 'otp' && (
             <form onSubmit={handleVerifyCode} className="space-y-5">
               <div className="text-center">
-                <div className="flex items-center justify-center mx-auto mb-4 rounded-full" style={{ width: 64, height: 64, background: '#fffbf0', border: '1px solid #f0e4bc' }}><KeyRound className="w-8 h-8" style={{ color: '#c6a75e' }} /></div>
+                <div className="flex items-center justify-center mx-auto mb-4 rounded-full" style={{ width: 64, height: 64, background: '#fffbf0', border: '1px solid #f0e4bc' }}><KeyRound className="w-8 h-8 text-primary-700" /></div>
                 <p className="text-sm leading-relaxed" style={{ color: '#4a3d28' }}>{otpCopy.instruction}</p>
                 <p className="text-sm font-semibold mt-1 break-all" style={{ color: '#1a1208' }}>{email}</p>
               </div>
               <div>
                 <label htmlFor="auth-otp" className="block text-xs font-semibold mb-2 text-center" style={{ color: '#6b5730', letterSpacing: '0.05em' }}>{otpCopy.codeLabel}</label>
-                <input id="auth-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} pattern="[0-9]{6}" required disabled={loading} autoFocus className="w-full" style={{ padding: '14px 12px', borderRadius: 12, border: '1.5px solid #e8dcc4', background: '#fffdf8', color: '#1a1208', outline: 'none', textAlign: 'center', fontSize: 30, fontWeight: 700, letterSpacing: '0.35em', fontVariantNumeric: 'tabular-nums' }} onFocus={(event) => (event.target.style.borderColor = '#c6a75e')} onBlur={(event) => (event.target.style.borderColor = '#e8dcc4')} />
+                <input id="auth-otp" type="text" inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" maxLength={6} pattern="[0-9]{6}" required disabled={loading} autoFocus className="w-full" style={{ padding: '14px 12px', borderRadius: 12, border: '1.5px solid #e8dcc4', background: '#fffdf8', color: '#1a1208', outline: 'none', textAlign: 'center', fontSize: 30, fontWeight: 700, letterSpacing: '0.35em', fontVariantNumeric: 'tabular-nums' }} onFocus={(event) => (event.target.style.borderColor = '#B45309')} onBlur={(event) => (event.target.style.borderColor = '#e8dcc4')} />
               </div>
-              <button type="submit" disabled={loading || otp.length !== 6} className="w-full font-bold text-sm flex items-center justify-center gap-2 transition-all" style={{ background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', cursor: loading || otp.length !== 6 ? 'not-allowed' : 'pointer', opacity: loading || otp.length !== 6 ? 0.65 : 1, boxShadow: '0 4px 16px rgba(198,167,94,0.35)', letterSpacing: '0.03em' }}>
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-700 py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-primary-900/20 transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:hover:bg-gray-300"
+              >
                 {loading ? <><Loader2 className="w-4 h-4 animate-spin" />{otpCopy.verifying}</> : otpCopy.verify}
               </button>
               <div className="text-center space-y-3">
-                <button type="button" onClick={handleResendCode} disabled={loading} className="text-sm font-semibold" style={{ color: '#c6a75e', background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}>{otpCopy.resend}</button>
-                <div><button type="button" onClick={() => { setView('email-form'); setOtp(''); setError(''); setNotice(''); }} disabled={loading} className="text-sm font-semibold" style={{ color: '#7a6340', background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}>{otpCopy.changeEmail}</button></div>
+                <button type="button" onClick={handleResendCode} disabled={loading} className="text-sm font-semibold text-primary-700 hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400" style={{ background: 'none', border: 'none' }}>{otpCopy.resend}</button>
+                <div><button type="button" onClick={() => { setView('email-form'); setOtp(''); setError(''); setNotice(''); }} disabled={loading} className="text-sm font-semibold text-primary-900 hover:text-primary-700 disabled:cursor-not-allowed disabled:text-gray-400" style={{ background: 'none', border: 'none' }}>{otpCopy.changeEmail}</button></div>
               </div>
             </form>
           )}
