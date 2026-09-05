@@ -3,16 +3,8 @@ export type HomepageRendererMode = 'legacy' | 'builder';
 /**
  * Public Homepage renderer switch.
  *
- * Safety rule: anything other than the explicit value `builder` resolves to
- * `legacy`, so a missing or malformed environment variable cannot cut the
- * public Homepage over accidentally.
+ * PR 5 deliberately keeps this source-controlled and locked to `legacy`.
+ * The later production cutover PR may change this single value to `builder`
+ * only after a real published Homepage revision passes parity review.
  */
-export function getHomepageRendererMode(
-  value = import.meta.env.VITE_HOMEPAGE_RENDERER,
-): HomepageRendererMode {
-  return typeof value === 'string' && value.trim().toLowerCase() === 'builder'
-    ? 'builder'
-    : 'legacy';
-}
-
-export const homepageRendererMode = getHomepageRendererMode();
+export const homepageRendererMode: HomepageRendererMode = 'legacy';
