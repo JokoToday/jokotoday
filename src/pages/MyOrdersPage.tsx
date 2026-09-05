@@ -39,7 +39,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, order_items, total_amount, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
+          .select('id, order_number, customer_name, order_items, total_amount, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),

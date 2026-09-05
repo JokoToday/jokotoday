@@ -3,6 +3,7 @@ import { ChevronDown, ShoppingBag, Zap, Clock } from 'lucide-react';
 import { Order, PickupDay, PickupLocation, SortOption } from './OrderTypes';
 import { OrderCard } from './OrderCard';
 import { OrderDetailModal } from './OrderDetailModal';
+import { PrintOrderConfirmationButton } from './PrintOrderConfirmationButton';
 import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
@@ -29,6 +30,11 @@ function isCurrentOrder(order: Order): boolean {
 }
 
 function canRepeatOrder(order: Order): boolean {
+  const isOnline = order.purchase_type === 'online' || !order.purchase_type;
+  return isOnline && Array.isArray(order.order_items) && order.order_items.length > 0;
+}
+
+function canPrintOrder(order: Order): boolean {
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   return isOnline && Array.isArray(order.order_items) && order.order_items.length > 0;
 }
@@ -199,25 +205,42 @@ function OrderColumn({
                   <div className="h-px flex-1" style={{ background: '#e8d9b8' }} />
                 </div>
                 <div className="space-y-2">
-                  {dayOrders.map(order => (
-                    <div key={order.id} className="space-y-1.5">
-                      <OrderCard
-                        order={order}
-                        language={language}
-                        getLabel={getLabel}
-                        onClick={() => setSelectedOrder(order)}
-                      />
-                      {allowRepeatOrder && canRepeatOrder(order) && (
-                        <div className="flex justify-end pr-1">
-                          <RepeatOrderButton
-                            order={order}
-                            language={language}
-                            getLabel={getLabel}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {dayOrders.map(order => {
+                    const showPrint = canPrintOrder(order);
+                    const showRepeat = allowRepeatOrder && canRepeatOrder(order);
+
+                    return (
+                      <div key={order.id} className="space-y-1.5">
+                        <OrderCard
+                          order={order}
+                          language={language}
+                          getLabel={getLabel}
+                          onClick={() => setSelectedOrder(order)}
+                        />
+                        {(showPrint || showRepeat) && (
+                          <div className="flex justify-end gap-2 pr-1 flex-wrap">
+                            {showPrint && (
+                              <PrintOrderConfirmationButton
+                                order={order}
+                                language={language}
+                                productMap={productMap}
+                                pickupDays={pickupDays}
+                                locationMap={locationMap}
+                                getLabel={getLabel}
+                              />
+                            )}
+                            {showRepeat && (
+                              <RepeatOrderButton
+                                order={order}
+                                language={language}
+                                getLabel={getLabel}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

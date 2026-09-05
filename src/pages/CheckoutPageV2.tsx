@@ -4,6 +4,7 @@ import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { FitsYourPickupV2 } from '../components/FitsYourPickupV2';
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
+import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
@@ -439,6 +440,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             <p className="text-xs text-gray-500 text-center">{t.confirmation.paymentReminder}</p>
+            <OrderPrintButtonById
+              orderId={orderId}
+              language={language}
+              getLabel={getLabel}
+              className="w-full justify-center py-3 text-sm"
+            />
             <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.confirmation.backToHome}</button>
             <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
           </div>

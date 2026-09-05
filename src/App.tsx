@@ -126,6 +126,12 @@ function AppContent() {
         }
       }
 
+      if (path === '/' && params.get('page') === 'my-orders') {
+        window.history.replaceState({}, '', '/my-orders');
+        setCurrentPage('orders');
+        return;
+      }
+
       if (path === '/admin' || path.startsWith('/admin/')) {
         setCurrentPage('admin');
         return;
