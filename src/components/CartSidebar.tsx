@@ -234,17 +234,8 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="w-full font-bold text-sm transition-all"
-                style={{
-                  background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '14px 0',
-                  cursor: 'pointer',
-                  letterSpacing: '0.03em',
-                  boxShadow: '0 4px 16px rgba(198,167,94,0.32)',
-                }}
+                aria-haspopup="dialog"
+                className="w-full rounded-xl bg-primary-700 py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-primary-900/20 transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
               >
                 {t.auth.signIn}
               </button>
