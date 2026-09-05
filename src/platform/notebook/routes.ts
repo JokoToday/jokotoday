@@ -1,5 +1,13 @@
 import type { NotebookEntry, NotebookRouteTarget } from './contracts';
 
+function encodeNotebookSlug(slug: string): string {
+  const normalized = slug.trim();
+  if (!normalized || normalized === '.' || normalized === '..') {
+    throw new Error(`Invalid Notebook slug "${slug}"`);
+  }
+  return encodeURIComponent(normalized);
+}
+
 export function getNotebookPath(target: NotebookRouteTarget): string {
   switch (target.type) {
     case 'notebook.today':
@@ -7,11 +15,11 @@ export function getNotebookPath(target: NotebookRouteTarget): string {
     case 'notebook.history':
       return '/notebook/history';
     case 'notebook.person':
-      return `/notebook/people/${encodeURIComponent(target.slug)}`;
+      return `/notebook/people/${encodeNotebookSlug(target.slug)}`;
     case 'notebook.product':
-      return `/notebook/products/${encodeURIComponent(target.slug)}`;
+      return `/notebook/products/${encodeNotebookSlug(target.slug)}`;
     case 'notebook.question':
-      return `/notebook/questions/${encodeURIComponent(target.slug)}`;
+      return `/notebook/questions/${encodeNotebookSlug(target.slug)}`;
   }
 }
 
