@@ -37,7 +37,9 @@ interface Order {
   customer_name: string;
   customer_email: string;
   total_amount: number;
+  created_at: string;
   pickup_day: string | null;
+  pickup_date: string | null;
   pickup_location_id: string | null;
   order_items: OrderItem[];
   loyalty_points_earned?: number | null;
@@ -64,10 +66,30 @@ type Language = TransactionalEmailLanguage;
 
 const TYPE = "customer_confirmation" as const;
 const APP_URL = "https://joko.today";
-const MY_ORDERS_URL = `${APP_URL}/?page=my-orders`;
+const MY_ORDERS_URL = `${APP_URL}/my-orders`;
 
 function normalizeLanguage(value: unknown): Language | null {
   return value === "en" || value === "th" || value === "zh" ? value : null;
+}
+
+function formatDate(value: string | null, lang: Language, includeWeekday = false): string {
+  if (!value) return "—";
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  const date = dateOnly
+    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12))
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString(
+    lang === "th" ? "th-TH" : lang === "zh" ? "zh-CN" : "en-GB",
+    {
+      ...(includeWeekday ? { weekday: "long" as const } : {}),
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      ...(dateOnly ? { timeZone: "UTC" } : {}),
+    },
+  );
 }
 
 function getLocationName(location: PickupLocation | null, lang: Language): string {
@@ -102,11 +124,14 @@ type EmailCopy = {
   greetingPrefix: string;
   greetingSuffix: string;
   intro: string;
+  customer: string;
   orderNumber: string;
+  ordered: string;
   pickup: string;
   pickupLocation: string;
   viewMap: string;
   items: string;
+  unitPrice: string;
   total: string;
   paymentHeading: string;
   payment: string;
@@ -121,69 +146,78 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
   en: {
     subjectPrefix: "Order confirmed",
     eyebrow: "Order confirmed",
-    heading: "Your order is in.",
+    heading: "Order confirmation",
     greetingPrefix: "Hi ",
     greetingSuffix: ",",
     intro: "Thanks for your order. We have it and will have it ready for your selected pickup.",
+    customer: "Customer",
     orderNumber: "Order",
+    ordered: "Ordered",
     pickup: "Pickup",
     pickupLocation: "Location",
     viewMap: "View on Maps",
     items: "Your order",
+    unitPrice: "Unit price",
     total: "Total",
     paymentHeading: "Payment",
     payment: "Pay when you pick up. Cash or Thai QR payment is available.",
     points: "JOKO points earned",
     pointsSuffix: "pts",
-    viewOrder: "View my order",
-    changePlans: "Need to change your plans? Open My Orders to see the options currently available.",
+    viewOrder: "View / print confirmation",
+    changePlans: "Open My Orders to print this confirmation again or see the options currently available for your order.",
     footer: "Thank you for choosing JOKO TODAY",
   },
   th: {
     subjectPrefix: "ยืนยันคำสั่งซื้อแล้ว",
     eyebrow: "ยืนยันคำสั่งซื้อแล้ว",
-    heading: "เราได้รับคำสั่งซื้อของคุณแล้ว",
+    heading: "ใบยืนยันคำสั่งซื้อ",
     greetingPrefix: "สวัสดีคุณ ",
     greetingSuffix: "",
     intro: "ขอบคุณสำหรับคำสั่งซื้อ เราได้รับออเดอร์เรียบร้อยแล้วและจะเตรียมไว้สำหรับวันรับสินค้าที่คุณเลือก",
+    customer: "ลูกค้า",
     orderNumber: "คำสั่งซื้อ",
+    ordered: "วันที่สั่งซื้อ",
     pickup: "รับสินค้า",
     pickupLocation: "สถานที่รับสินค้า",
     viewMap: "ดูแผนที่",
     items: "รายการของคุณ",
+    unitPrice: "ราคาต่อชิ้น",
     total: "ยอดรวม",
     paymentHeading: "การชำระเงิน",
     payment: "ชำระเงินเมื่อรับสินค้า สามารถชำระด้วยเงินสดหรือ Thai QR ได้",
     points: "แต้ม JOKO ที่ได้รับ",
     pointsSuffix: "แต้ม",
-    viewOrder: "ดูคำสั่งซื้อของฉัน",
-    changePlans: "ต้องการเปลี่ยนแผน? เปิดคำสั่งซื้อของฉันเพื่อดูตัวเลือกที่สามารถใช้ได้ในขณะนี้",
+    viewOrder: "ดู / พิมพ์ใบยืนยัน",
+    changePlans: "เปิดคำสั่งซื้อของฉันเพื่อพิมพ์ใบยืนยันนี้อีกครั้ง หรือดูตัวเลือกที่สามารถใช้ได้กับคำสั่งซื้อของคุณ",
     footer: "ขอบคุณที่เลือก JOKO TODAY",
   },
   zh: {
     subjectPrefix: "订单已确认",
     eyebrow: "订单已确认",
-    heading: "我们已收到您的订单。",
+    heading: "订单确认单",
     greetingPrefix: "您好，",
     greetingSuffix: "",
     intro: "感谢您的订购。我们已收到订单，并会在您选择的取货时间准备好。",
+    customer: "客户",
     orderNumber: "订单",
+    ordered: "下单日期",
     pickup: "取货",
     pickupLocation: "取货地点",
     viewMap: "查看地图",
     items: "您的订单",
+    unitPrice: "单价",
     total: "总计",
     paymentHeading: "付款",
     payment: "取货时付款。可使用现金或 Thai QR 付款。",
     points: "本单获得 JOKO 积分",
     pointsSuffix: "积分",
-    viewOrder: "查看我的订单",
-    changePlans: "计划有变？请打开“我的订单”查看目前可用的选项。",
+    viewOrder: "查看 / 打印确认单",
+    changePlans: "打开“我的订单”可再次打印此确认单，或查看订单目前可用的选项。",
     footer: "感谢您选择 JOKO TODAY",
   },
 };
 
-function buildItemRows(items: OrderItem[], lang: Language): string {
+function buildItemRows(items: OrderItem[], lang: Language, copy: EmailCopy): string {
   return items.map((item) => {
     const name = getProductName(item, lang);
     const quantity = Number(item.quantity);
@@ -193,17 +227,21 @@ function buildItemRows(items: OrderItem[], lang: Language): string {
     return `
       <tr>
         <td valign="top" style="width:48px;padding:13px 8px 13px 0;border-bottom:1px solid ${JOKO_EMAIL_THEME.border};font-size:14px;line-height:1.5;font-weight:700;color:${JOKO_EMAIL_THEME.sageDark};">${quantity}×</td>
-        <td valign="top" style="padding:13px 8px;border-bottom:1px solid ${JOKO_EMAIL_THEME.border};font-size:15px;line-height:${lang === "en" ? "1.5" : "1.75"};font-weight:600;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(name)}</td>
+        <td valign="top" style="padding:13px 8px;border-bottom:1px solid ${JOKO_EMAIL_THEME.border};font-size:15px;line-height:${lang === "en" ? "1.5" : "1.75"};font-weight:600;color:${JOKO_EMAIL_THEME.charcoal};">
+          ${escapeHtml(name)}
+          <div style="margin-top:3px;font-size:12px;line-height:1.45;font-weight:500;color:${JOKO_EMAIL_THEME.subtle};">${escapeHtml(copy.unitPrice)}: ฿${price.toFixed(2)}</div>
+        </td>
         <td valign="top" align="right" style="padding:13px 0 13px 8px;border-bottom:1px solid ${JOKO_EMAIL_THEME.border};font-size:15px;line-height:1.5;font-weight:700;white-space:nowrap;color:${JOKO_EMAIL_THEME.charcoal};">฿${lineTotal.toFixed(2)}</td>
       </tr>`;
   }).join("");
 }
 
-function buildPlainTextItems(items: OrderItem[], lang: Language): string[] {
+function buildPlainTextItems(items: OrderItem[], lang: Language, copy: EmailCopy): string[] {
   return items.map((item) => {
     const quantity = Number(item.quantity);
-    const lineTotal = Number(item.price_at_order) * quantity;
-    return `${quantity} × ${getProductName(item, lang)} — ฿${lineTotal.toFixed(2)}`;
+    const unitPrice = Number(item.price_at_order);
+    const lineTotal = unitPrice * quantity;
+    return `${quantity} × ${getProductName(item, lang)} · ${copy.unitPrice}: ฿${unitPrice.toFixed(2)} — ฿${lineTotal.toFixed(2)}`;
   });
 }
 
@@ -229,9 +267,11 @@ function buildEmail(
   const pickupLabel = getPickupDayLabel(pickupDay, order.pickup_day, lang);
   const mapsLink = buildMapsLink(location?.maps_url ?? null, locationName);
   const points = Number(order.loyalty_points_earned ?? 0);
-  const itemRows = buildItemRows(items, lang);
+  const itemRows = buildItemRows(items, lang, copy);
   const loyaltyBlock = buildLoyaltyBlock(points, copy);
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
+  const orderedDate = formatDate(order.created_at, lang);
+  const pickupDate = formatDate(order.pickup_date, lang, true);
   const preheader = `#${order.order_number} · ${pickupLabel} · ${locationName}`;
 
   const contentHtml = `
@@ -239,13 +279,19 @@ function buildEmail(
     <p style="margin:0 0 26px;font-size:15px;line-height:${lang === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.intro)}</p>
 
     <div style="margin:0 0 24px;padding:18px 20px;background:${JOKO_EMAIL_THEME.paper};border:1px solid ${JOKO_EMAIL_THEME.border};border-radius:9px;">
+      <div style="font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(copy.customer)}</div>
+      <div style="margin-top:5px;font-size:18px;line-height:1.4;font-weight:800;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(order.customer_name)}</div>
+      <div style="margin:16px 0;border-top:1px solid ${JOKO_EMAIL_THEME.border};"></div>
       <div style="font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(copy.orderNumber)}</div>
       <div style="margin-top:5px;font-size:20px;line-height:1.3;font-weight:800;color:${JOKO_EMAIL_THEME.charcoal};font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">#${escapeHtml(order.order_number)}</div>
+      <div style="margin-top:13px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.subtle};">${escapeHtml(copy.ordered)}</div>
+      <div style="margin-top:4px;font-size:14px;line-height:1.5;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(orderedDate)}</div>
     </div>
 
     <div style="margin:0 0 28px;padding:20px;background:${JOKO_EMAIL_THEME.successSoft};border-radius:9px;">
       <div style="font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(copy.pickup)}</div>
       <div style="margin-top:5px;font-size:17px;line-height:${lang === "en" ? "1.45" : "1.7"};font-weight:750;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(pickupLabel)}</div>
+      ${order.pickup_date ? `<div style="margin-top:4px;font-size:14px;line-height:1.55;font-weight:600;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(pickupDate)}</div>` : ""}
       <div style="margin-top:16px;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(copy.pickupLocation)}</div>
       <div style="margin-top:5px;font-size:16px;line-height:${lang === "en" ? "1.45" : "1.7"};font-weight:650;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(locationName)}</div>
       <div style="margin-top:10px;font-size:13px;line-height:1.5;">${renderSecondaryLink(mapsLink, copy.viewMap)}</div>
@@ -289,13 +335,15 @@ function buildEmail(
     greeting,
     copy.intro,
     "",
+    `${copy.customer}: ${order.customer_name}`,
     `${copy.orderNumber}: #${order.order_number}`,
-    `${copy.pickup}: ${pickupLabel}`,
+    `${copy.ordered}: ${orderedDate}`,
+    `${copy.pickup}: ${pickupLabel}${order.pickup_date ? ` · ${pickupDate}` : ""}`,
     `${copy.pickupLocation}: ${locationName}`,
     `${copy.viewMap}: ${mapsLink}`,
     "",
     copy.items,
-    ...buildPlainTextItems(items, lang),
+    ...buildPlainTextItems(items, lang, copy),
     `${copy.total}: ฿${Number(order.total_amount).toFixed(2)}`,
     "",
     `${copy.paymentHeading}: ${copy.payment}`,
@@ -334,7 +382,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, pickup_day, pickup_location_id, order_items, loyalty_points_earned")
+    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, created_at, pickup_day, pickup_date, pickup_location_id, order_items, loyalty_points_earned")
     .eq("id", orderId)
     .eq("customer_id", user.id)
     .eq("purchase_type", "online")
