@@ -1,4 +1,5 @@
 import { Component, lazy, Suspense, type ReactNode } from 'react';
+import WelcomeBackCard from '../../../components/home/WelcomeBackCard';
 import HomePage from '../../../pages/HomePage';
 import { homepageRendererMode } from './homepageFeatureFlags';
 
@@ -35,15 +36,20 @@ class BuilderLoadBoundary extends Component<BuilderLoadBoundaryProps, BuilderLoa
 }
 
 export function HomepageRendererGate({ onNavigate }: HomepageRendererGateProps) {
-  if (homepageRendererMode !== 'builder') {
-    return <HomePage onNavigate={onNavigate} />;
-  }
+  const homepage = homepageRendererMode !== 'builder'
+    ? <HomePage onNavigate={onNavigate} />
+    : (
+      <BuilderLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
+        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
+          <PublishedBuilderHomepage onNavigate={onNavigate} />
+        </Suspense>
+      </BuilderLoadBoundary>
+    );
 
   return (
-    <BuilderLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
-      <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
-        <PublishedBuilderHomepage onNavigate={onNavigate} />
-      </Suspense>
-    </BuilderLoadBoundary>
+    <>
+      {homepage}
+      <WelcomeBackCard onNavigate={onNavigate} />
+    </>
   );
 }
