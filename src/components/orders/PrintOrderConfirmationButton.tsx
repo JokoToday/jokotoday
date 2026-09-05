@@ -9,6 +9,7 @@ interface PrintOrderConfirmationButtonProps {
   pickupDays: PickupDay[];
   locationMap: Record<string, PickupLocation>;
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
+  className?: string;
 }
 
 const FALLBACK = {
@@ -21,6 +22,11 @@ const FALLBACK = {
     en: 'Order confirmation',
     th: 'ใบยืนยันคำสั่งซื้อ',
     zh: '订单确认单',
+  },
+  customer: {
+    en: 'Customer',
+    th: 'ลูกค้า',
+    zh: '客户',
   },
   order: {
     en: 'Order',
@@ -110,6 +116,9 @@ function getProductName(
   language: 'en' | 'th' | 'zh',
   productMap: Record<string, CMSProduct>,
 ): string {
+  if (language === 'th' && item.product_name_th) return item.product_name_th;
+  if (language === 'zh' && item.product_name_zh) return item.product_name_zh;
+
   const product = productMap[item.product_id];
   if (!product) return item.product_name || '—';
   if (language === 'th') return product.name_th || product.name_en;
@@ -167,10 +176,12 @@ export function PrintOrderConfirmationButton({
   pickupDays,
   locationMap,
   getLabel,
+  className = '',
 }: PrintOrderConfirmationButtonProps) {
   const label = (key: string, fallback: string) => getLabel(`my_orders_page.${key}`, language, fallback);
   const pickupLabel = getPickupLabel(order, language, pickupDays);
   const locationName = getLocationName(order, language, pickupDays, locationMap);
+  const customerName = order.customer_name?.trim() || '—';
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=760,height=900');
@@ -192,6 +203,7 @@ export function PrintOrderConfirmationButton({
     }).join('');
 
     const title = label('print_confirmation_title', FALLBACK.title[language]);
+    const customerLabel = label('print_customer', FALLBACK.customer[language]);
     const orderLabel = label('order_number', FALLBACK.order[language]);
     const orderedLabel = label('print_ordered', FALLBACK.ordered[language]);
     const pickupText = label('pickup_day', FALLBACK.pickup[language]);
@@ -220,8 +232,10 @@ export function PrintOrderConfirmationButton({
     .content { padding: 32px; border: 1px solid #e0cbaa; border-top: 0; border-radius: 0 0 18px 18px; background: #fff; }
     .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 0 26px; }
     .meta-card { padding: 14px 16px; background: #f7ead7; border-radius: 10px; }
+    .meta-card.customer { grid-column: 1 / -1; background: #eef0d9; }
     .label { margin-bottom: 5px; color: #52603b; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .value { font-size: 15px; line-height: 1.5; font-weight: 700; }
+    .customer .value { font-size: 18px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th { padding: 10px 8px; text-align: left; color: #8c8477; border-bottom: 1px solid #e0cbaa; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
     td { padding: 13px 8px; border-bottom: 1px solid #eee2cf; font-size: 13px; vertical-align: top; }
@@ -247,6 +261,7 @@ export function PrintOrderConfirmationButton({
     </section>
     <section class="content">
       <div class="meta">
+        <div class="meta-card customer"><div class="label">${escapeHtml(customerLabel)}</div><div class="value">${escapeHtml(customerName)}</div></div>
         <div class="meta-card"><div class="label">${escapeHtml(orderLabel)}</div><div class="value">#${escapeHtml(order.order_number)}</div></div>
         <div class="meta-card"><div class="label">${escapeHtml(orderedLabel)}</div><div class="value">${escapeHtml(formatDate(order.created_at, language))}</div></div>
         <div class="meta-card"><div class="label">${escapeHtml(pickupText)}</div><div class="value">${escapeHtml(pickupLabel)}${order.pickup_date ? `<br />${escapeHtml(formatDate(order.pickup_date, language, true))}` : ''}</div></div>
@@ -276,7 +291,7 @@ export function PrintOrderConfirmationButton({
     <button
       type="button"
       onClick={handlePrint}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 transition-colors"
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 transition-colors ${className}`}
       style={{ borderColor: '#d6c7a8', color: '#6b5b3f' }}
     >
       <Printer className="w-3.5 h-3.5" />
