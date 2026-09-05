@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
+import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
 
@@ -96,6 +97,9 @@ export function OrderDetailModal({
   const pastPickup = isOnline && isPickupDatePast(order.pickup_date);
   const unresolvedPastPickup = pastPickup && ['pending', 'confirmed', 'ready'].includes(order.status);
   const isCancellable = (order.status === 'pending' || order.status === 'confirmed') && isOnline && !pastPickup;
+  const isRepeatablePastOrder = isOnline
+    && items.length > 0
+    && (pastPickup || !['pending', 'confirmed', 'ready'].includes(order.status));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -286,6 +290,16 @@ export function OrderDetailModal({
               </div>
               <span className="text-base font-extrabold" style={{ color: '#92400e' }}>+{order.loyalty_points_earned}</span>
             </div>
+          )}
+
+          {isRepeatablePastOrder && (
+            <RepeatOrderButton
+              order={order}
+              language={language}
+              getLabel={getLabel}
+              variant="modal"
+              onApplied={onClose}
+            />
           )}
 
           {isCancellable && (
