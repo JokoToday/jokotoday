@@ -13,6 +13,8 @@ export interface Order {
   customer_name?: string | null;
   order_items: OrderItem[];
   total_amount: number;
+  loyalty_discount_amount?: number | null;
+  amount_paid?: number | null;
   pickup_day: string;
   pickup_date: string;
   pickup_date_id?: string | null;
