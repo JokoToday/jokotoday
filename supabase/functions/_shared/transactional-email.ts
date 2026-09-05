@@ -82,6 +82,7 @@ interface TransactionalEmailShellOptions {
   maxWidth?: number;
   logoUrl?: string;
   logoAlt?: string;
+  brandText?: string;
 }
 
 export function buildTransactionalEmailShell(options: TransactionalEmailShellOptions): string {
@@ -95,7 +96,8 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
     footerText,
     maxWidth = 600,
     logoUrl = DEFAULT_JOKO_EMAIL_LOGO_URL,
-    logoAlt = "JOKO TODAY",
+    logoAlt = "",
+    brandText = "JOKO TODAY",
   } = options;
   const theme = JOKO_EMAIL_THEME;
   const fontFamily = emailFontFamily(language);
@@ -117,9 +119,12 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
       <td align="center" style="padding:28px 16px;">
         <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${maxWidth}px;background:${theme.surface};border:1px solid ${theme.border};border-radius:14px;overflow:hidden;">
           <tr>
-            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:24px 30px 14px;text-align:center;">
-              <img src="${escapeHtml(logoUrl)}" width="150" alt="${escapeHtml(logoAlt)}" style="display:block;width:150px;max-width:58%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;" />
-              <div style="margin-top:4px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.ochre};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
+            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:22px 30px 14px;text-align:center;">
+              <div style="font-size:25px;line-height:1.12;font-weight:800;letter-spacing:3.2px;color:${theme.charcoal};font-family:${displayFontFamily};">${escapeHtml(brandText)}</div>
+              <div style="margin:9px auto 0;line-height:0;font-size:0;text-align:center;">
+                <img src="${escapeHtml(logoUrl)}" width="86" alt="${escapeHtml(logoAlt)}" role="presentation" aria-hidden="true" style="display:block;width:86px;max-width:24%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;color:transparent;font-size:0;line-height:0;" />
+              </div>
+              <div style="margin-top:7px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.ochre};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
             </td>
           </tr>
           <tr>
