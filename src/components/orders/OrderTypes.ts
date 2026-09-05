@@ -1,6 +1,8 @@
 export interface OrderItem {
   product_id: string;
   product_name: string;
+  product_name_th?: string | null;
+  product_name_zh?: string | null;
   quantity: number;
   price_at_order: number;
 }
@@ -8,6 +10,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   order_number: string;
+  customer_name?: string | null;
   order_items: OrderItem[];
   total_amount: number;
   pickup_day: string;
