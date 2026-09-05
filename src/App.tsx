@@ -25,6 +25,7 @@ const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage
 const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
+const NotebookReaderProofPage = lazy(() => import('./app/joko-today/notebook/NotebookReaderProofPage'));
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
@@ -77,6 +78,11 @@ function AppContent() {
 
       if (path === '/auth/callback') {
         setCurrentPage('auth-callback');
+        return;
+      }
+
+      if (path === '/__notebook/today') {
+        setCurrentPage('notebook-proof');
         return;
       }
 
@@ -248,6 +254,8 @@ function AppContent() {
         return <MyLikesPage onNavigate={handleNavigate} />;
       case 'scan':
         return <ScanPage />;
+      case 'notebook-proof':
+        return <NotebookReaderProofPage />;
       default:
         return <HomepageRendererGate onNavigate={handleNavigate} />;
     }
@@ -262,7 +270,8 @@ function AppContent() {
     currentPage === 'walk-in' ||
     currentPage === 'scan' ||
     currentPage === 'auth-callback' ||
-    currentPage === 'qr-resolve';
+    currentPage === 'qr-resolve' ||
+    currentPage === 'notebook-proof';
 
   return (
     <div className="min-h-screen flex flex-col">
