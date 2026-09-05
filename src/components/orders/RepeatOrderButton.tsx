@@ -122,10 +122,22 @@ export function RepeatOrderButton({
 
   const resolveCurrentOrder = async (): Promise<ResolvedRepeatOrder> => {
     const historicalItems = Array.isArray(order.order_items) ? order.order_items : [];
-    const productIds = Array.from(new Set(historicalItems.map(item => item.product_id).filter(Boolean)));
+    const requestedByProduct = new Map<string, number>();
+
+    historicalItems.forEach(item => {
+      if (!item.product_id) return;
+      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      requestedByProduct.set(
+        item.product_id,
+        (requestedByProduct.get(item.product_id) || 0) + quantity,
+      );
+    });
+
+    const productIds = Array.from(requestedByProduct.keys());
+    const totalLines = productIds.length;
 
     if (productIds.length === 0) {
-      return { lines: [], totalLines: historicalItems.length, skippedLines: historicalItems.length };
+      return { lines: [], totalLines: 0, skippedLines: 0 };
     }
 
     const [productsResult, availabilityRows] = await Promise.all([
@@ -147,13 +159,12 @@ export function RepeatOrderButton({
       availabilityByProduct.set(row.product_id, quantities);
     });
 
-    const merged = new Map<string, ResolvedLine>();
+    const lines: ResolvedLine[] = [];
     let skippedLines = 0;
 
-    historicalItems.forEach(item => {
-      const product = productById.get(item.product_id);
-      const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
-      const futureQuantities = availabilityByProduct.get(item.product_id) || [];
+    requestedByProduct.forEach((quantity, productId) => {
+      const product = productById.get(productId);
+      const futureQuantities = availabilityByProduct.get(productId) || [];
       const hasEnoughUpcomingAvailability = futureQuantities.some(remaining => remaining >= quantity);
 
       if (!product || !product.is_active || product.is_sold_out || !hasEnoughUpcomingAvailability) {
@@ -161,15 +172,12 @@ export function RepeatOrderButton({
         return;
       }
 
-      const existing = merged.get(product.id);
-      merged.set(product.id, existing
-        ? { product, quantity: existing.quantity + quantity }
-        : { product, quantity });
+      lines.push({ product, quantity });
     });
 
     return {
-      lines: Array.from(merged.values()),
-      totalLines: historicalItems.length,
+      lines,
+      totalLines,
       skippedLines,
     };
   };
