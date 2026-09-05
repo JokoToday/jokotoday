@@ -5,7 +5,7 @@ import { LikesProvider } from './context/LikesContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
-import HomePage from './pages/HomePage';
+import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -213,7 +213,7 @@ function AppContent() {
 
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomepageRendererGate onNavigate={handleNavigate} />;
       case 'products':
         return <ProductsPage initialProductSlug={productSlug} qrSource={qrSource} onProductOpened={() => { setProductSlug(null); setQrSource(null); }} />;
       case 'checkout':
@@ -243,7 +243,7 @@ function AppContent() {
       case 'scan':
         return <ScanPage />;
       default:
-        return <HomePage onNavigate={handleNavigate} />;
+        return <HomepageRendererGate onNavigate={handleNavigate} />;
     }
   };
 
