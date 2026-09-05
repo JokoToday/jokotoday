@@ -8,6 +8,7 @@ import type {
   NotebookRouteTarget,
   NotebookTodayDocument,
 } from '../contracts';
+import { getNotebookEntryTarget } from '../routes';
 import { getNotebookLocalizedText } from './localization';
 
 export interface NotebookResolvedAsset {
@@ -156,14 +157,27 @@ function NotebookBlockView({
     case 'entry-link': {
       const relatedEntry = entries.find((entry) => entryKey(entry) === entryRefKey(block.entryRef));
       const relatedTitle = relatedEntry ? text(relatedEntry.title) : '';
-
-      return (
-        <div className="border-y border-primary-200 py-4">
+      const content = (
+        <>
           <p className="text-sm font-semibold text-primary-800">{text(block.label)}</p>
           {relatedTitle && <p className="mt-1 font-serif text-2xl text-primary-950">{relatedTitle}</p>}
           {block.note && <p className="mt-2 text-sm leading-6 text-gray-700">{text(block.note)}</p>}
-        </div>
+        </>
       );
+
+      if (relatedEntry && onNavigate) {
+        return (
+          <button
+            type="button"
+            onClick={() => onNavigate(getNotebookEntryTarget(relatedEntry))}
+            className="w-full border-y border-primary-200 py-4 text-left transition hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+          >
+            {content}
+          </button>
+        );
+      }
+
+      return <div className="border-y border-primary-200 py-4">{content}</div>;
     }
   }
 }
