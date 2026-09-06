@@ -18,21 +18,30 @@ const labels = {
     notebook: 'Community Notebook',
     today: 'Today',
     history: 'History',
+    language: 'Language',
   },
   th: {
     notebook: 'สมุดบันทึกชุมชน',
     today: 'วันนี้',
     history: 'ย้อนหลัง',
+    language: 'ภาษา',
   },
   zh: {
     notebook: '社区笔记本',
     today: '今日',
     history: '往期',
+    language: '语言',
   },
 } as const;
 
+const languageOptions = [
+  { code: 'en', label: 'EN' },
+  { code: 'th', label: 'TH' },
+  { code: 'zh', label: '中文' },
+] as const;
+
 export function NotebookShell({ active, onNavigate, children }: NotebookShellProps) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const copy = labels[language];
 
   const handleRouteClick = (
@@ -65,41 +74,72 @@ export function NotebookShell({ active, onNavigate, children }: NotebookShellPro
   return (
     <PageCanvas surface="soft" className="py-5 sm:py-8">
       <Container width="wide">
-        <header className="mb-6 flex flex-col gap-4 rounded-2xl border border-primary-200 bg-background px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <a href="/" className="group inline-flex flex-col focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-            <span className="font-serif text-xl font-semibold text-primary-950 group-hover:text-primary-700">
-              JOKO TODAY
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">
-              {copy.notebook}
-            </span>
-          </a>
+        <header className="mb-6 flex flex-col gap-4 rounded-2xl border border-primary-200 bg-background px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <a href="/" className="group inline-flex flex-col focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+              <span className="font-serif text-xl font-semibold text-primary-950 group-hover:text-primary-700">
+                JOKO TODAY
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">
+                {copy.notebook}
+              </span>
+            </a>
 
-          <nav aria-label={copy.notebook}>
-            <ul className="flex gap-2">
-              {navItems.map((item) => {
-                const isActive = active === item.key;
+            <div className="flex flex-wrap items-center gap-3">
+              <nav aria-label={copy.notebook}>
+                <ul className="flex gap-2">
+                  {navItems.map((item) => {
+                    const isActive = active === item.key;
 
-                return (
-                  <li key={item.key}>
-                    <a
-                      href={getNotebookPath(item.target)}
-                      onClick={(event) => handleRouteClick(event, item.target)}
-                      aria-current={isActive ? 'page' : undefined}
+                    return (
+                      <li key={item.key}>
+                        <a
+                          href={getNotebookPath(item.target)}
+                          onClick={(event) => handleRouteClick(event, item.target)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={[
+                            'inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                            isActive
+                              ? 'bg-primary-700 text-white'
+                              : 'text-primary-900 hover:bg-primary-100',
+                          ].join(' ')}
+                        >
+                          {item.label}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+
+              <div
+                className="flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 p-1"
+                role="group"
+                aria-label={copy.language}
+              >
+                {languageOptions.map((option) => {
+                  const isActive = language === option.code;
+
+                  return (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => setLanguage(option.code)}
+                      aria-pressed={isActive}
                       className={[
-                        'inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                        'inline-flex min-h-8 items-center rounded-full px-3 py-1 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
                         isActive
                           ? 'bg-primary-700 text-white'
                           : 'text-primary-900 hover:bg-primary-100',
                       ].join(' ')}
                     >
-                      {item.label}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </header>
 
         {children}
