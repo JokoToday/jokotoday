@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, ShoppingBag, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { supabase } from '../../lib/supabase';
 
-const RETURN_GAP_MS = 6 * 60 * 60 * 1000;
-const LAST_VISIT_KEY_PREFIX = 'jt_welcome_back:last_visit:';
-const SHOWN_THIS_SESSION_KEY_PREFIX = 'jt_welcome_back:shown:';
 const POPULAR_SECTION_ID = 'popular-right-now';
 
 type WelcomeBackCardProps = {
@@ -23,6 +21,11 @@ type WelcomeBackCopy = {
   seeWhatsNew: string;
   popularNow: string;
   dismiss: string;
+};
+
+type WelcomeBackClaim = {
+  userId: string;
+  promise: Promise<boolean>;
 };
 
 const COPY: Record<SupportedLanguage, WelcomeBackCopy> = {
@@ -55,38 +58,24 @@ const COPY: Record<SupportedLanguage, WelcomeBackCopy> = {
   },
 };
 
-function getStoredNumber(key: string): number | null {
-  try {
-    const value = window.localStorage.getItem(key);
-    if (!value) return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function setStoredValue(storage: Storage, key: string, value: string): void {
-  try {
-    storage.setItem(key, value);
-  } catch {
-    // Storage can be unavailable in strict privacy modes. The card still works;
-    // it simply cannot persist its session/return cadence in that environment.
-  }
-}
-
-function getSessionValue(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
 function getDisplayName(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return 'there';
   return trimmed.split(/\s+/)[0] || trimmed;
+}
+
+async function claimAccountWelcomeBack(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('claim_welcome_back_visit');
+
+  if (error) {
+    // Fail closed: a missing/unavailable RPC must never block the homepage or
+    // fall back to browser-local heuristics that can misidentify a customer.
+    console.error('Welcome Back eligibility check failed:', error.message);
+    return false;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return Boolean(row && typeof row === 'object' && row.show_welcome === true);
 }
 
 export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
@@ -98,6 +87,7 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
     setSelectedCategory,
   } = useCart();
   const [visible, setVisible] = useState(false);
+  const claimRef = useRef<WelcomeBackClaim | null>(null);
 
   const copy = COPY[(language === 'th' || language === 'zh' ? language : 'en') as SupportedLanguage];
   const displayName = useMemo(
@@ -117,44 +107,30 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
       !userProfile.profile_completed ||
       userRole !== null
     ) {
+      claimRef.current = null;
       setVisible(false);
       return;
     }
 
-    const now = Date.now();
-    const sessionKey = `${SHOWN_THIS_SESSION_KEY_PREFIX}${user.id}`;
-    const shownMarker = getSessionValue(sessionKey);
-    const shownAt = shownMarker ? Number(shownMarker) : Number.NaN;
-    const shownRecently = Number.isFinite(shownAt)
-      && now - shownAt >= 0
-      && now - shownAt < RETURN_GAP_MS;
-
-    // The marker is timestamp-based so a long-lived/restored browser tab cannot
-    // suppress a genuine return days later. Legacy boolean "1" markers naturally
-    // expire because timestamp 1 is far outside the six-hour return window.
-    if (shownRecently) return;
-
-    const lastVisitKey = `${LAST_VISIT_KEY_PREFIX}${user.id}`;
-    const previousVisit = getStoredNumber(lastVisitKey);
-    const profileCreatedAt = Date.parse(userProfile.created_at);
-    const accountIsOldEnough = Number.isFinite(profileCreatedAt)
-      && now - profileCreatedAt >= RETURN_GAP_MS;
-    const returnedAfterGap = previousVisit !== null
-      && now - previousVisit >= RETURN_GAP_MS;
-
-    // Record the visit before showing the card. This makes the cadence resilient
-    // to reloads and prevents a short revisit from looking like a new return.
-    setStoredValue(window.localStorage, lastVisitKey, String(now));
-
-    if (!returnedAfterGap && !(previousVisit === null && accountIsOldEnough)) {
-      setVisible(false);
-      return;
+    // The server owns return cadence and visit history. Reuse one in-flight
+    // claim if AuthContext causes this effect to re-run so React StrictMode or a
+    // profile refresh cannot consume the server-side claim twice.
+    if (!claimRef.current || claimRef.current.userId !== user.id) {
+      claimRef.current = {
+        userId: user.id,
+        promise: claimAccountWelcomeBack(),
+      };
     }
 
-    // Keep a short-lived session guard as a storage fallback, but timestamp it so
-    // restored tabs can qualify again after the same six-hour return gap.
-    setStoredValue(window.sessionStorage, sessionKey, String(now));
-    setVisible(true);
+    let active = true;
+    const claim = claimRef.current.promise;
+    void claim.then((shouldShow) => {
+      if (active) setVisible(shouldShow);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loading, profileLoading, user, userProfile, userRole]);
 
   if (!visible || !user || !userProfile) return null;
