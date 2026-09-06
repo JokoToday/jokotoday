@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Rocket, Sparkles } from 'lucide-react';
+import { CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Rocket, Sparkles, Users } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
+import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
@@ -13,7 +14,7 @@ interface AdminWorkspaceProps {
   onNavigate: (page: string) => void;
 }
 
-type WorkspaceTab = 'cms' | 'homepage' | 'pickup-products' | 'pickup-dates' | 'pickup-rollout' | 'commerce-intelligence' | 'loyalty';
+type WorkspaceTab = 'cms' | 'homepage' | 'customer-experience' | 'pickup-products' | 'pickup-dates' | 'pickup-rollout' | 'commerce-intelligence' | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
   return window.location.pathname.startsWith('/admin/homepage') ? 'homepage' : 'cms';
@@ -64,6 +65,18 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             >
               <Monitor className="w-4 h-4" />
               Website / Homepage
+            </button>
+            <button
+              type="button"
+              onClick={() => selectWorkspaceTab('customer-experience')}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === 'customer-experience'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Customer Experience
             </button>
             <button
               type="button"
@@ -136,6 +149,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
           <HomepageBuilderAdmin />
         </Suspense>
       )}
+
+      {activeTab === 'customer-experience' && <CustomerExperienceManagement />}
 
       {activeTab === 'pickup-products' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
