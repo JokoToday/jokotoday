@@ -121,14 +121,19 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
       return;
     }
 
-    const sessionKey = `${SHOWN_THIS_SESSION_KEY_PREFIX}${user.id}`;
-
-    // A session marker prevents re-presenting the card after it has already
-    // appeared, but it must not hide the currently visible card if this effect
-    // re-runs because AuthContext refreshes the profile object.
-    if (getSessionValue(sessionKey) === '1') return;
-
     const now = Date.now();
+    const sessionKey = `${SHOWN_THIS_SESSION_KEY_PREFIX}${user.id}`;
+    const shownMarker = getSessionValue(sessionKey);
+    const shownAt = shownMarker ? Number(shownMarker) : Number.NaN;
+    const shownRecently = Number.isFinite(shownAt)
+      && now - shownAt >= 0
+      && now - shownAt < RETURN_GAP_MS;
+
+    // The marker is timestamp-based so a long-lived/restored browser tab cannot
+    // suppress a genuine return days later. Legacy boolean "1" markers naturally
+    // expire because timestamp 1 is far outside the six-hour return window.
+    if (shownRecently) return;
+
     const lastVisitKey = `${LAST_VISIT_KEY_PREFIX}${user.id}`;
     const previousVisit = getStoredNumber(lastVisitKey);
     const profileCreatedAt = Date.parse(userProfile.created_at);
@@ -146,9 +151,9 @@ export function WelcomeBackCard({ onNavigate }: WelcomeBackCardProps) {
       return;
     }
 
-    // "Shown once per browsing session" means navigation away and back to Home
-    // should not re-open the card. We mark this as soon as it is presented.
-    setStoredValue(window.sessionStorage, sessionKey, '1');
+    // Keep a short-lived session guard as a storage fallback, but timestamp it so
+    // restored tabs can qualify again after the same six-hour return gap.
+    setStoredValue(window.sessionStorage, sessionKey, String(now));
     setVisible(true);
   }, [loading, profileLoading, user, userProfile, userRole]);
 
