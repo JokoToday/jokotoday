@@ -66,9 +66,8 @@ export function HomeTopLikedSectionRenderer({
   if (products === null) {
     return (
       <Section
-        id="popular-right-now"
         spacing="standard"
-        className="bg-gradient-to-b from-primary-50/50 to-transparent scroll-mt-24"
+        className="bg-gradient-to-b from-primary-50/50 to-transparent"
       >
         <Container width={section.design.width}>
           <div className="text-center">

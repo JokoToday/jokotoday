@@ -58,10 +58,7 @@ export default function TopLikedSection({ onNavigate, onProductClick }: TopLiked
 
   if (loading) {
     return (
-      <section
-        id="popular-right-now"
-        className="py-12 bg-gradient-to-b from-primary-50/50 to-transparent scroll-mt-24"
-      >
+      <section className="py-12 bg-gradient-to-b from-primary-50/50 to-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
