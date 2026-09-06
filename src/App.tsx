@@ -6,6 +6,8 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
+import { getNotebookPath } from './platform/notebook';
+import type { NotebookTopLevelTarget } from './app/joko-today/notebook/NotebookShell';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -25,7 +27,8 @@ const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage
 const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
-const NotebookReaderProofPage = lazy(() => import('./app/joko-today/notebook/NotebookReaderProofPage'));
+const NotebookTodayPage = lazy(() => import('./app/joko-today/notebook/NotebookTodayPage'));
+const NotebookHistoryPage = lazy(() => import('./app/joko-today/notebook/NotebookHistoryPage'));
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
@@ -61,6 +64,15 @@ const STANDALONE_PATH_PAGES: Record<string, string> = Object.fromEntries(
   Object.entries(STANDALONE_PAGE_PATHS).map(([page, path]) => [path, page]),
 );
 
+const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
+  'notebook-today': getNotebookPath({ type: 'notebook.today' }),
+  'notebook-history': getNotebookPath({ type: 'notebook.history' }),
+};
+
+const NOTEBOOK_PATH_PAGES: Record<string, string> = Object.fromEntries(
+  Object.entries(NOTEBOOK_PAGE_PATHS).map(([page, path]) => [path, page]),
+);
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
@@ -78,11 +90,6 @@ function AppContent() {
 
       if (path === '/auth/callback') {
         setCurrentPage('auth-callback');
-        return;
-      }
-
-      if (path === '/__notebook/today') {
-        setCurrentPage('notebook-proof');
         return;
       }
 
@@ -140,6 +147,12 @@ function AppContent() {
 
       if (path === '/admin' || path.startsWith('/admin/')) {
         setCurrentPage('admin');
+        return;
+      }
+
+      const notebookPage = NOTEBOOK_PATH_PAGES[path];
+      if (notebookPage) {
+        setCurrentPage(notebookPage);
         return;
       }
 
@@ -206,6 +219,19 @@ function AppContent() {
     setCurrentPage(page);
   };
 
+  const handleNotebookNavigate = (target: NotebookTopLevelTarget) => {
+    const targetPath = getNotebookPath(target);
+    const targetPage = target.type === 'notebook.today'
+      ? 'notebook-today'
+      : 'notebook-history';
+
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+
+    setCurrentPage(targetPage);
+  };
+
   const renderPage = () => {
     if (currentPage === 'auth-callback') {
       return <AuthCallbackPage onNavigate={handleNavigate} />;
@@ -254,8 +280,10 @@ function AppContent() {
         return <MyLikesPage onNavigate={handleNavigate} />;
       case 'scan':
         return <ScanPage />;
-      case 'notebook-proof':
-        return <NotebookReaderProofPage />;
+      case 'notebook-today':
+        return <NotebookTodayPage onNavigate={handleNotebookNavigate} />;
+      case 'notebook-history':
+        return <NotebookHistoryPage onNavigate={handleNotebookNavigate} />;
       default:
         return <HomepageRendererGate onNavigate={handleNavigate} />;
     }
@@ -271,7 +299,8 @@ function AppContent() {
     currentPage === 'scan' ||
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
-    currentPage === 'notebook-proof';
+    currentPage === 'notebook-today' ||
+    currentPage === 'notebook-history';
 
   return (
     <div className="min-h-screen flex flex-col">
