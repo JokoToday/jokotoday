@@ -1,6 +1,7 @@
 export type TransactionalEmailLanguage = "en" | "th" | "zh";
 
-export const JOKO_EMAIL_LOGO_ASSET_URL = "https://joko.today/JOKO.TODAY_email_logo.png";
+export const JOKO_SITE_URL = "https://joko.today";
+export const JOKO_EMAIL_LOGO_ASSET_URL = `${JOKO_SITE_URL}/JOKO.TODAY_email_logo.png`;
 export const JOKO_EMAIL_LOGO_CONTENT_ID = "joko-today-logo";
 export const DEFAULT_JOKO_EMAIL_LOGO_URL = `cid:${JOKO_EMAIL_LOGO_CONTENT_ID}`;
 
@@ -141,7 +142,9 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
           <tr>
             <td style="padding:20px 32px;text-align:center;background:${theme.paper};border-top:1px solid ${theme.border};">
               <div style="font-size:12px;line-height:1.6;color:${theme.subtle};">${escapeHtml(footerText)}</div>
-              <div style="margin-top:3px;font-size:12px;line-height:1.6;color:${theme.ochre};">joko.today</div>
+              <div style="margin-top:3px;font-size:12px;line-height:1.6;">
+                <a href="${escapeHtml(JOKO_SITE_URL)}" style="color:${theme.ochre};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">joko.today</a>
+              </div>
             </td>
           </tr>
         </table>
