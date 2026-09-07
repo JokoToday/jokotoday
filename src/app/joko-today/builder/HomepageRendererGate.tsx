@@ -8,11 +8,13 @@ const HomepageExperiencePage = lazy(() => import('../home/HomepageExperiencePage
 
 type HomepageRendererGateProps = {
   onNavigate: (page: string) => void;
+  onExperienceFailure?: () => void;
 };
 
 type HomepageLoadBoundaryProps = {
   fallback: ReactNode;
   children: ReactNode;
+  onFailure?: () => void;
 };
 
 type HomepageLoadBoundaryState = {
@@ -28,6 +30,7 @@ class HomepageLoadBoundary extends Component<HomepageLoadBoundaryProps, Homepage
 
   componentDidCatch(error: Error) {
     console.error('[Homepage] Public renderer chunk/render failed; using legacy Homepage.', error);
+    this.props.onFailure?.();
   }
 
   render() {
@@ -36,12 +39,18 @@ class HomepageLoadBoundary extends Component<HomepageLoadBoundaryProps, Homepage
   }
 }
 
-export function HomepageRendererGate({ onNavigate }: HomepageRendererGateProps) {
+export function HomepageRendererGate({
+  onNavigate,
+  onExperienceFailure,
+}: HomepageRendererGateProps) {
   let homepage: ReactNode;
 
   if (homepageRendererMode === 'experience') {
     homepage = (
-      <HomepageLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
+      <HomepageLoadBoundary
+        fallback={<HomePage onNavigate={onNavigate} />}
+        onFailure={onExperienceFailure}
+      >
         <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
           <HomepageExperiencePage onNavigate={onNavigate} />
         </Suspense>
