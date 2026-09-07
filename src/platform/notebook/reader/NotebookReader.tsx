@@ -100,7 +100,7 @@ function NotebookBlockView({
       return (
         <figure className="space-y-3">
           {resolvedAsset ? (
-            <div className="relative mx-auto max-w-xl rotate-[-0.35deg] border border-primary-900/10 bg-white p-2 shadow-md">
+            <div className="relative mx-auto max-w-xl rotate-[-0.35deg] border border-primary-900/10 bg-background p-2 shadow-md">
               <img
                 src={resolvedAsset.src}
                 alt={alt}
@@ -110,7 +110,7 @@ function NotebookBlockView({
             </div>
           ) : (
             <div
-              className="relative mx-auto flex min-h-72 max-w-xl rotate-[-0.35deg] items-end overflow-hidden border border-primary-900/10 bg-white/45 p-6 shadow-sm"
+              className="relative mx-auto flex min-h-72 max-w-xl rotate-[-0.35deg] items-end overflow-hidden border border-primary-900/10 bg-background/60 p-6 shadow-sm"
               role="img"
               aria-label={alt}
             >
@@ -216,12 +216,12 @@ function NotebookSurface({
   onNavigate,
 }: NotebookSurfaceProps) {
   const desktopPaper = side === 'left'
-    ? 'lg:rounded-l-[2.25rem] lg:bg-gradient-to-br lg:from-amber-50/80 lg:via-white lg:to-primary-50/25'
-    : 'lg:rounded-r-[2.25rem] lg:bg-gradient-to-bl lg:from-amber-50/80 lg:via-white lg:to-primary-50/25';
+    ? 'lg:rounded-l-[2.25rem] lg:bg-gradient-to-br lg:from-background-secondary/80 lg:via-background lg:to-primary-50/25'
+    : 'lg:rounded-r-[2.25rem] lg:bg-gradient-to-bl lg:from-background-secondary/80 lg:via-background lg:to-primary-50/25';
 
   return (
     <article
-      className={`relative min-h-[34rem] rounded-3xl border border-primary-900/10 bg-gradient-to-br from-amber-50/80 via-white to-primary-50/25 px-6 py-8 shadow-lg sm:min-h-[38rem] sm:px-8 sm:py-10 lg:min-h-[43rem] lg:rounded-none lg:border-0 lg:px-10 lg:py-12 lg:shadow-none ${desktopPaper}`}
+      className={`relative min-h-[34rem] rounded-3xl border border-primary-900/10 bg-gradient-to-br from-background-secondary/80 via-background to-primary-50/25 px-6 py-8 shadow-lg sm:min-h-[38rem] sm:px-8 sm:py-10 lg:min-h-[43rem] lg:rounded-none lg:border-0 lg:px-10 lg:py-12 lg:shadow-none ${desktopPaper}`}
       aria-label={`Notebook surface ${pageNumber}`}
     >
       <div className="space-y-8 sm:space-y-10">
@@ -247,7 +247,7 @@ function NotebookSurface({
 function EmptyNotebookSurface(): ReactNode {
   return (
     <div
-      className="hidden min-h-[43rem] rounded-r-[2.25rem] bg-gradient-to-bl from-amber-50/80 via-white to-primary-50/25 lg:block"
+      className="hidden min-h-[43rem] rounded-r-[2.25rem] bg-gradient-to-bl from-background-secondary/80 via-background to-primary-50/25 lg:block"
       aria-hidden="true"
     />
   );
@@ -281,7 +281,7 @@ export function NotebookReader({
           <span className="h-16 w-5 rounded-r-md bg-primary-100" />
         </div>
 
-        <div className="relative z-10 space-y-5 lg:overflow-hidden lg:rounded-[2.25rem] lg:border lg:border-primary-900/10 lg:bg-background lg:shadow-[0_24px_70px_rgba(69,26,3,0.14)]">
+        <div className="relative z-10 space-y-5 lg:overflow-hidden lg:rounded-[2.25rem] lg:border lg:border-primary-900/10 lg:bg-background lg:shadow-[0_24px_70px_rgb(var(--color-primary-950)/0.14)]">
           {spreads.map(([leftSurface, rightSurface], spreadIndex) => {
             const leftPageNumber = spreadIndex * 2 + 1;
             const rightPageNumber = leftPageNumber + 1;
