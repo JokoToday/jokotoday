@@ -82,6 +82,7 @@ function AppContent() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [qrSource, setQrSource] = useState<string | null>(null);
+  const [homepageExperienceFailed, setHomepageExperienceFailed] = useState(false);
 
   useEffect(() => {
     const syncPageFromLocation = () => {
@@ -261,7 +262,12 @@ function AppContent() {
 
     switch (currentPage) {
       case 'home':
-        return <HomepageRendererGate onNavigate={handleNavigate} />;
+        return (
+          <HomepageRendererGate
+            onNavigate={handleNavigate}
+            onExperienceFailure={() => setHomepageExperienceFailed(true)}
+          />
+        );
       case 'homepage-experience-preview':
         return <HomepageExperiencePage onNavigate={handleNavigate} />;
       case 'products':
@@ -303,7 +309,11 @@ function AppContent() {
 
   const isHomepageExperience =
     currentPage === 'homepage-experience-preview'
-    || (currentPage === 'home' && homepageRendererMode === 'experience');
+    || (
+      currentPage === 'home'
+      && homepageRendererMode === 'experience'
+      && !homepageExperienceFailed
+    );
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
