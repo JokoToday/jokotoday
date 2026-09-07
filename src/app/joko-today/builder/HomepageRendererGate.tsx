@@ -4,29 +4,30 @@ import HomePage from '../../../pages/HomePage';
 import { homepageRendererMode } from './homepageFeatureFlags';
 
 const PublishedBuilderHomepage = lazy(() => import('./PublishedBuilderHomepage'));
+const HomepageExperiencePage = lazy(() => import('../home/HomepageExperiencePage'));
 
 type HomepageRendererGateProps = {
   onNavigate: (page: string) => void;
 };
 
-type BuilderLoadBoundaryProps = {
+type HomepageLoadBoundaryProps = {
   fallback: ReactNode;
   children: ReactNode;
 };
 
-type BuilderLoadBoundaryState = {
+type HomepageLoadBoundaryState = {
   failed: boolean;
 };
 
-class BuilderLoadBoundary extends Component<BuilderLoadBoundaryProps, BuilderLoadBoundaryState> {
-  state: BuilderLoadBoundaryState = { failed: false };
+class HomepageLoadBoundary extends Component<HomepageLoadBoundaryProps, HomepageLoadBoundaryState> {
+  state: HomepageLoadBoundaryState = { failed: false };
 
-  static getDerivedStateFromError(): BuilderLoadBoundaryState {
+  static getDerivedStateFromError(): HomepageLoadBoundaryState {
     return { failed: true };
   }
 
   componentDidCatch(error: Error) {
-    console.error('[Homepage Builder] Public renderer chunk/render failed; using legacy Homepage.', error);
+    console.error('[Homepage] Public renderer chunk/render failed; using legacy Homepage.', error);
   }
 
   render() {
@@ -36,15 +37,27 @@ class BuilderLoadBoundary extends Component<BuilderLoadBoundaryProps, BuilderLoa
 }
 
 export function HomepageRendererGate({ onNavigate }: HomepageRendererGateProps) {
-  const homepage = homepageRendererMode !== 'builder'
-    ? <HomePage onNavigate={onNavigate} />
-    : (
-      <BuilderLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
+  let homepage: ReactNode;
+
+  if (homepageRendererMode === 'experience') {
+    homepage = (
+      <HomepageLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
+        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
+          <HomepageExperiencePage onNavigate={onNavigate} />
+        </Suspense>
+      </HomepageLoadBoundary>
+    );
+  } else if (homepageRendererMode === 'builder') {
+    homepage = (
+      <HomepageLoadBoundary fallback={<HomePage onNavigate={onNavigate} />}>
         <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
           <PublishedBuilderHomepage onNavigate={onNavigate} />
         </Suspense>
-      </BuilderLoadBoundary>
+      </HomepageLoadBoundary>
     );
+  } else {
+    homepage = <HomePage onNavigate={onNavigate} />;
+  }
 
   return (
     <>
