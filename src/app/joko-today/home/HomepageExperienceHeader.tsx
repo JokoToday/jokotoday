@@ -16,6 +16,7 @@ type NavItem = {
   key: string;
   label: string;
   target?: string;
+  current?: boolean;
 };
 
 const copy = {
@@ -69,7 +70,7 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
   const labels = copy[language];
 
   const navItems: NavItem[] = [
-    { key: 'today', label: labels.today, target: 'notebook-today' },
+    { key: 'today', label: labels.today, current: true },
     { key: 'stories', label: labels.stories },
     { key: 'curiosities', label: labels.curiosities },
     { key: 'people', label: labels.people },
@@ -113,7 +114,14 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
               <ul className="flex items-center gap-7">
                 {navItems.map((item) => (
                   <li key={item.key}>
-                    {item.target ? (
+                    {item.current ? (
+                      <span
+                        className="border-b border-primary-700 pb-1 text-sm font-semibold text-primary-950"
+                        aria-current="page"
+                      >
+                        {item.label}
+                      </span>
+                    ) : item.target ? (
                       <button
                         type="button"
                         onClick={() => handleNav(item.target)}
@@ -195,14 +203,23 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
                 <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {navItems.map((item) => (
                     <li key={item.key}>
-                      <button
-                        type="button"
-                        onClick={() => handleNav(item.target)}
-                        disabled={!item.target}
-                        className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary-950 transition hover:bg-background/70 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-default disabled:text-primary-950/45"
-                      >
-                        {item.label}
-                      </button>
+                      {item.current ? (
+                        <span
+                          className="block w-full rounded-lg bg-background/70 px-3 py-2 text-left text-sm font-semibold text-primary-950"
+                          aria-current="page"
+                        >
+                          {item.label}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleNav(item.target)}
+                          disabled={!item.target}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary-950 transition hover:bg-background/70 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-default disabled:text-primary-950/45"
+                        >
+                          {item.label}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
