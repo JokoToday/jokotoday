@@ -30,6 +30,9 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ A
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 const NotebookTodayPage = lazy(() => import('./app/joko-today/notebook/NotebookTodayPage'));
 const NotebookHistoryPage = lazy(() => import('./app/joko-today/notebook/NotebookHistoryPage'));
+const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
+
+const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
@@ -151,6 +154,11 @@ function AppContent() {
         return;
       }
 
+      if (path === HOMEPAGE_EXPERIENCE_PREVIEW_PATH) {
+        setCurrentPage('homepage-experience-preview');
+        return;
+      }
+
       const notebookPage = NOTEBOOK_PATH_PAGES[path];
       if (notebookPage) {
         setCurrentPage(notebookPage);
@@ -254,6 +262,8 @@ function AppContent() {
     switch (currentPage) {
       case 'home':
         return <HomepageRendererGate onNavigate={handleNavigate} />;
+      case 'homepage-experience-preview':
+        return <HomepageExperiencePage onNavigate={handleNavigate} />;
       case 'products':
         return <ProductsPage initialProductSlug={productSlug} qrSource={qrSource} onProductOpened={() => { setProductSlug(null); setQrSource(null); }} />;
       case 'checkout':
@@ -291,7 +301,9 @@ function AppContent() {
     }
   };
 
-  const isHomepageExperience = currentPage === 'home' && homepageRendererMode === 'experience';
+  const isHomepageExperience =
+    currentPage === 'homepage-experience-preview'
+    || (currentPage === 'home' && homepageRendererMode === 'experience');
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
