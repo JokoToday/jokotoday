@@ -39,8 +39,6 @@ const labels = {
 function SceneArtworkPlaceholder({ alt }: { alt: string }) {
   return (
     <div className="absolute inset-0 overflow-hidden" role="img" aria-label={alt}>
-      <span className="sr-only">{alt}</span>
-
       <div className="absolute left-[8%] top-[32%] h-px w-[29%] -rotate-2 bg-primary-900/16" aria-hidden="true" />
       <div className="absolute left-[14%] top-[38%] h-20 w-28 rounded-[50%_50%_8%_8%] border border-b-0 border-primary-900/14" aria-hidden="true" />
       <div className="absolute left-[19%] top-[52%] h-24 w-px bg-primary-900/12" aria-hidden="true" />
@@ -66,7 +64,6 @@ function ProductArtworkPlaceholder({ alt }: { alt: string }) {
       role="img"
       aria-label={alt}
     >
-      <span className="sr-only">{alt}</span>
       <span className="absolute left-4 top-1/2 h-8 w-20 -translate-y-1/2 rotate-6 rounded-[60%_40%_55%_45%] border border-primary-700/24" aria-hidden="true" />
       <span className="absolute left-7 top-1/2 h-px w-14 -translate-y-1/2 rotate-6 bg-primary-700/18" aria-hidden="true" />
       <span className="absolute left-9 top-[39%] h-8 w-px rotate-[24deg] bg-primary-700/16" aria-hidden="true" />
@@ -98,7 +95,7 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
           aria-hidden="true"
         />
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-primary-900/18 bg-background shadow-[0_22px_55px_rgb(var(--joko-color-brand-950)/0.14)] sm:rounded-[2.35rem]">
+        <div className="relative overflow-hidden rounded-[2rem] border border-primary-900/18 bg-background shadow-2xl sm:rounded-[2.35rem]">
           <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-primary-900/10 bg-background px-5 py-2.5 text-xs font-semibold text-primary-950 sm:px-8 lg:px-10">
             <div className="flex items-center gap-6 sm:gap-8">
               <span className="border-b-2 border-primary-700 pb-1 text-primary-950" aria-current="page">
@@ -139,7 +136,7 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
                 </p>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 top-[7.6rem] sm:top-[8rem]" aria-hidden="true">
+              <div className="absolute inset-x-0 bottom-0 top-[7.6rem] sm:top-[8rem]">
                 <SceneArtworkPlaceholder alt={copy.sceneAlt} />
               </div>
 
