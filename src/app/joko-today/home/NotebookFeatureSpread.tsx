@@ -13,7 +13,7 @@ const labels = {
   en: {
     today: 'Today',
     history: 'History',
-    openNotebook: 'Open notebook',
+    openNotebook: 'Come for more',
     favourite: 'Emma’s favourite is',
     sceneAlt: 'Emma noticing a small flower at Sunday Walking Street.',
     productAlt: 'Reserved space for the approved Almond Croissant photograph.',
@@ -21,7 +21,7 @@ const labels = {
   th: {
     today: 'วันนี้',
     history: 'ย้อนหลัง',
-    openNotebook: 'เปิดสมุดบันทึก',
+    openNotebook: 'เปิดดูต่อ',
     favourite: 'เมนูโปรดของ Emma คือ',
     sceneAlt: 'Emma กำลังสังเกตดอกไม้เล็ก ๆ ที่ถนนคนเดินวันอาทิตย์',
     productAlt: 'พื้นที่สำหรับภาพอัลมอนด์ครัวซองต์ที่ได้รับการอนุมัติ',
@@ -29,12 +29,49 @@ const labels = {
   zh: {
     today: '今日',
     history: '往期',
-    openNotebook: '打开笔记本',
+    openNotebook: '继续翻阅',
     favourite: 'Emma 最喜欢的是',
     sceneAlt: 'Emma 在星期日步行街留意一朵小花。',
     productAlt: '为最终确认的杏仁可颂照片预留的位置。',
   },
 } as const;
+
+function SceneArtworkPlaceholder({ alt }: { alt: string }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden" role="img" aria-label={alt}>
+      <div className="absolute left-[8%] top-[32%] h-px w-[29%] -rotate-2 bg-primary-900/[.16]" aria-hidden="true" />
+      <div className="absolute left-[14%] top-[38%] h-20 w-28 rounded-[50%_50%_8%_8%] border border-b-0 border-primary-900/[.14]" aria-hidden="true" />
+      <div className="absolute left-[19%] top-[52%] h-24 w-px bg-primary-900/[.12]" aria-hidden="true" />
+
+      <div className="absolute left-[41%] top-[30%] h-40 w-px -rotate-6 bg-primary-900/10" aria-hidden="true" />
+      <div className="absolute left-[43%] top-[34%] h-px w-24 rotate-6 bg-primary-900/[.13]" aria-hidden="true" />
+      <div className="absolute left-[47%] top-[40%] h-2 w-2 rounded-full border border-primary-900/[.18]" aria-hidden="true" />
+
+      <div className="absolute right-[12%] top-[23%] h-px w-[23%] rotate-6 bg-primary-900/[.13]" aria-hidden="true" />
+      <div className="absolute right-[18%] top-[31%] h-14 w-24 rounded-[50%_50%_8%_8%] border border-b-0 border-primary-900/[.12]" aria-hidden="true" />
+      <div className="absolute right-[24%] top-[41%] h-20 w-px bg-primary-900/10" aria-hidden="true" />
+
+      <div className="absolute bottom-[17%] left-[7%] h-px w-[78%] rotate-1 bg-primary-900/10" aria-hidden="true" />
+      <div className="absolute bottom-[13%] left-[17%] h-px w-[62%] -rotate-2 bg-primary-900/[.08]" aria-hidden="true" />
+    </div>
+  );
+}
+
+function ProductArtworkPlaceholder({ alt }: { alt: string }) {
+  return (
+    <div
+      className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-background/70 shadow-sm sm:h-24 sm:w-36"
+      role="img"
+      aria-label={alt}
+    >
+      <span className="absolute left-4 top-1/2 h-8 w-20 -translate-y-1/2 rotate-6 rounded-[60%_40%_55%_45%] border border-primary-700/[.24]" aria-hidden="true" />
+      <span className="absolute left-7 top-1/2 h-px w-14 -translate-y-1/2 rotate-6 bg-primary-700/[.18]" aria-hidden="true" />
+      <span className="absolute left-9 top-[39%] h-8 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
+      <span className="absolute left-14 top-[37%] h-9 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
+      <span className="absolute left-[4.75rem] top-[39%] h-8 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
+    </div>
+  );
+}
 
 export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpreadProps) {
   const { site, today, entries } = jokoTodayNotebookFixture;
@@ -47,98 +84,114 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
   const todayEyebrow = firstBlock?.type === 'text' ? text(firstBlock.eyebrow) : '';
 
   return (
-    <section aria-label={text(today.title)} className="min-w-0">
-      <div className="relative mx-auto max-w-5xl">
-        <div className="absolute -bottom-3 left-8 right-8 top-4 rounded-[2.5rem] bg-primary-950/10 blur-sm" aria-hidden="true" />
+    <section aria-label={text(today.title)} className="min-w-0 lg:-mr-3 xl:-mr-6">
+      <div className="relative mx-auto max-w-[68rem] pb-5">
+        <div
+          className="absolute bottom-0 left-2 right-2 top-7 rounded-[2.4rem] border border-primary-900/[.18] bg-primary-700/[.16] shadow-xl sm:left-4 sm:right-4 lg:-left-1 lg:-right-1"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute bottom-1 left-[5%] right-[5%] h-5 rounded-b-[2.25rem] border-b border-primary-900/20 bg-primary-800/[.15] shadow-lg"
+          aria-hidden="true"
+        />
 
-        <div className="relative overflow-hidden rounded-[2rem] border border-primary-900/15 bg-background shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-900/10 bg-background-secondary/70 px-5 py-3 text-xs font-semibold text-primary-950 sm:px-7">
-            <div className="flex items-center gap-6">
-              <button
-                type="button"
-                onClick={() => onNavigate('notebook-today')}
-                className="border-b border-primary-700 pb-1 text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-              >
+        <div className="relative overflow-hidden rounded-[2rem] border border-primary-900/[.18] bg-background shadow-2xl sm:rounded-[2.35rem]">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-primary-900/10 bg-background px-5 py-2.5 text-xs font-semibold text-primary-950 sm:px-8 lg:px-10">
+            <div className="flex items-center gap-6 sm:gap-8">
+              <span className="border-b-2 border-primary-700 pb-1 text-primary-950" aria-current="page">
                 {copy.today}
-              </button>
+              </span>
               <button
                 type="button"
                 onClick={() => onNavigate('notebook-history')}
-                className="inline-flex items-center gap-1.5 text-primary-950/70 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="inline-flex items-center gap-1.5 border-b border-transparent pb-1 text-primary-950/[.65] transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 {copy.history}
                 <Clock3 className="h-3.5 w-3.5" />
               </button>
             </div>
+
             <button
               type="button"
               onClick={() => onNavigate('notebook-today')}
-              className="text-primary-700 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              className="border-b border-transparent pb-1 text-primary-950/70 transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
-              {copy.openNotebook} →
+              {copy.openNotebook} <span aria-hidden="true">→</span>
             </button>
           </div>
 
           <div className="relative grid lg:grid-cols-2">
-            <article className="relative min-h-[30rem] bg-gradient-to-br from-background-secondary/45 via-background to-background px-6 py-8 sm:px-9 sm:py-10 lg:min-h-[34rem]">
-              {todayEyebrow && (
-                <p className="text-[11px] font-semibold uppercase tracking-[0.19em] text-primary-700">
-                  {todayEyebrow}
-                </p>
-              )}
-              <h2 className="mt-3 font-header text-4xl font-semibold leading-tight text-primary-950 sm:text-5xl">
-                {text(today.title)}
-              </h2>
-              <p className="mt-1 font-header text-xl text-primary-950/80">
-                {text(today.subtitle)}
-              </p>
-
-              <figure
-                className="relative mt-8 min-h-64 overflow-hidden rounded-[1.75rem] border border-primary-900/10 bg-background-secondary/30"
-                role="img"
-                aria-label={copy.sceneAlt}
-              >
-                <div className="absolute left-8 top-12 h-px w-2/3 -rotate-3 bg-primary-900/15" aria-hidden="true" />
-                <div className="absolute left-10 top-24 h-24 w-24 rounded-full border border-primary-900/15" aria-hidden="true" />
-                <div className="absolute bottom-14 right-10 h-px w-1/2 rotate-6 bg-primary-900/15" aria-hidden="true" />
-                <figcaption className="absolute bottom-5 left-6 right-6 font-header text-sm italic leading-6 text-primary-950/55">
-                  {copy.sceneAlt}
-                </figcaption>
-              </figure>
-            </article>
-
-            <article className="relative min-h-[24rem] bg-gradient-to-bl from-background-secondary/40 via-background to-background px-6 py-8 sm:px-9 sm:py-10 lg:min-h-[34rem]">
-              <div className="relative ml-auto mt-8 max-w-sm rotate-1 border border-primary-900/10 bg-background-secondary px-6 pb-6 pt-8 shadow-md">
-                <span className="absolute left-1/2 top-0 h-4 w-24 -translate-x-1/2 -translate-y-1/2 -rotate-2 bg-primary-200/80" aria-hidden="true" />
-                <p className="font-header text-2xl font-semibold leading-tight text-primary-950">
-                  {copy.favourite}
-                </p>
-                {almond && (
-                  <p className="mt-2 font-header text-3xl font-semibold text-primary-700">
-                    {text(almond.title)}
+            <article className="relative min-h-[29rem] overflow-hidden bg-gradient-to-br from-background-secondary/[.26] via-background to-background px-7 pb-8 pt-8 sm:min-h-[32rem] sm:px-10 sm:pt-9 lg:min-h-[35rem] lg:rounded-bl-[2.1rem] lg:px-11">
+              <div className="relative z-20 max-w-[19rem]">
+                {todayEyebrow && (
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-700 sm:text-[11px]">
+                    {todayEyebrow}
                   </p>
                 )}
-                <div className="mt-6 flex items-end justify-between gap-4">
-                  <span className="text-3xl text-primary-700" aria-hidden="true">→</span>
-                  <div
-                    className="h-24 w-36 rounded-xl border border-primary-900/10 bg-background/65 shadow-sm"
-                    role="img"
-                    aria-label={copy.productAlt}
-                  />
+                <h2 className="mt-2 font-header text-3xl font-semibold leading-[1.05] tracking-tight text-primary-950 sm:text-4xl">
+                  {text(today.title)}
+                </h2>
+                <p className="mt-1 inline-block border-b border-primary-900/[.45] pb-1 font-header text-lg text-primary-950/80 sm:text-xl">
+                  {text(today.subtitle)}
+                </p>
+              </div>
+
+              <div className="absolute inset-x-0 bottom-0 top-[7.6rem] sm:top-[8rem]">
+                <SceneArtworkPlaceholder alt={copy.sceneAlt} />
+              </div>
+
+              <span className="absolute bottom-5 left-7 font-header text-[11px] italic text-primary-950/[.38] sm:left-10" aria-hidden="true">
+                2
+              </span>
+            </article>
+
+            <article className="relative min-h-[29rem] overflow-hidden bg-gradient-to-bl from-background-secondary/[.22] via-background to-background px-7 pb-8 pt-8 sm:min-h-[32rem] sm:px-10 sm:pt-9 lg:min-h-[35rem] lg:rounded-br-[2.1rem] lg:px-11">
+              <div className="absolute inset-0" aria-hidden="true">
+                <div className="absolute left-[12%] top-[16%] h-px w-[36%] rotate-6 bg-primary-900/10" />
+                <div className="absolute left-[34%] top-[23%] h-24 w-px -rotate-6 bg-primary-900/10" />
+                <div className="absolute right-[10%] top-[27%] h-16 w-28 rounded-[50%_50%_6%_6%] border border-b-0 border-primary-900/10" />
+                <div className="absolute right-[23%] top-[38%] h-20 w-px bg-primary-900/10" />
+                <div className="absolute left-[18%] top-[42%] h-px w-[62%] -rotate-2 bg-primary-900/[.08]" />
+              </div>
+
+              <div className="absolute bottom-14 right-6 z-20 w-[82%] max-w-md rotate-[-1.4deg] border border-primary-900/10 bg-background-secondary px-5 py-5 shadow-lg sm:bottom-16 sm:right-8 sm:px-6 lg:right-9">
+                <span
+                  className="absolute left-[38%] top-0 h-4 w-24 -translate-y-1/2 rotate-[-2deg] bg-primary-200/80"
+                  aria-hidden="true"
+                />
+
+                <div className="flex items-end justify-between gap-5">
+                  <div className="min-w-0 pb-1">
+                    <p className="font-header text-lg font-semibold leading-tight text-primary-950 sm:text-xl">
+                      {copy.favourite}
+                    </p>
+                    {almond && (
+                      <p className="mt-1 font-header text-xl font-semibold leading-tight text-primary-950 sm:text-2xl">
+                        {text(almond.title)}
+                      </p>
+                    )}
+                    <span className="mt-4 inline-block text-3xl leading-none text-primary-700" aria-hidden="true">→</span>
+                  </div>
+
+                  <ProductArtworkPlaceholder alt={copy.productAlt} />
                 </div>
               </div>
 
-              <p className="absolute bottom-6 right-7 font-header text-xs italic text-primary-950/45" aria-hidden="true">
+              <span className="absolute bottom-5 right-7 font-header text-[11px] italic text-primary-950/[.38] sm:right-10" aria-hidden="true">
                 3
-              </p>
+              </span>
             </article>
 
             <div
-              className="pointer-events-none absolute bottom-0 left-1/2 top-0 hidden w-12 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary-950/5 to-transparent lg:block"
+              className="pointer-events-none absolute bottom-0 left-1/2 top-0 z-30 hidden w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary-950/[.06] to-transparent lg:block"
               aria-hidden="true"
             />
             <div
-              className="pointer-events-none absolute bottom-8 left-1/2 top-8 hidden w-px -translate-x-1/2 bg-primary-950/10 lg:block"
+              className="pointer-events-none absolute bottom-6 left-1/2 top-6 z-30 hidden w-px -translate-x-1/2 bg-primary-950/[.12] lg:block"
+              aria-hidden="true"
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 left-1/2 top-0 z-20 hidden w-3 -translate-x-1/2 bg-gradient-to-r from-background/30 via-primary-950/[.04] to-background/30 lg:block"
               aria-hidden="true"
             />
           </div>
