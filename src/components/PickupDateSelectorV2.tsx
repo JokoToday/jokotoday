@@ -92,6 +92,7 @@ export function PickupDateSelectorV2({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeDateId, setActiveDateId] = useState<string | null>(value?.pickupDateId || null);
+  const [pendingLocationId, setPendingLocationId] = useState<string | null>(value?.pickupLocationId || null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthStart(new Date()));
   const [locationFilterId, setLocationFilterId] = useState<string>('all');
 
@@ -202,6 +203,10 @@ export function PickupDateSelectorV2({
     }
   }, [value?.pickupDateId, value?.pickupLocationId, commonDates, commonDateById, calendarDates, activeDateId]);
 
+  useEffect(() => {
+    setPendingLocationId(value?.pickupDateId === activeDateId ? value.pickupLocationId : null);
+  }, [activeDateId, value?.pickupDateId, value?.pickupLocationId]);
+
   const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
   const activeCalendarDate = activeDateId ? calendarDateById.get(activeDateId) || null : null;
   const activeCommonDate = activeDateId ? commonDateById.get(activeDateId) || null : null;
@@ -224,6 +229,9 @@ export function PickupDateSelectorV2({
       && activeCalendarDate.pickupDateId !== value.pickupDateId
       && !activeCalendarDate.locations.some((location) => location.id === value.pickupLocationId),
   );
+  const pendingLocation = activeCalendarDate && pendingLocationId
+    ? activeCalendarDate.locations.find((location) => location.id === pendingLocationId) || null
+    : null;
 
   const calendarMonthIndices = visibleCalendarDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
   const currentMonthIndex = monthIndex(visibleMonth);
@@ -264,11 +272,12 @@ export function PickupDateSelectorV2({
     setVisibleMonth(monthStart(utcDateFromKey(date.pickupDate)));
   };
 
-  const selectLocation = (date: CommonPickupDateAvailability, locationId: string) => {
+  const confirmPickupSelection = (date: CommonPickupDateAvailability) => {
+    if (!pendingLocationId) return;
     onChange({
       pickupDateId: date.pickupDateId,
       pickupDate: date.pickupDate,
-      pickupLocationId: locationId,
+      pickupLocationId: pendingLocationId,
       scheduleId: date.scheduleId,
       scheduleKey: date.scheduleKey,
     });
@@ -291,11 +300,21 @@ export function PickupDateSelectorV2({
       ? '选择取货日期和地点'
       : 'Choose pickup date and location';
   const helper = language === 'th'
-    ? 'เลือกสถานที่หรือวันที่ใหม่ได้ โดยการรับสินค้าที่คุณยืนยันไว้จะยังไม่เปลี่ยนจนกว่าคุณจะเลือกสถานที่สำหรับวันใหม่'
+    ? 'เลือกวันและสถานที่ แล้วกดยืนยันการรับสินค้า การรับสินค้าที่เคยยืนยันไว้จะยังไม่เปลี่ยนจนกว่าคุณจะกดยืนยัน'
     : language === 'zh'
-      ? '您可以先查看新的地点或日期；在为新日期选择取货地点之前，原已确认的取货安排不会改变。'
-      : 'Explore another location or date first. Your confirmed pickup stays unchanged until you choose a location for the new date.';
+      ? '请选择日期和地点，然后确认取货安排。在您确认之前，原有的取货安排不会改变。'
+      : 'Choose a date and location, then confirm your pickup. Your existing pickup stays unchanged until you confirm.';
   const allLocationsLabel = language === 'th' ? 'ทุกสถานที่' : language === 'zh' ? '全部地点' : 'All locations';
+  const confirmPickupLabel = language === 'th'
+    ? 'ยืนยันวันและสถานที่รับสินค้า'
+    : language === 'zh'
+      ? '确认取货日期和地点'
+      : 'Confirm date & location';
+  const selectLocationPrompt = language === 'th'
+    ? 'เลือกสถานที่รับสินค้าด้านบนเพื่อดำเนินการต่อ'
+    : language === 'zh'
+      ? '请先选择上方的取货地点以继续'
+      : 'Select a pickup location above to continue';
 
   return (
     <div className="max-w-3xl mx-auto mb-8">
@@ -578,10 +597,10 @@ export function PickupDateSelectorV2({
                     <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>
                       {language === 'th'
-                        ? 'สินค้าทั้งหมดในตะกร้ามีจำนวนเพียงพอสำหรับวันนี้ เลือกจุดรับสินค้าด้านล่างเพื่อยืนยันการเปลี่ยนแปลง'
+                        ? 'สินค้าทั้งหมดในตะกร้ามีเพียงพอสำหรับวันนี้ เลือกจุดรับสินค้าด้านล่าง แล้วกดยืนยันการรับสินค้า'
                         : language === 'zh'
-                          ? '购物篮中的所有商品在该日期都有足够库存。请在下方选择取货地点以确认更改。'
-                          : 'Everything in your basket is available for this date. Choose a pickup location below to confirm the change.'}
+                          ? '购物篮中的所有商品在该日期都有足够库存。请在下方选择取货地点，然后确认取货安排。'
+                          : 'Everything in your basket is available for this date. Choose a pickup location below, then confirm your pickup.'}
                     </span>
                   </div>
                 ) : null}
@@ -603,8 +622,7 @@ export function PickupDateSelectorV2({
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {activeCalendarDate.locations.map((location) => {
-                      const isLocationSelected = value?.pickupDateId === activeCalendarDate.pickupDateId
-                        && value.pickupLocationId === location.id;
+                      const isLocationSelected = pendingLocationId === location.id;
                       const name = localizedLocationName(location, language);
                       const description = language === 'th'
                         ? location.description_th || location.description_en
@@ -616,23 +634,32 @@ export function PickupDateSelectorV2({
                       return (
                         <div
                           key={location.id}
-                          className={`rounded-xl border overflow-hidden ${isLocationSelected ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300' : 'border-gray-200 bg-white'}`}
+                          className={`rounded-xl border overflow-hidden transition-all ${isLocationSelected ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-200 shadow-sm' : 'border-gray-200 bg-white'}`}
                         >
                           <button
                             type="button"
-                            onClick={() => activeCommonDate && selectLocation(activeCommonDate, location.id)}
+                            onClick={() => canSelectLocation && setPendingLocationId(location.id)}
                             disabled={!canSelectLocation}
-                            className="w-full text-left px-4 py-3 transition-colors hover:bg-amber-50/50 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-pressed={isLocationSelected}
+                            className="w-full text-left px-4 py-4 transition-colors hover:bg-amber-50/60 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            <p className="font-medium text-gray-900">{name}</p>
-                            {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-gray-900">{name}</p>
+                                {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+                              </div>
+                              {isLocationSelected && (
+                                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </span>
+                              )}
+                            </div>
                             {canSelectLocation && (
-                              <span className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold ${isLocationSelected ? 'border border-amber-300 bg-amber-100 text-amber-900' : 'bg-amber-600 text-white shadow-sm'}`}>
-                                {isLocationSelected && <CheckCircle2 className="w-4 h-4" />}
+                              <p className={`mt-3 text-xs font-semibold ${isLocationSelected ? 'text-amber-800' : 'text-gray-500'}`}>
                                 {isLocationSelected
-                                  ? (language === 'th' ? 'เลือกแล้ว' : language === 'zh' ? '已选择' : 'Selected')
-                                  : (language === 'th' ? 'ใช้สถานที่นี้' : language === 'zh' ? '使用此地点' : 'Use this location')}
-                              </span>
+                                  ? (language === 'th' ? 'เลือกสถานที่นี้แล้ว' : language === 'zh' ? '已选择此地点' : 'Location selected')
+                                  : (language === 'th' ? 'เลือกสถานที่นี้' : language === 'zh' ? '选择此地点' : 'Select this location')}
+                              </p>
                             )}
                           </button>
                           {location.maps_url && (
@@ -650,6 +677,41 @@ export function PickupDateSelectorV2({
                       );
                     })}
                   </div>
+
+                  {activeCommonDate && (
+                    <div className="mt-5 rounded-xl border-2 border-amber-300 bg-amber-50 p-3 sm:p-4 shadow-sm">
+                      {pendingLocation ? (
+                        <p className="mb-3 text-center text-sm font-semibold text-amber-950">
+                          {new Intl.DateTimeFormat(locale, {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            timeZone: 'UTC',
+                          }).format(utcDateFromKey(activeCalendarDate.pickupDate))}
+                          {' · '}
+                          {localizedLocationName(pendingLocation, language)}
+                        </p>
+                      ) : (
+                        <p className="mb-3 text-center text-sm font-medium text-amber-900">{selectLocationPrompt}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => confirmPickupSelection(activeCommonDate)}
+                        disabled={!pendingLocationId}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-amber-700 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-amber-200 disabled:bg-gray-300 disabled:text-gray-600 disabled:shadow-none disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        {confirmPickupLabel}
+                      </button>
+                      <p className="mt-2 text-center text-xs text-gray-500">
+                        {language === 'th'
+                          ? 'ขั้นตอนนี้ยืนยันการรับสินค้าก่อนที่คุณจะสั่งซื้อ'
+                          : language === 'zh'
+                            ? '此步骤会在下单前确认您的取货安排。'
+                            : 'This confirms your pickup before you place your order.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

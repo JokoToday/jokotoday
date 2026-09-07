@@ -260,8 +260,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     event.preventDefault();
     setSubmitError('');
 
-    if (!selection) {
-      setSubmitError(language === 'th' ? 'กรุณาเลือกวันและสถานที่รับสินค้า' : language === 'zh' ? '请选择取货日期和地点' : 'Please choose a pickup date and location.');
+    if (!selection || showPickupEditor) {
+      setSubmitError(language === 'th'
+        ? 'กรุณายืนยันวันและสถานที่รับสินค้าก่อนสั่งซื้อ'
+        : language === 'zh'
+          ? '下单前请先确认取货日期和地点。'
+          : 'Please confirm your pickup date and location before placing your order.');
       return;
     }
     if (items.length === 0) {
@@ -531,6 +535,11 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       : 'Change pickup';
   const backToCartLabel = language === 'th' ? 'กลับไปที่ตะกร้า' : language === 'zh' ? '返回购物篮' : 'Back to cart';
   const cancelChangeLabel = language === 'th' ? 'ยกเลิกการเปลี่ยนแปลง' : language === 'zh' ? '取消更改' : 'Cancel pickup change';
+  const pickupActionRequired = language === 'th'
+    ? 'ยืนยันวันและสถานที่รับสินค้าด้านบนเพื่อดำเนินการต่อ'
+    : language === 'zh'
+      ? '请先在上方确认取货日期和地点，然后继续。'
+      : 'Confirm your pickup date and location above to continue.';
   const forgotSomethingLabel = getLabel(
     'checkout.continue_shopping',
     language,
@@ -686,9 +695,15 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               {forgotSomethingLabel}
             </button>
 
+            {(!selection || showPickupEditor) && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900">
+                {pickupActionRequired}
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={isSubmitting || !selection}
+              disabled={isSubmitting || !selection || showPickupEditor}
               className="w-full bg-primary-600 text-white py-3.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isSubmitting ? t.checkout.processing : t.checkout.placeOrder}
