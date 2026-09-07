@@ -72,19 +72,19 @@ function NotebookBlockView({
   switch (block.type) {
     case 'text': {
       return (
-        <section className="space-y-2">
+        <section className="space-y-3">
           {block.eyebrow && (
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-700/90">
               {text(block.eyebrow)}
             </p>
           )}
           {block.heading && (
-            <h2 className="font-serif text-3xl font-semibold leading-tight text-primary-950 sm:text-4xl">
+            <h2 className="max-w-lg font-serif text-4xl font-medium leading-[1.05] tracking-tight text-primary-950 sm:text-5xl">
               {text(block.heading)}
             </h2>
           )}
           {block.body && (
-            <p className="max-w-prose whitespace-pre-line text-base leading-7 text-gray-700">
+            <p className="max-w-prose whitespace-pre-line font-serif text-lg italic leading-7 text-gray-600">
               {text(block.body)}
             </p>
           )}
@@ -100,28 +100,33 @@ function NotebookBlockView({
       return (
         <figure className="space-y-3">
           {resolvedAsset ? (
-            <img
-              src={resolvedAsset.src}
-              alt={alt}
-              loading="lazy"
-              className="max-h-80 w-full rounded-2xl object-cover"
-            />
+            <div className="relative mx-auto max-w-xl rotate-[-0.35deg] border border-primary-900/10 bg-white p-2 shadow-md">
+              <img
+                src={resolvedAsset.src}
+                alt={alt}
+                loading="lazy"
+                className="max-h-[26rem] w-full object-cover"
+              />
+            </div>
           ) : (
             <div
-              className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-primary-300 bg-primary-50 p-6 text-center"
+              className="relative mx-auto flex min-h-72 max-w-xl rotate-[-0.35deg] items-end overflow-hidden border border-primary-900/10 bg-white/45 p-6 shadow-sm"
               role="img"
               aria-label={alt}
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-700">
-                {block.asset.intent}
-              </span>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-gray-700">{alt}</p>
-              <code className="mt-4 rounded bg-background px-2 py-1 text-xs text-gray-500">
-                {block.asset.id}
-              </code>
+              <div className="absolute inset-x-8 top-10 h-px rotate-[-3deg] bg-primary-900/10" aria-hidden="true" />
+              <div className="absolute left-10 top-20 h-24 w-24 rounded-full border border-primary-900/10" aria-hidden="true" />
+              <div className="absolute bottom-20 right-10 h-px w-40 rotate-[6deg] bg-primary-900/10" aria-hidden="true" />
+              <p className="relative max-w-sm font-serif text-sm italic leading-6 text-gray-500">
+                {alt}
+              </p>
             </div>
           )}
-          {caption && <figcaption className="text-sm italic text-gray-600">{caption}</figcaption>}
+          {caption && (
+            <figcaption className="mx-auto max-w-xl -rotate-1 px-3 font-serif text-sm italic text-gray-500">
+              {caption}
+            </figcaption>
+          )}
         </figure>
       );
     }
@@ -130,9 +135,13 @@ function NotebookBlockView({
       const actionLabel = block.action ? text(block.action.label) : '';
 
       return (
-        <aside className="rounded-2xl border border-primary-200 bg-primary-50 p-5 shadow-sm">
+        <aside className="relative ml-auto max-w-md rotate-[0.6deg] border border-primary-900/10 bg-primary-50/80 px-5 pb-5 pt-7 shadow-md sm:px-6">
+          <span
+            className="absolute left-1/2 top-0 h-4 w-20 -translate-x-1/2 -translate-y-1/2 rotate-[-2deg] bg-primary-200/80"
+            aria-hidden="true"
+          />
           {block.heading && (
-            <p className="font-serif text-xl font-semibold text-primary-950">{text(block.heading)}</p>
+            <p className="font-serif text-2xl font-medium text-primary-950">{text(block.heading)}</p>
           )}
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">{text(block.body)}</p>
           {block.action && actionLabel && (
@@ -140,12 +149,13 @@ function NotebookBlockView({
               <button
                 type="button"
                 onClick={() => onNavigate(block.action!.target)}
-                className="mt-4 inline-flex min-h-10 items-center rounded-full bg-primary-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="mt-4 inline-flex min-h-10 items-center border-b border-primary-700 pb-1 text-sm font-semibold text-primary-800 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 {actionLabel}
+                <span className="ml-2" aria-hidden="true">→</span>
               </button>
             ) : (
-              <span className="mt-4 inline-block text-sm font-semibold text-primary-700">
+              <span className="mt-4 inline-block border-b border-primary-700 pb-1 text-sm font-semibold text-primary-800">
                 {actionLabel}
               </span>
             )
@@ -159,9 +169,16 @@ function NotebookBlockView({
       const relatedTitle = relatedEntry ? text(relatedEntry.title) : '';
       const content = (
         <>
-          <p className="text-sm font-semibold text-primary-800">{text(block.label)}</p>
-          {relatedTitle && <p className="mt-1 font-serif text-2xl text-primary-950">{relatedTitle}</p>}
-          {block.note && <p className="mt-2 text-sm leading-6 text-gray-700">{text(block.note)}</p>}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700/90">
+            {text(block.label)}
+          </p>
+          {relatedTitle && <p className="mt-2 font-serif text-3xl text-primary-950">{relatedTitle}</p>}
+          {block.note && <p className="mt-3 max-w-md text-sm leading-6 text-gray-600">{text(block.note)}</p>}
+          {relatedEntry && onNavigate && (
+            <span className="mt-3 inline-block text-sm font-semibold text-primary-800" aria-hidden="true">
+              →
+            </span>
+          )}
         </>
       );
 
@@ -170,14 +187,14 @@ function NotebookBlockView({
           <button
             type="button"
             onClick={() => onNavigate(getNotebookEntryTarget(relatedEntry))}
-            className="w-full border-y border-primary-200 py-4 text-left transition hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+            className="w-full border-t border-primary-900/10 py-6 text-left transition hover:bg-primary-50/40 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
           >
             {content}
           </button>
         );
       }
 
-      return <div className="border-y border-primary-200 py-4">{content}</div>;
+      return <div className="border-t border-primary-900/10 py-6">{content}</div>;
     }
   }
 }
@@ -198,16 +215,16 @@ function NotebookSurface({
   resolveAsset,
   onNavigate,
 }: NotebookSurfaceProps) {
-  const borderClass = side === 'right'
-    ? 'border-t border-primary-200 lg:border-l lg:border-t-0'
-    : '';
+  const desktopPaper = side === 'left'
+    ? 'lg:rounded-l-[2.25rem] lg:bg-gradient-to-br lg:from-amber-50/80 lg:via-white lg:to-primary-50/25'
+    : 'lg:rounded-r-[2.25rem] lg:bg-gradient-to-bl lg:from-amber-50/80 lg:via-white lg:to-primary-50/25';
 
   return (
     <article
-      className={`relative min-h-[34rem] bg-background p-6 sm:p-8 lg:min-h-[38rem] lg:p-10 ${borderClass}`}
+      className={`relative min-h-[34rem] rounded-3xl border border-primary-900/10 bg-gradient-to-br from-amber-50/80 via-white to-primary-50/25 px-6 py-8 shadow-lg sm:min-h-[38rem] sm:px-8 sm:py-10 lg:min-h-[43rem] lg:rounded-none lg:border-0 lg:px-10 lg:py-12 lg:shadow-none ${desktopPaper}`}
       aria-label={`Notebook surface ${pageNumber}`}
     >
-      <div className="space-y-7">
+      <div className="space-y-8 sm:space-y-10">
         {surface.blocks.map((block) => (
           <NotebookBlockView
             key={block.id}
@@ -220,7 +237,7 @@ function NotebookSurface({
           />
         ))}
       </div>
-      <span className="absolute bottom-4 right-5 text-xs text-gray-400" aria-hidden="true">
+      <span className="absolute bottom-5 right-6 font-serif text-xs italic text-gray-400" aria-hidden="true">
         {pageNumber}
       </span>
     </article>
@@ -228,7 +245,12 @@ function NotebookSurface({
 }
 
 function EmptyNotebookSurface(): ReactNode {
-  return <div className="hidden min-h-[38rem] border-l border-primary-200 bg-background lg:block" aria-hidden="true" />;
+  return (
+    <div
+      className="hidden min-h-[43rem] rounded-r-[2.25rem] bg-gradient-to-bl from-amber-50/80 via-white to-primary-50/25 lg:block"
+      aria-hidden="true"
+    />
+  );
 }
 
 export function NotebookReader({
@@ -241,58 +263,71 @@ export function NotebookReader({
   className = '',
 }: NotebookReaderProps) {
   const spreads = pairSurfaces(document.surfaces);
+  const title = getNotebookLocalizedText(document.title, locale, defaultLocale);
 
   return (
     <div className={className}>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 px-1">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-700">Notebook</p>
-          <p className="mt-1 text-sm text-gray-600">
-            {getNotebookLocalizedText(document.title, locale, defaultLocale)}
-          </p>
-        </div>
-        <time dateTime={document.date} className="text-sm text-gray-500">
-          {document.date}
-        </time>
+      <div className="mb-4 flex items-center justify-between gap-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-800/80 sm:px-5">
+        <span>{title}</span>
+        <time dateTime={document.date}>{document.date}</time>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-primary-200 bg-background shadow-xl">
-        {spreads.map(([leftSurface, rightSurface], spreadIndex) => {
-          const leftPageNumber = spreadIndex * 2 + 1;
-          const rightPageNumber = leftPageNumber + 1;
+      <div className="relative mx-auto max-w-6xl">
+        <div className="absolute -bottom-3 left-6 right-6 top-3 rounded-[2.5rem] bg-primary-900/10 blur-sm lg:left-10 lg:right-10" aria-hidden="true" />
 
-          return (
-            <div
-              key={leftSurface.id}
-              className="grid grid-cols-1 border-b border-primary-200 last:border-b-0 lg:grid-cols-2"
-            >
-              <NotebookSurface
-                surface={leftSurface}
-                pageNumber={leftPageNumber}
-                side="left"
-                entries={entries}
-                locale={locale}
-                defaultLocale={defaultLocale}
-                resolveAsset={resolveAsset}
-                onNavigate={onNavigate}
-              />
-              {rightSurface ? (
+        <div className="absolute -right-2 top-20 z-0 hidden flex-col gap-2 lg:flex" aria-hidden="true">
+          <span className="h-14 w-5 rounded-r-md bg-primary-300/80" />
+          <span className="h-11 w-5 rounded-r-md bg-primary-200/80" />
+          <span className="h-16 w-5 rounded-r-md bg-primary-100" />
+        </div>
+
+        <div className="relative z-10 space-y-5 lg:overflow-hidden lg:rounded-[2.25rem] lg:border lg:border-primary-900/10 lg:bg-background lg:shadow-[0_24px_70px_rgba(69,26,3,0.14)]">
+          {spreads.map(([leftSurface, rightSurface], spreadIndex) => {
+            const leftPageNumber = spreadIndex * 2 + 1;
+            const rightPageNumber = leftPageNumber + 1;
+
+            return (
+              <div
+                key={leftSurface.id}
+                className="relative grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-0 lg:border-b lg:border-primary-900/10 lg:last:border-b-0"
+              >
                 <NotebookSurface
-                  surface={rightSurface}
-                  pageNumber={rightPageNumber}
-                  side="right"
+                  surface={leftSurface}
+                  pageNumber={leftPageNumber}
+                  side="left"
                   entries={entries}
                   locale={locale}
                   defaultLocale={defaultLocale}
                   resolveAsset={resolveAsset}
                   onNavigate={onNavigate}
                 />
-              ) : (
-                <EmptyNotebookSurface />
-              )}
-            </div>
-          );
-        })}
+                {rightSurface ? (
+                  <NotebookSurface
+                    surface={rightSurface}
+                    pageNumber={rightPageNumber}
+                    side="right"
+                    entries={entries}
+                    locale={locale}
+                    defaultLocale={defaultLocale}
+                    resolveAsset={resolveAsset}
+                    onNavigate={onNavigate}
+                  />
+                ) : (
+                  <EmptyNotebookSurface />
+                )}
+
+                <div
+                  className="pointer-events-none absolute bottom-0 left-1/2 top-0 z-20 hidden w-10 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary-950/5 to-transparent lg:block"
+                  aria-hidden="true"
+                />
+                <div
+                  className="pointer-events-none absolute bottom-8 left-1/2 top-8 z-20 hidden w-px -translate-x-1/2 bg-primary-950/10 lg:block"
+                  aria-hidden="true"
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
