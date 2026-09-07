@@ -1,4 +1,4 @@
-export type HomepageRendererMode = 'legacy' | 'builder';
+export type HomepageRendererMode = 'legacy' | 'builder' | 'experience';
 
 const HOMEPAGE_RENDERER_META = 'joko-homepage-renderer';
 
@@ -6,10 +6,10 @@ const HOMEPAGE_RENDERER_META = 'joko-homepage-renderer';
  * Public Homepage renderer switch.
  *
  * The value is read at runtime from a source-controlled meta tag in
- * index.html. PR 5 ships that tag as `legacy`, so deployment environment
- * variables cannot activate the Builder path accidentally. Because the value
- * is runtime-resolved, the Builder chunk remains packaged and testable rather
- * than being tree-shaken as unreachable code.
+ * index.html so deployment environment variables cannot silently change
+ * the public Homepage renderer. Legacy and Builder remain packaged as
+ * reversible fallbacks while the source-controlled Experience composition
+ * is introduced slice by slice.
  */
 export function getHomepageRendererMode(): HomepageRendererMode {
   const value = document
@@ -18,7 +18,9 @@ export function getHomepageRendererMode(): HomepageRendererMode {
     ?.trim()
     .toLowerCase();
 
-  return value === 'builder' ? 'builder' : 'legacy';
+  if (value === 'experience') return 'experience';
+  if (value === 'builder') return 'builder';
+  return 'legacy';
 }
 
 export const homepageRendererMode = getHomepageRendererMode();

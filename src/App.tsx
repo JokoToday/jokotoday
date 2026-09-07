@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
+import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
 import { getNotebookPath } from './platform/notebook';
 import type { NotebookTopLevelTarget } from './app/joko-today/notebook/NotebookShell';
 
@@ -29,6 +30,9 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ A
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 const NotebookTodayPage = lazy(() => import('./app/joko-today/notebook/NotebookTodayPage'));
 const NotebookHistoryPage = lazy(() => import('./app/joko-today/notebook/NotebookHistoryPage'));
+const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
+
+const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
@@ -78,6 +82,7 @@ function AppContent() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [qrSource, setQrSource] = useState<string | null>(null);
+  const [homepageExperienceFailed, setHomepageExperienceFailed] = useState(false);
 
   useEffect(() => {
     const syncPageFromLocation = () => {
@@ -150,6 +155,11 @@ function AppContent() {
         return;
       }
 
+      if (path === HOMEPAGE_EXPERIENCE_PREVIEW_PATH) {
+        setCurrentPage('homepage-experience-preview');
+        return;
+      }
+
       const notebookPage = NOTEBOOK_PATH_PAGES[path];
       if (notebookPage) {
         setCurrentPage(notebookPage);
@@ -210,6 +220,7 @@ function AppContent() {
     const targetPath = PRIMARY_PAGE_PATHS[page]
       || ACCOUNT_PAGE_PATHS[page]
       || STANDALONE_PAGE_PATHS[page]
+      || NOTEBOOK_PAGE_PATHS[page]
       || null;
 
     if (targetPath && window.location.pathname !== targetPath) {
@@ -251,7 +262,14 @@ function AppContent() {
 
     switch (currentPage) {
       case 'home':
-        return <HomepageRendererGate onNavigate={handleNavigate} />;
+        return (
+          <HomepageRendererGate
+            onNavigate={handleNavigate}
+            onExperienceFailure={() => setHomepageExperienceFailed(true)}
+          />
+        );
+      case 'homepage-experience-preview':
+        return <HomepageExperiencePage onNavigate={handleNavigate} />;
       case 'products':
         return <ProductsPage initialProductSlug={productSlug} qrSource={qrSource} onProductOpened={() => { setProductSlug(null); setQrSource(null); }} />;
       case 'checkout':
@@ -289,6 +307,13 @@ function AppContent() {
     }
   };
 
+  const isHomepageExperience =
+    currentPage === 'homepage-experience-preview'
+    || (
+      currentPage === 'home'
+      && homepageRendererMode === 'experience'
+      && !homepageExperienceFailed
+    );
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
@@ -300,18 +325,27 @@ function AppContent() {
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
     currentPage === 'notebook-today' ||
-    currentPage === 'notebook-history';
+    currentPage === 'notebook-history' ||
+    isHomepageExperience;
+  const showCartSidebar = !isStandalonePage || isHomepageExperience;
+  const pageContent = (
+    <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
+      {renderPage()}
+    </Suspense>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
-      <main className="flex-1">
-        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
-          {renderPage()}
-        </Suspense>
-      </main>
-      {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
-      {!isStandalonePage && (
+      {isHomepageExperience ? (
+        pageContent
+      ) : (
+        <>
+          {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
+          <main className="flex-1">{pageContent}</main>
+          {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
+        </>
+      )}
+      {showCartSidebar && (
         <CartSidebar
           onCheckout={() => handleNavigate('checkout')}
           onStartShopping={() => handleNavigate('products')}
