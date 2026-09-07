@@ -16,6 +16,7 @@ const labels = {
     openNotebook: 'Open notebook',
     favourite: 'Emma’s favourite is',
     sceneAlt: 'Emma noticing a small flower at Sunday Walking Street.',
+    productAlt: 'Reserved space for the approved Almond Croissant photograph.',
   },
   th: {
     today: 'วันนี้',
@@ -23,6 +24,7 @@ const labels = {
     openNotebook: 'เปิดสมุดบันทึก',
     favourite: 'เมนูโปรดของ Emma คือ',
     sceneAlt: 'Emma กำลังสังเกตดอกไม้เล็ก ๆ ที่ถนนคนเดินวันอาทิตย์',
+    productAlt: 'พื้นที่สำหรับภาพอัลมอนด์ครัวซองต์ที่ได้รับการอนุมัติ',
   },
   zh: {
     today: '今日',
@@ -30,6 +32,7 @@ const labels = {
     openNotebook: '打开笔记本',
     favourite: 'Emma 最喜欢的是',
     sceneAlt: 'Emma 在星期日步行街留意一朵小花。',
+    productAlt: '为最终确认的杏仁可颂照片预留的位置。',
   },
 } as const;
 
@@ -40,6 +43,8 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
   const text = (value: Parameters<typeof getNotebookLocalizedText>[0]) =>
     getNotebookLocalizedText(value, language, site.defaultLocale);
   const almond = entries.find((entry) => entry.kind === 'product' && entry.slug === 'almond-croissant');
+  const firstBlock = today.surfaces[0]?.blocks[0];
+  const todayEyebrow = firstBlock?.type === 'text' ? text(firstBlock.eyebrow) : '';
 
   return (
     <section aria-label={text(today.title)} className="min-w-0">
@@ -76,9 +81,11 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
 
           <div className="relative grid lg:grid-cols-2">
             <article className="relative min-h-[30rem] bg-gradient-to-br from-background-secondary/45 via-background to-background px-6 py-8 sm:px-9 sm:py-10 lg:min-h-[34rem]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.19em] text-primary-700">
-                {text(today.surfaces[0].blocks[0].type === 'text' ? today.surfaces[0].blocks[0].eyebrow : undefined)}
-              </p>
+              {todayEyebrow && (
+                <p className="text-[11px] font-semibold uppercase tracking-[0.19em] text-primary-700">
+                  {todayEyebrow}
+                </p>
+              )}
               <h2 className="mt-3 font-header text-4xl font-semibold leading-tight text-primary-950 sm:text-5xl">
                 {text(today.title)}
               </h2>
@@ -101,7 +108,7 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
             </article>
 
             <article className="relative min-h-[24rem] bg-gradient-to-bl from-background-secondary/40 via-background to-background px-6 py-8 sm:px-9 sm:py-10 lg:min-h-[34rem]">
-              <div className="ml-auto mt-8 max-w-sm rotate-1 border border-primary-900/10 bg-background-secondary px-6 pb-6 pt-8 shadow-md">
+              <div className="relative ml-auto mt-8 max-w-sm rotate-1 border border-primary-900/10 bg-background-secondary px-6 pb-6 pt-8 shadow-md">
                 <span className="absolute left-1/2 top-0 h-4 w-24 -translate-x-1/2 -translate-y-1/2 -rotate-2 bg-primary-200/80" aria-hidden="true" />
                 <p className="font-header text-2xl font-semibold leading-tight text-primary-950">
                   {copy.favourite}
@@ -114,11 +121,10 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
                 <div className="mt-6 flex items-end justify-between gap-4">
                   <span className="text-3xl text-primary-700" aria-hidden="true">→</span>
                   <div
-                    className="flex h-24 w-36 items-center justify-center rounded-[55%_45%_50%_45%] border border-primary-900/10 bg-primary-100/70 shadow-sm"
-                    aria-hidden="true"
-                  >
-                    <span className="h-12 w-20 rotate-6 rounded-[60%_40%_55%_45%] border-2 border-primary-700/35" />
-                  </div>
+                    className="h-24 w-36 rounded-xl border border-primary-900/10 bg-background/65 shadow-sm"
+                    role="img"
+                    aria-label={copy.productAlt}
+                  />
                 </div>
               </div>
 
