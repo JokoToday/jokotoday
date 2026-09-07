@@ -72,22 +72,25 @@ export function NotebookShell({ active, onNavigate, children }: NotebookShellPro
   ];
 
   return (
-    <PageCanvas surface="soft" className="py-5 sm:py-8">
+    <PageCanvas surface="soft" className="min-h-screen py-0">
       <Container width="wide">
-        <header className="mb-6 flex flex-col gap-4 rounded-2xl border border-primary-200 bg-background px-4 py-4 sm:px-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <a href="/" className="group inline-flex flex-col focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-              <span className="font-serif text-xl font-semibold text-primary-950 group-hover:text-primary-700">
+        <header className="mb-8 border-b border-primary-900/10 py-5 sm:mb-10 sm:py-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <a
+              href="/"
+              className="group inline-flex w-fit flex-col focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            >
+              <span className="font-serif text-xl font-semibold tracking-tight text-primary-950 group-hover:text-primary-700 sm:text-2xl">
                 JOKO TODAY
               </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">
+              <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-700/90">
                 {copy.notebook}
               </span>
             </a>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
               <nav aria-label={copy.notebook}>
-                <ul className="flex gap-2">
+                <ul className="flex gap-5">
                   {navItems.map((item) => {
                     const isActive = active === item.key;
 
@@ -98,10 +101,10 @@ export function NotebookShell({ active, onNavigate, children }: NotebookShellPro
                           onClick={(event) => handleRouteClick(event, item.target)}
                           aria-current={isActive ? 'page' : undefined}
                           className={[
-                            'inline-flex min-h-10 items-center rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                            'inline-flex min-h-9 items-center border-b pb-1 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                             isActive
-                              ? 'bg-primary-700 text-white'
-                              : 'text-primary-900 hover:bg-primary-100',
+                              ? 'border-primary-800 text-primary-950'
+                              : 'border-transparent text-gray-600 hover:border-primary-300 hover:text-primary-900',
                           ].join(' ')}
                         >
                           {item.label}
@@ -113,28 +116,30 @@ export function NotebookShell({ active, onNavigate, children }: NotebookShellPro
               </nav>
 
               <div
-                className="flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 p-1"
+                className="flex items-center gap-2 text-xs font-semibold text-gray-500"
                 role="group"
                 aria-label={copy.language}
               >
-                {languageOptions.map((option) => {
+                {languageOptions.map((option, index) => {
                   const isActive = language === option.code;
 
                   return (
-                    <button
-                      key={option.code}
-                      type="button"
-                      onClick={() => setLanguage(option.code)}
-                      aria-pressed={isActive}
-                      className={[
-                        'inline-flex min-h-8 items-center rounded-full px-3 py-1 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
-                        isActive
-                          ? 'bg-primary-700 text-white'
-                          : 'text-primary-900 hover:bg-primary-100',
-                      ].join(' ')}
-                    >
-                      {option.label}
-                    </button>
+                    <span key={option.code} className="inline-flex items-center gap-2">
+                      {index > 0 && <span className="text-primary-900/20" aria-hidden="true">/</span>}
+                      <button
+                        type="button"
+                        onClick={() => setLanguage(option.code)}
+                        aria-pressed={isActive}
+                        className={[
+                          'rounded px-1 py-1 transition focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1',
+                          isActive
+                            ? 'text-primary-950'
+                            : 'text-gray-500 hover:text-primary-800',
+                        ].join(' ')}
+                      >
+                        {option.label}
+                      </button>
+                    </span>
                   );
                 })}
               </div>
@@ -142,7 +147,7 @@ export function NotebookShell({ active, onNavigate, children }: NotebookShellPro
           </div>
         </header>
 
-        {children}
+        <div className="pb-12 sm:pb-16">{children}</div>
       </Container>
     </PageCanvas>
   );
