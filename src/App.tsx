@@ -306,16 +306,23 @@ function AppContent() {
     currentPage === 'notebook-history' ||
     isHomepageExperience;
   const showCartSidebar = !isStandalonePage || isHomepageExperience;
+  const pageContent = (
+    <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
+      {renderPage()}
+    </Suspense>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
-      <main className="flex-1">
-        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
-          {renderPage()}
-        </Suspense>
-      </main>
-      {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
+      {isHomepageExperience ? (
+        pageContent
+      ) : (
+        <>
+          {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
+          <main className="flex-1">{pageContent}</main>
+          {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
+        </>
+      )}
       {showCartSidebar && (
         <CartSidebar
           onCheckout={() => handleNavigate('checkout')}
