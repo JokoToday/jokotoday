@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
+import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
 import { getNotebookPath } from './platform/notebook';
 import type { NotebookTopLevelTarget } from './app/joko-today/notebook/NotebookShell';
 
@@ -210,6 +211,7 @@ function AppContent() {
     const targetPath = PRIMARY_PAGE_PATHS[page]
       || ACCOUNT_PAGE_PATHS[page]
       || STANDALONE_PAGE_PATHS[page]
+      || NOTEBOOK_PAGE_PATHS[page]
       || null;
 
     if (targetPath && window.location.pathname !== targetPath) {
@@ -289,6 +291,7 @@ function AppContent() {
     }
   };
 
+  const isHomepageExperience = currentPage === 'home' && homepageRendererMode === 'experience';
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
@@ -300,7 +303,9 @@ function AppContent() {
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
     currentPage === 'notebook-today' ||
-    currentPage === 'notebook-history';
+    currentPage === 'notebook-history' ||
+    isHomepageExperience;
+  const showCartSidebar = !isStandalonePage || isHomepageExperience;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -311,7 +316,7 @@ function AppContent() {
         </Suspense>
       </main>
       {!isStandalonePage && <Footer onNavigate={handleNavigate} />}
-      {!isStandalonePage && (
+      {showCartSidebar && (
         <CartSidebar
           onCheckout={() => handleNavigate('checkout')}
           onStartShopping={() => handleNavigate('products')}
