@@ -83,6 +83,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     height={208}
                     className="h-28 w-28 shrink-0 object-contain mix-blend-multiply sm:h-32 sm:w-32"
                     decoding="async"
+                    fetchPriority="high"
                   />
                   <p className="max-w-[12rem] pb-4 font-header text-lg font-semibold leading-6 text-primary-950">
                     {labels.jokomi} <span className="text-primary-700" aria-hidden="true">♥</span>
