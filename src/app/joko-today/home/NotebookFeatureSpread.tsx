@@ -15,63 +15,29 @@ const labels = {
     history: 'History',
     openNotebook: 'Come for more',
     favourite: 'Emma’s favourite is',
-    sceneAlt: 'Emma noticing a small flower at Sunday Walking Street.',
-    productAlt: 'Reserved space for the approved Almond Croissant photograph.',
+    sceneAlt: 'Emma noticing a small yellow flower at Sunday Walking Street in Chiang Mai.',
+    productAlt: 'Almond Croissant topped with sliced almonds and powdered sugar.',
   },
   th: {
     today: 'วันนี้',
     history: 'ย้อนหลัง',
     openNotebook: 'เปิดดูต่อ',
     favourite: 'เมนูโปรดของ Emma คือ',
-    sceneAlt: 'Emma กำลังสังเกตดอกไม้เล็ก ๆ ที่ถนนคนเดินวันอาทิตย์',
-    productAlt: 'พื้นที่สำหรับภาพอัลมอนด์ครัวซองต์ที่ได้รับการอนุมัติ',
+    sceneAlt: 'Emma กำลังสังเกตดอกไม้สีเหลืองเล็ก ๆ ที่ถนนคนเดินวันอาทิตย์ในเชียงใหม่',
+    productAlt: 'อัลมอนด์ครัวซองต์โรยอัลมอนด์สไลซ์และน้ำตาลไอซิง',
   },
   zh: {
     today: '今日',
     history: '往期',
     openNotebook: '继续翻阅',
     favourite: 'Emma 最喜欢的是',
-    sceneAlt: 'Emma 在星期日步行街留意一朵小花。',
-    productAlt: '为最终确认的杏仁可颂照片预留的位置。',
+    sceneAlt: 'Emma 在清迈星期日步行街留意一朵小黄花。',
+    productAlt: '撒有杏仁片和糖粉的杏仁可颂。',
   },
 } as const;
 
-function SceneArtworkPlaceholder({ alt }: { alt: string }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden" role="img" aria-label={alt}>
-      <div className="absolute left-[8%] top-[32%] h-px w-[29%] -rotate-2 bg-primary-900/[.16]" aria-hidden="true" />
-      <div className="absolute left-[14%] top-[38%] h-20 w-28 rounded-[50%_50%_8%_8%] border border-b-0 border-primary-900/[.14]" aria-hidden="true" />
-      <div className="absolute left-[19%] top-[52%] h-24 w-px bg-primary-900/[.12]" aria-hidden="true" />
-
-      <div className="absolute left-[41%] top-[30%] h-40 w-px -rotate-6 bg-primary-900/10" aria-hidden="true" />
-      <div className="absolute left-[43%] top-[34%] h-px w-24 rotate-6 bg-primary-900/[.13]" aria-hidden="true" />
-      <div className="absolute left-[47%] top-[40%] h-2 w-2 rounded-full border border-primary-900/[.18]" aria-hidden="true" />
-
-      <div className="absolute right-[12%] top-[23%] h-px w-[23%] rotate-6 bg-primary-900/[.13]" aria-hidden="true" />
-      <div className="absolute right-[18%] top-[31%] h-14 w-24 rounded-[50%_50%_8%_8%] border border-b-0 border-primary-900/[.12]" aria-hidden="true" />
-      <div className="absolute right-[24%] top-[41%] h-20 w-px bg-primary-900/10" aria-hidden="true" />
-
-      <div className="absolute bottom-[17%] left-[7%] h-px w-[78%] rotate-1 bg-primary-900/10" aria-hidden="true" />
-      <div className="absolute bottom-[13%] left-[17%] h-px w-[62%] -rotate-2 bg-primary-900/[.08]" aria-hidden="true" />
-    </div>
-  );
-}
-
-function ProductArtworkPlaceholder({ alt }: { alt: string }) {
-  return (
-    <div
-      className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-background/70 shadow-sm sm:h-24 sm:w-36"
-      role="img"
-      aria-label={alt}
-    >
-      <span className="absolute left-4 top-1/2 h-8 w-20 -translate-y-1/2 rotate-6 rounded-[60%_40%_55%_45%] border border-primary-700/[.24]" aria-hidden="true" />
-      <span className="absolute left-7 top-1/2 h-px w-14 -translate-y-1/2 rotate-6 bg-primary-700/[.18]" aria-hidden="true" />
-      <span className="absolute left-9 top-[39%] h-8 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
-      <span className="absolute left-14 top-[37%] h-9 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
-      <span className="absolute left-[4.75rem] top-[39%] h-8 w-px rotate-[24deg] bg-primary-700/[.16]" aria-hidden="true" />
-    </div>
-  );
-}
+const SCENE_ASSET = '/assets/home-experience/emma-sunday-walking-street-v1.webp';
+const ALMOND_ASSET = '/assets/home-experience/almond-croissant-v1.webp';
 
 export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpreadProps) {
   const { site, today, entries } = jokoTodayNotebookFixture;
@@ -136,11 +102,18 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
                 </p>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 top-[7.6rem] sm:top-[8rem]">
-                <SceneArtworkPlaceholder alt={copy.sceneAlt} />
+              <div className="pointer-events-none absolute inset-x-1 bottom-5 top-[8.5rem] z-10 sm:inset-x-4 sm:top-[9rem] lg:hidden">
+                <img
+                  src={SCENE_ASSET}
+                  alt={copy.sceneAlt}
+                  width={500}
+                  height={333}
+                  className="h-full w-full object-contain object-center mix-blend-multiply"
+                  decoding="async"
+                />
               </div>
 
-              <span className="absolute bottom-5 left-7 font-header text-[11px] italic text-primary-950/[.38] sm:left-10" aria-hidden="true">
+              <span className="absolute bottom-5 left-7 z-20 font-header text-[11px] italic text-primary-950/[.38] sm:left-10" aria-hidden="true">
                 2
               </span>
             </article>
@@ -173,14 +146,32 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
                     <span className="mt-4 inline-block text-3xl leading-none text-primary-700" aria-hidden="true">→</span>
                   </div>
 
-                  <ProductArtworkPlaceholder alt={copy.productAlt} />
+                  <img
+                    src={ALMOND_ASSET}
+                    alt={copy.productAlt}
+                    width={220}
+                    height={220}
+                    className="h-20 w-32 shrink-0 rounded-lg object-cover shadow-sm sm:h-24 sm:w-36"
+                    decoding="async"
+                  />
                 </div>
               </div>
 
-              <span className="absolute bottom-5 right-7 font-header text-[11px] italic text-primary-950/[.38] sm:right-10" aria-hidden="true">
+              <span className="absolute bottom-5 right-7 z-20 font-header text-[11px] italic text-primary-950/[.38] sm:right-10" aria-hidden="true">
                 3
               </span>
             </article>
+
+            <div className="pointer-events-none absolute inset-x-3 bottom-2 top-[6.5rem] z-10 hidden lg:block">
+              <img
+                src={SCENE_ASSET}
+                alt={copy.sceneAlt}
+                width={500}
+                height={333}
+                className="h-full w-full object-contain object-center mix-blend-multiply"
+                decoding="async"
+              />
+            </div>
 
             <div
               className="pointer-events-none absolute bottom-0 left-1/2 top-0 z-30 hidden w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-primary-950/[.06] to-transparent lg:block"
