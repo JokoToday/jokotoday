@@ -162,10 +162,10 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
               </span>
             </article>
 
-            <div className="pointer-events-none absolute inset-x-3 bottom-2 top-[6.5rem] z-10 hidden lg:block" role="img" aria-label={copy.sceneAlt}>
+            <div className="pointer-events-none absolute inset-x-3 bottom-2 top-[6.5rem] z-10 hidden lg:block">
               <img
                 src={SCENE_ASSET}
-                alt=""
+                alt={copy.sceneAlt}
                 width={500}
                 height={333}
                 className="h-full w-full object-contain object-center mix-blend-multiply"
