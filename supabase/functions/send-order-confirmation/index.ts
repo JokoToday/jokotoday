@@ -37,6 +37,10 @@ interface Order {
   customer_name: string;
   customer_email: string;
   total_amount: number;
+  loyalty_discount_amount?: number | null;
+  amount_paid?: number | null;
+  status: string;
+  payment_status: string;
   created_at: string;
   pickup_day: string | null;
   pickup_date: string | null;
@@ -117,6 +121,11 @@ function buildMapsLink(mapsUrl: string | null, locationName: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationName)}`;
 }
 
+function money(value: unknown): number {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
 type EmailCopy = {
   subjectPrefix: string;
   eyebrow: string;
@@ -132,9 +141,14 @@ type EmailCopy = {
   viewMap: string;
   items: string;
   unitPrice: string;
-  total: string;
+  subtotal: string;
+  discount: string;
+  amountDue: string;
   paymentHeading: string;
-  payment: string;
+  paymentUnpaid: string;
+  paymentPaid: string;
+  paymentCancelled: string;
+  paymentReview: string;
   points: string;
   pointsSuffix: string;
   viewOrder: string;
@@ -158,9 +172,14 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     viewMap: "View on Maps",
     items: "Your order",
     unitPrice: "Unit price",
-    total: "Total",
+    subtotal: "Subtotal",
+    discount: "Loyalty discount",
+    amountDue: "Amount due",
     paymentHeading: "Payment",
-    payment: "Pay when you pick up. Cash or Thai QR payment is available.",
+    paymentUnpaid: "Pay ฿{{amount}} when you pick up. Cash or Thai QR payment is available.",
+    paymentPaid: "Paid · ฿{{amount}}",
+    paymentCancelled: "This order was cancelled. No payment is due.",
+    paymentReview: "Payment status is unresolved for this closed order. Please contact JOKO TODAY if needed.",
     points: "JOKO points earned",
     pointsSuffix: "pts",
     viewOrder: "View / print confirmation",
@@ -182,9 +201,14 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     viewMap: "ดูแผนที่",
     items: "รายการของคุณ",
     unitPrice: "ราคาต่อชิ้น",
-    total: "ยอดรวม",
+    subtotal: "ยอดก่อนส่วนลด",
+    discount: "ส่วนลดสมาชิก",
+    amountDue: "ยอดที่ต้องชำระ",
     paymentHeading: "การชำระเงิน",
-    payment: "ชำระเงินเมื่อรับสินค้า สามารถชำระด้วยเงินสดหรือ Thai QR ได้",
+    paymentUnpaid: "ชำระ ฿{{amount}} เมื่อรับสินค้า สามารถชำระด้วยเงินสดหรือ Thai QR ได้",
+    paymentPaid: "ชำระแล้ว · ฿{{amount}}",
+    paymentCancelled: "คำสั่งซื้อนี้ถูกยกเลิกแล้ว ไม่มียอดที่ต้องชำระ",
+    paymentReview: "สถานะการชำระเงินของคำสั่งซื้อที่ปิดแล้วนี้ยังไม่ชัดเจน โปรดติดต่อ JOKO TODAY หากจำเป็น",
     points: "แต้ม JOKO ที่ได้รับ",
     pointsSuffix: "แต้ม",
     viewOrder: "ดู / พิมพ์ใบยืนยัน",
@@ -206,9 +230,14 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     viewMap: "查看地图",
     items: "您的订单",
     unitPrice: "单价",
-    total: "总计",
+    subtotal: "优惠前金额",
+    discount: "会员优惠",
+    amountDue: "应付金额",
     paymentHeading: "付款",
-    payment: "取货时付款。可使用现金或 Thai QR 付款。",
+    paymentUnpaid: "取货时支付 ฿{{amount}}。可使用现金或 Thai QR 付款。",
+    paymentPaid: "已付款 · ฿{{amount}}",
+    paymentCancelled: "此订单已取消，无需付款。",
+    paymentReview: "此已关闭订单的付款状态尚未明确。如有需要，请联系 JOKO TODAY。",
     points: "本单获得 JOKO 积分",
     pointsSuffix: "积分",
     viewOrder: "查看 / 打印确认单",
@@ -267,12 +296,47 @@ function buildEmail(
   const pickupLabel = getPickupDayLabel(pickupDay, order.pickup_day, lang);
   const mapsLink = buildMapsLink(location?.maps_url ?? null, locationName);
   const points = Number(order.loyalty_points_earned ?? 0);
+  const gross = money(order.total_amount);
+  const discount = Math.max(0, money(order.loyalty_discount_amount));
+  const amountDue = Math.max(0, gross - discount);
+  const amountPaid = order.amount_paid == null ? amountDue : money(order.amount_paid);
   const itemRows = buildItemRows(items, lang, copy);
   const loyaltyBlock = buildLoyaltyBlock(points, copy);
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
   const orderedDate = formatDate(order.created_at, lang);
   const pickupDate = formatDate(order.pickup_date, lang, true);
   const preheader = `#${order.order_number} · ${pickupLabel} · ${locationName}`;
+
+  let paymentText: string;
+  if (order.status === "cancelled") {
+    paymentText = copy.paymentCancelled;
+  } else if (order.payment_status === "paid") {
+    paymentText = copy.paymentPaid.replace("{{amount}}", amountPaid.toFixed(2));
+  } else if (order.status === "pending" || order.status === "confirmed" || order.status === "ready") {
+    paymentText = copy.paymentUnpaid.replace("{{amount}}", amountDue.toFixed(2));
+  } else {
+    paymentText = copy.paymentReview;
+  }
+
+  const totalsHtml = discount > 0
+    ? `
+        <tr>
+          <td colspan="2" style="padding:17px 8px 4px 0;text-align:right;font-size:14px;line-height:1.5;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.subtotal)}</td>
+          <td align="right" style="padding:17px 0 4px 8px;font-size:15px;line-height:1.4;font-weight:700;white-space:nowrap;color:${JOKO_EMAIL_THEME.charcoal};">฿${gross.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:6px 8px 4px 0;text-align:right;font-size:14px;line-height:1.5;color:${JOKO_EMAIL_THEME.ochre};">${escapeHtml(copy.discount)}</td>
+          <td align="right" style="padding:6px 0 4px 8px;font-size:15px;line-height:1.4;font-weight:700;white-space:nowrap;color:${JOKO_EMAIL_THEME.ochre};">−฿${discount.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:10px 8px 4px 0;text-align:right;font-size:14px;line-height:1.5;font-weight:700;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.amountDue)}</td>
+          <td align="right" style="padding:10px 0 4px 8px;font-size:20px;line-height:1.4;font-weight:800;white-space:nowrap;color:${JOKO_EMAIL_THEME.charcoal};">฿${amountDue.toFixed(2)}</td>
+        </tr>`
+    : `
+        <tr>
+          <td colspan="2" style="padding:17px 8px 4px 0;text-align:right;font-size:14px;line-height:1.5;font-weight:700;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.amountDue)}</td>
+          <td align="right" style="padding:17px 0 4px 8px;font-size:20px;line-height:1.4;font-weight:800;white-space:nowrap;color:${JOKO_EMAIL_THEME.charcoal};">฿${amountDue.toFixed(2)}</td>
+        </tr>`;
 
   const contentHtml = `
     <p style="margin:0 0 8px;font-size:16px;line-height:${lang === "en" ? "1.55" : "1.8"};font-weight:650;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(greeting)}</p>
@@ -301,16 +365,13 @@ function buildEmail(
     <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
       <tbody>
         ${itemRows}
-        <tr>
-          <td colspan="2" style="padding:17px 8px 4px 0;text-align:right;font-size:14px;line-height:1.5;color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.total)}</td>
-          <td align="right" style="padding:17px 0 4px 8px;font-size:20px;line-height:1.4;font-weight:800;white-space:nowrap;color:${JOKO_EMAIL_THEME.charcoal};">฿${Number(order.total_amount).toFixed(2)}</td>
-        </tr>
+        ${totalsHtml}
       </tbody>
     </table>
 
     <div style="margin-top:24px;padding:17px 18px;background:${JOKO_EMAIL_THEME.paper};border-left:4px solid ${JOKO_EMAIL_THEME.ochre};">
       <div style="font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.ochre};">${escapeHtml(copy.paymentHeading)}</div>
-      <div style="margin-top:6px;font-size:14px;line-height:${lang === "en" ? "1.6" : "1.8"};color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(copy.payment)}</div>
+      <div style="margin-top:6px;font-size:14px;line-height:${lang === "en" ? "1.6" : "1.8"};color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(paymentText)}</div>
     </div>
 
     ${loyaltyBlock}
@@ -328,6 +389,14 @@ function buildEmail(
     footerText: copy.footer,
   });
 
+  const totalsText = discount > 0
+    ? [
+      `${copy.subtotal}: ฿${gross.toFixed(2)}`,
+      `${copy.discount}: −฿${discount.toFixed(2)}`,
+      `${copy.amountDue}: ฿${amountDue.toFixed(2)}`,
+    ]
+    : [`${copy.amountDue}: ฿${amountDue.toFixed(2)}`];
+
   const text = [
     "JOKO TODAY",
     copy.heading,
@@ -344,16 +413,16 @@ function buildEmail(
     "",
     copy.items,
     ...buildPlainTextItems(items, lang, copy),
-    `${copy.total}: ฿${Number(order.total_amount).toFixed(2)}`,
+    ...totalsText,
     "",
-    `${copy.paymentHeading}: ${copy.payment}`,
+    `${copy.paymentHeading}: ${paymentText}`,
     ...(points > 0 ? [`${copy.points}: +${points} ${copy.pointsSuffix}`] : []),
     "",
     `${copy.viewOrder}: ${MY_ORDERS_URL}`,
     copy.changePlans,
     "",
     copy.footer,
-    "joko.today",
+    APP_URL,
   ].join("\n");
 
   return { subject, html, text };
@@ -382,7 +451,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, created_at, pickup_day, pickup_date, pickup_location_id, order_items, loyalty_points_earned")
+    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, status, payment_status, created_at, pickup_day, pickup_date, pickup_location_id, order_items, loyalty_points_earned")
     .eq("id", orderId)
     .eq("customer_id", user.id)
     .eq("purchase_type", "online")
