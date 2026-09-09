@@ -1,8 +1,6 @@
 import { useLanguage } from '../../../context/LanguageContext';
-import {
-  getNotebookLocalizedText,
-  jokoTodayNotebookFixture,
-} from '../../../platform/notebook';
+import { useNotebookContent } from '../../../hooks/useNotebookContent';
+import { getNotebookLocalizedText } from '../../../platform/notebook';
 import { NotebookShell, type NotebookTopLevelTarget } from './NotebookShell';
 
 interface NotebookHistoryPageProps {
@@ -32,7 +30,8 @@ const labels = {
 
 export function NotebookHistoryPage({ onNavigate }: NotebookHistoryPageProps) {
   const { language } = useLanguage();
-  const { site, history } = jokoTodayNotebookFixture;
+  const { bundle } = useNotebookContent();
+  const { site, history } = bundle;
   const copy = labels[language];
 
   return (
