@@ -12,6 +12,13 @@ export const NOTEBOOK_CONTENT_CONFIG_KEY = 'notebook_homepage_content_v1';
 export type NotebookContentLocale = 'en' | 'th' | 'zh';
 export type NotebookContentText = Record<NotebookContentLocale, string>;
 
+export interface NotebookContentHistoryItem {
+  date: string;
+  todayDocumentId: string;
+  title: NotebookContentText;
+  excerpt: NotebookContentText;
+}
+
 export interface NotebookContentConfigV1 {
   version: 1;
   date: string;
@@ -41,6 +48,7 @@ export interface NotebookContentConfigV1 {
     imageUrl: string;
     alt: NotebookContentText;
   };
+  history: NotebookContentHistoryItem[];
 }
 
 export interface ResolvedNotebookContent {
@@ -127,9 +135,11 @@ export const DEFAULT_NOTEBOOK_CONTENT_CONFIG: NotebookContentConfigV1 = {
       zh: 'Emma 在清迈星期日步行街留意一朵小黄花。',
     },
   },
+  history: [],
 };
 
 const LOCALES: NotebookContentLocale[] = ['en', 'th', 'zh'];
+const MAX_HISTORY_ITEMS = 365;
 
 function normalizeText(value: unknown, fallback: NotebookContentText): NotebookContentText {
   const candidate = value && typeof value === 'object' ? value as Partial<NotebookContentText> : {};
@@ -146,6 +156,35 @@ function normalizeString(value: unknown, fallback: string): string {
 
 function normalizeOptionalString(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function normalizeHistory(value: unknown): NotebookContentHistoryItem[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  return value
+    .flatMap((item) => {
+      if (!item || typeof item !== 'object') return [];
+      const candidate = item as Partial<NotebookContentHistoryItem>;
+      const date = typeof candidate.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(candidate.date)
+        ? candidate.date
+        : '';
+      if (!date) return [];
+
+      const todayDocumentId = normalizeString(candidate.todayDocumentId, `today-${date}`);
+      const key = `${date}:${todayDocumentId}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
+
+      return [{
+        date,
+        todayDocumentId,
+        title: normalizeText(candidate.title, DEFAULT_NOTEBOOK_CONTENT_CONFIG.today.title),
+        excerpt: normalizeText(candidate.excerpt, DEFAULT_NOTEBOOK_CONTENT_CONFIG.intro.note),
+      }];
+    })
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, MAX_HISTORY_ITEMS);
 }
 
 export function parseNotebookContentConfig(value: string | null | undefined): NotebookContentConfigV1 {
@@ -183,6 +222,7 @@ export function parseNotebookContentConfig(value: string | null | undefined): No
         imageUrl: normalizeString(parsed.scene?.imageUrl, fallback.scene.imageUrl),
         alt: normalizeText(parsed.scene?.alt, fallback.scene.alt),
       },
+      history: normalizeHistory(parsed.history),
     };
   } catch {
     return structuredClone(DEFAULT_NOTEBOOK_CONTENT_CONFIG);
@@ -231,6 +271,29 @@ function favouriteBody(personName: string, title: NotebookLocalizedText): Notebo
     th: `เมนูโปรดของ ${personName} คือ${title.th}`,
     zh: `${personName} 最喜欢的是${title.zh}。`,
   };
+}
+
+function archiveCurrentPage(config: NotebookContentConfigV1): NotebookContentHistoryItem {
+  return {
+    date: config.date,
+    todayDocumentId: `today-${config.date}`,
+    title: structuredClone(config.today.title),
+    excerpt: structuredClone(config.intro.note),
+  };
+}
+
+function historyForSave(
+  previous: NotebookContentConfigV1,
+  next: NotebookContentConfigV1,
+): NotebookContentHistoryItem[] {
+  const candidates = [...previous.history];
+  if (previous.date !== next.date) {
+    candidates.unshift(archiveCurrentPage(previous));
+  }
+
+  return normalizeHistory(candidates)
+    .filter((item) => item.date !== next.date && item.todayDocumentId !== `today-${next.date}`)
+    .slice(0, MAX_HISTORY_ITEMS);
 }
 
 export function buildNotebookBundle(
@@ -347,14 +410,7 @@ export function buildNotebookBundle(
         },
       ],
     },
-    history: [
-      {
-        date: config.date,
-        todayDocumentId: `today-${config.date}`,
-        title: config.today.title,
-        excerpt: config.intro.note,
-      },
-    ],
+    history: config.history,
   });
 }
 
@@ -392,19 +448,36 @@ export async function getNotebookContent(): Promise<ResolvedNotebookContent> {
   };
 }
 
-export async function saveNotebookContentConfig(config: NotebookContentConfigV1): Promise<void> {
+export async function saveNotebookContentConfig(
+  config: NotebookContentConfigV1,
+): Promise<NotebookContentConfigV1> {
   const normalized = parseNotebookContentConfig(JSON.stringify(config));
-  buildNotebookBundle(normalized);
+
+  let previous = structuredClone(DEFAULT_NOTEBOOK_CONTENT_CONFIG);
+  try {
+    const currentSetting = await getSetting(NOTEBOOK_CONTENT_CONFIG_KEY);
+    previous = parseNotebookContentConfig(currentSetting?.value);
+  } catch (error) {
+    console.error('Could not load prior Notebook content before save:', error);
+    throw new Error('Could not safely preserve Notebook history. Refresh and try again.');
+  }
+
+  const next: NotebookContentConfigV1 = {
+    ...normalized,
+    history: historyForSave(previous, normalized),
+  };
+  buildNotebookBundle(next);
 
   const { error } = await supabase
     .from('cms_settings')
     .upsert(
       {
         setting_key: NOTEBOOK_CONTENT_CONFIG_KEY,
-        value: JSON.stringify(normalized),
+        value: JSON.stringify(next),
       },
       { onConflict: 'setting_key' },
     );
 
   if (error) throw error;
+  return next;
 }
