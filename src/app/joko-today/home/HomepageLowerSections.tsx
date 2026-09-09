@@ -9,7 +9,7 @@ import {
 import { Container } from '../../../platform/design-system';
 import {
   getNotebookLocalizedText,
-  jokoTodayNotebookFixture,
+  type NotebookFixtureBundle,
   type NotebookPersonEntry,
   type NotebookProductEntry,
   type NotebookQuestionEntry,
@@ -18,6 +18,8 @@ import {
 interface HomepageLowerSectionsProps {
   locale: string;
   onNavigate: (page: string) => void;
+  bundle: NotebookFixtureBundle;
+  featuredProductImageUrl: string;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -35,7 +37,7 @@ const copy = {
     helpTitle: 'Need a little help choosing?',
     helpIntro: 'One real favourite from today’s notebook — with more to come as the notebook grows.',
     todayNotebook: "In today's notebook",
-    openEmmaNote: "Open Emma's note",
+    openTodayNote: "Open today's note",
     notebookRule: 'Notebook rule',
     moreFavoriteTitle: 'More favourites will arrive naturally.',
     moreFavoriteBody: 'We only add them when they become real notebook entries — never just to fill the page.',
@@ -44,7 +46,7 @@ const copy = {
     questionIntro: 'JOKO asks before it answers.',
     questionLabel: 'Question from the notebook',
     questionAction: "Open today's notebook",
-    questionSketchAlt: "Notebook sketch for today's croissant-layer question.",
+    questionSketchAlt: "Notebook sketch for today's featured question.",
     beyondTitle: 'Not bread. Still good.',
     beyondIntro: 'The notebook will also make room for useful, beautiful things we genuinely come across.',
     finds: [
@@ -67,7 +69,7 @@ const copy = {
     helpTitle: 'อยากได้ตัวช่วยเลือกนิดหน่อยไหม?',
     helpIntro: 'ของโปรดหนึ่งอย่างที่มีอยู่จริงในสมุดบันทึกวันนี้ — และจะมีเพิ่มเมื่อสมุดเล่มนี้เติบโต',
     todayNotebook: 'อยู่ในสมุดบันทึกวันนี้',
-    openEmmaNote: 'เปิดบันทึกของ Emma',
+    openTodayNote: 'เปิดบันทึกของวันนี้',
     notebookRule: 'กติกาของสมุด',
     moreFavoriteTitle: 'ของโปรดอื่น ๆ จะค่อย ๆ ตามมา',
     moreFavoriteBody: 'เราจะใส่เพิ่มก็ต่อเมื่อกลายเป็นบันทึกจริง ไม่เติมชื่อหรือของเพียงเพื่อให้หน้าดูเต็ม',
@@ -76,7 +78,7 @@ const copy = {
     questionIntro: 'JOKO ถามก่อน แล้วค่อยตอบ',
     questionLabel: 'คำถามจากสมุดบันทึก',
     questionAction: 'เปิดสมุดบันทึกของวันนี้',
-    questionSketchAlt: 'ภาพสเก็ตช์ในสมุดสำหรับคำถามเรื่องชั้นครัวซองต์ของวันนี้',
+    questionSketchAlt: 'ภาพสเก็ตช์ในสมุดสำหรับคำถามเด่นของวันนี้',
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
     beyondIntro: 'สมุดเล่มนี้จะเผื่อที่ไว้ให้สิ่งของที่มีประโยชน์ สวยงาม และเราได้พบเจอจริง',
     finds: [
@@ -99,7 +101,7 @@ const copy = {
     helpTitle: '需要一点挑选灵感吗？',
     helpIntro: '先从今天笔记里一个真实的偏爱开始；笔记长大后，还会自然出现更多。',
     todayNotebook: '今天的笔记里',
-    openEmmaNote: '打开 Emma 的笔记',
+    openTodayNote: '打开今天的笔记',
     notebookRule: '笔记规则',
     moreFavoriteTitle: '更多偏爱会慢慢出现。',
     moreFavoriteBody: '只有当它们成为真实的笔记内容时，我们才会加入，而不是为了填满页面。',
@@ -108,7 +110,7 @@ const copy = {
     questionIntro: 'JOKO 先提问，再回答。',
     questionLabel: '来自笔记的问题',
     questionAction: '打开今天的笔记',
-    questionSketchAlt: '为今天关于可颂层次的问题准备的笔记草图。',
+    questionSketchAlt: '为今天的精选问题准备的笔记草图。',
     beyondTitle: '不是面包，也很好。',
     beyondIntro: '这本笔记也会给那些我们真正遇见的、实用又好看的小东西留位置。',
     finds: [
@@ -194,21 +196,26 @@ function QuietObjectSketch({ kind, label }: { kind: number; label: string }) {
   );
 }
 
-export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSectionsProps) {
+export function HomepageLowerSections({
+  locale,
+  onNavigate,
+  bundle,
+  featuredProductImageUrl,
+}: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
-  const { site, entries } = jokoTodayNotebookFixture;
+  const { site, entries } = bundle;
   const text = (value: Parameters<typeof getNotebookLocalizedText>[0]) =>
     getNotebookLocalizedText(value, language, site.defaultLocale);
 
-  const emma = entries.find(
-    (entry): entry is NotebookPersonEntry => entry.kind === 'person' && entry.slug === 'emma',
+  const person = entries.find(
+    (entry): entry is NotebookPersonEntry => entry.kind === 'person',
   );
-  const almond = entries.find(
-    (entry): entry is NotebookProductEntry => entry.kind === 'product' && entry.slug === 'almond-croissant',
+  const product = entries.find(
+    (entry): entry is NotebookProductEntry => entry.kind === 'product',
   );
   const question = entries.find(
-    (entry): entry is NotebookQuestionEntry => entry.kind === 'question' && entry.slug === 'curiosity',
+    (entry): entry is NotebookQuestionEntry => entry.kind === 'question',
   );
 
   return (
@@ -254,24 +261,24 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
             <article className="grid overflow-hidden rounded-2xl border border-primary-900/10 bg-background shadow-sm sm:grid-cols-[1fr_15rem]">
               <div className="flex flex-col justify-center p-6 sm:p-7">
                 <div className="flex items-center gap-3">
-                  <SketchPortrait name={emma ? text(emma.title) : 'Emma'} />
+                  <SketchPortrait name={person ? text(person.title) : 'JOKO'} />
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-700">
                       {labels.todayNotebook}
                     </p>
                     <h3 className="mt-1 font-header text-2xl font-semibold text-primary-950">
-                      {emma ? text(emma.title) : 'Emma'}
+                      {person ? text(person.title) : 'JOKO'}
                     </h3>
                   </div>
                   <Heart className="ml-auto h-5 w-5 shrink-0 text-primary-700" aria-hidden="true" />
                 </div>
 
                 <p className="mt-5 font-header text-2xl font-semibold leading-tight text-primary-950 sm:text-3xl">
-                  {almond ? text(almond.title) : 'Almond Croissant'}
+                  {product ? text(product.title) : ''}
                 </p>
-                {emma && (
+                {person && (
                   <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 sm:text-base">
-                    {text(emma.summary)}
+                    {text(person.summary)}
                   </p>
                 )}
 
@@ -280,15 +287,15 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
                   onClick={() => onNavigate('notebook-today')}
                   className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary-700 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 >
-                  {labels.openEmmaNote}
+                  {labels.openTodayNote}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
 
               <div className="min-h-52 overflow-hidden bg-background-secondary/45 sm:min-h-full">
                 <img
-                  src="/assets/home-experience/almond-croissant-v1.webp"
-                  alt={almond ? text(almond.title) : 'Almond Croissant'}
+                  src={featuredProductImageUrl}
+                  alt={product ? text(product.title) : ''}
                   width={420}
                   height={360}
                   loading="lazy"
