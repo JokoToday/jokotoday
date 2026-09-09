@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { Container, PageCanvas } from '../../../platform/design-system';
 import HomepageExperienceHeader from './HomepageExperienceHeader';
+import HomepageLowerSections from './HomepageLowerSections';
 import NotebookFeatureSpread from './NotebookFeatureSpread';
 
 interface HomepageExperiencePageProps {
@@ -115,6 +116,8 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
             </div>
           </Container>
         </section>
+
+        <HomepageLowerSections locale={language} onNavigate={onNavigate} />
       </main>
     </PageCanvas>
   );
