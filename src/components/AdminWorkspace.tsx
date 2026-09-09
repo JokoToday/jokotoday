@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Rocket, Sparkles, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Rocket, Sparkles, Users } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
+import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
@@ -14,10 +15,12 @@ interface AdminWorkspaceProps {
   onNavigate: (page: string) => void;
 }
 
-type WorkspaceTab = 'cms' | 'homepage' | 'customer-experience' | 'pickup-products' | 'pickup-dates' | 'pickup-rollout' | 'commerce-intelligence' | 'loyalty';
+type WorkspaceTab = 'cms' | 'homepage' | 'notebook-content' | 'customer-experience' | 'pickup-products' | 'pickup-dates' | 'pickup-rollout' | 'commerce-intelligence' | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
-  return window.location.pathname.startsWith('/admin/homepage') ? 'homepage' : 'cms';
+  if (window.location.pathname.startsWith('/admin/notebook')) return 'notebook-content';
+  if (window.location.pathname.startsWith('/admin/homepage')) return 'homepage';
+  return 'cms';
 }
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
@@ -31,7 +34,11 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
 
   const selectWorkspaceTab = (tab: WorkspaceTab) => {
     setActiveTab(tab);
-    const targetPath = tab === 'homepage' ? '/admin/homepage' : '/admin';
+    const targetPath = tab === 'homepage'
+      ? '/admin/homepage'
+      : tab === 'notebook-content'
+      ? '/admin/notebook'
+      : '/admin';
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
@@ -65,6 +72,18 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             >
               <Monitor className="w-4 h-4" />
               Website / Homepage
+            </button>
+            <button
+              type="button"
+              onClick={() => selectWorkspaceTab('notebook-content')}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === 'notebook-content'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              Notebook Content
             </button>
             <button
               type="button"
@@ -148,6 +167,16 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
           <HomepageBuilderAdmin />
         </Suspense>
+      )}
+
+      {activeTab === 'notebook-content' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Notebook / Homepage Content</h1>
+            <p className="text-gray-600 mt-2">Manage the shared Today story shown in Jokomi’s notebook and on the public Homepage.</p>
+          </div>
+          <NotebookContentManagement />
+        </div>
       )}
 
       {activeTab === 'customer-experience' && <CustomerExperienceManagement />}

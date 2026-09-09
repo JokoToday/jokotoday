@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import Footer from '../../../components/Footer';
 import { useLanguage } from '../../../context/LanguageContext';
+import { useNotebookContent } from '../../../hooks/useNotebookContent';
 import { Container, PageCanvas } from '../../../platform/design-system';
 import HomepageExperienceHeader from './HomepageExperienceHeader';
 import HomepageLowerSections from './HomepageLowerSections';
@@ -52,6 +53,7 @@ const copy = {
 export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
   const { language } = useLanguage();
   const labels = copy[language];
+  const notebookContent = useNotebookContent();
 
   return (
     <PageCanvas surface="soft" className="min-h-screen bg-background">
@@ -113,12 +115,23 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 </div>
               </div>
 
-              <NotebookFeatureSpread locale={language} onNavigate={onNavigate} />
+              <NotebookFeatureSpread
+                locale={language}
+                onNavigate={onNavigate}
+                bundle={notebookContent.bundle}
+                sceneImageUrl={notebookContent.assetUrls['today-scene']}
+                featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+              />
             </div>
           </Container>
         </section>
 
-        <HomepageLowerSections locale={language} onNavigate={onNavigate} />
+        <HomepageLowerSections
+          locale={language}
+          onNavigate={onNavigate}
+          bundle={notebookContent.bundle}
+          featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+        />
       </main>
 
       <Footer onNavigate={onNavigate} />

@@ -1,36 +1,21 @@
 import { useLanguage } from '../../../context/LanguageContext';
-import {
-  jokoTodayNotebookFixture,
-  NotebookReader,
-} from '../../../platform/notebook';
+import { useNotebookContent } from '../../../hooks/useNotebookContent';
+import { NotebookReader } from '../../../platform/notebook';
 import { NotebookShell, type NotebookTopLevelTarget } from './NotebookShell';
 
 interface NotebookTodayPageProps {
   onNavigate: (target: NotebookTopLevelTarget) => void;
 }
 
-const todayIntro = {
-  en: {
-    eyebrow: 'Today in the notebook',
-    statement: 'A bakery. Curious people. One notebook that keeps growing.',
-    note: 'Today starts with Emma at Sunday Walking Street — one small observation leading to another.',
-  },
-  th: {
-    eyebrow: 'วันนี้ในสมุดบันทึก',
-    statement: 'ร้านเบเกอรี่ ผู้คนช่างสงสัย และสมุดเล่มหนึ่งที่ค่อย ๆ เติบโตขึ้นทุกวัน',
-    note: 'วันนี้เริ่มจาก Emma ที่ถนนคนเดินวันอาทิตย์ — การสังเกตเล็ก ๆ ที่พาไปสู่อีกเรื่องหนึ่ง',
-  },
-  zh: {
-    eyebrow: '今天的笔记',
-    statement: '一家烘焙坊。一群好奇的人。一本不断长大的笔记本。',
-    note: '今天从星期日步行街的 Emma 开始——一个小小的发现，又带出下一个发现。',
-  },
-} as const;
-
 export function NotebookTodayPage({ onNavigate }: NotebookTodayPageProps) {
   const { language } = useLanguage();
-  const { site, today, entries } = jokoTodayNotebookFixture;
-  const intro = todayIntro[language];
+  const content = useNotebookContent();
+  const { site, today, entries } = content.bundle;
+  const intro = {
+    eyebrow: content.config.intro.eyebrow[language],
+    statement: content.config.intro.statement[language],
+    note: content.config.intro.note[language],
+  };
 
   return (
     <NotebookShell active="today" onNavigate={onNavigate}>
@@ -56,6 +41,10 @@ export function NotebookTodayPage({ onNavigate }: NotebookTodayPageProps) {
           entries={entries}
           locale={language}
           defaultLocale={site.defaultLocale}
+          resolveAsset={(asset) => {
+            const src = content.assetUrls[asset.id];
+            return src ? { src } : null;
+          }}
           className="min-w-0"
         />
       </section>

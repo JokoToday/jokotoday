@@ -1,12 +1,17 @@
 import { Clock3 } from 'lucide-react';
 import {
   getNotebookLocalizedText,
-  jokoTodayNotebookFixture,
+  type NotebookFixtureBundle,
+  type NotebookPersonEntry,
+  type NotebookProductEntry,
 } from '../../../platform/notebook';
 
 interface NotebookFeatureSpreadProps {
   locale: string;
   onNavigate: (page: string) => void;
+  bundle: NotebookFixtureBundle;
+  sceneImageUrl: string;
+  featuredProductImageUrl: string;
 }
 
 const labels = {
@@ -14,40 +19,44 @@ const labels = {
     today: 'Today',
     history: 'History',
     openNotebook: 'Come for more',
-    favourite: 'Emma’s favourite is',
-    sceneAlt: 'Emma noticing a small yellow flower at Sunday Walking Street in Chiang Mai.',
-    productAlt: 'Almond Croissant topped with sliced almonds and powdered sugar.',
   },
   th: {
     today: 'วันนี้',
     history: 'ย้อนหลัง',
     openNotebook: 'เปิดดูต่อ',
-    favourite: 'เมนูโปรดของ Emma คือ',
-    sceneAlt: 'Emma กำลังสังเกตดอกไม้สีเหลืองเล็ก ๆ ที่ถนนคนเดินวันอาทิตย์ในเชียงใหม่',
-    productAlt: 'อัลมอนด์ครัวซองต์โรยอัลมอนด์สไลซ์และน้ำตาลไอซิง',
   },
   zh: {
     today: '今日',
     history: '往期',
     openNotebook: '继续翻阅',
-    favourite: 'Emma 最喜欢的是',
-    sceneAlt: 'Emma 在清迈星期日步行街留意一朵小黄花。',
-    productAlt: '撒有杏仁片和糖粉的杏仁可颂。',
   },
 } as const;
 
-const SCENE_ASSET = '/assets/home-experience/emma-sunday-walking-street-v1.webp';
-const ALMOND_ASSET = '/assets/home-experience/almond-croissant-v1.webp';
-
-export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpreadProps) {
-  const { site, today, entries } = jokoTodayNotebookFixture;
+export function NotebookFeatureSpread({
+  locale,
+  onNavigate,
+  bundle,
+  sceneImageUrl,
+  featuredProductImageUrl,
+}: NotebookFeatureSpreadProps) {
+  const { site, today, entries } = bundle;
   const language = locale === 'th' || locale === 'zh' ? locale : 'en';
   const copy = labels[language];
   const text = (value: Parameters<typeof getNotebookLocalizedText>[0]) =>
     getNotebookLocalizedText(value, language, site.defaultLocale);
-  const almond = entries.find((entry) => entry.kind === 'product' && entry.slug === 'almond-croissant');
+  const person = entries.find((entry): entry is NotebookPersonEntry => entry.kind === 'person');
+  const product = entries.find((entry): entry is NotebookProductEntry => entry.kind === 'product');
   const firstBlock = today.surfaces[0]?.blocks[0];
+  const sceneBlock = today.surfaces[0]?.blocks.find((block) => block.type === 'asset');
   const todayEyebrow = firstBlock?.type === 'text' ? text(firstBlock.eyebrow) : '';
+  const personName = person ? text(person.title) : 'JOKO';
+  const favouriteLabel = language === 'th'
+    ? `เมนูโปรดของ ${personName} คือ`
+    : language === 'zh'
+    ? `${personName} 最喜欢的是`
+    : `${personName}’s favourite is`;
+  const sceneAlt = sceneBlock?.type === 'asset' ? text(sceneBlock.alt) : text(today.title);
+  const productAlt = product ? text(product.title) : text(today.title);
 
   return (
     <section aria-label={text(today.title)} className="min-w-0 lg:-mr-3 xl:-mr-6">
@@ -104,8 +113,8 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
 
               <div className="pointer-events-none absolute inset-x-1 bottom-5 top-[8.5rem] z-10 sm:inset-x-4 sm:top-[9rem] lg:hidden">
                 <img
-                  src={SCENE_ASSET}
-                  alt={copy.sceneAlt}
+                  src={sceneImageUrl}
+                  alt={sceneAlt}
                   width={500}
                   height={333}
                   className="h-full w-full object-contain object-center mix-blend-multiply"
@@ -136,19 +145,19 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
                 <div className="flex items-end justify-between gap-5">
                   <div className="min-w-0 pb-1">
                     <p className="font-header text-lg font-semibold leading-tight text-primary-950 sm:text-xl">
-                      {copy.favourite}
+                      {favouriteLabel}
                     </p>
-                    {almond && (
+                    {product && (
                       <p className="mt-1 font-header text-xl font-semibold leading-tight text-primary-950 sm:text-2xl">
-                        {text(almond.title)}
+                        {text(product.title)}
                       </p>
                     )}
                     <span className="mt-4 inline-block text-3xl leading-none text-primary-700" aria-hidden="true">→</span>
                   </div>
 
                   <img
-                    src={ALMOND_ASSET}
-                    alt={copy.productAlt}
+                    src={featuredProductImageUrl}
+                    alt={productAlt}
                     width={220}
                     height={220}
                     className="h-20 w-32 shrink-0 rounded-lg object-cover shadow-sm sm:h-24 sm:w-36"
@@ -164,8 +173,8 @@ export function NotebookFeatureSpread({ locale, onNavigate }: NotebookFeatureSpr
 
             <div className="pointer-events-none absolute inset-x-3 bottom-2 top-[6.5rem] z-10 hidden lg:block">
               <img
-                src={SCENE_ASSET}
-                alt={copy.sceneAlt}
+                src={sceneImageUrl}
+                alt={sceneAlt}
                 width={500}
                 height={333}
                 className="h-full w-full object-contain object-center mix-blend-multiply"
