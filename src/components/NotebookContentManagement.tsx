@@ -65,12 +65,25 @@ export function NotebookContentManagement() {
   const load = async () => {
     setLoading(true);
     setError('');
+    setNotice('');
+
     try {
-      const [content, productList] = await Promise.all([getNotebookContent(), getProducts()]);
+      const content = await getNotebookContent();
       setConfig(content.config);
-      setProducts(productList);
     } catch (err) {
+      setConfig(null);
+      setProducts([]);
       setError(err instanceof Error ? err.message : 'Could not load Notebook content.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setProducts(await getProducts());
+    } catch (err) {
+      setProducts([]);
+      const detail = err instanceof Error ? err.message : 'Unknown product-loading error.';
+      setError(`Notebook content loaded, but products could not be loaded. ${detail}`);
     } finally {
       setLoading(false);
     }
@@ -86,7 +99,8 @@ export function NotebookContentManagement() {
     setError('');
     setNotice('');
     try {
-      await saveNotebookContentConfig(config);
+      const savedConfig = await saveNotebookContentConfig(config);
+      setConfig(savedConfig);
       setNotice('Notebook content saved. The Homepage and Today notebook now read this shared content.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save Notebook content.');
@@ -95,8 +109,25 @@ export function NotebookContentManagement() {
     }
   };
 
-  if (loading || !config) {
+  if (loading) {
     return <div className="py-16 text-center text-gray-500">Loading Notebook content…</div>;
+  }
+
+  if (!config) {
+    return (
+      <div className="mx-auto max-w-2xl py-16 text-center">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {error || 'Could not load Notebook content.'}
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <RefreshCw className="h-4 w-4" /> Retry
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -165,6 +196,7 @@ export function NotebookContentManagement() {
               onChange={(event) => setConfig({ ...config, featuredProductSlug: event.target.value, featuredProductImageUrl: '' })}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
             >
+              {products.length === 0 && <option value={config.featuredProductSlug}>{config.featuredProductSlug}</option>}
               {products.map((product) => <option key={product.id} value={product.slug}>{product.name_en}</option>)}
             </select>
           </label>
