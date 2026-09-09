@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import Footer from '../../../components/Footer';
 import { useLanguage } from '../../../context/LanguageContext';
 import { Container, PageCanvas } from '../../../platform/design-system';
 import HomepageExperienceHeader from './HomepageExperienceHeader';
@@ -119,6 +120,8 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
         <HomepageLowerSections locale={language} onNavigate={onNavigate} />
       </main>
+
+      <Footer onNavigate={onNavigate} />
     </PageCanvas>
   );
 }
