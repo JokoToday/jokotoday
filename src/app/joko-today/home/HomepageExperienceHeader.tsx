@@ -22,9 +22,6 @@ type NavItem = {
 const copy = {
   en: {
     today: 'Today',
-    stories: 'Stories',
-    curiosities: 'Curiosities',
-    people: 'People',
     bakery: 'Bakery',
     about: 'About',
     account: 'Account',
@@ -33,9 +30,6 @@ const copy = {
   },
   th: {
     today: 'วันนี้',
-    stories: 'เรื่องราว',
-    curiosities: 'เรื่องน่าสงสัย',
-    people: 'ผู้คน',
     bakery: 'เบเกอรี่',
     about: 'เกี่ยวกับเรา',
     account: 'บัญชี',
@@ -44,9 +38,6 @@ const copy = {
   },
   zh: {
     today: '今日',
-    stories: '故事',
-    curiosities: '好奇',
-    people: '人物',
     bakery: '烘焙坊',
     about: '关于',
     account: '账户',
@@ -71,9 +62,6 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
 
   const navItems: NavItem[] = [
     { key: 'today', label: labels.today, current: true },
-    { key: 'stories', label: labels.stories },
-    { key: 'curiosities', label: labels.curiosities },
-    { key: 'people', label: labels.people },
     { key: 'bakery', label: labels.bakery, target: 'products' },
     { key: 'about', label: labels.about, target: 'about' },
   ];
@@ -121,7 +109,7 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
                       >
                         {item.label}
                       </span>
-                    ) : item.target ? (
+                    ) : (
                       <button
                         type="button"
                         onClick={() => handleNav(item.target)}
@@ -129,13 +117,6 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
                       >
                         {item.label}
                       </button>
-                    ) : (
-                      <span
-                        className="cursor-default text-sm font-semibold text-primary-950/55"
-                        aria-disabled="true"
-                      >
-                        {item.label}
-                      </span>
                     )}
                   </li>
                 ))}
@@ -214,8 +195,7 @@ export function HomepageExperienceHeader({ onNavigate }: HomepageExperienceHeade
                         <button
                           type="button"
                           onClick={() => handleNav(item.target)}
-                          disabled={!item.target}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary-950 transition hover:bg-background/70 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-default disabled:text-primary-950/45"
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary-950 transition hover:bg-background/70 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                           {item.label}
                         </button>
