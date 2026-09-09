@@ -26,7 +26,7 @@ const copy = {
       ['Enjoy', 'Good bread, good people, good moments.'],
     ],
     helpTitle: 'Need a little help choosing?',
-    helpIntro: 'Real people. Real favourites.',
+    helpIntro: 'Favourites from around the notebook.',
     favourites: [
       ['Emma', 'Almond Croissant'],
       ['Steve', 'Sourdough'],
@@ -40,6 +40,8 @@ const copy = {
     bakerBody: 'We wondered what would happen if we took the nutty depth of black sesame and tucked it into our croissant. Here’s what we discovered.',
     bakerAction: 'See how it turned out',
     bakerAsset: 'Editorial image space for the Black Sesame Croissant test bake.',
+    fieldNote: 'Field note',
+    testBake: 'Test bake',
     findTitle: 'Not bread. Still good.',
     findIntro: 'What unexpected thing have we found this time?',
     finds: [
@@ -48,6 +50,7 @@ const copy = {
       ['A tiny vase for small, quiet good things.', 'Tiny flower vase'],
     ],
     moreFinds: 'See more finds',
+    closingBadge: 'Baked & beyond',
   },
   th: {
     howTitle: 'ทำงานอย่างไร',
@@ -59,7 +62,7 @@ const copy = {
       ['เพลิดเพลิน', 'ขนมปังดี ๆ ผู้คนดี ๆ และช่วงเวลาดี ๆ'],
     ],
     helpTitle: 'อยากได้ตัวช่วยเลือกนิดหน่อยไหม?',
-    helpIntro: 'คนจริง ๆ เมนูโปรดจริง ๆ',
+    helpIntro: 'เมนูโปรดจากผู้คนและตัวละครในสมุดบันทึก',
     favourites: [
       ['Emma', 'Almond Croissant'],
       ['Steve', 'Sourdough'],
@@ -73,6 +76,8 @@ const copy = {
     bakerBody: 'เราอยากรู้ว่าจะเกิดอะไรขึ้น ถ้านำรสถั่วลึก ๆ ของงาดำมาใส่ไว้ในครัวซองต์ของเรา นี่คือสิ่งที่เราได้ค้นพบ',
     bakerAction: 'ดูว่าออกมาเป็นอย่างไร',
     bakerAsset: 'พื้นที่สำหรับภาพงานทดลอง Black Sesame Croissant',
+    fieldNote: 'บันทึกจากโต๊ะอบ',
+    testBake: 'ทดลองอบ',
     findTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
     findIntro: 'คราวนี้เราไปเจอของดีที่คาดไม่ถึงอะไรมา?',
     finds: [
@@ -81,6 +86,7 @@ const copy = {
       ['แจกันจิ๋วสำหรับสิ่งดี ๆ เล็ก ๆ และเงียบสงบ', 'แจกันดอกไม้จิ๋ว'],
     ],
     moreFinds: 'ดูของที่เจอเพิ่ม',
+    closingBadge: 'อบสด และมากกว่านั้น',
   },
   zh: {
     howTitle: '怎样取到面包',
@@ -92,7 +98,7 @@ const copy = {
       ['享用', '好面包，好人，好时光。'],
     ],
     helpTitle: '需要一点挑选灵感吗？',
-    helpIntro: '真实的人，真实的偏爱。',
+    helpIntro: '来自这本笔记里的人物与朋友们的偏爱。',
     favourites: [
       ['Emma', 'Almond Croissant'],
       ['Steve', 'Sourdough'],
@@ -106,6 +112,8 @@ const copy = {
     bakerBody: '我们想知道，把黑芝麻浓郁坚果般的味道藏进可颂里会发生什么。这里是我们发现的结果。',
     bakerAction: '看看最后变成了什么',
     bakerAsset: '为 Black Sesame Croissant 试验烘焙预留的编辑图片位置。',
+    fieldNote: '桌边笔记',
+    testBake: '试验烘焙',
     findTitle: '不是面包，也很好。',
     findIntro: '这一次，我们又发现了什么意料之外的小东西？',
     finds: [
@@ -114,6 +122,7 @@ const copy = {
       ['一个装得下安静小美好的迷你花瓶。', '迷你花瓶'],
     ],
     moreFinds: '看看更多发现',
+    closingBadge: '烘焙，以及更多',
   },
 } as const;
 
@@ -306,19 +315,19 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
                 <span className="absolute left-[9%] top-[32%] h-px w-[56%] -rotate-2 bg-primary-900/[.12]" aria-hidden="true" />
                 <span className="absolute left-[18%] top-[41%] h-20 w-[58%] rotate-2 rounded-[55%_45%_50%_50%] border border-primary-900/[.14]" aria-hidden="true" />
                 <span className="absolute left-[35%] top-[30%] h-32 w-px rotate-[28deg] bg-primary-900/10" aria-hidden="true" />
-                <span className="absolute left-[49%] top-[31%] h-30 w-px rotate-[28deg] bg-primary-900/10" aria-hidden="true" />
+                <span className="absolute left-[49%] top-[31%] h-[7.5rem] w-px rotate-[28deg] bg-primary-900/10" aria-hidden="true" />
                 <span className="absolute left-[63%] top-[34%] h-24 w-px rotate-[28deg] bg-primary-900/10" aria-hidden="true" />
               </div>
 
               <div className="absolute bottom-5 right-6 rotate-[-2deg] border border-primary-900/10 bg-background px-4 py-3 shadow-md">
-                <p className="font-header text-xs font-semibold uppercase tracking-[0.12em] text-primary-700">Test bake</p>
+                <p className="font-header text-xs font-semibold uppercase tracking-[0.12em] text-primary-700">{labels.testBake}</p>
                 <p className="mt-1 font-header text-sm text-primary-950">Black Sesame</p>
                 <p className="font-header text-xs italic text-primary-950/55">5.2 ♡</p>
               </div>
             </div>
 
             <div className="flex flex-col justify-center px-6 py-8 sm:px-8 lg:px-10">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">Field note</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">{labels.fieldNote}</p>
               <h3 className="mt-3 font-header text-3xl font-semibold leading-tight text-primary-950 sm:text-4xl">
                 {labels.bakerProduct}
               </h3>
@@ -367,7 +376,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
           <div className="mt-9 flex justify-center">
             <div className="inline-flex items-center gap-3 rounded-full border border-primary-900/10 bg-background-secondary/40 px-5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary-950/65">
               <ShoppingBasket className="h-4 w-4 text-primary-700" aria-hidden="true" />
-              JOKO TODAY · Baked & beyond
+              JOKO TODAY · {labels.closingBadge}
             </div>
           </div>
         </Container>
