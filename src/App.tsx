@@ -15,6 +15,7 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
+const CreativeLabPage = lazy(() => import('./app/creative-lab/CreativeLabPage'));
 const LineCallback = lazy(() => import('./components/LineCallback').then(({ LineCallback }) => ({ default: LineCallback })));
 const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
 const StaffScannerPage = lazy(() => import('./pages/StaffScannerPage').then(({ StaffScannerPage }) => ({ default: StaffScannerPage })));
@@ -59,6 +60,7 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
   admin: '/admin',
+  creative: '/creative',
   staff: '/staff',
   pickup: '/pickup',
   'walk-in': '/walk-in',
@@ -155,6 +157,11 @@ function AppContent() {
         return;
       }
 
+      if (path === '/creative' || path.startsWith('/creative/')) {
+        setCurrentPage('creative');
+        return;
+      }
+
       if (path === HOMEPAGE_EXPERIENCE_PREVIEW_PATH) {
         setCurrentPage('homepage-experience-preview');
         return;
@@ -202,6 +209,8 @@ function AppContent() {
   useEffect(() => {
     const pageTitle = currentPage === 'home'
       ? 'JOKO TODAY - Baked & Beyond'
+      : currentPage === 'creative'
+      ? 'JOKO Creative Lab'
       : `${currentPage.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} - JOKO TODAY`;
     document.title = pageTitle;
   }, [currentPage]);
@@ -280,6 +289,8 @@ function AppContent() {
         return <HowItWorksPage onNavigate={handleNavigate} />;
       case 'admin':
         return <AdminPage onNavigate={handleNavigate} />;
+      case 'creative':
+        return <CreativeLabPage onNavigate={handleNavigate} />;
       case 'staff':
         return <StaffLoginPage onNavigate={handleNavigate} />;
       case 'staff-scanner':
@@ -317,6 +328,7 @@ function AppContent() {
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
+    currentPage === 'creative' ||
     currentPage === 'staff' ||
     currentPage === 'staff-scanner' ||
     currentPage === 'pickup' ||

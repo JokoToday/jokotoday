@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Rocket, Sparkles, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Palette, Rocket, Sparkles, Users } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
@@ -84,6 +84,14 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             >
               <BookOpen className="w-4 h-4" />
               Notebook Content
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('creative')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap border border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
+            >
+              <Palette className="w-4 h-4" />
+              Open Creative Lab
             </button>
             <button
               type="button"
