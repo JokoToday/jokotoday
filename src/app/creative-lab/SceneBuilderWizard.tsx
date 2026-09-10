@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Palette, Plus, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Palette, Plus, X } from 'lucide-react';
 import {
   OTHER,
   emptyScene,
@@ -10,15 +10,26 @@ import {
   sceneOptions,
   styleProfiles,
   subjectOptionsFor,
-  type ProjectDraft,
   type SceneAnswers,
   type SceneFieldKey,
 } from './creativeLabModel';
 import { getKnownCharacters, type KnownCharacterRecord } from './knownCharacterRegistry';
+import {
+  activityLibrary,
+  makeLibrarySelection,
+  makeSceneLibraryDirection,
+  settingLibrary,
+  type SceneAssemblyDraft,
+  type SceneLibrarySelection,
+  type SceneLibrarySelections,
+  type SharedScenePreview,
+  type SharedSceneTemplate,
+  type SharedSceneVariant,
+} from './sharedSceneLibraries';
 
 interface Props {
   onClose: () => void;
-  onCreate: (draft: ProjectDraft) => void;
+  onCreate: (draft: SceneAssemblyDraft) => void;
 }
 
 const NEW_PERSON = 'New person…';
@@ -31,12 +42,15 @@ const personDirectionFields: SceneFieldKey[] = [
   'bodySilhouette',
   'signatureIrregularity',
 ];
+const activityFields: SceneFieldKey[] = ['action', 'interaction'];
+const settingFields: SceneFieldKey[] = ['country', 'city', 'place', 'setting'];
 
 export function SceneBuilderWizard({ onClose, onCreate }: Props) {
   const [step, setStep] = useState(0);
   const [scene, setScene] = useState<SceneAnswers>({ ...emptyScene });
   const [styleProfile, setStyleProfile] = useState('');
   const [knownCharacters] = useState(() => getKnownCharacters());
+  const [librarySelections, setLibrarySelections] = useState<SceneLibrarySelections>({});
   const [customValues, setCustomValues] = useState<Partial<Record<SceneFieldKey | 'styleProfile', string>>>({});
 
   const setField = (key: SceneFieldKey, value: string) => {
@@ -53,6 +67,30 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
     }
 
     if (value !== OTHER) setCustomValues((current) => ({ ...current, [key]: '' }));
+  };
+
+  const applyLibraryVariant = (template: SharedSceneTemplate, variant: SharedSceneVariant) => {
+    const ownedFields = template.kind === 'activity' ? activityFields : settingFields;
+    setScene((current) => {
+      const next = { ...current };
+      ownedFields.forEach((key) => { next[key] = ''; });
+      return { ...next, ...variant.scenePatch };
+    });
+    setLibrarySelections((current) => ({ ...current, [template.kind]: makeLibrarySelection(template, variant) }));
+  };
+
+  const clearLibrarySelection = (kind: 'activity' | 'setting') => {
+    const ownedFields = kind === 'activity' ? activityFields : settingFields;
+    setScene((current) => {
+      const next = { ...current };
+      ownedFields.forEach((key) => { next[key] = ''; });
+      return next;
+    });
+    setLibrarySelections((current) => {
+      const next = { ...current };
+      delete next[kind];
+      return next;
+    });
   };
 
   const resolvedScene = { ...scene };
@@ -76,15 +114,17 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
     ? personDirectionFields.reduce<SceneAnswers>((current, key) => ({ ...current, [key]: '' }), resolvedScene)
     : resolvedScene;
 
-  const generatedBrief = selectedCharacter
-    ? `${makeSceneBrief(effectiveScene)} Character identity: inherit saved ${selectedCharacter.name} Character v${selectedCharacter.version} (${getStyleProfile(selectedCharacter.spec.style.profileId).title}). Do not redefine the character's core identity.`
-    : makeSceneBrief(effectiveScene);
+  const characterDirection = selectedCharacter
+    ? `Character identity: inherit saved ${selectedCharacter.name} Character v${selectedCharacter.version} (${getStyleProfile(selectedCharacter.spec.style.profileId).title}). Do not redefine the character's core identity.`
+    : '';
+  const libraryDirection = makeSceneLibraryDirection(librarySelections);
+  const generatedBrief = [makeSceneBrief(effectiveScene), characterDirection, libraryDirection].filter(Boolean).join(' ');
 
   const canContinue = (() => {
     if (step === 0) return Boolean(effectiveScene.assetType && effectiveScene.purpose);
     if (step === 1) return Boolean(effectiveScene.subjectType && effectiveScene.subjectName);
     if (step === 2) return true;
-    if (step === 3) return Boolean(effectiveScene.action || effectiveScene.storyBeat || effectiveScene.focusObject);
+    if (step === 3) return Boolean(effectiveScene.action || effectiveScene.storyBeat || effectiveScene.focusObject || librarySelections.activity);
     return Boolean(resolvedStyle);
   })();
 
@@ -115,7 +155,7 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4" role="dialog" aria-modal="true" aria-label="Create a Creative Lab scene">
-      <div className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-stone-200 bg-stone-50 shadow-2xl">
+      <div className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-stone-200 bg-stone-50 shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-200 bg-white px-5 py-4 sm:px-7">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Scene Builder</p>
@@ -176,26 +216,55 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
           )}
 
           {step === 2 && (
-            <Step title="Where are we?" note="Start broad, then get specific. Location is optional when it does not matter to the scene.">
-              <div className="grid gap-5 md:grid-cols-2">
-                {field('Country', 'country', sceneOptions.country)}
-                {field('City', 'city', sceneOptions.city)}
-                {field('Specific place', 'place', sceneOptions.place)}
-                {field('Setting type', 'setting', sceneOptions.setting)}
-              </div>
+            <Step title="Where are we?" note="Choose an approved shared setting visually, or open the custom controls when the scene needs somewhere new.">
+              <SharedVariantPicker
+                title="Setting library"
+                note="Settings are reusable environment templates. Pick the version whose composition feels right."
+                templates={settingLibrary}
+                selected={librarySelections.setting}
+                onSelect={applyLibraryVariant}
+                onClear={() => clearLibrarySelection('setting')}
+              />
+              <details className="mt-7 rounded-2xl border border-stone-200 bg-white p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Define or fine-tune the setting</summary>
+                <p className="mt-2 text-xs leading-5 text-stone-500">Manual fields can refine a shared setting or define a new place without a library template.</p>
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  {field('Country', 'country', sceneOptions.country)}
+                  {field('City', 'city', sceneOptions.city)}
+                  {field('Specific place', 'place', sceneOptions.place)}
+                  {field('Setting type', 'setting', sceneOptions.setting)}
+                </div>
+              </details>
             </Step>
           )}
 
           {step === 3 && (
-            <Step title="What is happening?" note="Direct the moment. Creative Lab writes the brief behind the scenes.">
-              <div className="grid gap-5 md:grid-cols-2">
-                {field('Action', 'action', sceneOptions.action)}
+            <Step title="What is happening?" note="Choose an approved shared activity visually, then add the story detail that makes this particular scene meaningful.">
+              <SharedVariantPicker
+                title="Activity library"
+                note="Activities are identity-neutral pose/action templates. The selected character keeps their own proportions and personality."
+                templates={activityLibrary}
+                selected={librarySelections.activity}
+                onSelect={applyLibraryVariant}
+                onClear={() => clearLibrarySelection('activity')}
+              />
+
+              <div className="mt-7 grid gap-5 md:grid-cols-3">
                 {field('Object / focus', 'focusObject', sceneOptions.focusObject)}
-                {field('Interaction', 'interaction', sceneOptions.interaction)}
                 {field('Story beat / moment', 'storyBeat', sceneOptions.storyBeat)}
                 {field('Mood', 'mood', sceneOptions.mood)}
               </div>
+
               <details className="mt-7 rounded-2xl border border-stone-200 bg-white p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Define or fine-tune the activity</summary>
+                <p className="mt-2 text-xs leading-5 text-stone-500">Manual action and interaction can refine a shared activity or define a new one.</p>
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
+                  {field('Action', 'action', sceneOptions.action)}
+                  {field('Interaction', 'interaction', sceneOptions.interaction)}
+                </div>
+              </details>
+
+              <details className="mt-4 rounded-2xl border border-stone-200 bg-white p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Add more atmosphere</summary>
                 <div className="mt-5 grid gap-5 md:grid-cols-3">
                   {field('Energy', 'energy', sceneOptions.energy)}
@@ -248,6 +317,12 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
                 <h3 className="mt-2 font-serif text-xl text-stone-900">{makeProjectTitle(effectiveScene)}</h3>
                 <p className="mt-3 text-sm leading-6 text-stone-600">{generatedBrief}</p>
                 <p className="mt-4 text-xs font-semibold text-stone-700">Style: {resolvedStyle ? getStyleProfile(resolvedStyle).title : '—'}</p>
+                {(librarySelections.activity || librarySelections.setting) && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {librarySelections.activity && <AssemblyChip selection={librarySelections.activity} />}
+                    {librarySelections.setting && <AssemblyChip selection={librarySelections.setting} />}
+                  </div>
+                )}
               </div>
             </Step>
           )}
@@ -260,12 +335,131 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
           {step < 4 ? (
             <button type="button" disabled={!canContinue} onClick={next} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300">Continue<ChevronRight className="h-4 w-4" /></button>
           ) : (
-            <button type="button" disabled={!canContinue} onClick={() => onCreate({ scene: effectiveScene, styleProfile: resolvedStyle })} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300"><Plus className="h-4 w-4" />Create scene</button>
+            <button type="button" disabled={!canContinue} onClick={() => onCreate({ scene: effectiveScene, styleProfile: resolvedStyle, brief: generatedBrief, librarySelections })} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300"><Plus className="h-4 w-4" />Create scene</button>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+function SharedVariantPicker({ title, note, templates, selected, onSelect, onClear }: { title: string; note: string; templates: SharedSceneTemplate[]; selected?: SceneLibrarySelection; onSelect: (template: SharedSceneTemplate, variant: SharedSceneVariant) => void; onClear: () => void }) {
+  return (
+    <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">Shared visual building blocks</p>
+          <h3 className="mt-1 font-serif text-2xl text-stone-950">{title}</h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-500">{note}</p>
+        </div>
+        {selected && <button type="button" onClick={onClear} className="text-xs font-semibold text-stone-500 hover:text-stone-900">Clear selection</button>}
+      </div>
+
+      <div className="mt-6 space-y-7">
+        {templates.map((template) => (
+          <div key={template.id}>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-stone-800">{template.name}</p>
+                <p className="mt-1 text-xs text-stone-500">{template.description}</p>
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">{template.category}</p>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {template.variants.map((variant) => {
+                const active = selected?.variantId === variant.id;
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => onSelect(template, variant)}
+                    className={`group overflow-hidden rounded-2xl border text-left transition-all ${active ? 'border-stone-900 bg-stone-50 shadow-md' : 'border-stone-200 bg-white hover:border-stone-400 hover:shadow-sm'}`}
+                  >
+                    <VariantThumbnail preview={template.preview} version={variant.version} active={active} />
+                    <div className="p-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-stone-800">v{variant.version} · {variant.label}</p>
+                        {active && <span className="inline-flex items-center gap-1 rounded-full bg-stone-900 px-2 py-1 text-[9px] font-semibold text-white"><Check className="h-2.5 w-2.5" />Selected</span>}
+                      </div>
+                      <p className="mt-2 text-[11px] leading-5 text-stone-500">{variant.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VariantThumbnail({ preview, version, active }: { preview: SharedScenePreview; version: number; active: boolean }) {
+  const strokeClass = active ? 'text-stone-950' : 'text-stone-600';
+  const offset = version === 2 ? 8 : version === 3 ? -8 : 0;
+  return (
+    <div className={`relative aspect-[16/9] overflow-hidden border-b border-stone-200 ${active ? 'bg-amber-50' : 'bg-stone-50'}`}>
+      <svg viewBox="0 0 160 90" className={`h-full w-full ${strokeClass}`} aria-hidden="true">
+        <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+          {preview === 'sofa' && (
+            <>
+              <path d="M24 58 C25 49 31 46 40 46 H120 C129 46 135 49 136 58 V70 H24 Z" />
+              <path d="M31 70 V77 M129 70 V77 M43 46 V67 M117 46 V67" opacity=".55" />
+              <circle cx={80 + offset} cy={25 + (version === 3 ? 4 : 0)} r="7" />
+              <path d={version === 1 ? `M${80 + offset} 32 V50` : version === 2 ? `M${80 + offset} 32 L${91 + offset} 47` : `M${80 + offset} 32 L${70 + offset} 49`} />
+              <path d={version === 3 ? `M${70 + offset} 49 L${56 + offset} 60 M${70 + offset} 49 L${84 + offset} 61` : `M${80 + offset} 50 L${69 + offset} 62 M${80 + offset} 50 L${92 + offset} 62`} />
+            </>
+          )}
+          {preview === 'walk' && (
+            <>
+              <path d="M25 70 H136" opacity=".35" />
+              <circle cx={80 + offset} cy="22" r="7" />
+              <path d={`M${80 + offset} 29 L${80 + offset + (version === 2 ? 7 : version === 3 ? -5 : 0)} 50`} />
+              <path d={version === 1 ? `M${80 + offset} 35 L${68 + offset} 46 M${80 + offset} 35 L${92 + offset} 45` : `M${80 + offset} 35 L${66 + offset} 40 M${80 + offset} 35 L${95 + offset} 49`} />
+              <path d={version === 3 ? `M${75 + offset} 50 L${60 + offset} 69 M${75 + offset} 50 L${95 + offset} 65` : `M${80 + offset} 50 L${65 + offset} 69 M${80 + offset} 50 L${98 + offset} 66`} />
+            </>
+          )}
+          {preview === 'look' && (
+            <>
+              <circle cx={68 + offset} cy={24 + (version === 2 ? 12 : 0)} r="7" />
+              <path d={version === 2 ? `M${68 + offset} 31 L${78 + offset} 52 L${65 + offset} 66 M${78 + offset} 52 L${92 + offset} 66` : `M${68 + offset} 31 L${78 + offset} 51 M${78 + offset} 51 L${70 + offset} 70 M${78 + offset} 51 L${91 + offset} 70`} />
+              <circle cx="116" cy="50" r={version === 3 ? 10 : 4} />
+              {version === 3 && <path d="M108 57 L99 67" />}
+              <path d="M100 70 C108 60 121 60 130 70" opacity=".45" />
+            </>
+          )}
+          {preview === 'market' && (
+            <>
+              <path d="M18 70 H142" opacity=".35" />
+              <path d={version === 2 ? 'M20 37 H92 L84 48 H28 Z M104 45 H142' : version === 3 ? 'M24 42 H74 L67 50 H31 Z M106 43 H139' : 'M15 35 H62 L56 45 H22 Z M98 35 H145 L138 45 H105 Z'} />
+              <path d="M28 48 V70 M80 48 V70 M110 45 V70 M136 45 V70" opacity=".65" />
+              <path d={version === 3 ? 'M78 70 C90 54 101 53 107 70' : 'M69 70 C76 55 88 55 95 70'} opacity=".6" />
+            </>
+          )}
+          {preview === 'temple' && (
+            <>
+              <path d="M31 70 H132" opacity=".35" />
+              <path d={version === 2 ? 'M50 70 L80 34 L110 70 M57 62 H103 M63 54 H97 M69 46 H91' : 'M46 58 H114 L102 47 H58 Z M65 47 L80 25 L95 47 M80 25 V16'} />
+              {version === 3 && <path d="M28 70 C45 58 55 58 72 70 M110 70 C124 58 132 58 143 70" opacity=".55" />}
+            </>
+          )}
+          {preview === 'bakery' && (
+            <>
+              {version === 1 && <><rect x="36" y="23" width="88" height="49" rx="2" /><path d="M68 72 V46 H94 V72 M45 34 H115" /></>}
+              {version === 2 && <><path d="M23 61 H137 V72 H23 Z M36 47 H124 V61 M48 47 V35 H112 V47" /><circle cx="62" cy="42" r="4" /><circle cx="80" cy="42" r="4" /><circle cx="98" cy="42" r="4" /></>}
+              {version === 3 && <><path d="M20 70 H140" opacity=".35" /><path d="M44 70 C48 53 57 45 69 70 M91 70 C96 50 110 49 118 70" /><rect x="67" y="28" width="35" height="31" rx="2" opacity=".7" /></>}
+            </>
+          )}
+        </g>
+      </svg>
+      <span className="absolute left-2.5 top-2.5 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold text-stone-600 shadow-sm">v{version}</span>
+    </div>
+  );
+}
+
+function AssemblyChip({ selection }: { selection: SceneLibrarySelection }) {
+  return <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[10px] font-semibold text-stone-600">{selection.kind === 'activity' ? 'Activity' : 'Setting'} · {selection.templateName} v{selection.version}</span>;
 }
 
 function PersonSubjectField({ value, customName, knownCharacters, onChange, onCustomNameChange }: { value: string; customName: string; knownCharacters: KnownCharacterRecord[]; onChange: (value: string) => void; onCustomNameChange: (value: string) => void }) {
@@ -330,11 +524,13 @@ function Step({ title, note, children }: { title: string; note: string; children
 }
 
 function ChoiceField({ label, value, customValue, options, onChange, onCustomChange, required = false }: { label: string; value: string; customValue: string; options: string[]; onChange: (value: string) => void; onCustomChange: (value: string) => void; required?: boolean }) {
+  const hasExternalValue = Boolean(value && value !== OTHER && !options.includes(value));
   return (
     <label className="block">
       <span className="text-xs font-semibold text-stone-700">{label}{required && <span className="ml-1 text-stone-400">*</span>}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm text-stone-800 outline-none focus:border-stone-500">
         <option value="">Choose…</option>
+        {hasExternalValue && <option value={value}>{value}</option>}
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
       {value === OTHER && <input autoFocus value={customValue} onChange={(event) => onCustomChange(event.target.value)} placeholder={`Enter ${label.toLowerCase()}…`} className="mt-2 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm text-stone-800 outline-none focus:border-stone-500" />}
