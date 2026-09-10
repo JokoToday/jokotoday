@@ -35,15 +35,16 @@ import {
   type CreativeSection,
   type ProjectAccent,
   type ProjectCard,
-  type ProjectDraft,
   type ProjectStatus,
 } from './creativeLabModel';
+import type { SceneAssemblyDraft, SceneLibrarySelections } from './sharedSceneLibraries';
 
 interface CreativeLabPageProps {
   onNavigate: (page: string) => void;
 }
 
 type CreateMode = 'choose' | 'scene' | 'character' | null;
+type CreativeLabProject = ProjectCard & { librarySelections?: SceneLibrarySelections };
 
 const navItems: Array<{ id: CreativeSection; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: 'studio', label: 'Studio', icon: LayoutGrid },
@@ -85,7 +86,7 @@ function sectionHeading(section: CreativeSection) {
 export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
   const { user, userRole, loading, profileLoading } = useAuth();
   const [activeSection, setActiveSection] = useState<CreativeSection>('studio');
-  const [projectList, setProjectList] = useState<ProjectCard[]>(initialProjects);
+  const [projectList, setProjectList] = useState<CreativeLabProject[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjects[0].id);
   const [createMode, setCreateMode] = useState<CreateMode>(null);
 
@@ -97,14 +98,14 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
     setActiveSection(destination);
   };
 
-  const addProject = (newProject: ProjectCard) => {
+  const addProject = (newProject: CreativeLabProject) => {
     setProjectList((current) => [newProject, ...current]);
     setSelectedProjectId(newProject.id);
     setActiveSection('studio');
     setCreateMode(null);
   };
 
-  const createSceneProject = ({ scene, styleProfile }: ProjectDraft) => {
+  const createSceneProject = ({ scene, styleProfile, brief, librarySelections }: SceneAssemblyDraft) => {
     addProject({
       id: `creative-${Date.now()}`,
       projectType: 'scene',
@@ -118,8 +119,9 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
       subjectName: scene.subjectName || 'Untitled',
       purpose: scene.purpose || 'Notebook',
       styleProfile,
-      idea: makeSceneBrief(scene),
+      idea: brief || makeSceneBrief(scene),
       scene,
+      librarySelections,
       createdLabel: 'Created in this prototype session',
     });
   };
@@ -241,7 +243,7 @@ function PrototypeNotice() {
   );
 }
 
-function StudioView({ projects, selectedProject, onOpenProject }: { projects: ProjectCard[]; selectedProject: ProjectCard; onOpenProject: (project: ProjectCard) => void }) {
+function StudioView({ projects, selectedProject, onOpenProject }: { projects: CreativeLabProject[]; selectedProject: CreativeLabProject; onOpenProject: (project: ProjectCard) => void }) {
   return (
     <>
       <section className="grid gap-4 xl:grid-cols-3">
@@ -273,11 +275,15 @@ function ProjectLane({ title, projects, onOpenProject }: { title: string; projec
   );
 }
 
-function ProjectWorkspace({ project }: { project: ProjectCard }) {
+function ProjectWorkspace({ project }: { project: CreativeLabProject }) {
   const currentStep = project.status === 'Approved' ? 4 : project.status === 'Ready for review' ? 3 : Math.max(0, Math.min(2, Math.floor(project.progress / 25)));
+  const assemblyTags = [
+    project.librarySelections?.activity ? `${project.librarySelections.activity.templateName} v${project.librarySelections.activity.version}` : '',
+    project.librarySelections?.setting ? `${project.librarySelections.setting.templateName} v${project.librarySelections.setting.version}` : '',
+  ].filter(Boolean);
   const tags = project.projectType === 'character' && project.character
     ? characterSpecTags(project.character)
-    : Object.values(project.scene).filter((value) => isMeaningful(value)).slice(0, 12) as string[];
+    : [...assemblyTags, ...Object.values(project.scene).filter((value) => isMeaningful(value))].slice(0, 12) as string[];
   const steps = projectSteps(project);
 
   return (
