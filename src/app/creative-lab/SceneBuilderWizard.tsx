@@ -45,6 +45,10 @@ const personDirectionFields: SceneFieldKey[] = [
 const activityFields: SceneFieldKey[] = ['action', 'interaction'];
 const settingFields: SceneFieldKey[] = ['country', 'city', 'place', 'setting'];
 
+function supportsSharedActivities(subjectType: string) {
+  return subjectType === 'Person' || subjectType === 'Jokomi';
+}
+
 export function SceneBuilderWizard({ onClose, onCreate }: Props) {
   const [step, setStep] = useState(0);
   const [scene, setScene] = useState<SceneAnswers>({ ...emptyScene });
@@ -56,13 +60,23 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
   const setField = (key: SceneFieldKey, value: string) => {
     setScene((current) => {
       const next = { ...current, [key]: value };
-      if (key === 'subjectType') next.subjectName = '';
+      if (key === 'subjectType') {
+        next.subjectName = '';
+        if (!supportsSharedActivities(value)) activityFields.forEach((fieldKey) => { next[fieldKey] = ''; });
+      }
       return next;
     });
 
     if (key === 'subjectType') {
       setCustomValues((current) => ({ ...current, subjectName: '', subjectType: value === OTHER ? current.subjectType : '' }));
       setStyleProfile('');
+      if (!supportsSharedActivities(value)) {
+        setLibrarySelections((current) => {
+          const next = { ...current };
+          delete next.activity;
+          return next;
+        });
+      }
       return;
     }
 
@@ -108,6 +122,7 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
     ? knownCharacters.find((character) => character.name === scene.subjectName)
     : undefined;
   const isNewPerson = isPerson && scene.subjectName === NEW_PERSON;
+  const showActivityLibrary = supportsSharedActivities(resolvedScene.subjectType);
   const recommendedStyle = selectedCharacter?.spec.style.profileId ?? recommendedStyleFor(resolvedScene.subjectType);
 
   const effectiveScene: SceneAnswers = selectedCharacter
@@ -239,30 +254,36 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
           )}
 
           {step === 3 && (
-            <Step title="What is happening?" note="Choose an approved shared activity visually, then add the story detail that makes this particular scene meaningful.">
-              <SharedVariantPicker
-                title="Activity library"
-                note="Activities are identity-neutral pose/action templates. The selected character keeps their own proportions and personality."
-                templates={activityLibrary}
-                selected={librarySelections.activity}
-                onSelect={applyLibraryVariant}
-                onClear={() => clearLibrarySelection('activity')}
-              />
+            <Step title="What is happening?" note={showActivityLibrary ? "Choose an approved shared activity visually, then add the story detail that makes this particular scene meaningful." : "Define the action and story detail for this scene. Shared body/activity templates are currently available for people and Jokomi."}>
+              {showActivityLibrary && (
+                <SharedVariantPicker
+                  title="Activity library"
+                  note="Activities are identity-neutral pose/action templates. The selected character keeps their own proportions and personality."
+                  templates={activityLibrary}
+                  selected={librarySelections.activity}
+                  onSelect={applyLibraryVariant}
+                  onClear={() => clearLibrarySelection('activity')}
+                />
+              )}
 
-              <div className="mt-7 grid gap-5 md:grid-cols-3">
+              <div className={`${showActivityLibrary ? 'mt-7' : ''} grid gap-5 md:grid-cols-3`}>
+                {!showActivityLibrary && field('Action', 'action', sceneOptions.action)}
                 {field('Object / focus', 'focusObject', sceneOptions.focusObject)}
+                {!showActivityLibrary && field('Interaction', 'interaction', sceneOptions.interaction)}
                 {field('Story beat / moment', 'storyBeat', sceneOptions.storyBeat)}
                 {field('Mood', 'mood', sceneOptions.mood)}
               </div>
 
-              <details className="mt-7 rounded-2xl border border-stone-200 bg-white p-5">
-                <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Define or fine-tune the activity</summary>
-                <p className="mt-2 text-xs leading-5 text-stone-500">Manual action and interaction can refine a shared activity or define a new one.</p>
-                <div className="mt-5 grid gap-5 md:grid-cols-2">
-                  {field('Action', 'action', sceneOptions.action)}
-                  {field('Interaction', 'interaction', sceneOptions.interaction)}
-                </div>
-              </details>
+              {showActivityLibrary && (
+                <details className="mt-7 rounded-2xl border border-stone-200 bg-white p-5">
+                  <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Define or fine-tune the activity</summary>
+                  <p className="mt-2 text-xs leading-5 text-stone-500">Manual action and interaction can refine a shared activity or define a new one.</p>
+                  <div className="mt-5 grid gap-5 md:grid-cols-2">
+                    {field('Action', 'action', sceneOptions.action)}
+                    {field('Interaction', 'interaction', sceneOptions.interaction)}
+                  </div>
+                </details>
+              )}
 
               <details className="mt-4 rounded-2xl border border-stone-200 bg-white p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-stone-800">+ Add more atmosphere</summary>
