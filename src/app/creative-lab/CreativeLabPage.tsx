@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { CharacterBuilderWizard } from './CharacterBuilderWizard';
 import { CreateModeChooser } from './CreateModeChooser';
+import { LibraryUploadPanel } from './LibraryUploadPanel';
 import { SceneBuilderWizard } from './SceneBuilderWizard';
 import {
   characterSpecTags,
@@ -345,6 +346,7 @@ function LibraryView({ projects, onOpenProject }: { projects: ProjectCard[]; onO
   return (
     <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h2 className="font-serif text-2xl">Media Library</h2><p className="mt-1 text-sm text-stone-500">Search by character, subject, scene detail, output or style.</p></div><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" className="rounded-xl border border-stone-300 py-2.5 pl-9 pr-3 text-sm" /></label></div>
+      <LibraryUploadPanel query={query} />
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{filtered.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 p-4 text-left"><BookOpen className="h-5 w-5 text-stone-400" /><p className="mt-4 text-sm font-semibold">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{project.projectType === 'character' ? 'Character · ' : ''}{getStyleProfile(project.styleProfile).title}</p></button>)}</div>
     </section>
   );
