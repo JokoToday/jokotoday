@@ -2,12 +2,21 @@ export type PrototypeLibraryAssetKind = 'Character' | 'Scene' | 'Setting' | 'Act
 
 export type PrototypeLibraryAssetRole =
   | 'Character master'
+  | 'Character candidate'
   | 'Character identity reference'
   | 'Style reference'
   | 'Pose / activity reference'
   | 'Setting reference'
   | 'Object / prop reference'
   | 'Supporting reference';
+
+export interface PrototypeLibraryGeneration {
+  provider: 'openai';
+  model: string;
+  projectId: string;
+  referenceAssetIds: string[];
+  status: 'candidate' | 'approved';
+}
 
 export interface PrototypeLibraryAsset {
   id: string;
@@ -17,12 +26,13 @@ export interface PrototypeLibraryAsset {
   role: PrototypeLibraryAssetRole;
   styleProfileId?: string;
   notes?: string;
-  source: 'external-upload';
+  source: 'external-upload' | 'creative-lab-generation';
   originalFileName: string;
   mimeType: string;
   fileSize: number;
   createdAt: string;
   blob: Blob;
+  generation?: PrototypeLibraryGeneration;
 }
 
 const DB_NAME = 'joko-creative-lab-prototype';

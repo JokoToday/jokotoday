@@ -96,7 +96,7 @@ export function LibraryUploadPanel({ query }: LibraryUploadPanelProps) {
         </button>
       </div>
 
-      <p className="mt-3 text-[11px] leading-5 text-amber-700">Prototype: uploaded files are stored only in this browser using IndexedDB. They are not written to Supabase yet.</p>
+      <p className="mt-3 text-[11px] leading-5 text-amber-700">Prototype: Library image files are stored only in this browser using IndexedDB. They are not written to Supabase yet.</p>
       {storageError && <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{storageError}</p>}
 
       {!loading && filteredAssets.length > 0 && (
@@ -116,7 +116,7 @@ export function LibraryUploadPanel({ query }: LibraryUploadPanelProps) {
                 </div>
                 {asset.subjectName && <p className="mt-3 text-xs font-medium text-stone-700">Subject: {asset.subjectName}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-stone-100 px-2 py-1 text-[9px] font-semibold text-stone-600">External upload</span>
+                  <span className="rounded-full bg-stone-100 px-2 py-1 text-[9px] font-semibold text-stone-600">{asset.source === 'external-upload' ? 'External upload' : 'Creative Lab generation'}</span>
                   {asset.styleProfileId && styleProfiles[asset.styleProfileId] && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold text-emerald-700">{styleProfiles[asset.styleProfileId].title}</span>}
                 </div>
               </div>
@@ -125,8 +125,8 @@ export function LibraryUploadPanel({ query }: LibraryUploadPanelProps) {
         </div>
       )}
 
-      {!loading && assets.length > 0 && filteredAssets.length === 0 && <p className="mt-5 text-xs text-stone-400">No uploaded artwork matches this search.</p>}
-      {!loading && assets.length === 0 && !storageError && <p className="mt-5 text-xs text-stone-400">No external artwork uploaded yet.</p>}
+      {!loading && assets.length > 0 && filteredAssets.length === 0 && <p className="mt-5 text-xs text-stone-400">No Library artwork matches this search.</p>}
+      {!loading && assets.length === 0 && !storageError && <p className="mt-5 text-xs text-stone-400">No Library artwork yet.</p>}
 
       {uploadOpen && <UploadIllustrationModal onClose={() => setUploadOpen(false)} onSaved={async () => { setUploadOpen(false); await reload(); }} />}
     </div>
