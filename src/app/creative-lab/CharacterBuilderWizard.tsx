@@ -12,6 +12,7 @@ import {
   type CharacterSpec,
   type CharacterStyleStrictness,
 } from './creativeLabModel';
+import { registerKnownCharacter } from './knownCharacterRegistry';
 
 interface Props {
   onClose: () => void;
@@ -205,6 +206,11 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
     />
   );
 
+  const createCharacterProject = () => {
+    registerKnownCharacter(spec);
+    onCreate({ character: spec });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4" role="dialog" aria-modal="true" aria-label="Create a Creative Lab character">
       <div className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-stone-200 bg-stone-50 shadow-2xl">
@@ -342,7 +348,7 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
           {step < 4 ? (
             <button type="button" disabled={!canContinue} onClick={() => setStep((current) => Math.min(4, current + 1))} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300">Continue<ChevronRight className="h-4 w-4" /></button>
           ) : (
-            <button type="button" disabled={!canContinue} onClick={() => onCreate({ character: spec })} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300"><Plus className="h-4 w-4" />Create character project</button>
+            <button type="button" disabled={!canContinue} onClick={createCharacterProject} className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300"><Plus className="h-4 w-4" />Create character project</button>
           )}
         </div>
       </div>
