@@ -134,7 +134,7 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
     }
   };
 
-  const useCandidateAsReference = (asset: PrototypeLibraryAsset, revise = false) => {
+  const attachCandidateAsReference = (asset: PrototypeLibraryAsset, revise = false) => {
     setState((current) => {
       const alreadyAttached = current.references.some((reference) => reference.assetId === asset.id);
       const references = alreadyAttached || current.references.length >= 4
@@ -267,8 +267,8 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
                 key={asset.id}
                 asset={asset}
                 onApprove={() => void approveCandidate(asset)}
-                onUseReference={() => useCandidateAsReference(asset)}
-                onRevise={() => useCandidateAsReference(asset, true)}
+                onUseReference={() => attachCandidateAsReference(asset)}
+                onRevise={() => attachCandidateAsReference(asset, true)}
                 onDiscard={() => void discardCandidate(asset)}
               />
             ))}
