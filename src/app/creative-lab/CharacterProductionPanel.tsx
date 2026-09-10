@@ -42,6 +42,7 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
   const [assets, setAssets] = useState<PrototypeLibraryAsset[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
+  const [libraryLoadSucceeded, setLibraryLoadSucceeded] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -49,8 +50,10 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
   const reloadAssets = async () => {
     try {
       setAssets(await listPrototypeLibraryAssets());
+      setLibraryLoadSucceeded(true);
       setError('');
     } catch {
+      setLibraryLoadSucceeded(false);
       setError('Browser Library storage is unavailable.');
     } finally {
       setLoadingLibrary(false);
@@ -64,6 +67,16 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
   useEffect(() => {
     writeCharacterProductionState(project.id, state);
   }, [project.id, state]);
+
+  useEffect(() => {
+    if (!libraryLoadSucceeded) return;
+    const availableAssetIds = new Set(assets.map((asset) => asset.id));
+    setState((current) => {
+      const references = current.references.filter((reference) => availableAssetIds.has(reference.assetId));
+      if (references.length === current.references.length) return current;
+      return { ...current, references };
+    });
+  }, [assets, libraryLoadSucceeded]);
 
   const referenceAssets = useMemo(() => state.references
     .map((reference) => ({
@@ -135,9 +148,17 @@ export function CharacterProductionPanel({ project }: CharacterProductionPanelPr
   };
 
   const attachCandidateAsReference = (asset: PrototypeLibraryAsset, revise = false) => {
+    const alreadyAttached = state.references.some((reference) => reference.assetId === asset.id);
+    if (!alreadyAttached && state.references.length >= 4) {
+      setMessage('');
+      setError('Source Material already has 4 references. Remove one before attaching this candidate.');
+      return;
+    }
+
+    setError('');
     setState((current) => {
-      const alreadyAttached = current.references.some((reference) => reference.assetId === asset.id);
-      const references = alreadyAttached || current.references.length >= 4
+      const currentAlreadyAttached = current.references.some((reference) => reference.assetId === asset.id);
+      const references = currentAlreadyAttached || current.references.length >= 4
         ? current.references
         : [...current.references, {
           assetId: asset.id,
