@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight, Palette, Plus, X } from 'lucide-react';
 import {
   LET_LAB_DECIDE,
@@ -12,6 +12,7 @@ import {
   type CharacterSpec,
   type CharacterStyleStrictness,
 } from './creativeLabModel';
+import { clearSessionDraft, readSessionDraft, writeSessionDraft } from './creativeLabDraftStorage';
 import { registerKnownCharacter } from './knownCharacterRegistry';
 
 interface Props {
@@ -103,10 +104,39 @@ const emptyForm: FormState = {
   cardText: ['Character name'],
 };
 
+const CHARACTER_DRAFT_KEY = 'jt_creative_lab_character_builder_draft_v1';
+
+interface CharacterBuilderDraftState {
+  schemaVersion: 1;
+  step: number;
+  form: FormState;
+  customValues: Record<string, string>;
+}
+
+function readCharacterBuilderDraft(): CharacterBuilderDraftState | null {
+  const draft = readSessionDraft<CharacterBuilderDraftState>(CHARACTER_DRAFT_KEY);
+  if (!draft || draft.schemaVersion !== 1 || !draft.form || !draft.customValues) return null;
+
+  return {
+    ...draft,
+    step: Math.max(0, Math.min(4, draft.step)),
+  };
+}
+
 export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  const [initialDraft] = useState(() => readCharacterBuilderDraft());
+  const [step, setStep] = useState(() => initialDraft?.step ?? 0);
+  const [form, setForm] = useState<FormState>(() => initialDraft?.form ?? emptyForm);
+  const [customValues, setCustomValues] = useState<Record<string, string>>(() => initialDraft?.customValues ?? {});
+
+  useEffect(() => {
+    writeSessionDraft<CharacterBuilderDraftState>(CHARACTER_DRAFT_KEY, {
+      schemaVersion: 1,
+      step,
+      form,
+      customValues,
+    });
+  }, [step, form, customValues]);
 
   const resolve = (key: string, value: string) => value === OTHER ? (customValues[key] ?? '').trim() : value;
   const resolveMulti = (key: string, values: string[]) => values
@@ -206,8 +236,14 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
     />
   );
 
+  const discardCharacterDraft = () => {
+    clearSessionDraft(CHARACTER_DRAFT_KEY);
+    onClose();
+  };
+
   const createCharacterProject = () => {
     registerKnownCharacter(spec);
+    clearSessionDraft(CHARACTER_DRAFT_KEY);
     onCreate({ character: spec });
   };
 
@@ -342,7 +378,7 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-between border-t border-stone-200 bg-white px-5 py-4 sm:px-7">
-          <button type="button" onClick={step === 0 ? onClose : () => setStep((current) => Math.max(0, current - 1))} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 px-4 py-2.5 text-xs font-semibold text-stone-700">
+          <button type="button" onClick={step === 0 ? discardCharacterDraft : () => setStep((current) => Math.max(0, current - 1))} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 px-4 py-2.5 text-xs font-semibold text-stone-700">
             {step > 0 && <ChevronLeft className="h-4 w-4" />}{step === 0 ? 'Cancel' : 'Back'}
           </button>
           {step < 4 ? (
