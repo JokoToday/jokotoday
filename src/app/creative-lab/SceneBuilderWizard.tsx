@@ -218,7 +218,7 @@ export function SceneBuilderWizard({ onClose, onCreate }: Props) {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Palette className="h-5 w-5 text-stone-500" />
-                      {id === recommendedStyle && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">Inherited</span>}
+                      {id === recommendedStyle && <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">{selectedCharacter ? 'Inherited' : 'Recommended'}</span>}
                     </div>
                     <p className="mt-4 font-semibold text-stone-800">{style.title}</p>
                     <p className="mt-2 text-xs leading-5 text-stone-500">{style.description}</p>
