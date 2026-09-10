@@ -30,3 +30,6 @@ verify_jwt = true
 
 [functions.send-admin-order-notification]
 verify_jwt = true
+
+[functions.generate-character-candidates]
+verify_jwt = true
