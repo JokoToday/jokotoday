@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { CharacterBuilderWizard } from './CharacterBuilderWizard';
+import { CharacterProductionPanel } from './CharacterProductionPanel';
 import { CreateModeChooser } from './CreateModeChooser';
 import { LibraryUploadPanel } from './LibraryUploadPanel';
 import { SceneBuilderWizard } from './SceneBuilderWizard';
@@ -312,9 +313,10 @@ function ProjectWorkspace({ project }: { project: CreativeLabProject }) {
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <WorkspaceCard icon={FileText} title="Brief">Structured {project.projectType === 'character' ? 'character choices' : 'scene choices'} become the working brief automatically.</WorkspaceCard>
-          <WorkspaceCard icon={Image} title="Source Material">Character masters, references, photos and research will attach here.</WorkspaceCard>
+          <WorkspaceCard icon={Image} title="Source Material">{project.projectType === 'character' ? 'Choose reusable Library references and define exactly what each image should influence below.' : 'Character masters, references, photos and research will attach here.'}</WorkspaceCard>
           <WorkspaceCard icon={MessageSquare} title="Review">Technical QA → Style Check → Editorial → Human approval.</WorkspaceCard>
         </div>
+        {project.projectType === 'character' && project.character && <CharacterProductionPanel key={project.id} project={project} />}
       </div>
     </div>
   );
