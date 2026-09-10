@@ -257,7 +257,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://xvhualoeboobulwgmkla.supabase.co";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (!supabaseUrl) {
+      console.error("SUPABASE_URL not configured");
+      return new Response(
+        JSON.stringify({ error: { http_code: 500, message: "SUPABASE_URL not configured" } }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const redirectUrl = redirect_to || site_url || supabaseUrl;
     if (!redirectUrl) {
       console.error("No redirect URL available");
