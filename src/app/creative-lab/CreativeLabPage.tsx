@@ -1,90 +1,330 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Circle, FileText, Folder, Image, LayoutGrid, Loader2, Lock, MessageSquare, Palette, Plus, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  ArrowRight,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  Circle,
+  FileText,
+  Folder,
+  Image,
+  LayoutGrid,
+  Loader2,
+  Lock,
+  MessageSquare,
+  Palette,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { SceneBuilderWizard } from './SceneBuilderWizard';
+import {
+  getStyleProfile,
+  initialProjects,
+  isMeaningful,
+  makeProjectTitle,
+  makeSceneBrief,
+  styleProfiles,
+  type CreativeSection,
+  type ProjectAccent,
+  type ProjectCard,
+  type ProjectDraft,
+  type ProjectStatus,
+} from './creativeLabModel';
 
-interface Props { onNavigate: (page: string) => void }
-type Section = 'studio' | 'projects' | 'review' | 'library' | 'style';
-type Status = 'In progress' | 'Ready for review' | 'Approved';
-type Field = 'assetType'|'purpose'|'subjectType'|'subjectName'|'gender'|'ageRange'|'ethnicBackground'|'profession'|'personality'|'bodySilhouette'|'signatureIrregularity'|'country'|'city'|'place'|'setting'|'action'|'focusObject'|'interaction'|'storyBeat'|'mood'|'energy'|'timeOfDay'|'weather'|'framing'|'viewpoint'|'composition';
-type Scene = Record<Field,string>;
-type Profile = { title:string; description:string; criteria:string[] };
-type Project = { id:string; title:string; status:Status; progress:number; assetType:string; subjectType:string; subjectName:string; purpose:string; styleProfile:string; brief:string; scene:Partial<Scene> };
+interface CreativeLabPageProps {
+  onNavigate: (page: string) => void;
+}
 
-const OTHER='Other…', NI='Not important', DECIDE='Let Creative Lab decide';
-const profiles:Record<string,Profile>={
-  'curious-community-v1':{title:'JOKO Curious Community v1',description:'Quirky Editorial Caricature — affectionate, eccentric, hand-drawn and unmistakably authored.',criteria:['Distinctive silhouette before detail','Intentional asymmetry + exaggerated anatomy','Black hand-drawn ink with organic wobble','Sparse hatching and visually light texture','90–95% black / white / off-white + one small accent colour','Warmly deadpan; never generic or cute','Avoid Pixar, polished 3D, stock and corporate-vector styling','Preserve the visual weirdness']},
-  'living-notebook-v1':{title:'JOKO Living Notebook v1',description:'Quiet observation, hand-drawn warmth, selective colour and meaningful sketch-to-reality transitions.',criteria:['Hand-drawn feel','Soft ink outlines','Selective colour with narrative purpose','Quiet composition with breathing room','Observation before persuasion','Micro storytelling rather than advertising']},
-  'jokomi-master-v1':{title:'Jokomi Master v1',description:'Canonical Jokomi proportions, large oval feet, 2D pencil/ink treatment and gentle expression.',criteria:['Canonical asymmetric grain silhouette','Large oval feet remain signature','Dot eyes; no nose; mouth usually absent','2D pencil / ink; never glossy 3D','Quiet, curious body language','Gentle micro storytelling']},
-};
-const empty:Scene={assetType:'',purpose:'',subjectType:'',subjectName:'',gender:'',ageRange:'',ethnicBackground:'',profession:'',personality:'',bodySilhouette:'',signatureIrregularity:'',country:'',city:'',place:'',setting:'',action:'',focusObject:'',interaction:'',storyBeat:'',mood:'',energy:'',timeOfDay:'',weather:'',framing:'',viewpoint:'',composition:''};
-const opts={
-  assetType:['Illustration','Animated sketch','Photo treatment','Storyboard','Short video','Audio','Mixed media',OTHER],
-  purpose:['Notebook','Today','Homepage','Product page','Question / Answer','Social','Internal only',OTHER],
-  subjectType:['Person','Jokomi','Product','Place','Question','Object','Story',OTHER],
-  gender:['Female','Male','Androgynous / non-binary',NI,OTHER],
-  ageRange:['Child','Teenager','Young adult','Adult','Middle-aged','Older adult','Elderly',NI,OTHER],
-  ethnicBackground:['Thai','Southeast Asian','East Asian','South Asian','European / White','Black / African descent','Mixed heritage',NI,OTHER],
-  profession:['Baker','Civil servant','Florist','Librarian','Programmer','Gardener','Teacher','Retiree','Engineer','Market vendor','Photographer','Student',NI,OTHER],
-  personality:['Curious','Quiet','Dutiful','Dreamy','Skeptical','Energetic','Patient','Nervous','Mischievous','Warmly deadpan',OTHER],
-  bodySilhouette:['Tall & lanky','Short & compact','Very long legs','Very short legs','Wide-headed','Narrow body','Large head / small body','Small head / long body',DECIDE,OTHER],
-  signatureIrregularity:['Uneven eyes','Crooked posture','Asymmetric hair','Large glasses','Long nose','Head tilt','Uneven stance','One foot turned outward',DECIDE,OTHER],
-  country:['Thailand','Japan','France','China','Germany',NI,OTHER], city:['Chiang Mai','Bangkok','Tokyo','Kyoto','Paris',NI,OTHER],
-  place:['JOKO TODAY','Sunday Walking Street','Mae Rim Bakery','Bakery','Café','Market','Garden','Home','Street',OTHER], setting:['Street market','Bakery','Café','Kitchen','Garden','Shop','Home','Nature','Studio',OTHER],
-  action:['Walking','Sitting','Looking','Eating','Drinking','Holding','Reading','Writing','Working','Entering','Leaving','Waiting','Laughing','Talking',OTHER],
-  focusObject:['Flower','Food','Book','Notebook','Shop','Sign','Animal','Person','Product','Building',NI,OTHER], interaction:['Looks at','Picks up','Smells','Tastes','Touches','Opens','Points at','Walks toward','Walks past','Shares',NI,OTHER],
-  storyBeat:['Notices something','Discovers something','Meets someone','Tries something','Gets surprised','Gets curious','Stops to look','Follows something','Finds a favourite','Learns something',OTHER],
-  mood:['Curious','Quiet','Happy','Awkward','Mischievous','Surprised','Thoughtful','Tender','Sleepy','Excited','Puzzled',OTHER], energy:['Very calm','Calm','Playful','Lively','Chaotic',NI,OTHER],
-  timeOfDay:['Early morning','Morning','Noon','Afternoon','Golden hour','Evening','Night',NI,OTHER], weather:['Sunny','Overcast','Light rain','Rainy','Misty','Warm','Windy','Indoor',NI,OTHER],
-  framing:['Full-body','Medium','Close-up','Wide scene','Over-the-shoulder','Detail shot',DECIDE,OTHER], viewpoint:['Eye level','Slightly above','Slightly below','Side view','Front view','From behind',DECIDE,OTHER], composition:['Subject centered','Subject off-center','Lots of empty space','Environment dominant','Object dominant',DECIDE,OTHER],
-};
-const initial:Project[]=[
-  {id:'emma',title:'Emma at Sunday Walking Street',status:'In progress',progress:60,assetType:'Animated sketch',subjectType:'Person',subjectName:'Emma',purpose:'Notebook',styleProfile:'curious-community-v1',brief:'Emma, a curious child, walks through Sunday Walking Street in Chiang Mai and notices one unusually beautiful flower. The flower is the only strong accent colour.',scene:{gender:'Female',ageRange:'Child',city:'Chiang Mai',place:'Sunday Walking Street',action:'Walking',focusObject:'Flower',storyBeat:'Notices something',mood:'Curious'}},
-  {id:'croissant',title:'Almond Croissant Reveal',status:'In progress',progress:30,assetType:'Animated sketch',subjectType:'Product',subjectName:'Almond Croissant',purpose:'Product page',styleProfile:'living-notebook-v1',brief:'A quiet drawing reveal that makes the croissant feel discovered rather than advertised.',scene:{}},
-  {id:'question',title:'Why do croissants have layers?',status:'Ready for review',progress:85,assetType:'Storyboard',subjectType:'Question',subjectName:'Why do croissants have layers?',purpose:'Question / Answer',styleProfile:'living-notebook-v1',brief:'Explain lamination as a calm Notebook sequence, revealing the logic one layer at a time.',scene:{}},
-  {id:'jokomi',title:'Jokomi Bakery Doorway',status:'Approved',progress:100,assetType:'Illustration',subjectType:'Jokomi',subjectName:'Jokomi',purpose:'Homepage',styleProfile:'jokomi-master-v1',brief:'Jokomi pauses outside the bakery before entering his first home.',scene:{}},
+const navItems: Array<{ id: CreativeSection; label: string; icon: ComponentType<{ className?: string }> }> = [
+  { id: 'studio', label: 'Studio', icon: LayoutGrid },
+  { id: 'projects', label: 'Projects', icon: Folder },
+  { id: 'review', label: 'Review', icon: MessageSquare },
+  { id: 'library', label: 'Library', icon: BookOpen },
+  { id: 'style', label: 'Style', icon: Palette },
 ];
-const nav:[Section,string,typeof LayoutGrid][]=[['studio','Studio',LayoutGrid],['projects','Projects',Folder],['review','Review',MessageSquare],['library','Library',BookOpen],['style','Style',Palette]];
-const meaningful=(v?:string)=>!!v&&v!==NI&&v!==DECIDE;
-const profile=(id:string):Profile=>profiles[id]??{title:id||'Custom style',description:'Custom visual language for this project.',criteria:['Follow the supplied reference consistently','Keep the result authored and intentional','Human style review required']};
-const recommended=(type:string)=>type==='Jokomi'?'jokomi-master-v1':type==='Person'?'curious-community-v1':'living-notebook-v1';
-const subjects=(type:string)=>type==='Person'?['Emma','Theo','Jo','Phuttan','Tech Nerd','Elderly Thai Lady','Introverted Librarian',OTHER]:type==='Jokomi'?['Jokomi',OTHER]:type==='Product'?['Almond Croissant','Strawberry Cake','Croissant','Bread','Cake',OTHER]:type==='Place'?['JOKO TODAY','Sunday Walking Street','Mae Rim Bakery',OTHER]:type==='Question'?['Why do croissants have layers?','What makes bread chewy?','Why does butter matter?',OTHER]:type==='Object'?['Flower','Notebook','Bread tray','Camera','Umbrella',OTHER]:type==='Story'?['Small discovery','A softer morning','Unexpected meeting',OTHER]:[OTHER];
-function brief(s:Scene){const who=s.subjectName||s.subjectType||'The subject';const d=s.subjectType==='Person'?[s.gender,s.ageRange,s.ethnicBackground,s.profession].filter(meaningful).join(', '):'';let x=d?`${who} (${d})`:who;if(meaningful(s.action))x+=` is ${s.action.toLowerCase()}`;const where=[s.place,s.city,s.country].filter(meaningful);if(where.length)x+=` at ${where.join(', ')}`;if(meaningful(s.setting))x+=` in a ${s.setting.toLowerCase()} setting`;x+='.';const moment=[s.storyBeat, meaningful(s.interaction)&&meaningful(s.focusObject)?`${s.interaction} ${s.focusObject.toLowerCase()}`:meaningful(s.focusObject)?`Focus: ${s.focusObject}`:''].filter(meaningful);if(moment.length)x+=` ${moment.join('; ')}.`;const c=[s.personality,s.bodySilhouette,s.signatureIrregularity].filter(meaningful);if(c.length)x+=` Character direction: ${c.join('; ')}.`;const a=[s.mood,s.energy,s.timeOfDay,s.weather].filter(meaningful);if(a.length)x+=` Atmosphere: ${a.join('; ')}.`;const cam=[s.framing,s.viewpoint,s.composition].filter(meaningful);if(cam.length)x+=` Composition: ${cam.join('; ')}.`;return x}
-function title(s:Scene){const who=s.subjectName||s.subjectType||'Untitled';return meaningful(s.place)?`${who} at ${s.place}`:meaningful(s.action)?`${who} · ${s.action}`:who}
 
-export default function CreativeLabPage({onNavigate}:Props){
-  const {user,userRole,loading,profileLoading}=useAuth(); const [section,setSection]=useState<Section>('studio'); const [projects,setProjects]=useState(initial); const [selected,setSelected]=useState('emma'); const [wizard,setWizard]=useState(false);
-  const current=projects.find(p=>p.id===selected)??projects[0];
-  const add=(scene:Scene,styleProfile:string)=>{const p:Project={id:`creative-${Date.now()}`,title:title(scene),status:'In progress',progress:10,assetType:scene.assetType||'Illustration',subjectType:scene.subjectType||'Story',subjectName:scene.subjectName||'Untitled',purpose:scene.purpose||'Notebook',styleProfile,brief:brief(scene),scene};setProjects(v=>[p,...v]);setSelected(p.id);setSection('studio');setWizard(false)};
-  if(loading||(user&&profileLoading))return <Center><Loader2 className="h-5 w-5 animate-spin"/> Opening Creative Lab…</Center>;
-  if(!user||userRole!=='admin')return <Center><div className="max-w-md rounded-3xl border bg-white p-8"><Lock className="mb-4 h-5 w-5"/><h1 className="font-serif text-2xl">Admin access required</h1><p className="mt-2 text-sm text-stone-600">Creative Lab uses the existing JOKO TODAY admin identity.</p><button onClick={()=>onNavigate('admin')} className="mt-5 rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white">Open Admin sign in</button></div></Center>;
-  return <div className="min-h-screen bg-stone-100 text-stone-800"><div className="min-h-screen lg:grid lg:grid-cols-[220px_1fr]">
-    <aside className="border-r bg-stone-50 p-5"><p className="font-serif text-2xl text-stone-950">JOKO</p><p className="font-serif text-lg">Creative Lab</p><button onClick={()=>onNavigate('admin')} className="my-5 text-xs text-stone-500">Back to Admin</button><nav className="space-y-1">{nav.map(([id,label,Icon])=><button key={id} onClick={()=>setSection(id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium ${section===id?'bg-white shadow-sm':'text-stone-600'}`}><Icon className="h-4 w-4"/>{label}</button>)}</nav><div className="mt-8 border-t pt-6"><p className="font-serif italic text-stone-500">“Preserve the visual weirdness.”</p><p className="mt-2 text-xs text-stone-400">Curated choices first. Freedom second. Blank prompt boxes last.</p></div></aside>
-    <main><header className="border-b bg-white px-6 py-7"><div className="mx-auto flex max-w-[1450px] items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-stone-400">{section}</p><h1 className="mt-1 font-serif text-4xl">{section==='studio'?'What are we making today?':section[0].toUpperCase()+section.slice(1)}</h1><p className="mt-2 text-sm text-stone-600">{section==='studio'?'Direct a scene with simple choices. Creative Lab turns them into the working brief.':'Creative work, governed by JOKO style.'}</p></div><button onClick={()=>setWizard(true)} className="flex items-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white"><Plus className="h-4 w-4"/>Create something</button></div></header>
-      <div className="mx-auto max-w-[1450px] space-y-6 p-6"><div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><strong>Prototype mode:</strong> scenes live only in this browser session. No Supabase writes yet.</div>{section==='studio'&&<Studio projects={projects} current={current} open={p=>setSelected(p.id)}/>} {section==='projects'&&<Grid projects={projects} open={p=>{setSelected(p.id);setSection('studio')}}/>} {section==='review'&&<Review projects={projects}/>} {section==='library'&&<Library projects={projects}/>} {section==='style'&&<Style current={current}/>}</div>
-    </main></div>{wizard&&<Wizard close={()=>setWizard(false)} create={add}/>}</div>
-}
-function Center({children}:{children:ReactNode}){return <div className="flex min-h-screen items-center justify-center gap-2 bg-stone-100 p-6 text-stone-700">{children}</div>}
-function Studio({projects,current,open}:{projects:Project[];current:Project;open:(p:Project)=>void}){return <><div className="grid gap-4 lg:grid-cols-3">{(['In progress','Ready for review','Approved'] as Status[]).map(s=><div key={s} className="rounded-2xl border bg-white p-4"><h2 className="mb-3 text-sm font-semibold">{s}</h2><div className="space-y-2">{projects.filter(p=>p.status===s).map(p=><button key={p.id} onClick={()=>open(p)} className="w-full rounded-xl border p-3 text-left"><p className="text-sm font-semibold">{p.title}</p><p className="mt-1 text-[11px] text-stone-500">{p.subjectType} · {p.assetType} · {profile(p.styleProfile).title}</p></button>)}</div></div>)}</div><div className="grid gap-5 xl:grid-cols-[1fr_320px]"><div className="rounded-3xl border bg-white p-6"><p className="text-xs font-semibold uppercase tracking-[.15em] text-stone-400">Selected scene</p><h2 className="mt-1 font-serif text-2xl">{current.title}</h2><p className="mt-4 text-sm leading-6 text-stone-600">{current.brief}</p><div className="mt-5 flex flex-wrap gap-2">{Object.values(current.scene).filter(meaningful).slice(0,10).map(v=><span key={v} className="rounded-full bg-stone-100 px-2 py-1 text-[10px]">{v}</span>)}</div><div className="mt-6 grid gap-3 md:grid-cols-3"><Box icon={FileText} title="Brief" text="Generated from structured scene choices."/><Box icon={Image} title="Source material" text="References and masters come next."/><Box icon={MessageSquare} title="Review" text="Technical → Style → Editorial → Human."/></div></div><Guardian p={current}/></div></>}
-function Box({icon:Icon,title,text}:{icon:typeof FileText;title:string;text:string}){return <div className="rounded-2xl border bg-stone-50 p-4"><Icon className="h-4 w-4 text-stone-500"/><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-stone-500">{text}</p></div>}
-function Grid({projects,open}:{projects:Project[];open:(p:Project)=>void}){return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map(p=><button key={p.id} onClick={()=>open(p)} className="rounded-2xl border bg-white p-5 text-left"><p className="font-semibold">{p.title}</p><p className="mt-1 text-xs text-stone-500">{p.subjectType} · {p.assetType}</p><p className="mt-4 text-[11px]">{profile(p.styleProfile).title}</p></button>)}</div>}
-function Review({projects}:{projects:Project[]}){const q=projects.filter(p=>p.status==='Ready for review');return <div className="rounded-3xl border bg-white p-6"><p className="text-xs font-semibold uppercase tracking-[.15em] text-stone-400">Review queue</p><h2 className="mt-1 font-serif text-2xl">{q.length} pieces need a decision</h2><div className="mt-5 space-y-3">{q.map(p=><div key={p.id} className="rounded-2xl border p-4"><p className="font-semibold">{p.title}</p><p className="mt-1 text-xs text-stone-500">{profile(p.styleProfile).title}</p><p className="mt-3 text-sm text-stone-600">{p.brief}</p></div>)}</div></div>}
-function Library({projects}:{projects:Project[]}){const[q,setQ]=useState('');const shown=useMemo(()=>projects.filter(p=>[p.title,p.subjectName,p.assetType,p.purpose,profile(p.styleProfile).title,p.brief].join(' ').toLowerCase().includes(q.toLowerCase())),[q,projects]);return <div className="rounded-3xl border bg-white p-6"><div className="flex items-end justify-between gap-4"><div><h2 className="font-serif text-2xl">Media Library</h2><p className="text-sm text-stone-500">Search subject, scene detail or style.</p></div><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-stone-400"/><input value={q} onChange={e=>setQ(e.target.value)} className="rounded-xl border py-2.5 pl-9 pr-3 text-sm" placeholder="Search…"/></label></div><div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-4">{shown.map(p=><div key={p.id} className="rounded-2xl border p-4"><BookOpen className="h-5 w-5 text-stone-400"/><p className="mt-4 text-sm font-semibold">{p.title}</p><p className="mt-1 text-[11px] text-stone-500">{profile(p.styleProfile).title}</p></div>)}</div></div>}
-function Style({current}:{current:Project}){return <div className="grid gap-5 xl:grid-cols-[1fr_320px]"><div className="rounded-3xl border bg-white p-6"><div className="flex gap-4"><Sparkles className="h-6 w-6"/><div><p className="text-xs font-semibold uppercase tracking-[.15em] text-stone-400">JOKO visual moat</p><h2 className="font-serif text-3xl">Style is production infrastructure.</h2><p className="mt-2 text-sm text-stone-600">Curious Community is the main people/character profile. Living Notebook governs the broader editorial world; Jokomi keeps his master canon.</p></div></div><div className="mt-7 grid gap-4 md:grid-cols-3">{Object.entries(profiles).map(([id,p])=><div key={id} className="rounded-2xl border p-5"><Palette className="h-5 w-5"/><p className="mt-4 font-semibold">{p.title}</p><p className="mt-2 text-xs leading-5 text-stone-500">{p.description}</p></div>)}</div></div><Guardian p={current}/></div>}
-function Guardian({p}:{p:Project}){const s=profile(p.styleProfile);return <aside className="rounded-3xl border bg-white p-5"><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4"/><h2 className="font-serif text-xl">Style Guardian</h2></div><p className="mt-3 text-sm font-semibold">{s.title}</p><p className="mt-1 text-xs leading-5 text-stone-500">{s.description}</p><div className="mt-5 space-y-2">{s.criteria.map(c=><div key={c} className="flex gap-2 text-xs leading-5"><Check className="mt-1 h-3 w-3 shrink-0"/>{c}</div>)}</div></aside>}
+const projectSteps = ['Scene', 'Brief', 'Create', 'Review', 'Approved'];
 
-function Wizard({close,create}:{close:()=>void;create:(s:Scene,style:string)=>void}){
-  const[step,setStep]=useState(0),[scene,setScene]=useState({...empty}),[style,setStyle]=useState(''),[custom,setCustom]=useState<Partial<Record<Field|'style',string>>>({});
-  const set=(k:Field,v:string)=>{setScene(s=>({...s,[k]:v}));if(v!==OTHER)setCustom(c=>({...c,[k]:''}))}; const val=(k:Field)=>scene[k]===OTHER?(custom[k]||'').trim():scene[k]; const resolved={...scene}; (Object.keys(resolved) as Field[]).forEach(k=>resolved[k]=val(k)); const finalStyle=style===OTHER?(custom.style||'').trim():style; const person=resolved.subjectType==='Person', rec=recommended(resolved.subjectType); const can=step===0?!!resolved.assetType&&!!resolved.purpose:step===1?!!resolved.subjectType&&!!resolved.subjectName:step===2?true:step===3?!!(resolved.action||resolved.storyBeat||resolved.focusObject):!!finalStyle;
-  const field=(label:string,key:Field,options:string[],required=false)=><Choice label={label} value={scene[key]} customValue={custom[key]||''} options={options} required={required} change={v=>set(key,v)} customChange={v=>setCustom(c=>({...c,[key]:v}))}/>;
-  const next=()=>{if(!can)return;if(step===1&&!style)setStyle(rec);setStep(s=>Math.min(4,s+1))};
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4"><div className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-3xl border bg-stone-50 shadow-2xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-stone-400">Scene Builder</p><p className="text-sm font-semibold">Step {step+1} of 5</p></div><button onClick={close}><X className="h-5 w-5"/></button></div><div className="p-6 sm:p-8"><Progress step={step}/>
-    {step===0&&<Step title="What are we making?" note="Choose rather than prompt. Every field includes Other… when you need it."><div className="grid gap-5 md:grid-cols-2">{field('Output','assetType',opts.assetType,true)}{field('Publication use','purpose',opts.purpose,true)}</div></Step>}
-    {step===1&&<Step title="Who or what is this about?" note="Person projects reveal extra character direction from the Curious Community style system."><div className="grid gap-5 md:grid-cols-2">{field('Subject type','subjectType',opts.subjectType,true)}{field('Who / subject','subjectName',subjects(resolved.subjectType),true)}</div>{person&&<div className="mt-7 rounded-2xl border bg-white p-5"><p className="text-xs font-semibold uppercase tracking-[.14em] text-stone-400">Character direction</p><p className="mt-1 text-sm text-stone-600">Background informs the character; it must never become the caricature.</p><div className="mt-5 grid gap-5 md:grid-cols-2">{field('Gender / presentation','gender',opts.gender)}{field('Age range','ageRange',opts.ageRange)}{field('Ethnic / cultural background','ethnicBackground',opts.ethnicBackground)}{field('Profession / role','profession',opts.profession)}{field('Personality','personality',opts.personality)}{field('Body / silhouette','bodySilhouette',opts.bodySilhouette)}{field('Signature irregularity','signatureIrregularity',opts.signatureIrregularity)}</div></div>}</Step>}
-    {step===2&&<Step title="Where are we?" note="Start broad, then get specific. You can leave irrelevant detail blank."><div className="grid gap-5 md:grid-cols-2">{field('Country','country',opts.country)}{field('City','city',opts.city)}{field('Specific place','place',opts.place)}{field('Setting type','setting',opts.setting)}</div></Step>}
-    {step===3&&<Step title="What is happening?" note="Direct the moment. Creative Lab writes the brief behind the scenes."><div className="grid gap-5 md:grid-cols-2">{field('Action','action',opts.action)}{field('Object / focus','focusObject',opts.focusObject)}{field('Interaction','interaction',opts.interaction)}{field('Story beat / moment','storyBeat',opts.storyBeat)}{field('Mood','mood',opts.mood)}</div><details className="mt-7 rounded-2xl border bg-white p-5"><summary className="cursor-pointer text-sm font-semibold">+ Add more atmosphere</summary><div className="mt-5 grid gap-5 md:grid-cols-3">{field('Energy','energy',opts.energy)}{field('Time of day','timeOfDay',opts.timeOfDay)}{field('Weather / atmosphere','weather',opts.weather)}</div></details></Step>}
-    {step===4&&<Step title="How should it look?" note="Style is mandatory. Composition detail is optional."><div className="grid gap-4 md:grid-cols-3">{Object.entries(profiles).map(([id,p])=><button key={id} onClick={()=>setStyle(id)} className={`rounded-2xl border p-5 text-left ${style===id?'border-stone-800 shadow-md':''}`}><div className="flex justify-between"><Palette className="h-5 w-5"/>{id===rec&&<span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] text-emerald-700">Recommended</span>}</div><p className="mt-4 font-semibold">{p.title}</p><p className="mt-1 text-xs text-stone-500">{p.description}</p></button>)}<button onClick={()=>setStyle(OTHER)} className={`rounded-2xl border p-5 text-left ${style===OTHER?'border-stone-800 shadow-md':''}`}><Plus className="h-5 w-5"/><p className="mt-4 font-semibold">Other…</p></button></div>{style===OTHER&&<input autoFocus value={custom.style||''} onChange={e=>setCustom(c=>({...c,style:e.target.value}))} placeholder="Name or describe the style…" className="mt-3 w-full rounded-xl border px-4 py-3 text-sm"/>}<details className="mt-7 rounded-2xl border bg-white p-5"><summary className="cursor-pointer text-sm font-semibold">+ Add composition detail</summary><div className="mt-5 grid gap-5 md:grid-cols-3">{field('Framing','framing',opts.framing)}{field('Viewpoint','viewpoint',opts.viewpoint)}{field('Composition','composition',opts.composition)}</div></details><div className="mt-7 rounded-2xl border bg-white p-5"><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-stone-400">Generated brief</p><h3 className="mt-2 font-serif text-xl">{title(resolved)}</h3><p className="mt-3 text-sm leading-6 text-stone-600">{brief(resolved)}</p><p className="mt-4 text-xs font-semibold">Style: {finalStyle?profile(finalStyle).title:'—'}</p></div></Step>}
-  </div><div className="sticky bottom-0 flex justify-between border-t bg-white px-6 py-4"><button onClick={step===0?close:()=>setStep(s=>Math.max(0,s-1))} className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold">{step>0&&<ChevronLeft className="h-4 w-4"/>}{step===0?'Cancel':'Back'}</button>{step<4?<button disabled={!can} onClick={next} className="flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300">Continue<ChevronRight className="h-4 w-4"/></button>:<button disabled={!can} onClick={()=>create(resolved,finalStyle)} className="flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2.5 text-xs font-semibold text-white disabled:bg-stone-300"><Plus className="h-4 w-4"/>Create scene</button>}</div></div></div>
+function accentClass(accent: ProjectAccent) {
+  switch (accent) {
+    case 'sage': return 'from-emerald-50 via-stone-50 to-amber-50';
+    case 'sand': return 'from-amber-50 via-orange-50 to-stone-100';
+    case 'rose': return 'from-rose-50 via-orange-50 to-amber-50';
+    default: return 'from-slate-50 via-stone-50 to-zinc-100';
+  }
 }
-function Progress({step}:{step:number}){return <div className="mb-8 grid grid-cols-5 gap-2">{['What','Who','Where','Moment','Look'].map((l,i)=><div key={l}><div className={`h-1.5 rounded-full ${i<=step?'bg-stone-800':'bg-stone-200'}`}/><p className="mt-2 text-[10px] font-semibold">{l}</p></div>)}</div>}
-function Step({title,note,children}:{title:string;note:string;children:ReactNode}){return <section><h2 className="font-serif text-3xl">{title}</h2><p className="mt-2 text-sm text-stone-500">{note}</p><div className="mt-6">{children}</div></section>}
-function Choice({label,value,customValue,options,change,customChange,required=false}:{label:string;value:string;customValue:string;options:string[];change:(v:string)=>void;customChange:(v:string)=>void;required?:boolean}){return <label className="block"><span className="text-xs font-semibold">{label}{required&&' *'}</span><select value={value} onChange={e=>change(e.target.value)} className="mt-2 w-full rounded-xl border bg-white px-3 py-3 text-sm"><option value="">Choose…</option>{options.map(o=><option key={o}>{o}</option>)}</select>{value===OTHER&&<input autoFocus value={customValue} onChange={e=>customChange(e.target.value)} placeholder={`Enter ${label.toLowerCase()}…`} className="mt-2 w-full rounded-xl border px-3 py-3 text-sm"/>}</label>}
+
+function accentForStyle(styleProfile: string): ProjectAccent {
+  if (styleProfile === 'jokomi-master-v1') return 'sand';
+  if (styleProfile === 'curious-community-v1') return 'sage';
+  return 'ink';
+}
+
+function sectionHeading(section: CreativeSection) {
+  switch (section) {
+    case 'projects': return ['Projects', 'Everything currently moving from scene to approval.'] as const;
+    case 'review': return ['Review', 'Decide what is good enough to become part of the JOKO world.'] as const;
+    case 'library': return ['Library', 'The visual memory of approved and in-progress creative work.'] as const;
+    case 'style': return ['Style', 'The visual language is production infrastructure — and one of our moats.'] as const;
+    default: return ['What are we making today?', 'Direct a scene with simple choices. Creative Lab turns those choices into the working brief.'] as const;
+  }
+}
+
+export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
+  const { user, userRole, loading, profileLoading } = useAuth();
+  const [activeSection, setActiveSection] = useState<CreativeSection>('studio');
+  const [projectList, setProjectList] = useState<ProjectCard[]>(initialProjects);
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjects[0].id);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const selectedProject = projectList.find((project) => project.id === selectedProjectId) ?? projectList[0];
+  const [heading, subheading] = sectionHeading(activeSection);
+
+  const openProject = (project: ProjectCard, destination: CreativeSection = 'studio') => {
+    setSelectedProjectId(project.id);
+    setActiveSection(destination);
+  };
+
+  const createProject = ({ scene, styleProfile }: ProjectDraft) => {
+    const newProject: ProjectCard = {
+      id: `creative-${Date.now()}`,
+      title: makeProjectTitle(scene),
+      subtitle: `${scene.subjectType || 'Story'} · ${scene.assetType || 'Illustration'}`,
+      status: 'In progress',
+      progress: 10,
+      accent: accentForStyle(styleProfile),
+      assetType: scene.assetType || 'Illustration',
+      subjectType: scene.subjectType || 'Story',
+      subjectName: scene.subjectName || 'Untitled',
+      purpose: scene.purpose || 'Notebook',
+      styleProfile,
+      idea: makeSceneBrief(scene),
+      scene,
+      createdLabel: 'Created in this prototype session',
+    };
+
+    setProjectList((current) => [newProject, ...current]);
+    setSelectedProjectId(newProject.id);
+    setActiveSection('studio');
+    setWizardOpen(false);
+  };
+
+  if (loading || (user && profileLoading)) {
+    return <Centered><Loader2 className="h-5 w-5 animate-spin" />Opening Creative Lab…</Centered>;
+  }
+
+  if (!user || userRole !== 'admin') {
+    return (
+      <Centered>
+        <div className="w-full max-w-md rounded-3xl border border-stone-200 bg-white p-8 shadow-sm">
+          <Lock className="mb-5 h-5 w-5 text-stone-600" />
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">JOKO Creative Lab</p>
+          <h1 className="mt-2 font-serif text-2xl text-stone-950">Admin access required</h1>
+          <p className="mt-3 text-sm leading-6 text-stone-600">Creative Lab uses the existing JOKO TODAY admin identity.</p>
+          <button type="button" onClick={() => onNavigate('admin')} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white">
+            Open Admin sign in <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </Centered>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-100 text-stone-800">
+      <div className="min-h-screen lg:grid lg:grid-cols-[220px_minmax(0,1fr)]">
+        <Sidebar activeSection={activeSection} onSelect={setActiveSection} onBack={() => onNavigate('admin')} />
+
+        <main className="min-w-0">
+          <header className="border-b border-stone-200 bg-white px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
+            <div className="mx-auto flex max-w-[1500px] flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-stone-400">{activeSection}</p>
+                <h1 className="font-serif text-3xl text-stone-950 sm:text-4xl">{heading}</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{subheading}</p>
+              </div>
+              <button type="button" onClick={() => setWizardOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white shadow-sm">
+                <Plus className="h-4 w-4" />Create something
+              </button>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-[1500px] space-y-6 px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
+            <PrototypeNotice />
+            {activeSection === 'studio' && <StudioView projects={projectList} selectedProject={selectedProject} onOpenProject={openProject} />}
+            {activeSection === 'projects' && <ProjectsView projects={projectList} onOpenProject={openProject} />}
+            {activeSection === 'review' && <ReviewView projects={projectList} />}
+            {activeSection === 'library' && <LibraryView projects={projectList} onOpenProject={openProject} />}
+            {activeSection === 'style' && <StyleView selectedProject={selectedProject} />}
+          </div>
+        </main>
+      </div>
+
+      {wizardOpen && <SceneBuilderWizard onClose={() => setWizardOpen(false)} onCreate={createProject} />}
+    </div>
+  );
+}
+
+function Centered({ children }: { children: ReactNode }) {
+  return <div className="flex min-h-screen items-center justify-center gap-3 bg-stone-100 p-6 text-stone-700">{children}</div>;
+}
+
+function Sidebar({ activeSection, onSelect, onBack }: { activeSection: CreativeSection; onSelect: (section: CreativeSection) => void; onBack: () => void }) {
+  return (
+    <aside className="border-b border-stone-200 bg-stone-50 lg:border-b-0 lg:border-r">
+      <div className="px-5 py-5 lg:px-6 lg:py-8">
+        <p className="font-serif text-2xl leading-none text-stone-950">JOKO</p>
+        <p className="mt-1 font-serif text-lg text-stone-700">Creative Lab</p>
+        <button type="button" onClick={onBack} className="mt-5 text-xs font-medium text-stone-500">Back to Admin</button>
+      </div>
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-4 lg:block lg:space-y-1 lg:px-4">
+        {navItems.map(({ id, label, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => onSelect(id)} className={`inline-flex min-w-max items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium lg:w-full ${activeSection === id ? 'bg-white text-stone-950 shadow-sm' : 'text-stone-600 hover:bg-white'}`}>
+            <Icon className="h-4 w-4" />{label}
+          </button>
+        ))}
+      </nav>
+      <div className="hidden px-6 py-8 lg:block">
+        <div className="border-t border-stone-200 pt-6">
+          <p className="font-serif text-lg italic leading-7 text-stone-500">“Preserve the visual weirdness.”</p>
+          <p className="mt-3 text-xs leading-5 text-stone-400">Curated choices first. Freedom second. Blank prompt boxes last.</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function PrototypeNotice() {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+      <span><strong>Prototype mode:</strong> scenes created here live only in this browser session.</span>
+      <span className="font-semibold">No Supabase writes yet</span>
+    </div>
+  );
+}
+
+function StudioView({ projects, selectedProject, onOpenProject }: { projects: ProjectCard[]; selectedProject: ProjectCard; onOpenProject: (project: ProjectCard) => void }) {
+  return (
+    <>
+      <section className="grid gap-4 xl:grid-cols-3">
+        {(['In progress', 'Ready for review', 'Approved'] as ProjectStatus[]).map((status) => (
+          <ProjectLane key={status} title={status === 'Approved' ? 'Recently approved' : status} projects={projects.filter((project) => project.status === status)} onOpenProject={onOpenProject} />
+        ))}
+      </section>
+      <section className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <ProjectWorkspace project={selectedProject} />
+        <StyleGuardian project={selectedProject} />
+      </section>
+    </>
+  );
+}
+
+function ProjectLane({ title, projects, onOpenProject }: { title: string; projects: ProjectCard[]; onOpenProject: (project: ProjectCard) => void }) {
+  return (
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-semibold">{title}</h2><span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] text-stone-500">{projects.length}</span></div>
+      <div className="space-y-2">
+        {projects.map((project) => (
+          <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="w-full overflow-hidden rounded-xl border border-stone-200 bg-white text-left hover:shadow-sm">
+            <div className={`h-16 bg-gradient-to-br ${accentClass(project.accent)}`} />
+            <div className="p-3"><p className="text-sm font-semibold text-stone-800">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{project.subjectType} · {project.assetType}</p></div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectWorkspace({ project }: { project: ProjectCard }) {
+  const currentStep = project.status === 'Approved' ? 4 : project.status === 'Ready for review' ? 3 : Math.max(0, Math.min(2, Math.floor(project.progress / 25)));
+  const sceneTags = Object.values(project.scene).filter((value) => isMeaningful(value)).slice(0, 12);
+
+  return (
+    <div className="rounded-3xl border border-stone-200 bg-white shadow-sm">
+      <div className="border-b border-stone-200 px-5 py-5 sm:px-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Selected scene</p>
+        <h2 className="mt-1 font-serif text-2xl text-stone-950">{project.title}</h2>
+        <p className="mt-1 text-sm text-stone-500">{project.subjectName} · {project.purpose} · {project.createdLabel}</p>
+        <div className="mt-6 grid grid-cols-5 gap-2">
+          {projectSteps.map((step, index) => (
+            <div key={step} className="text-center">
+              <div className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border ${index < currentStep || project.status === 'Approved' ? 'border-emerald-600 bg-emerald-600 text-white' : index === currentStep ? 'border-emerald-600 bg-white text-emerald-700' : 'border-stone-300 text-stone-300'}`}>
+                {index < currentStep || project.status === 'Approved' ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-2.5 w-2.5" fill="currentColor" />}
+              </div>
+              <p className="mt-2 text-[10px] font-medium text-stone-500">{step}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="p-5 sm:p-6">
+        <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">Generated creative brief</p>
+          <p className="mt-3 text-sm leading-6 text-stone-700">{project.idea}</p>
+          {sceneTags.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{sceneTags.map((tag) => <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-stone-600">{tag}</span>)}</div>}
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <WorkspaceCard icon={FileText} title="Brief">Structured scene choices become the working brief automatically.</WorkspaceCard>
+          <WorkspaceCard icon={Image} title="Source Material">Character masters, references, photos and research will attach here.</WorkspaceCard>
+          <WorkspaceCard icon={MessageSquare} title="Review">Technical QA → Style Check → Editorial → Human approval.</WorkspaceCard>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceCard({ icon: Icon, title, children }: { icon: ComponentType<{ className?: string }>; title: string; children: ReactNode }) {
+  return <div className="rounded-2xl border border-stone-200 bg-white p-4"><Icon className="h-4 w-4 text-stone-500" /><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-2 text-xs leading-5 text-stone-500">{children}</p></div>;
+}
+
+function ProjectsView({ projects, onOpenProject }: { projects: ProjectCard[]; onOpenProject: (project: ProjectCard) => void }) {
+  return <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm"><div className={`mb-4 aspect-[16/6] rounded-xl bg-gradient-to-br ${accentClass(project.accent)}`} /><p className="font-semibold">{project.title}</p><p className="mt-1 text-xs text-stone-500">{project.subjectType} · {project.assetType}</p><p className="mt-4 text-[11px] font-medium text-stone-500">{getStyleProfile(project.styleProfile).title}</p></button>)}</section>;
+}
+
+function ReviewView({ projects }: { projects: ProjectCard[] }) {
+  const reviewProjects = projects.filter((project) => project.status === 'Ready for review');
+  return (
+    <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Review queue</p>
+      <h2 className="mt-2 font-serif text-2xl">{reviewProjects.length} {reviewProjects.length === 1 ? 'piece needs' : 'pieces need'} a decision</h2>
+      <div className="mt-6 space-y-3">{reviewProjects.map((project) => <div key={project.id} className="rounded-2xl border border-stone-200 p-4"><div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /><p className="font-semibold">{project.title}</p></div><p className="mt-2 text-xs text-stone-500">{getStyleProfile(project.styleProfile).title}</p><p className="mt-3 text-sm leading-6 text-stone-600">{project.idea}</p></div>)}</div>
+    </section>
+  );
+}
+
+function LibraryView({ projects, onOpenProject }: { projects: ProjectCard[]; onOpenProject: (project: ProjectCard) => void }) {
+  const [query, setQuery] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = useMemo(() => projects.filter((project) => [project.title, project.subjectName, project.assetType, project.purpose, project.idea, getStyleProfile(project.styleProfile).title].join(' ').toLowerCase().includes(normalizedQuery)), [normalizedQuery, projects]);
+  return (
+    <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h2 className="font-serif text-2xl">Media Library</h2><p className="mt-1 text-sm text-stone-500">Search by subject, scene detail, output or style.</p></div><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" className="rounded-xl border border-stone-300 py-2.5 pl-9 pr-3 text-sm" /></label></div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{filtered.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 p-4 text-left"><BookOpen className="h-5 w-5 text-stone-400" /><p className="mt-4 text-sm font-semibold">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{getStyleProfile(project.styleProfile).title}</p></button>)}</div>
+    </section>
+  );
+}
+
+function StyleView({ selectedProject }: { selectedProject: ProjectCard }) {
+  return (
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex items-start gap-4"><Sparkles className="mt-1 h-6 w-6" /><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">JOKO visual moat</p><h2 className="mt-1 font-serif text-3xl">Style is production infrastructure.</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">Curious Community is the main people/character profile. Living Notebook governs the broader editorial world; Jokomi retains his separate master canon.</p></div></div>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">{Object.entries(styleProfiles).map(([id, style]) => <div key={id} className="rounded-2xl border border-stone-200 bg-white p-5"><Palette className="h-5 w-5 text-stone-500" /><p className="mt-4 font-semibold">{style.title}</p><p className="mt-2 text-xs leading-5 text-stone-500">{style.description}</p></div>)}</div>
+      </div>
+      <StyleGuardian project={selectedProject} />
+    </section>
+  );
+}
+
+function StyleGuardian({ project }: { project: ProjectCard }) {
+  const style = getStyleProfile(project.styleProfile);
+  return (
+    <aside className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><h2 className="font-serif text-xl">Style Guardian</h2></div>
+      <p className="mt-4 text-sm font-semibold">{style.title}</p><p className="mt-2 text-xs leading-5 text-stone-500">{style.description}</p>
+      <div className="mt-5 space-y-2.5">{style.criteria.map((criterion) => <div key={criterion} className="flex items-start gap-2 text-xs leading-5 text-stone-600"><Check className="mt-1 h-3 w-3 shrink-0 text-emerald-600" />{criterion}</div>)}</div>
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-800">Style profile attached</p><p className="mt-1 text-[11px] leading-4 text-emerald-700">Final Style: Pass remains a human review decision.</p></div>
+    </aside>
+  );
+}
