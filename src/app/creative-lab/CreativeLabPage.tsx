@@ -19,14 +19,19 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { CharacterBuilderWizard } from './CharacterBuilderWizard';
+import { CreateModeChooser } from './CreateModeChooser';
 import { SceneBuilderWizard } from './SceneBuilderWizard';
 import {
+  characterSpecTags,
   getStyleProfile,
   initialProjects,
   isMeaningful,
+  makeCharacterBrief,
   makeProjectTitle,
   makeSceneBrief,
   styleProfiles,
+  type CharacterProjectDraft,
   type CreativeSection,
   type ProjectAccent,
   type ProjectCard,
@@ -38,6 +43,8 @@ interface CreativeLabPageProps {
   onNavigate: (page: string) => void;
 }
 
+type CreateMode = 'choose' | 'scene' | 'character' | null;
+
 const navItems: Array<{ id: CreativeSection; label: string; icon: ComponentType<{ className?: string }> }> = [
   { id: 'studio', label: 'Studio', icon: LayoutGrid },
   { id: 'projects', label: 'Projects', icon: Folder },
@@ -46,7 +53,9 @@ const navItems: Array<{ id: CreativeSection; label: string; icon: ComponentType<
   { id: 'style', label: 'Style', icon: Palette },
 ];
 
-const projectSteps = ['Scene', 'Brief', 'Create', 'Review', 'Approved'];
+function projectSteps(project: ProjectCard) {
+  return [project.projectType === 'character' ? 'Character' : 'Scene', 'Brief', 'Create', 'Review', 'Approved'];
+}
 
 function accentClass(accent: ProjectAccent) {
   switch (accent) {
@@ -65,11 +74,11 @@ function accentForStyle(styleProfile: string): ProjectAccent {
 
 function sectionHeading(section: CreativeSection) {
   switch (section) {
-    case 'projects': return ['Projects', 'Everything currently moving from scene to approval.'] as const;
+    case 'projects': return ['Projects', 'Everything currently moving from direction to approval.'] as const;
     case 'review': return ['Review', 'Decide what is good enough to become part of the JOKO world.'] as const;
     case 'library': return ['Library', 'The visual memory of approved and in-progress creative work.'] as const;
     case 'style': return ['Style', 'The visual language is production infrastructure — and one of our moats.'] as const;
-    default: return ['What are we making today?', 'Direct a scene with simple choices. Creative Lab turns those choices into the working brief.'] as const;
+    default: return ['What are we making today?', 'Build a scene or define a reusable character. Creative Lab turns structured choices into the working brief.'] as const;
   }
 }
 
@@ -78,7 +87,7 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
   const [activeSection, setActiveSection] = useState<CreativeSection>('studio');
   const [projectList, setProjectList] = useState<ProjectCard[]>(initialProjects);
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjects[0].id);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [createMode, setCreateMode] = useState<CreateMode>(null);
 
   const selectedProject = projectList.find((project) => project.id === selectedProjectId) ?? projectList[0];
   const [heading, subheading] = sectionHeading(activeSection);
@@ -88,9 +97,17 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
     setActiveSection(destination);
   };
 
-  const createProject = ({ scene, styleProfile }: ProjectDraft) => {
-    const newProject: ProjectCard = {
+  const addProject = (newProject: ProjectCard) => {
+    setProjectList((current) => [newProject, ...current]);
+    setSelectedProjectId(newProject.id);
+    setActiveSection('studio');
+    setCreateMode(null);
+  };
+
+  const createSceneProject = ({ scene, styleProfile }: ProjectDraft) => {
+    addProject({
       id: `creative-${Date.now()}`,
+      projectType: 'scene',
       title: makeProjectTitle(scene),
       subtitle: `${scene.subjectType || 'Story'} · ${scene.assetType || 'Illustration'}`,
       status: 'In progress',
@@ -104,12 +121,29 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
       idea: makeSceneBrief(scene),
       scene,
       createdLabel: 'Created in this prototype session',
-    };
+    });
+  };
 
-    setProjectList((current) => [newProject, ...current]);
-    setSelectedProjectId(newProject.id);
-    setActiveSection('studio');
-    setWizardOpen(false);
+  const createCharacterProject = ({ character }: CharacterProjectDraft) => {
+    const styleProfile = character.style.profileId;
+    addProject({
+      id: `creative-character-${Date.now()}`,
+      projectType: 'character',
+      title: character.identity.name,
+      subtitle: `Character · ${character.presentation.outputType}`,
+      status: 'In progress',
+      progress: 10,
+      accent: accentForStyle(styleProfile),
+      assetType: character.presentation.outputType,
+      subjectType: 'Character',
+      subjectName: character.identity.name,
+      purpose: 'Character library',
+      styleProfile,
+      idea: makeCharacterBrief(character),
+      scene: {},
+      character,
+      createdLabel: 'Created in this prototype session',
+    });
   };
 
   if (loading || (user && profileLoading)) {
@@ -145,7 +179,7 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
                 <h1 className="font-serif text-3xl text-stone-950 sm:text-4xl">{heading}</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{subheading}</p>
               </div>
-              <button type="button" onClick={() => setWizardOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white shadow-sm">
+              <button type="button" onClick={() => setCreateMode('choose')} className="inline-flex items-center justify-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white shadow-sm">
                 <Plus className="h-4 w-4" />Create something
               </button>
             </div>
@@ -162,7 +196,9 @@ export default function CreativeLabPage({ onNavigate }: CreativeLabPageProps) {
         </main>
       </div>
 
-      {wizardOpen && <SceneBuilderWizard onClose={() => setWizardOpen(false)} onCreate={createProject} />}
+      {createMode === 'choose' && <CreateModeChooser onClose={() => setCreateMode(null)} onSelect={setCreateMode} />}
+      {createMode === 'scene' && <SceneBuilderWizard onClose={() => setCreateMode(null)} onCreate={createSceneProject} />}
+      {createMode === 'character' && <CharacterBuilderWizard onClose={() => setCreateMode(null)} onCreate={createCharacterProject} />}
     </div>
   );
 }
@@ -199,7 +235,7 @@ function Sidebar({ activeSection, onSelect, onBack }: { activeSection: CreativeS
 function PrototypeNotice() {
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800 sm:flex-row sm:items-center sm:justify-between">
-      <span><strong>Prototype mode:</strong> scenes created here live only in this browser session.</span>
+      <span><strong>Prototype mode:</strong> projects created here live only in this browser session.</span>
       <span className="font-semibold">No Supabase writes yet</span>
     </div>
   );
@@ -229,7 +265,7 @@ function ProjectLane({ title, projects, onOpenProject }: { title: string; projec
         {projects.map((project) => (
           <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="w-full overflow-hidden rounded-xl border border-stone-200 bg-white text-left hover:shadow-sm">
             <div className={`h-16 bg-gradient-to-br ${accentClass(project.accent)}`} />
-            <div className="p-3"><p className="text-sm font-semibold text-stone-800">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{project.subjectType} · {project.assetType}</p></div>
+            <div className="p-3"><p className="text-sm font-semibold text-stone-800">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{project.projectType === 'character' ? 'Character' : project.subjectType} · {project.assetType}</p></div>
           </button>
         ))}
       </div>
@@ -239,16 +275,19 @@ function ProjectLane({ title, projects, onOpenProject }: { title: string; projec
 
 function ProjectWorkspace({ project }: { project: ProjectCard }) {
   const currentStep = project.status === 'Approved' ? 4 : project.status === 'Ready for review' ? 3 : Math.max(0, Math.min(2, Math.floor(project.progress / 25)));
-  const sceneTags = Object.values(project.scene).filter((value) => isMeaningful(value)).slice(0, 12);
+  const tags = project.projectType === 'character' && project.character
+    ? characterSpecTags(project.character)
+    : Object.values(project.scene).filter((value) => isMeaningful(value)).slice(0, 12) as string[];
+  const steps = projectSteps(project);
 
   return (
     <div className="rounded-3xl border border-stone-200 bg-white shadow-sm">
       <div className="border-b border-stone-200 px-5 py-5 sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Selected scene</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">Selected {project.projectType}</p>
         <h2 className="mt-1 font-serif text-2xl text-stone-950">{project.title}</h2>
         <p className="mt-1 text-sm text-stone-500">{project.subjectName} · {project.purpose} · {project.createdLabel}</p>
         <div className="mt-6 grid grid-cols-5 gap-2">
-          {projectSteps.map((step, index) => (
+          {steps.map((step, index) => (
             <div key={step} className="text-center">
               <div className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border ${index < currentStep || project.status === 'Approved' ? 'border-emerald-600 bg-emerald-600 text-white' : index === currentStep ? 'border-emerald-600 bg-white text-emerald-700' : 'border-stone-300 text-stone-300'}`}>
                 {index < currentStep || project.status === 'Approved' ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-2.5 w-2.5" fill="currentColor" />}
@@ -260,12 +299,12 @@ function ProjectWorkspace({ project }: { project: ProjectCard }) {
       </div>
       <div className="p-5 sm:p-6">
         <div className="rounded-2xl border border-stone-200 bg-stone-50 p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">Generated creative brief</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">Generated {project.projectType === 'character' ? 'character direction' : 'creative brief'}</p>
           <p className="mt-3 text-sm leading-6 text-stone-700">{project.idea}</p>
-          {sceneTags.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{sceneTags.map((tag) => <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-stone-600">{tag}</span>)}</div>}
+          {tags.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{tags.map((tag) => <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-stone-600">{tag}</span>)}</div>}
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <WorkspaceCard icon={FileText} title="Brief">Structured scene choices become the working brief automatically.</WorkspaceCard>
+          <WorkspaceCard icon={FileText} title="Brief">Structured {project.projectType === 'character' ? 'character choices' : 'scene choices'} become the working brief automatically.</WorkspaceCard>
           <WorkspaceCard icon={Image} title="Source Material">Character masters, references, photos and research will attach here.</WorkspaceCard>
           <WorkspaceCard icon={MessageSquare} title="Review">Technical QA → Style Check → Editorial → Human approval.</WorkspaceCard>
         </div>
@@ -279,7 +318,7 @@ function WorkspaceCard({ icon: Icon, title, children }: { icon: ComponentType<{ 
 }
 
 function ProjectsView({ projects, onOpenProject }: { projects: ProjectCard[]; onOpenProject: (project: ProjectCard) => void }) {
-  return <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm"><div className={`mb-4 aspect-[16/6] rounded-xl bg-gradient-to-br ${accentClass(project.accent)}`} /><p className="font-semibold">{project.title}</p><p className="mt-1 text-xs text-stone-500">{project.subjectType} · {project.assetType}</p><p className="mt-4 text-[11px] font-medium text-stone-500">{getStyleProfile(project.styleProfile).title}</p></button>)}</section>;
+  return <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 bg-white p-5 text-left shadow-sm"><div className={`mb-4 aspect-[16/6] rounded-xl bg-gradient-to-br ${accentClass(project.accent)}`} /><p className="font-semibold">{project.title}</p><p className="mt-1 text-xs text-stone-500">{project.projectType === 'character' ? 'Character' : project.subjectType} · {project.assetType}</p><p className="mt-4 text-[11px] font-medium text-stone-500">{getStyleProfile(project.styleProfile).title}</p></button>)}</section>;
 }
 
 function ReviewView({ projects }: { projects: ProjectCard[] }) {
@@ -296,11 +335,11 @@ function ReviewView({ projects }: { projects: ProjectCard[] }) {
 function LibraryView({ projects, onOpenProject }: { projects: ProjectCard[]; onOpenProject: (project: ProjectCard) => void }) {
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
-  const filtered = useMemo(() => projects.filter((project) => [project.title, project.subjectName, project.assetType, project.purpose, project.idea, getStyleProfile(project.styleProfile).title].join(' ').toLowerCase().includes(normalizedQuery)), [normalizedQuery, projects]);
+  const filtered = useMemo(() => projects.filter((project) => [project.projectType, project.title, project.subjectName, project.assetType, project.purpose, project.idea, getStyleProfile(project.styleProfile).title].join(' ').toLowerCase().includes(normalizedQuery)), [normalizedQuery, projects]);
   return (
     <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h2 className="font-serif text-2xl">Media Library</h2><p className="mt-1 text-sm text-stone-500">Search by subject, scene detail, output or style.</p></div><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" className="rounded-xl border border-stone-300 py-2.5 pl-9 pr-3 text-sm" /></label></div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{filtered.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 p-4 text-left"><BookOpen className="h-5 w-5 text-stone-400" /><p className="mt-4 text-sm font-semibold">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{getStyleProfile(project.styleProfile).title}</p></button>)}</div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h2 className="font-serif text-2xl">Media Library</h2><p className="mt-1 text-sm text-stone-500">Search by character, subject, scene detail, output or style.</p></div><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" className="rounded-xl border border-stone-300 py-2.5 pl-9 pr-3 text-sm" /></label></div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{filtered.map((project) => <button key={project.id} type="button" onClick={() => onOpenProject(project)} className="rounded-2xl border border-stone-200 p-4 text-left"><BookOpen className="h-5 w-5 text-stone-400" /><p className="mt-4 text-sm font-semibold">{project.title}</p><p className="mt-1 text-[11px] text-stone-500">{project.projectType === 'character' ? 'Character · ' : ''}{getStyleProfile(project.styleProfile).title}</p></button>)}</div>
     </section>
   );
 }
