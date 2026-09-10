@@ -51,9 +51,9 @@ export interface CharacterSpec {
     emotionalBaseline?: string;
   };
   visualIdentity: {
-    silhouette: string;
+    silhouettes: string[];
     proportionEmphasis?: string;
-    signatureIrregularity: string;
+    signatureTraits: string[];
     posture?: string;
     face: {
       faceShape?: string;
@@ -319,7 +319,12 @@ export function makeProjectTitle(scene: SceneAnswers) {
 export function makeCharacterBrief(spec: CharacterSpec) {
   const identity = [spec.identity.ageRange, spec.identity.gender, spec.identity.culturalBackground].filter(isMeaningful);
   const role = [spec.character.profession, spec.character.archetype].filter(isMeaningful);
-  const visual = [spec.visualIdentity.silhouette, spec.visualIdentity.proportionEmphasis, spec.visualIdentity.signatureIrregularity, spec.visualIdentity.posture].filter(isMeaningful);
+  const visual = [
+    ...spec.visualIdentity.silhouettes,
+    spec.visualIdentity.proportionEmphasis,
+    ...spec.visualIdentity.signatureTraits,
+    spec.visualIdentity.posture,
+  ].filter(isMeaningful);
   const face = Object.values(spec.visualIdentity.face).filter(isMeaningful);
   const wardrobe = [spec.wardrobe.clothing, spec.wardrobe.clothingCharacter, spec.wardrobe.patternDetail].filter(isMeaningful);
   const props = [spec.props.primary, spec.props.secondary].filter(isMeaningful);
@@ -351,8 +356,8 @@ export function characterSpecTags(spec: CharacterSpec) {
     spec.identity.culturalBackground,
     spec.character.profession,
     ...spec.character.personality,
-    spec.visualIdentity.silhouette,
-    spec.visualIdentity.signatureIrregularity,
+    ...spec.visualIdentity.silhouettes,
+    ...spec.visualIdentity.signatureTraits,
     spec.visualIdentity.posture,
     spec.props.primary,
     spec.colour.accentFamily,

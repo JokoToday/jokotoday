@@ -26,9 +26,7 @@ type FieldKey =
   | 'profession'
   | 'archetype'
   | 'emotionalBaseline'
-  | 'silhouette'
   | 'proportionEmphasis'
-  | 'irregularity'
   | 'posture'
   | 'faceShape'
   | 'eyes'
@@ -50,12 +48,16 @@ type FieldKey =
   | 'viewAngle'
   | 'background';
 
+type MultiFieldKey = 'personality' | 'silhouettes' | 'signatureTraits' | 'professionCues' | 'cardText';
+
 type FormState = Record<FieldKey, string> & {
   name: string;
   notes: string;
   styleProfile: string;
   strictness: CharacterStyleStrictness;
   personality: string[];
+  silhouettes: string[];
+  signatureTraits: string[];
   professionCues: string[];
   cardText: string[];
 };
@@ -69,9 +71,7 @@ const emptyForm: FormState = {
   profession: '',
   archetype: '',
   emotionalBaseline: '',
-  silhouette: '',
   proportionEmphasis: '',
-  irregularity: '',
   posture: '',
   faceShape: '',
   eyes: '',
@@ -96,6 +96,8 @@ const emptyForm: FormState = {
   styleProfile: 'curious-community-v1',
   strictness: 'Strict',
   personality: [],
+  silhouettes: [],
+  signatureTraits: [],
   professionCues: [],
   cardText: ['Character name'],
 };
@@ -126,9 +128,9 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
       emotionalBaseline: resolve('emotionalBaseline', form.emotionalBaseline),
     },
     visualIdentity: {
-      silhouette: resolve('silhouette', form.silhouette),
+      silhouettes: resolveMulti('silhouettes', form.silhouettes),
       proportionEmphasis: resolve('proportionEmphasis', form.proportionEmphasis),
-      signatureIrregularity: resolve('irregularity', form.irregularity),
+      signatureTraits: resolveMulti('signatureTraits', form.signatureTraits),
       posture: resolve('posture', form.posture),
       face: {
         faceShape: resolve('faceShape', form.faceShape),
@@ -174,7 +176,7 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
   const canContinue = (() => {
     if (step === 0) return Boolean(spec.identity.name && spec.identity.characterType);
     if (step === 1) return spec.character.personality.length > 0;
-    if (step === 2) return Boolean(spec.visualIdentity.silhouette && spec.visualIdentity.signatureIrregularity);
+    if (step === 2) return spec.visualIdentity.silhouettes.length > 0 && spec.visualIdentity.signatureTraits.length > 0;
     if (step === 3) return true;
     return Boolean(spec.presentation.outputType && spec.presentation.framing && spec.presentation.background && spec.style.profileId);
   })();
@@ -191,7 +193,7 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
     />
   );
 
-  const multi = (label: string, key: 'personality' | 'professionCues' | 'cardText', options: string[], max?: number) => (
+  const multi = (label: string, key: MultiFieldKey, options: string[], max?: number) => (
     <MultiChoiceField
       label={label}
       values={form[key]}
@@ -246,11 +248,13 @@ export function CharacterBuilderWizard({ onClose, onCreate }: Props) {
           )}
 
           {step === 2 && (
-            <Step title="What makes them recognizable?" note="Silhouette and intentional irregularity are the core character-design decisions in Curious Community.">
-              <div className="grid gap-5 md:grid-cols-2">
-                {field('Body / silhouette', 'silhouette', characterOptions.silhouette, true)}
+            <Step title="What makes them recognizable?" note="A character can combine several silhouette signals and several intentional irregularities. Choose the traits that make the person recognizable at a glance.">
+              <div className="grid gap-7 md:grid-cols-2">
+                {multi('Body / silhouette *', 'silhouettes', characterOptions.silhouette, 3)}
+                {multi('Signature traits / irregularities *', 'signatureTraits', characterOptions.irregularity, 3)}
+              </div>
+              <div className="mt-7 grid gap-5 md:grid-cols-2">
                 {field('Proportion emphasis', 'proportionEmphasis', characterOptions.proportionEmphasis)}
-                {field('Signature irregularity', 'irregularity', characterOptions.irregularity, true)}
                 {field('Posture / stance', 'posture', characterOptions.posture)}
               </div>
               <details className="mt-7 rounded-2xl border border-stone-200 bg-white p-5">
@@ -359,12 +363,15 @@ function ChoiceField({ label, value, customValue, options, onChange, onCustomCha
 }
 
 function MultiChoiceField({ label, values, options, customValue, onChange, onCustomChange, max }: { label: string; values: string[]; options: string[]; customValue: string; onChange: (values: string[]) => void; onCustomChange: (value: string) => void; max?: number }) {
+  const exclusiveValues = [LET_LAB_DECIDE, NOT_IMPORTANT, 'Nothing', 'No text'];
   const toggle = (option: string) => {
     if (values.includes(option)) return onChange(values.filter((value) => value !== option));
-    if (max && values.length >= max) return;
-    onChange([...values, option]);
+    if (exclusiveValues.includes(option)) return onChange([option]);
+    const combinableValues = values.filter((value) => !exclusiveValues.includes(value));
+    if (max && combinableValues.length >= max) return;
+    onChange([...combinableValues, option]);
   };
-  return <div><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-stone-700">{label}</p>{max && <p className="text-[10px] text-stone-400">up to {max}</p>}</div><div className="mt-2 flex flex-wrap gap-2">{options.map((option) => { const active = values.includes(option); return <button key={option} type="button" onClick={() => toggle(option)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium ${active ? 'border-stone-800 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600'}`}>{active && <Check className="h-3 w-3" />}{option}</button>; })}</div>{values.includes(OTHER) && <input autoFocus value={customValue} onChange={(event) => onCustomChange(event.target.value)} placeholder={`Enter another ${label.toLowerCase()}…`} className="mt-3 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm" />}</div>;
+  return <div><div className="flex items-center justify-between gap-3"><p className="text-xs font-semibold text-stone-700">{label}</p>{max && <p className="text-[10px] text-stone-400">choose up to {max}</p>}</div><div className="mt-2 flex flex-wrap gap-2">{options.map((option) => { const active = values.includes(option); return <button key={option} type="button" onClick={() => toggle(option)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium ${active ? 'border-stone-800 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600'}`}>{active && <Check className="h-3 w-3" />}{option}</button>; })}</div>{values.includes(OTHER) && <input autoFocus value={customValue} onChange={(event) => onCustomChange(event.target.value)} placeholder={`Enter another ${label.toLowerCase()}…`} className="mt-3 w-full rounded-xl border border-stone-300 bg-white px-3 py-3 text-sm" />}</div>;
 }
 
 export const characterModeConventions = { NOT_IMPORTANT, LET_LAB_DECIDE };
