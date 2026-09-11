@@ -76,8 +76,11 @@ interface GeneratedCandidatePayload {
 }
 
 interface CharacterGenerationResponse {
-  provider: 'openai';
+  provider: string;
   model: string;
+  route?: string;
+  requestId?: string;
+  costUsd?: number;
   candidates: GeneratedCandidatePayload[];
 }
 
@@ -263,6 +266,9 @@ export async function generateCharacterCandidates(input: {
       generation: {
         provider: payload.provider,
         model: payload.model,
+        route: payload.route,
+        requestId: payload.requestId,
+        costUsd: payload.costUsd,
         projectId: input.projectId,
         referenceAssetIds: input.references.map((reference) => reference.assetId),
         status: 'candidate',
