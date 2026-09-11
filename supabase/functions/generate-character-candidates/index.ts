@@ -9,7 +9,7 @@ const corsHeaders = {
 const allowedImageTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 const maxReferenceBytes = 20 * 1024 * 1024;
 const maxReferences = 4;
-const defaultImageModel = "gpt-image-2.5-sunburst";
+const imageRoute = "joko/image-standard";
 
 interface CharacterGenerationRequest {
   schemaVersion: 1;
@@ -108,67 +108,93 @@ PRODUCTION RULES
 - Avoid generic stock-character polish. Preserve authored irregularity and intentional asymmetry when required by the Style Profile.`;
 }
 
-async function callOpenAI(request: CharacterGenerationRequest, referenceFiles: File[]) {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
-
-  const model = Deno.env.get("OPENAI_IMAGE_MODEL") || defaultImageModel;
-  const prompt = buildPrompt(request);
-  let response: Response;
-
-  if (referenceFiles.length > 0) {
-    const body = new FormData();
-    body.append("model", model);
-    body.append("prompt", prompt);
-    body.append("n", String(request.candidateCount));
-    body.append("size", request.output.size || "1024x1536");
-    body.append("quality", request.output.quality || "medium");
-    referenceFiles.forEach((file) => body.append("image[]", file, file.name));
-
-    response = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body,
-    });
-  } else {
-    response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        n: request.candidateCount,
-        size: request.output.size || "1024x1536",
-        quality: request.output.quality || "medium",
-      }),
-    });
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
   }
+  return btoa(binary);
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return `data:${file.type};base64,${bytesToBase64(bytes)}`;
+}
+
+function outputShape(size: string) {
+  if (size === "1024x1536") return { resolution: "1K", aspect_ratio: "2:3" };
+  if (size === "1536x1024") return { resolution: "1K", aspect_ratio: "3:2" };
+  return { resolution: "1K", aspect_ratio: "1:1" };
+}
+
+async function callJokoAiGateway(request: CharacterGenerationRequest, referenceFiles: File[]) {
+  const gatewayKey = Deno.env.get("JOKO_AI_GATEWAY_KEY")?.trim();
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.replace(/\/+$/, "");
+  if (!gatewayKey || !supabaseUrl) throw new Error("JOKO AI Gateway is not configured");
+
+  const references = await Promise.all(referenceFiles.map(async (file) => ({
+    type: "image_url",
+    image_url: { url: await fileToDataUrl(file) },
+  })));
+  const shape = outputShape(request.output.size);
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/joko-ai-gateway/v1/images`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${gatewayKey}`,
+      "Content-Type": "application/json",
+      "X-JOKO-Task-Class": "image-standard",
+    },
+    body: JSON.stringify({
+      model: imageRoute,
+      prompt: buildPrompt(request),
+      n: request.candidateCount,
+      resolution: shape.resolution,
+      aspect_ratio: shape.aspect_ratio,
+      quality: request.output.quality || "medium",
+      output_format: "png",
+      ...(references.length > 0 ? { input_references: references } : {}),
+    }),
+  });
 
   const raw = await response.text();
-  if (!response.ok) {
-    console.error("OpenAI character generation failed", response.status, raw.slice(0, 1200));
-    throw new Error(`Image provider returned ${response.status}`);
-  }
-
   let payload: unknown;
   try {
     payload = JSON.parse(raw);
   } catch {
-    throw new Error("Image provider returned invalid JSON");
+    throw new Error(`JOKO AI Gateway returned invalid JSON (${response.status})`);
   }
 
-  const data = (payload as { data?: Array<{ b64_json?: string }> }).data;
-  if (!Array.isArray(data) || data.length === 0) throw new Error("Image provider returned no candidates");
+  if (!response.ok) {
+    console.error("JOKO AI Gateway character generation failed", response.status, raw.slice(0, 1200));
+    throw new Error(`JOKO AI Gateway returned ${response.status}`);
+  }
+
+  const data = (payload as { data?: Array<{ b64_json?: string; media_type?: string }> }).data;
+  if (!Array.isArray(data) || data.length === 0) throw new Error("JOKO AI Gateway returned no candidates");
 
   const candidates = data
-    .map((candidate, index) => ({ index, b64Json: candidate.b64_json ?? "", mimeType: "image/png" }))
+    .map((candidate, index) => ({
+      index,
+      b64Json: candidate.b64_json ?? "",
+      mimeType: candidate.media_type || "image/png",
+    }))
     .filter((candidate) => candidate.b64Json);
-  if (candidates.length === 0) throw new Error("Image provider returned no image data");
+  if (candidates.length === 0) throw new Error("JOKO AI Gateway returned no image data");
 
-  return { provider: "openai" as const, model, candidates };
+  const costHeader = response.headers.get("X-JOKO-AI-Cost-USD");
+  const parsedCost = costHeader ? Number(costHeader) : null;
+
+  return {
+    provider: response.headers.get("X-JOKO-AI-Provider") || "joko-ai-gateway",
+    model: response.headers.get("X-JOKO-AI-Model") || imageRoute,
+    route: response.headers.get("X-JOKO-AI-Route") || imageRoute,
+    requestId: response.headers.get("X-JOKO-AI-Request-ID") || undefined,
+    costUsd: parsedCost !== null && Number.isFinite(parsedCost) ? parsedCost : undefined,
+    candidates,
+  };
 }
 
 serve(async (req) => {
@@ -226,11 +252,11 @@ serve(async (req) => {
       if (file.size > maxReferenceBytes) return jsonResponse({ error: "Reference image exceeds 20 MB" }, 400);
     }
 
-    if (!Deno.env.get("OPENAI_API_KEY")) {
+    if (!Deno.env.get("JOKO_AI_GATEWAY_KEY")) {
       return jsonResponse({ error: "Character Generation is not configured yet" }, 503);
     }
 
-    const result = await callOpenAI(parsed, referenceFiles);
+    const result = await callJokoAiGateway(parsed, referenceFiles);
     return jsonResponse(result, 200);
   } catch (error) {
     console.error("Character generation failed", error);

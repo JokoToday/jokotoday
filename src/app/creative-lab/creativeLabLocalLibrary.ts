@@ -11,8 +11,11 @@ export type PrototypeLibraryAssetRole =
   | 'Supporting reference';
 
 export interface PrototypeLibraryGeneration {
-  provider: 'openai';
+  provider: string;
   model: string;
+  route?: string;
+  requestId?: string;
+  costUsd?: number;
   projectId: string;
   referenceAssetIds: string[];
   status: 'candidate' | 'approved';
