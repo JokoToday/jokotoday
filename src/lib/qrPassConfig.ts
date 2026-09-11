@@ -61,8 +61,12 @@ function cleanLogoUrl(value: unknown): string {
   if (typeof value !== 'string') return DEFAULT_QR_PASS_CONFIG.logoUrl;
   const normalized = value.trim().slice(0, 500);
   if (!normalized) return DEFAULT_QR_PASS_CONFIG.logoUrl;
-  if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) return normalized;
-  return DEFAULT_QR_PASS_CONFIG.logoUrl;
+
+  const isSameOriginAsset = normalized.startsWith('/')
+    && !normalized.startsWith('//')
+    && !normalized.includes('\\');
+
+  return isSameOriginAsset ? normalized : DEFAULT_QR_PASS_CONFIG.logoUrl;
 }
 
 function cleanColor(value: unknown, fallback: string): string {
