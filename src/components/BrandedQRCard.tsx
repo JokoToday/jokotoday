@@ -1,8 +1,13 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Download } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
+import {
+  DEFAULT_QR_PASS_CONFIG,
+  getQrPassConfig,
+  type QrPassConfig,
+} from '../lib/qrPassConfig';
 import jsPDF from 'jspdf';
 
 interface BrandedQRCardProps {
@@ -11,9 +16,9 @@ interface BrandedQRCardProps {
   customerName: string;
   shortCode?: string;
   secondaryAction?: ReactNode;
+  config?: QrPassConfig;
 }
 
-const LOGO_SRC = '/JOKO.TODAY_logo.v0.4.webp';
 const CARD_WIDTH_MM = 55;
 const CARD_HEIGHT_MM = 85;
 const CARD_CANVAS_WIDTH = 660;
@@ -22,10 +27,32 @@ const CARD_CANVAS_HEIGHT = 1020;
 const QR_DOWNLOAD_BUTTON_CLASS =
   'w-full border border-amber-500 bg-white text-amber-700 font-semibold py-3 rounded-lg hover:border-amber-600 hover:bg-amber-600 hover:text-white hover:shadow-md focus-visible:border-amber-600 focus-visible:bg-amber-600 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 flex items-center justify-center gap-2';
 
-export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryAction }: BrandedQRCardProps) {
+export function BrandedQRCard({
+  qrValue,
+  customerName,
+  shortCode,
+  secondaryAction,
+  config,
+}: BrandedQRCardProps) {
   const qrRef = useRef<HTMLDivElement>(null);
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
+  const [savedConfig, setSavedConfig] = useState<QrPassConfig>({ ...DEFAULT_QR_PASS_CONFIG });
+
+  useEffect(() => {
+    if (config) return;
+    let cancelled = false;
+
+    void getQrPassConfig().then((loadedConfig) => {
+      if (!cancelled) setSavedConfig(loadedConfig);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [config]);
+
+  const activeConfig = config || savedConfig;
 
   const roundedRect = (
     ctx: CanvasRenderingContext2D,
@@ -42,6 +69,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const image = new Image();
+      image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error(`Failed to load image: ${src}`));
       image.src = src;
@@ -95,7 +123,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
     const qrSize = viewBoxSize * moduleScale;
     const [qrImage, logoImage] = await Promise.all([
       svgToImage(svg, qrSize),
-      loadImage(LOGO_SRC),
+      loadImage(activeConfig.logoUrl),
     ]);
 
     const canvas = document.createElement('canvas');
@@ -107,33 +135,38 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
 
     ctx.clearRect(0, 0, CARD_CANVAS_WIDTH, CARD_CANVAS_HEIGHT);
 
-    ctx.fillStyle = '#F7EAD7';
+    ctx.fillStyle = activeConfig.cardBackground;
     ctx.fillRect(0, 0, CARD_CANVAS_WIDTH, CARD_CANVAS_HEIGHT);
 
     roundedRect(ctx, 18, 18, CARD_CANVAS_WIDTH - 36, CARD_CANVAS_HEIGHT - 36, 30);
-    ctx.fillStyle = '#F3EEE6';
+    ctx.fillStyle = activeConfig.cardSurface;
     ctx.fill();
-    ctx.strokeStyle = '#C7C79A';
+    ctx.strokeStyle = activeConfig.borderColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    drawContainedImage(ctx, logoImage, CARD_CANVAS_WIDTH / 2, 112, 390, 128);
+    const logoScale = activeConfig.logoScale / 100;
+    drawContainedImage(ctx, logoImage, CARD_CANVAS_WIDTH / 2, 112, 390 * logoScale, 128 * logoScale);
 
-    ctx.fillStyle = '#52603B';
-    ctx.font = '700 22px Arial, sans-serif';
-    ctx.fillText('JOKO PASS', CARD_CANVAS_WIDTH / 2, 198);
+    if (activeConfig.showTitle) {
+      ctx.fillStyle = activeConfig.headingColor;
+      ctx.font = '700 22px Arial, sans-serif';
+      ctx.fillText(activeConfig.title, CARD_CANVAS_WIDTH / 2, 198, 500);
+    }
 
-    ctx.fillStyle = '#8C8477';
-    ctx.font = '600 13px Arial, sans-serif';
-    ctx.fillText('YOUR PERSONAL JOKO TODAY ID', CARD_CANVAS_WIDTH / 2, 230);
+    if (activeConfig.showSubtitle) {
+      ctx.fillStyle = activeConfig.mutedColor;
+      ctx.font = '600 13px Arial, sans-serif';
+      ctx.fillText(activeConfig.subtitle, CARD_CANVAS_WIDTH / 2, 230, 540);
+    }
 
     roundedRect(ctx, 80, 272, 500, 500, 28);
     ctx.fillStyle = '#FFFFFF';
     ctx.fill();
-    ctx.strokeStyle = '#E0CBAA';
+    ctx.strokeStyle = activeConfig.qrBorderColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -144,35 +177,41 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
     ctx.imageSmoothingEnabled = true;
 
     const cleanName = String(customerName || 'JOKO Member').trim().slice(0, 40);
-    ctx.fillStyle = '#24231F';
-    ctx.font = '600 30px Arial, sans-serif';
-    ctx.fillText(cleanName, CARD_CANVAS_WIDTH / 2, 828, 540);
-
-    const cleanShortCode = String(shortCode || '').trim().slice(0, 32);
-    if (cleanShortCode) {
-      ctx.fillStyle = '#C45A00';
-      ctx.font = '700 20px monospace';
-      ctx.fillText(cleanShortCode, CARD_CANVAS_WIDTH / 2, 868);
+    if (activeConfig.showCustomerName) {
+      ctx.fillStyle = activeConfig.textColor;
+      ctx.font = '600 30px Arial, sans-serif';
+      ctx.fillText(cleanName, CARD_CANVAS_WIDTH / 2, 828, 540);
     }
 
-    ctx.strokeStyle = '#C7C79A';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(228, 916);
-    ctx.lineTo(308, 916);
-    ctx.moveTo(352, 916);
-    ctx.lineTo(432, 916);
-    ctx.stroke();
+    const cleanShortCode = String(shortCode || '').trim().slice(0, 32);
+    if (activeConfig.showShortCode && cleanShortCode) {
+      ctx.fillStyle = activeConfig.accentColor;
+      ctx.font = '700 20px monospace';
+      ctx.fillText(cleanShortCode, CARD_CANVAS_WIDTH / 2, activeConfig.showCustomerName ? 868 : 842);
+    }
 
-    ctx.fillStyle = '#C45A00';
-    ctx.beginPath();
-    ctx.arc(322, 916, 5, 0, Math.PI * 2);
-    ctx.arc(339, 916, 4, 0, Math.PI * 2);
-    ctx.fill();
+    if (activeConfig.showFooterMark) {
+      ctx.strokeStyle = activeConfig.borderColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(228, 916);
+      ctx.lineTo(308, 916);
+      ctx.moveTo(352, 916);
+      ctx.lineTo(432, 916);
+      ctx.stroke();
 
-    ctx.fillStyle = '#8C8477';
-    ctx.font = '500 15px Arial, sans-serif';
-    ctx.fillText('joko.today', CARD_CANVAS_WIDTH / 2, 958);
+      ctx.fillStyle = activeConfig.accentColor;
+      ctx.beginPath();
+      ctx.arc(322, 916, 5, 0, Math.PI * 2);
+      ctx.arc(339, 916, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (activeConfig.showFooterText) {
+      ctx.fillStyle = activeConfig.mutedColor;
+      ctx.font = '500 15px Arial, sans-serif';
+      ctx.fillText(activeConfig.footerText, CARD_CANVAS_WIDTH / 2, 958, 520);
+    }
 
     return canvas;
   };
@@ -232,30 +271,47 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
     }
   };
 
+  const logoWidth = `${Math.round(220 * activeConfig.logoScale / 100)}px`;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-center justify-center py-6">
         <div
-          className="relative w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[#f7ead7] p-3 shadow-2xl"
-          style={{ aspectRatio: '55 / 85' }}
+          className="relative w-full max-w-[360px] overflow-hidden rounded-[28px] p-3 shadow-2xl"
+          style={{ aspectRatio: '55 / 85', backgroundColor: activeConfig.cardBackground }}
         >
-          <div className="flex h-full flex-col items-center rounded-[20px] border border-[#c7c79a] bg-[#f3eee6] px-5 py-5 text-center sm:px-7 sm:py-6">
+          <div
+            className="flex h-full flex-col items-center rounded-[20px] border px-5 py-5 text-center sm:px-7 sm:py-6"
+            style={{ backgroundColor: activeConfig.cardSurface, borderColor: activeConfig.borderColor }}
+          >
             <img
-              src={LOGO_SRC}
+              src={activeConfig.logoUrl}
               alt="JOKO TODAY"
-              className="h-16 w-full max-w-[220px] object-contain sm:h-[4.5rem]"
+              className="h-16 w-full object-contain sm:h-[4.5rem]"
+              style={{ maxWidth: logoWidth }}
             />
 
-            <p className="mt-2 text-[0.72rem] font-bold tracking-[0.18em] text-[#52603b] sm:text-xs">
-              JOKO PASS
-            </p>
-            <p className="mt-1 text-[0.52rem] font-semibold tracking-[0.12em] text-[#8c8477] sm:text-[0.58rem]">
-              YOUR PERSONAL JOKO TODAY ID
-            </p>
+            {activeConfig.showTitle && (
+              <p
+                className="mt-2 text-[0.72rem] font-bold tracking-[0.18em] sm:text-xs"
+                style={{ color: activeConfig.headingColor }}
+              >
+                {activeConfig.title}
+              </p>
+            )}
+            {activeConfig.showSubtitle && (
+              <p
+                className="mt-1 text-[0.52rem] font-semibold tracking-[0.12em] sm:text-[0.58rem]"
+                style={{ color: activeConfig.mutedColor }}
+              >
+                {activeConfig.subtitle}
+              </p>
+            )}
 
             <div
               ref={qrRef}
-              className="mt-4 flex items-center justify-center rounded-2xl border border-[#e0cbaa] bg-white p-2 sm:mt-5"
+              className="mt-4 flex items-center justify-center rounded-2xl border bg-white p-2 sm:mt-5"
+              style={{ borderColor: activeConfig.qrBorderColor }}
             >
               <QRCodeSVG
                 value={String(qrValue).trim()}
@@ -268,46 +324,69 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
               />
             </div>
 
-            <div className="mt-4 min-w-0">
-              <p className="truncate text-lg font-semibold text-[#24231f] sm:text-[1.25rem]">
-                {customerName}
-              </p>
-              {shortCode && (
-                <p className="mt-0.5 font-mono text-[0.825rem] font-bold tracking-wide text-[#c45a00] sm:text-[0.95rem]">
-                  {shortCode}
+            {(activeConfig.showCustomerName || (activeConfig.showShortCode && shortCode)) && (
+              <div className="mt-4 min-w-0">
+                {activeConfig.showCustomerName && (
+                  <p
+                    className="truncate text-lg font-semibold sm:text-[1.25rem]"
+                    style={{ color: activeConfig.textColor }}
+                  >
+                    {customerName}
+                  </p>
+                )}
+                {activeConfig.showShortCode && shortCode && (
+                  <p
+                    className="mt-0.5 font-mono text-[0.825rem] font-bold tracking-wide sm:text-[0.95rem]"
+                    style={{ color: activeConfig.accentColor }}
+                  >
+                    {shortCode}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-auto pt-3">
+              {activeConfig.showFooterMark && (
+                <div
+                  className="flex items-center justify-center gap-2"
+                  style={{ color: activeConfig.accentColor }}
+                  aria-hidden="true"
+                >
+                  <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  <span className="h-1 w-1 rounded-full bg-current" />
+                  <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
+                </div>
+              )}
+              {activeConfig.showFooterText && (
+                <p
+                  className="mt-1 text-[0.62rem] font-medium tracking-wide"
+                  style={{ color: activeConfig.mutedColor }}
+                >
+                  {activeConfig.footerText}
                 </p>
               )}
             </div>
-
-            <div className="mt-auto flex items-center justify-center gap-2 pt-3 text-[#c45a00]" aria-hidden="true">
-              <span className="h-px w-8 bg-[#c7c79a]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              <span className="h-1 w-1 rounded-full bg-current" />
-              <span className="h-px w-8 bg-[#c7c79a]" />
-            </div>
-            <p className="mt-1 text-[0.62rem] font-medium tracking-wide text-[#8c8477]">joko.today</p>
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        <button
-          onClick={handleDownloadCard}
-          className={QR_DOWNLOAD_BUTTON_CLASS}
-        >
+        <button type="button" onClick={handleDownloadCard} className={QR_DOWNLOAD_BUTTON_CLASS}>
           <Download className="w-5 h-5" />
-          {getLabel('qr_page.download_card_button', language,
-            language === 'th' ? 'ดาวน์โหลดบัตรสมาชิก' : 'Download Membership Card'
+          {getLabel(
+            'qr_page.download_card_button',
+            language,
+            language === 'th' ? 'ดาวน์โหลดบัตรสมาชิก' : 'Download Membership Card',
           )}
         </button>
 
-        <button
-          onClick={handleDownloadImage}
-          className={QR_DOWNLOAD_BUTTON_CLASS}
-        >
+        <button type="button" onClick={handleDownloadImage} className={QR_DOWNLOAD_BUTTON_CLASS}>
           <Download className="w-5 h-5" />
-          {getLabel('qr_page.download_image_button', language,
-            language === 'th' ? 'ดาวน์โหลดรูป QR' : 'Download QR Image'
+          {getLabel(
+            'qr_page.download_image_button',
+            language,
+            language === 'th' ? 'ดาวน์โหลดรูป QR' : 'Download QR Image',
           )}
         </button>
 
@@ -315,10 +394,12 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
       </div>
 
       <p className="text-xs text-gray-600 text-center">
-        {getLabel('qr_page.card_info', language,
+        {getLabel(
+          'qr_page.card_info',
+          language,
           language === 'th'
             ? 'บันทึกไว้ในโทรศัพท์หรือพิมพ์เป็นบัตรขนาด 55 × 85 มม. สำหรับกระเป๋าสตางค์ของคุณ'
-            : 'Save it to your phone or print the 55 × 85 mm card for your wallet.'
+            : 'Save it to your phone or print the 55 × 85 mm card for your wallet.',
         )}
       </p>
     </div>

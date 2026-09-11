@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Palette, Rocket, Sparkles, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Palette, QrCode, Rocket, Sparkles, Users } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
@@ -7,6 +7,7 @@ import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
 import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
+import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
@@ -15,9 +16,20 @@ interface AdminWorkspaceProps {
   onNavigate: (page: string) => void;
 }
 
-type WorkspaceTab = 'cms' | 'homepage' | 'notebook-content' | 'customer-experience' | 'pickup-products' | 'pickup-dates' | 'pickup-rollout' | 'commerce-intelligence' | 'loyalty';
+type WorkspaceTab =
+  | 'cms'
+  | 'homepage'
+  | 'notebook-content'
+  | 'customer-experience'
+  | 'qr-pass'
+  | 'pickup-products'
+  | 'pickup-dates'
+  | 'pickup-rollout'
+  | 'commerce-intelligence'
+  | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
+  if (window.location.pathname.startsWith('/admin/qr-pass')) return 'qr-pass';
   if (window.location.pathname.startsWith('/admin/notebook')) return 'notebook-content';
   if (window.location.pathname.startsWith('/admin/homepage')) return 'homepage';
   return 'cms';
@@ -38,50 +50,34 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
       ? '/admin/homepage'
       : tab === 'notebook-content'
       ? '/admin/notebook'
+      : tab === 'qr-pass'
+      ? '/admin/qr-pass'
       : '/admin';
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
   };
 
+  const tabClass = (tab: WorkspaceTab) => `inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+    activeTab === tab
+      ? 'bg-primary-50 text-primary-700'
+      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+  }`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="border-b border-gray-200 bg-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-2 py-2 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('cms')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'cms'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('cms')} className={tabClass('cms')}>
               <LayoutDashboard className="w-4 h-4" />
               CMS & Recurring Setup
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('homepage')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'homepage'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('homepage')} className={tabClass('homepage')}>
               <Monitor className="w-4 h-4" />
               Website / Homepage
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('notebook-content')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'notebook-content'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('notebook-content')} className={tabClass('notebook-content')}>
               <BookOpen className="w-4 h-4" />
               Notebook Content
             </button>
@@ -93,75 +89,31 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
               <Palette className="w-4 h-4" />
               Open Creative Lab
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('customer-experience')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'customer-experience'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('customer-experience')} className={tabClass('customer-experience')}>
               <Users className="w-4 h-4" />
               Customer Experience
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('pickup-products')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'pickup-products'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('qr-pass')} className={tabClass('qr-pass')}>
+              <QrCode className="w-4 h-4" />
+              QR Pass Designer
+            </button>
+            <button type="button" onClick={() => selectWorkspaceTab('pickup-products')} className={tabClass('pickup-products')}>
               <PackageCheck className="w-4 h-4" />
               Product Pickup Capacity
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('pickup-dates')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'pickup-dates'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('pickup-dates')} className={tabClass('pickup-dates')}>
               <CalendarDays className="w-4 h-4" />
               Concrete Pickup Dates
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('pickup-rollout')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'pickup-rollout'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('pickup-rollout')} className={tabClass('pickup-rollout')}>
               <Rocket className="w-4 h-4" />
               Pickup v2 Rollout
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('commerce-intelligence')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'commerce-intelligence'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('commerce-intelligence')} className={tabClass('commerce-intelligence')}>
               <Sparkles className="w-4 h-4" />
               Commerce Intelligence
             </button>
-            <button
-              type="button"
-              onClick={() => selectWorkspaceTab('loyalty')}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === 'loyalty'
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
+            <button type="button" onClick={() => selectWorkspaceTab('loyalty')} className={tabClass('loyalty')}>
               <Gift className="w-4 h-4" />
               Loyalty & Rewards
             </button>
@@ -188,6 +140,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
       )}
 
       {activeTab === 'customer-experience' && <CustomerExperienceManagement />}
+
+      {activeTab === 'qr-pass' && <QrPassDesignerManagement />}
 
       {activeTab === 'pickup-products' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
