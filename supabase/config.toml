@@ -33,3 +33,9 @@ verify_jwt = true
 
 [functions.generate-character-candidates]
 verify_jwt = true
+
+# Server-to-server OpenAI-compatible routing gateway. Platform JWT verification
+# is disabled because Hermes authenticates with JOKO_AI_GATEWAY_KEY; the
+# function performs its own bearer-key validation before exposing any route.
+[functions.joko-ai-gateway]
+verify_jwt = false
