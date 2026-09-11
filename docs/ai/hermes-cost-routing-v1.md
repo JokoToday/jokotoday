@@ -55,6 +55,8 @@ The gateway exposes OpenAI-compatible aliases rather than allowing callers to ch
 
 Default model slugs are only starting values and are environment-overridable. The routing contract is the stable interface; individual models are replaceable.
 
+V1 only falls back from Ollama Cloud to OpenRouter for network/configuration exceptions, timeouts, rate limiting, early-data retry status, or provider/server errors. Ordinary 4xx request/auth failures are returned without a second paid attempt.
+
 ### Images
 
 | Alias | Intent | Provider |
@@ -107,9 +109,9 @@ OPENROUTER_API_KEY=<OpenRouter API key>
 Optional route overrides:
 
 ```text
-JOKO_AI_OLLAMA_ECONOMY_MODEL=glm-5.3-flash
-JOKO_AI_OLLAMA_STANDARD_MODEL=gpt-oss:120b
-JOKO_AI_OLLAMA_PREMIUM_MODEL=deepseek-v4-pro
+JOKO_AI_OLLAMA_ECONOMY_MODEL=glm-5.3-flash:cloud
+JOKO_AI_OLLAMA_STANDARD_MODEL=gpt-oss:120b-cloud
+JOKO_AI_OLLAMA_PREMIUM_MODEL=deepseek-v4-pro:cloud
 
 JOKO_AI_OPENROUTER_ECONOMY_MODEL=openrouter/auto
 JOKO_AI_OPENROUTER_STANDARD_MODEL=openrouter/auto
@@ -164,7 +166,7 @@ Example pricing configuration shape:
 
 ```json
 {
-  "ollama-cloud:gpt-oss:120b": {
+  "ollama-cloud:gpt-oss:120b-cloud": {
     "input_per_million": 0.15,
     "cached_input_per_million": 0.014,
     "output_per_million": 0.60
@@ -184,6 +186,8 @@ Pricing values above are examples only; use current provider pricing at activati
 4. converts browser reference files to image data URLs server-side;
 5. calls `joko/image-standard` on JOKO AI Gateway;
 6. returns provider/model/route/request/cost provenance with the generated candidates.
+
+The gateway sends image requests to OpenRouter's dedicated `POST /api/v1/images` endpoint. Reference files use canonical `input_references` entries with base64 data URLs. Because some image models only support one result per request, the gateway normalizes a request for three candidates into up to three `n: 1` calls and aggregates the results and reported cost.
 
 Browser Library candidate provenance is now provider-neutral and can retain gateway route, request ID, and batch cost.
 
