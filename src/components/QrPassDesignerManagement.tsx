@@ -95,9 +95,20 @@ export function QrPassDesignerManagement() {
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
     setSaved(false);
     setError('');
+
+    const logoPath = draft.logoUrl.trim();
+    const validLogoPath = logoPath.startsWith('/')
+      && !logoPath.startsWith('//')
+      && !logoPath.includes('\\');
+
+    if (!validLogoPath) {
+      setError('Logo must use a bundled same-origin asset path beginning with /. External logo URLs are deferred to a later upload-backed version.');
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const normalized = await saveQrPassConfig(draft);
@@ -154,7 +165,7 @@ export function QrPassDesignerManagement() {
             <h2 className="text-lg font-semibold text-gray-900">Branding</h2>
             <div className="mt-5 grid gap-5 md:grid-cols-2">
               <label className="md:col-span-2 block">
-                <span className="text-sm font-medium text-gray-800">Logo URL or bundled asset path</span>
+                <span className="text-sm font-medium text-gray-800">Bundled logo asset path</span>
                 <input
                   type="text"
                   value={draft.logoUrl}
@@ -163,7 +174,7 @@ export function QrPassDesignerManagement() {
                   className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                 />
                 <p className="mt-1 text-xs leading-5 text-gray-500">
-                  Use a bundled path beginning with / or a public https:// image URL. Direct logo upload can be added later without changing the config format.
+                  Use a same-origin bundled path beginning with /. External URLs and direct logo upload are deferred until we add a Storage-backed asset workflow that keeps PDF/PNG export reliable.
                 </p>
               </label>
 
