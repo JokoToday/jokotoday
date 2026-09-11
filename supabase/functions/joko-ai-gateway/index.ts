@@ -64,7 +64,7 @@ const textRoutes: Record<TextTier, TextRoute> = {
     tier: "economy",
     primary: {
       provider: "ollama-cloud",
-      model: env("JOKO_AI_OLLAMA_ECONOMY_MODEL", "glm-5.3-flash"),
+      model: env("JOKO_AI_OLLAMA_ECONOMY_MODEL", "glm-5.3-flash:cloud"),
     },
     fallback: {
       provider: "openrouter",
@@ -76,7 +76,7 @@ const textRoutes: Record<TextTier, TextRoute> = {
     tier: "standard",
     primary: {
       provider: "ollama-cloud",
-      model: env("JOKO_AI_OLLAMA_STANDARD_MODEL", "gpt-oss:120b"),
+      model: env("JOKO_AI_OLLAMA_STANDARD_MODEL", "gpt-oss:120b-cloud"),
     },
     fallback: {
       provider: "openrouter",
@@ -88,7 +88,7 @@ const textRoutes: Record<TextTier, TextRoute> = {
     tier: "premium",
     primary: {
       provider: "ollama-cloud",
-      model: env("JOKO_AI_OLLAMA_PREMIUM_MODEL", "deepseek-v4-pro"),
+      model: env("JOKO_AI_OLLAMA_PREMIUM_MODEL", "deepseek-v4-pro:cloud"),
     },
     fallback: {
       provider: "openrouter",
@@ -242,6 +242,10 @@ function estimateTextCost(provider: ProviderName, model: string, usage: UsageSha
     + (completionTokens / 1_000_000) * outputRate;
 }
 
+function shouldFallback(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
 function gatewayHeaders(input: {
   id: string;
   route: string;
@@ -336,12 +340,14 @@ async function handleChat(req: Request, body: Record<string, unknown>): Promise<
 
   try {
     upstream = await callChatProvider(route.primary, body);
-    if (!upstream.ok) {
-      primaryFailure = `${upstream.status}: ${(await upstream.text()).slice(0, 500)}`;
+    if (!upstream.ok && shouldFallback(upstream.status)) {
+      primaryFailure = `status:${upstream.status}`;
+      await upstream.arrayBuffer();
       upstream = null;
     }
   } catch (error) {
     primaryFailure = error instanceof Error ? error.message : "primary provider failed";
+    upstream = null;
   }
 
   if (!upstream) {
@@ -351,7 +357,13 @@ async function handleChat(req: Request, body: Record<string, unknown>): Promise<
       upstream = await callChatProvider(route.fallback, body);
     } catch (error) {
       const message = error instanceof Error ? error.message : "fallback provider failed";
-      console.error(JSON.stringify({ event: "joko_ai_route_failure", request_id: id, route: route.alias, primary_failure: primaryFailure, fallback_failure: message }));
+      console.error(JSON.stringify({
+        event: "joko_ai_route_failure",
+        request_id: id,
+        route: route.alias,
+        primary_failure: primaryFailure,
+        fallback_failure: message,
+      }));
       return json({ error: "No configured AI route could complete the request" }, 503, { "X-JOKO-AI-Request-ID": id });
     }
   }
@@ -359,15 +371,14 @@ async function handleChat(req: Request, body: Record<string, unknown>): Promise<
   const latencyMs = Date.now() - started;
   const contentType = upstream.headers.get("Content-Type") || "application/json";
   if (!upstream.ok) {
-    const raw = await upstream.text();
+    await upstream.arrayBuffer();
     logUsage({ id, kind: "chat", route: route.alias, provider: selected.provider, model: selected.model, fallbackUsed, latencyMs, ok: false, status: upstream.status });
-    return new Response(raw, {
-      status: upstream.status,
-      headers: {
-        ...Object.fromEntries(gatewayHeaders({ id, route: route.alias, provider: selected.provider, model: selected.model, fallbackUsed, latencyMs })),
-        "Content-Type": contentType,
-      },
-    });
+    const status = upstream.status >= 400 && upstream.status < 500 ? upstream.status : 502;
+    return json(
+      { error: "AI provider request failed" },
+      status,
+      Object.fromEntries(gatewayHeaders({ id, route: route.alias, provider: selected.provider, model: selected.model, fallbackUsed, latencyMs })),
+    );
   }
 
   if (contentType.includes("text/event-stream")) {
@@ -393,7 +404,7 @@ async function handleChat(req: Request, body: Record<string, unknown>): Promise<
   return new Response(raw, { status: upstream.status, headers });
 }
 
-async function callOpenRouterImage(route: ImageRoute, requestBody: Record<string, unknown>): Promise<{ payload: Record<string, unknown>; status: number; latencyMs: number }> {
+async function callOpenRouterImage(route: ImageRoute, requestBody: Record<string, unknown>): Promise<{ payload: Record<string, unknown>; latencyMs: number }> {
   const key = providerKey("openrouter");
   if (!key) throw new Error("openrouter is not configured");
 
@@ -421,10 +432,9 @@ async function callOpenRouterImage(route: ImageRoute, requestBody: Record<string
     throw new Error(`OpenRouter image API returned invalid JSON (${response.status})`);
   }
   if (!response.ok) {
-    const message = typeof payload.error === "object" ? JSON.stringify(payload.error).slice(0, 500) : raw.slice(0, 500);
-    throw new Error(`OpenRouter image API ${response.status}: ${message}`);
+    throw new Error(`OpenRouter image API request failed (${response.status})`);
   }
-  return { payload, status: response.status, latencyMs };
+  return { payload, latencyMs };
 }
 
 async function handleImages(req: Request, body: Record<string, unknown>): Promise<Response> {
@@ -441,13 +451,14 @@ async function handleImages(req: Request, body: Record<string, unknown>): Promis
   let totalLatencyMs = 0;
   let totalCostUsd = 0;
   let hasCost = false;
-  let aggregateUsage: UsageShape = {};
+  const aggregateUsage: UsageShape = {};
 
   try {
     for (let index = 0; index < count; index += 1) {
       const { payload, latencyMs } = await callOpenRouterImage(route, body);
       totalLatencyMs += latencyMs;
       const data = Array.isArray(payload.data) ? payload.data : [];
+      if (data.length === 0) throw new Error("OpenRouter image API returned no image data");
       images.push(...data);
       const usage = usageFromPayload(payload);
       if (usage) {
@@ -465,7 +476,7 @@ async function handleImages(req: Request, body: Record<string, unknown>): Promis
     const message = error instanceof Error ? error.message : "Image generation failed";
     console.error(JSON.stringify({ event: "joko_ai_image_failure", request_id: id, route: route.alias, error: message }));
     logUsage({ id, kind: "image", route: route.alias, provider: "openrouter", model: route.model, fallbackUsed: false, latencyMs: totalLatencyMs, ok: false, status: 502 });
-    return json({ error: "Image generation failed", detail: message }, 502, { "X-JOKO-AI-Request-ID": id });
+    return json({ error: "Image generation failed" }, 502, { "X-JOKO-AI-Request-ID": id });
   }
 
   const costUsd = hasCost ? totalCostUsd : null;
