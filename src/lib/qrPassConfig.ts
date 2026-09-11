@@ -19,6 +19,8 @@ export interface QrPassConfig {
   cardBackground: string;
   cardSurface: string;
   borderColor: string;
+  qrBorderColor: string;
+  headingColor: string;
   accentColor: string;
   textColor: string;
   mutedColor: string;
@@ -38,8 +40,10 @@ export const DEFAULT_QR_PASS_CONFIG: QrPassConfig = {
   showFooterMark: true,
   showFooterText: true,
   cardBackground: '#F7EAD7',
-  cardSurface: '#FFF9EF',
+  cardSurface: '#F3EEE6',
   borderColor: '#C7C79A',
+  qrBorderColor: '#E0CBAA',
+  headingColor: '#52603B',
   accentColor: '#C45A00',
   textColor: '#24231F',
   mutedColor: '#8C8477',
@@ -98,6 +102,8 @@ export function parseQrPassConfig(value: string | null | undefined): QrPassConfi
       cardBackground: cleanColor(parsed.cardBackground, DEFAULT_QR_PASS_CONFIG.cardBackground),
       cardSurface: cleanColor(parsed.cardSurface, DEFAULT_QR_PASS_CONFIG.cardSurface),
       borderColor: cleanColor(parsed.borderColor, DEFAULT_QR_PASS_CONFIG.borderColor),
+      qrBorderColor: cleanColor(parsed.qrBorderColor, DEFAULT_QR_PASS_CONFIG.qrBorderColor),
+      headingColor: cleanColor(parsed.headingColor, DEFAULT_QR_PASS_CONFIG.headingColor),
       accentColor: cleanColor(parsed.accentColor, DEFAULT_QR_PASS_CONFIG.accentColor),
       textColor: cleanColor(parsed.textColor, DEFAULT_QR_PASS_CONFIG.textColor),
       mutedColor: cleanColor(parsed.mutedColor, DEFAULT_QR_PASS_CONFIG.mutedColor),
