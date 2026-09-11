@@ -372,7 +372,7 @@ export function BrandedQRCard({
       </div>
 
       <div className="flex flex-col gap-3">
-        <button onClick={handleDownloadCard} className={QR_DOWNLOAD_BUTTON_CLASS}>
+        <button type="button" onClick={handleDownloadCard} className={QR_DOWNLOAD_BUTTON_CLASS}>
           <Download className="w-5 h-5" />
           {getLabel(
             'qr_page.download_card_button',
@@ -381,7 +381,7 @@ export function BrandedQRCard({
           )}
         </button>
 
-        <button onClick={handleDownloadImage} className={QR_DOWNLOAD_BUTTON_CLASS}>
+        <button type="button" onClick={handleDownloadImage} className={QR_DOWNLOAD_BUTTON_CLASS}>
           <Download className="w-5 h-5" />
           {getLabel(
             'qr_page.download_image_button',
