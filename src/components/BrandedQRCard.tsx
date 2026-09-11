@@ -13,7 +13,7 @@ interface BrandedQRCardProps {
   secondaryAction?: ReactNode;
 }
 
-const LOGO_SRC = '/JOKO.TODAY_logo.transparent.png';
+const LOGO_SRC = '/JOKO.TODAY_logo.v0.4.webp';
 const CARD_WIDTH_MM = 55;
 const CARD_HEIGHT_MM = 85;
 const CARD_CANVAS_WIDTH = 660;
@@ -111,7 +111,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
     ctx.fillRect(0, 0, CARD_CANVAS_WIDTH, CARD_CANVAS_HEIGHT);
 
     roundedRect(ctx, 18, 18, CARD_CANVAS_WIDTH - 36, CARD_CANVAS_HEIGHT - 36, 30);
-    ctx.fillStyle = '#FFF9EF';
+    ctx.fillStyle = '#F3EEE6';
     ctx.fill();
     ctx.strokeStyle = '#C7C79A';
     ctx.lineWidth = 2;
@@ -239,7 +239,7 @@ export function BrandedQRCard({ qrValue, customerName, shortCode, secondaryActio
           className="relative w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[#f7ead7] p-3 shadow-2xl"
           style={{ aspectRatio: '55 / 85' }}
         >
-          <div className="flex h-full flex-col items-center rounded-[20px] border border-[#c7c79a] bg-[#fff9ef] px-5 py-5 text-center sm:px-7 sm:py-6">
+          <div className="flex h-full flex-col items-center rounded-[20px] border border-[#c7c79a] bg-[#f3eee6] px-5 py-5 text-center sm:px-7 sm:py-6">
             <img
               src={LOGO_SRC}
               alt="JOKO TODAY"
