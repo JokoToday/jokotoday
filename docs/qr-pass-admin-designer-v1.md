@@ -12,7 +12,7 @@ No new database table or migration is required.
 
 ## Editable fields
 
-- logo URL or bundled asset path
+- bundled same-origin logo asset path
 - logo scale (60–140%)
 - title
 - subtitle
@@ -48,19 +48,20 @@ The QR remains black-on-white with error correction `H`, the existing quiet zone
 
 ## Logo handling
 
-v1 accepts either:
+v1 accepts only a bundled same-origin asset path beginning with a single `/`, for example:
 
-- a bundled asset path beginning with `/`; or
-- a public `https://` image URL.
+`/JOKO.TODAY_logo.v0.4.webp`
 
-Direct Admin file upload is intentionally deferred until the Storage write policy and desired asset-management lifecycle are explicitly validated. This avoids silently expanding Storage permissions as part of a presentation-only feature.
+External image URLs are deliberately not accepted in v1 because a remotely hosted image may render in the browser but still fail canvas export when its server does not allow cross-origin image access. Restricting v1 to same-origin assets keeps PNG/PDF generation deterministic.
+
+Direct Admin file upload is intentionally deferred until the Storage write policy and desired asset-management lifecycle are explicitly validated. A later Storage-backed upload flow can extend the existing config format without weakening export reliability.
 
 ## Runtime behavior
 
-Customer QR Passes load the saved configuration when rendered. If the setting is missing, malformed, or cannot be read, the component falls back to the checked-in QR Pass v2 defaults.
+Customer QR Passes load the saved configuration when rendered. If the setting is missing, malformed, cannot be read, or contains an unsupported logo path, the component falls back to the checked-in QR Pass v2 defaults.
 
-Saving occurs only when an authenticated Admin explicitly clicks **Save QR Pass design**. Merely viewing the designer, opening a customer QR Pass, CI, or building the frontend performs no production write.
+Saving occurs only when an authenticated Admin explicitly clicks **Save QR Pass design**. The QR Pass download controls are explicitly non-submit buttons, so previewing a PNG or PDF cannot publish an unsaved Admin draft. Merely viewing the designer, opening a customer QR Pass, CI, or building the frontend performs no production write.
 
 ## Deployment dependency
 
-This feature is stacked on QR Pass v2 (PR #123). Merge/release QR Pass v2 before or together with the Admin Designer.
+QR Pass v2 (PR #123) was merged first. QR Pass Admin Designer v1 is the follow-up layer that configures that card.
