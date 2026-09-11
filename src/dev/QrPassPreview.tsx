@@ -62,6 +62,9 @@ function QrPassPreview() {
             Review the logo and layout, download both PDF and PNG, confirm the PDF page is 55 × 85 mm,
             and scan both files with a phone. A successful scan should open the JOKO TODAY homepage.
           </p>
+          <p className="mt-3 text-xs text-stone-500">
+            The card component may make the normal public CMS-label read used by the site, but this preview does not require login and does not read or write customer records.
+          </p>
         </div>
       </div>
     </main>
