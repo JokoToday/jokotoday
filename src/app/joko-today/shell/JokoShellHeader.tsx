@@ -93,7 +93,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               aria-label="JOKO TODAY home"
             >
               <img
-                src="/assets/brand/joko-today-logo-v0.4.png"
+                src="/assets/brand/joko-today-logo-v0.4.webp"
                 alt="JOKO TODAY"
                 className="h-14 w-auto object-contain mix-blend-multiply sm:h-16"
               />
