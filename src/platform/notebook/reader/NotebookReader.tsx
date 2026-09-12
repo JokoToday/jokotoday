@@ -275,12 +275,6 @@ export function NotebookReader({
       <div className="relative mx-auto max-w-6xl">
         <div className="absolute -bottom-3 left-6 right-6 top-3 rounded-[2.5rem] bg-primary-900/10 blur-sm lg:left-10 lg:right-10" aria-hidden="true" />
 
-        <div className="absolute -right-2 top-20 z-0 hidden flex-col gap-2 lg:flex" aria-hidden="true">
-          <span className="h-14 w-5 rounded-r-md bg-primary-300/80" />
-          <span className="h-11 w-5 rounded-r-md bg-primary-200/80" />
-          <span className="h-16 w-5 rounded-r-md bg-primary-100" />
-        </div>
-
         <div className="relative z-10 space-y-5 lg:overflow-hidden lg:rounded-[2.25rem] lg:border lg:border-primary-900/10 lg:bg-background lg:shadow-[0_24px_70px_rgb(var(--color-primary-950)/0.14)]">
           {spreads.map(([leftSurface, rightSurface], spreadIndex) => {
             const leftPageNumber = spreadIndex * 2 + 1;

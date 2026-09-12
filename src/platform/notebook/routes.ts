@@ -33,3 +33,38 @@ export function getNotebookEntryTarget(entry: NotebookEntry): NotebookRouteTarge
       return { type: 'notebook.question', slug: entry.slug };
   }
 }
+
+
+function decodeNotebookSlug(value: string): string | null {
+  try {
+    const decoded = decodeURIComponent(value).trim();
+    return decoded && decoded !== '.' && decoded !== '..' ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseNotebookPath(path: string): NotebookRouteTarget | null {
+  if (path === '/notebook/today') return { type: 'notebook.today' };
+  if (path === '/notebook/history') return { type: 'notebook.history' };
+
+  const person = path.match(/^\/notebook\/people\/([^/]+)$/);
+  if (person) {
+    const slug = decodeNotebookSlug(person[1]);
+    return slug ? { type: 'notebook.person', slug } : null;
+  }
+
+  const product = path.match(/^\/notebook\/products\/([^/]+)$/);
+  if (product) {
+    const slug = decodeNotebookSlug(product[1]);
+    return slug ? { type: 'notebook.product', slug } : null;
+  }
+
+  const question = path.match(/^\/notebook\/questions\/([^/]+)$/);
+  if (question) {
+    const slug = decodeNotebookSlug(question[1]);
+    return slug ? { type: 'notebook.question', slug } : null;
+  }
+
+  return null;
+}

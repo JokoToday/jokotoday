@@ -13,6 +13,7 @@ import {
   type NotebookPersonEntry,
   type NotebookProductEntry,
   type NotebookQuestionEntry,
+  type NotebookRouteTarget,
 } from '../../../platform/notebook';
 
 interface HomepageLowerSectionsProps {
@@ -20,6 +21,7 @@ interface HomepageLowerSectionsProps {
   onNavigate: (page: string) => void;
   bundle: NotebookFixtureBundle;
   featuredProductImageUrl: string;
+  onNotebookNavigate?: (target: NotebookRouteTarget) => void;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -201,6 +203,7 @@ export function HomepageLowerSections({
   onNavigate,
   bundle,
   featuredProductImageUrl,
+  onNotebookNavigate,
 }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
@@ -266,16 +269,36 @@ export function HomepageLowerSections({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-700">
                       {labels.todayNotebook}
                     </p>
-                    <h3 className="mt-1 font-header text-2xl font-semibold text-primary-950">
-                      {person ? text(person.title) : 'JOKO'}
-                    </h3>
+                    {person && onNotebookNavigate ? (
+                      <button
+                        type="button"
+                        onClick={() => onNotebookNavigate({ type: 'notebook.person', slug: person.slug })}
+                        className="mt-1 font-header text-2xl font-semibold text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                      >
+                        {text(person.title)}
+                      </button>
+                    ) : (
+                      <h3 className="mt-1 font-header text-2xl font-semibold text-primary-950">
+                        {person ? text(person.title) : 'JOKO'}
+                      </h3>
+                    )}
                   </div>
                   <Heart className="ml-auto h-5 w-5 shrink-0 text-primary-700" aria-hidden="true" />
                 </div>
 
-                <p className="mt-5 font-header text-2xl font-semibold leading-tight text-primary-950 sm:text-3xl">
-                  {product ? text(product.title) : ''}
-                </p>
+                {product && onNotebookNavigate ? (
+                  <button
+                    type="button"
+                    onClick={() => onNotebookNavigate({ type: 'notebook.product', slug: product.slug })}
+                    className="mt-5 w-fit text-left font-header text-2xl font-semibold leading-tight text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:text-3xl"
+                  >
+                    {text(product.title)}
+                  </button>
+                ) : (
+                  <p className="mt-5 font-header text-2xl font-semibold leading-tight text-primary-950 sm:text-3xl">
+                    {product ? text(product.title) : ''}
+                  </p>
+                )}
                 {person && (
                   <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 sm:text-base">
                     {text(person.summary)}
@@ -284,7 +307,7 @@ export function HomepageLowerSections({
 
                 <button
                   type="button"
-                  onClick={() => onNavigate('notebook-today')}
+                  onClick={() => onNotebookNavigate ? onNotebookNavigate({ type: 'notebook.today' }) : onNavigate('notebook-today')}
                   className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary-700 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                 >
                   {labels.openTodayNote}
@@ -366,7 +389,7 @@ export function HomepageLowerSections({
               )}
               <button
                 type="button"
-                onClick={() => onNavigate('notebook-today')}
+                onClick={() => question && onNotebookNavigate ? onNotebookNavigate({ type: 'notebook.question', slug: question.slug }) : onNavigate('notebook-today')}
                 className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-primary-700 px-5 py-3 text-sm font-semibold text-background shadow-sm transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 {labels.questionAction}

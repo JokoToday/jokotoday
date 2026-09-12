@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense, type ReactNode } from 'react';
 import WelcomeBackCard from '../../../components/home/WelcomeBackCard';
 import HomePage from '../../../pages/HomePage';
+import type { NotebookRouteTarget } from '../../../platform/notebook';
 import { homepageRendererMode } from './homepageFeatureFlags';
 
 const PublishedBuilderHomepage = lazy(() => import('./PublishedBuilderHomepage'));
@@ -9,6 +10,12 @@ const HomepageExperiencePage = lazy(() => import('../home/HomepageExperiencePage
 type HomepageRendererGateProps = {
   onNavigate: (page: string) => void;
   onExperienceFailure?: () => void;
+  notebookTarget?: NotebookRouteTarget;
+  notebookClosed?: boolean;
+  onNotebookNavigate?: (target: NotebookRouteTarget) => void;
+  onNotebookBack?: () => void;
+  onNotebookClose?: () => void;
+  onNotebookOpen?: () => void;
 };
 
 type HomepageLoadBoundaryProps = {
@@ -42,6 +49,12 @@ class HomepageLoadBoundary extends Component<HomepageLoadBoundaryProps, Homepage
 export function HomepageRendererGate({
   onNavigate,
   onExperienceFailure,
+  notebookTarget,
+  notebookClosed,
+  onNotebookNavigate,
+  onNotebookBack,
+  onNotebookClose,
+  onNotebookOpen,
 }: HomepageRendererGateProps) {
   let homepage: ReactNode;
 
@@ -52,7 +65,15 @@ export function HomepageRendererGate({
         onFailure={onExperienceFailure}
       >
         <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" aria-label="Loading Homepage" />}>
-          <HomepageExperiencePage onNavigate={onNavigate} />
+          <HomepageExperiencePage
+            onNavigate={onNavigate}
+            notebookTarget={notebookTarget}
+            notebookClosed={notebookClosed}
+            onNotebookNavigate={onNotebookNavigate}
+            onNotebookBack={onNotebookBack}
+            onNotebookClose={onNotebookClose}
+            onNotebookOpen={onNotebookOpen}
+          />
         </Suspense>
       </HomepageLoadBoundary>
     );

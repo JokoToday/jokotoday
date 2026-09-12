@@ -4,6 +4,7 @@ import {
   type NotebookFixtureBundle,
   type NotebookPersonEntry,
   type NotebookProductEntry,
+  type NotebookRouteTarget,
 } from '../../../platform/notebook';
 
 interface NotebookFeatureSpreadProps {
@@ -12,6 +13,8 @@ interface NotebookFeatureSpreadProps {
   bundle: NotebookFixtureBundle;
   sceneImageUrl: string;
   featuredProductImageUrl: string;
+  hideNavigation?: boolean;
+  onNotebookNavigate?: (target: NotebookRouteTarget) => void;
 }
 
 const labels = {
@@ -38,6 +41,8 @@ export function NotebookFeatureSpread({
   bundle,
   sceneImageUrl,
   featuredProductImageUrl,
+  hideNavigation = false,
+  onNotebookNavigate,
 }: NotebookFeatureSpreadProps) {
   const { site, today, entries } = bundle;
   const language = locale === 'th' || locale === 'zh' ? locale : 'en';
@@ -71,29 +76,31 @@ export function NotebookFeatureSpread({
         />
 
         <div className="relative overflow-hidden rounded-[2rem] border border-primary-900/[.18] bg-background shadow-2xl sm:rounded-[2.35rem]">
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-primary-900/10 bg-background px-5 py-2.5 text-xs font-semibold text-primary-950 sm:px-8 lg:px-10">
-            <div className="flex items-center gap-6 sm:gap-8">
-              <span className="border-b-2 border-primary-700 pb-1 text-primary-950" aria-current="page">
-                {copy.today}
-              </span>
+          {!hideNavigation && (
+            <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-5 gap-y-2 border-b border-primary-900/10 bg-background px-5 py-2.5 text-xs font-semibold text-primary-950 sm:px-8 lg:px-10">
+              <div className="flex items-center gap-6 sm:gap-8">
+                <span className="border-b-2 border-primary-700 pb-1 text-primary-950" aria-current="page">
+                  {copy.today}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('notebook-history')}
+                  className="inline-flex items-center gap-1.5 border-b border-transparent pb-1 text-primary-950/[.65] transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                >
+                  {copy.history}
+                  <Clock3 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
               <button
                 type="button"
-                onClick={() => onNavigate('notebook-history')}
-                className="inline-flex items-center gap-1.5 border-b border-transparent pb-1 text-primary-950/[.65] transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                onClick={() => onNavigate('notebook-today')}
+                className="border-b border-transparent pb-1 text-primary-950/70 transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
-                {copy.history}
-                <Clock3 className="h-3.5 w-3.5" />
+                {copy.openNotebook} <span aria-hidden="true">→</span>
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('notebook-today')}
-              className="border-b border-transparent pb-1 text-primary-950/70 transition hover:border-primary-300 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            >
-              {copy.openNotebook} <span aria-hidden="true">→</span>
-            </button>
-          </div>
+          )}
 
           <div className="relative grid lg:grid-cols-2">
             <article className="relative min-h-[29rem] overflow-hidden bg-gradient-to-br from-background-secondary/[.26] via-background to-background px-7 pb-8 pt-8 sm:min-h-[32rem] sm:px-10 sm:pt-9 lg:min-h-[35rem] lg:rounded-bl-[2.1rem] lg:px-11">
@@ -148,11 +155,20 @@ export function NotebookFeatureSpread({
                       {favouriteLabel}
                     </p>
                     {product && (
-                      <p className="mt-1 font-header text-xl font-semibold leading-tight text-primary-950 sm:text-2xl">
-                        {text(product.title)}
-                      </p>
+                      onNotebookNavigate ? (
+                        <button
+                          type="button"
+                          onClick={() => onNotebookNavigate({ type: 'notebook.product', slug: product.slug })}
+                          className="mt-1 block text-left font-header text-xl font-semibold leading-tight text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:text-2xl"
+                        >
+                          {text(product.title)} <span aria-hidden="true">→</span>
+                        </button>
+                      ) : (
+                        <p className="mt-1 font-header text-xl font-semibold leading-tight text-primary-950 sm:text-2xl">
+                          {text(product.title)}
+                        </p>
+                      )
                     )}
-                    <span className="mt-4 inline-block text-3xl leading-none text-primary-700" aria-hidden="true">→</span>
                   </div>
 
                   <img

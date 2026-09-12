@@ -2,11 +2,18 @@ import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useNotebookContent } from '../../../hooks/useNotebookContent';
 import { Container } from '../../../platform/design-system';
+import type { NotebookRouteTarget } from '../../../platform/notebook';
+import NotebookExperienceReader from '../notebook/NotebookExperienceReader';
 import HomepageLowerSections from './HomepageLowerSections';
-import NotebookFeatureSpread from './NotebookFeatureSpread';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
+  notebookTarget?: NotebookRouteTarget;
+  notebookClosed?: boolean;
+  onNotebookNavigate?: (target: NotebookRouteTarget) => void;
+  onNotebookBack?: () => void;
+  onNotebookClose?: () => void;
+  onNotebookOpen?: () => void;
 }
 
 const copy = {
@@ -48,7 +55,15 @@ const copy = {
   },
 } as const;
 
-export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
+export function HomepageExperiencePage({
+  onNavigate,
+  notebookTarget = { type: 'notebook.today' },
+  notebookClosed = false,
+  onNotebookNavigate,
+  onNotebookBack,
+  onNotebookClose,
+  onNotebookOpen,
+}: HomepageExperiencePageProps) {
   const { language } = useLanguage();
   const labels = copy[language];
   const notebookContent = useNotebookContent();
@@ -110,12 +125,14 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
               </div>
             </div>
 
-            <NotebookFeatureSpread
-              locale={language}
-              onNavigate={onNavigate}
-              bundle={notebookContent.bundle}
-              sceneImageUrl={notebookContent.assetUrls['today-scene']}
-              featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+            <NotebookExperienceReader
+              target={notebookTarget}
+              closed={notebookClosed}
+              onNavigate={onNotebookNavigate ?? (() => undefined)}
+              onBack={onNotebookBack ?? (() => undefined)}
+              onClose={onNotebookClose ?? (() => undefined)}
+              onOpen={onNotebookOpen ?? (() => undefined)}
+              content={notebookContent}
             />
           </div>
         </Container>
@@ -126,6 +143,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
         onNavigate={onNavigate}
         bundle={notebookContent.bundle}
         featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+        onNotebookNavigate={onNotebookNavigate}
       />
     </>
   );
