@@ -22,8 +22,15 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  const notebookLabel = getLabel(
+    'nav.notebook',
+    language,
+    language === 'th' ? 'สมุดบันทึก' : language === 'zh' ? '笔记本' : 'Notebook',
+  );
+
   const navItems = [
     { label: t.nav.home, value: 'home' },
+    { label: notebookLabel, value: 'notebook-today' },
     { label: t.nav.products, value: 'products' },
     { label: t.nav.howItWorks, value: 'how-it-works' },
     { label: t.nav.about, value: 'about' },

@@ -50,14 +50,14 @@ export function NotebookTopTabs({ target, onNavigate, onBack, onClose }: Noteboo
 
   return (
     <div className="relative z-40 mx-auto max-w-[68rem] px-2 sm:px-4">
-      <div className="mb-1 flex items-center justify-between px-1 text-xs font-semibold text-primary-950/65 sm:px-2">
-        <button type="button" onClick={onBack} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+      <div className="mb-2 flex items-center justify-between px-1 text-sm font-semibold text-primary-950/70 sm:px-2 sm:text-base">
+        <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
           {labels.back}
         </button>
-        <button type="button" onClick={onClose} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <button type="button" onClick={onClose} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
           {labels.close}
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          <X className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
         </button>
       </div>
 
@@ -71,7 +71,7 @@ export function NotebookTopTabs({ target, onNavigate, onBack, onClose }: Noteboo
                 type="button"
                 onClick={() => onNavigate(targetForTab(tab))}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative min-h-10 rounded-t-xl border px-3.5 pb-2 pt-2 text-xs font-semibold tracking-[0.03em] text-primary-950 shadow-sm transition sm:px-4 ${tabStyles[tab]} ${isActive ? '-mb-px translate-y-px border-b-transparent pb-3 pt-2.5 shadow-md' : 'opacity-75 hover:-translate-y-0.5 hover:opacity-100'}`}
+                className={`relative min-h-11 rounded-t-xl border px-4 pb-2.5 pt-2.5 text-sm font-semibold tracking-[0.02em] text-primary-950 shadow-sm transition sm:min-h-12 sm:px-5 sm:pb-3 sm:pt-3 sm:text-base ${tabStyles[tab]} ${isActive ? '-mb-px translate-y-px border-b-transparent pb-3.5 pt-3 shadow-md sm:pb-4 sm:pt-3.5' : 'opacity-80 hover:-translate-y-0.5 hover:opacity-100'}`}
               >
                 {labels[tab]}
               </button>
