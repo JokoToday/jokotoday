@@ -4,6 +4,7 @@ export type NotebookLocaleCode = string;
 export type NotebookLocalizedText = Readonly<Record<NotebookLocaleCode, string>>;
 
 export type NotebookEntryKind = 'person' | 'product' | 'question';
+export type NotebookIndexKind = 'people' | 'curiosities' | 'places' | 'products';
 export type NotebookEntryStatus = 'draft' | 'published' | 'archived';
 
 export interface NotebookSiteIdentity {
@@ -61,7 +62,8 @@ export type NotebookEntry =
 export type NotebookRouteTarget =
   | { type: 'notebook.today' }
   | { type: 'notebook.history' }
-  | { type: 'notebook.person'; slug: string }
+  | { type: 'notebook.index'; index: NotebookIndexKind }
+  | { type: 'notebook.person'; slug: string; section?: 'today-story' }
   | { type: 'notebook.product'; slug: string }
   | { type: 'notebook.question'; slug: string };
 

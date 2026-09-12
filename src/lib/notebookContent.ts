@@ -266,6 +266,17 @@ function productSummary(product: CMSProduct | null): NotebookLocalizedText {
   };
 }
 
+function notebookPersonSlug(name: string): string {
+  const slug = name
+    .trim()
+    .toLocaleLowerCase('en')
+    .replace(/\s+/g, '-')
+    .replace(/[^\p{L}\p{N}-]+/gu, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return slug || 'featured-person';
+}
+
 function favouriteBody(personName: string, title: NotebookLocalizedText): NotebookLocalizedText {
   return {
     en: `${personName}’s favourite is ${title.en}.`,
@@ -304,6 +315,7 @@ export function buildNotebookBundle(
   const productName = productTitle(product);
   const productDescription = productSummary(product);
   const productSlug = product?.slug || config.featuredProductSlug;
+  const currentPersonSlug = notebookPersonSlug(config.person.name);
   const personTitle: NotebookLocalizedText = {
     en: config.person.name,
     th: config.person.name,
@@ -323,11 +335,11 @@ export function buildNotebookBundle(
       {
         id: 'person-featured',
         kind: 'person',
-        slug: 'featured-person',
+        slug: currentPersonSlug,
         status: 'published',
         title: personTitle,
         summary: config.person.summary,
-        subjectRef: { domain: 'community-person', id: 'featured-person' },
+        subjectRef: { domain: 'community-person', id: currentPersonSlug },
         favoriteProductRef: { kind: 'product', id: 'product-featured' },
       },
       {

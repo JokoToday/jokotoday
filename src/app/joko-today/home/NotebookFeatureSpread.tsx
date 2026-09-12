@@ -51,15 +51,12 @@ export function NotebookFeatureSpread({
     getNotebookLocalizedText(value, language, site.defaultLocale);
   const person = entries.find((entry): entry is NotebookPersonEntry => entry.kind === 'person');
   const product = entries.find((entry): entry is NotebookProductEntry => entry.kind === 'product');
+  const personTarget: NotebookRouteTarget | null = person ? { type: 'notebook.person', slug: person.slug } : null;
+  const personStoryTarget: NotebookRouteTarget | null = person ? { type: 'notebook.person', slug: person.slug, section: 'today-story' } : null;
   const firstBlock = today.surfaces[0]?.blocks[0];
   const sceneBlock = today.surfaces[0]?.blocks.find((block) => block.type === 'asset');
   const todayEyebrow = firstBlock?.type === 'text' ? text(firstBlock.eyebrow) : '';
   const personName = person ? text(person.title) : 'JOKO';
-  const favouriteLabel = language === 'th'
-    ? `เมนูโปรดของ ${personName} คือ`
-    : language === 'zh'
-    ? `${personName} 最喜欢的是`
-    : `${personName}’s favourite is`;
   const sceneAlt = sceneBlock?.type === 'asset' ? text(sceneBlock.alt) : text(today.title);
   const productAlt = product ? text(product.title) : text(today.title);
 
@@ -111,11 +108,30 @@ export function NotebookFeatureSpread({
                   </p>
                 )}
                 <h2 className="mt-2 font-header text-3xl font-semibold leading-[1.05] tracking-tight text-primary-950 sm:text-4xl">
-                  {text(today.title)}
+                  {personStoryTarget && onNotebookNavigate ? (
+                    <button
+                      type="button"
+                      onClick={() => onNotebookNavigate(personStoryTarget)}
+                      className="text-left underline decoration-primary-300/80 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    >
+                      {text(today.title)} <span aria-hidden="true">→</span>
+                    </button>
+                  ) : text(today.title)}
                 </h2>
                 <p className="mt-1 inline-block border-b border-primary-900/[.45] pb-1 font-header text-lg text-primary-950/80 sm:text-xl">
                   {text(today.subtitle)}
                 </p>
+                {personTarget && onNotebookNavigate && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => onNotebookNavigate(personTarget)}
+                      className="inline-flex min-h-9 items-center border-b border-primary-700/60 pb-0.5 font-header text-sm font-semibold text-primary-800 transition hover:border-primary-900 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    >
+                      {personName} <span className="ml-1.5" aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="pointer-events-none absolute inset-x-1 bottom-5 top-[8.5rem] z-10 sm:inset-x-4 sm:top-[9rem] lg:hidden">
@@ -152,7 +168,17 @@ export function NotebookFeatureSpread({
                 <div className="flex items-end justify-between gap-5">
                   <div className="min-w-0 pb-1">
                     <p className="font-header text-lg font-semibold leading-tight text-primary-950 sm:text-xl">
-                      {favouriteLabel}
+                      {language === 'th' && 'เมนูโปรดของ '}
+                      {personTarget && onNotebookNavigate ? (
+                        <button
+                          type="button"
+                          onClick={() => onNotebookNavigate(personTarget)}
+                          className="underline decoration-primary-300 underline-offset-2 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                        >
+                          {personName}
+                        </button>
+                      ) : personName}
+                      {language === 'th' ? ' คือ' : language === 'zh' ? ' 最喜欢的是' : '’s favourite is'}
                     </p>
                     {product && (
                       onNotebookNavigate ? (
