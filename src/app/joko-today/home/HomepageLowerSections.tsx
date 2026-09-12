@@ -3,8 +3,8 @@ import {
   CalendarDays,
   Heart,
   NotebookPen,
-  ShoppingBasket,
   Store,
+  Sparkles,
 } from 'lucide-react';
 import { Container } from '../../../platform/design-system';
 import {
@@ -12,7 +12,6 @@ import {
   type NotebookFixtureBundle,
   type NotebookPersonEntry,
   type NotebookProductEntry,
-  type NotebookQuestionEntry,
   type NotebookRouteTarget,
 } from '../../../platform/notebook';
 
@@ -29,39 +28,33 @@ type LanguageCode = 'en' | 'th' | 'zh';
 const copy = {
   en: {
     howTitle: 'How it works',
-    howIntro: 'Good bread should be the complicated part. Picking it up should not be.',
     steps: [
       ['Choose', 'Browse the week’s menu and find what you love.'],
       ['Pre-Order', 'Place your order before the cut-off for your pickup day.'],
-      ['Pick Up', 'Collect your order at your chosen location on the scheduled day.'],
+      ['Pick Up', 'Pick up your order at your chosen location on your scheduled day.'],
       ['Enjoy', 'Good bread, good people, good moments.'],
     ],
     helpTitle: 'Need a little help choosing?',
-    helpIntro: 'One real favourite from today’s notebook — with more to come as the notebook grows.',
-    todayNotebook: "In today's notebook",
-    openTodayNote: "Open today's note",
-    notebookRule: 'Notebook rule',
-    moreFavoriteTitle: 'More favourites will arrive naturally.',
-    moreFavoriteBody: 'We only add them when they become real notebook entries — never just to fill the page.',
-    browseBakery: 'Browse the bakery',
-    questionTitle: 'A question worth carrying',
-    questionIntro: 'JOKO asks before it answers.',
-    questionLabel: 'Question from the notebook',
-    questionAction: "Open today's notebook",
-    questionSketchAlt: "Notebook sketch for today's featured question.",
+    helpIntro: 'What do people in our community actually like?',
+    favoriteLabel: 'A favourite from the notebook',
+    moreFavorites: 'More favourites appear when they become real notebook entries — never just to fill the page.',
+    seeFavorites: 'See all favourites',
+    newTitle: "New from the baker’s table",
+    newIntro: 'What have the bakers been experimenting with?',
+    openNote: 'See the notebook note',
+    bakeryPrompt: 'Curious what else is baking this week?',
+    browseBakery: 'Browse the Bakery',
     beyondTitle: 'Not bread. Still good.',
-    beyondIntro: 'The notebook will also make room for useful, beautiful things we genuinely come across.',
+    beyondIntro: 'What unexpected thing have we found this time?',
     finds: [
       ['Everyday things we keep reaching for.', 'Everyday object'],
       ['Small things made by people worth knowing.', 'Made nearby'],
       ['Objects that make ordinary days a little nicer.', 'Quiet find'],
     ],
-    beyondNote: 'Nothing gets added just to fill the page.',
-    closingBadge: 'Baked & beyond',
+    seeMore: 'See more finds',
   },
   th: {
     howTitle: 'ทำงานอย่างไร',
-    howIntro: 'เรื่องที่ซับซ้อนควรเป็นการอบขนมปัง ไม่ใช่การมารับขนม',
     steps: [
       ['เลือก', 'ดูเมนูประจำสัปดาห์แล้วเลือกสิ่งที่คุณชอบ'],
       ['สั่งล่วงหน้า', 'สั่งก่อนเวลาปิดรับออเดอร์ของวันรับสินค้า'],
@@ -69,31 +62,26 @@ const copy = {
       ['เพลิดเพลิน', 'ขนมปังดี ๆ ผู้คนดี ๆ และช่วงเวลาดี ๆ'],
     ],
     helpTitle: 'อยากได้ตัวช่วยเลือกนิดหน่อยไหม?',
-    helpIntro: 'ของโปรดหนึ่งอย่างที่มีอยู่จริงในสมุดบันทึกวันนี้ — และจะมีเพิ่มเมื่อสมุดเล่มนี้เติบโต',
-    todayNotebook: 'อยู่ในสมุดบันทึกวันนี้',
-    openTodayNote: 'เปิดบันทึกของวันนี้',
-    notebookRule: 'กติกาของสมุด',
-    moreFavoriteTitle: 'ของโปรดอื่น ๆ จะค่อย ๆ ตามมา',
-    moreFavoriteBody: 'เราจะใส่เพิ่มก็ต่อเมื่อกลายเป็นบันทึกจริง ไม่เติมชื่อหรือของเพียงเพื่อให้หน้าดูเต็ม',
+    helpIntro: 'คนในชุมชนของเราชอบอะไรกันจริง ๆ?',
+    favoriteLabel: 'ของโปรดจากสมุดบันทึก',
+    moreFavorites: 'ของโปรดจะค่อย ๆ เพิ่มเมื่อกลายเป็นบันทึกจริง ไม่เติมเพื่อให้หน้าดูเต็ม',
+    seeFavorites: 'ดูของโปรดทั้งหมด',
+    newTitle: 'ของใหม่จากโต๊ะคนทำขนม',
+    newIntro: 'ช่วงนี้คนทำขนมกำลังลองอะไรอยู่?',
+    openNote: 'เปิดบันทึกนี้',
+    bakeryPrompt: 'อยากรู้ว่าสัปดาห์นี้มีอะไรอยู่ในเตาอีกไหม?',
     browseBakery: 'ดูเมนูเบเกอรี่',
-    questionTitle: 'คำถามที่น่าพกติดตัว',
-    questionIntro: 'JOKO ถามก่อน แล้วค่อยตอบ',
-    questionLabel: 'คำถามจากสมุดบันทึก',
-    questionAction: 'เปิดสมุดบันทึกของวันนี้',
-    questionSketchAlt: 'ภาพสเก็ตช์ในสมุดสำหรับคำถามเด่นของวันนี้',
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
-    beyondIntro: 'สมุดเล่มนี้จะเผื่อที่ไว้ให้สิ่งของที่มีประโยชน์ สวยงาม และเราได้พบเจอจริง',
+    beyondIntro: 'ครั้งนี้เราไปเจออะไรที่คาดไม่ถึงมา?',
     finds: [
-      ['ของใช้ในชีวิตประจำวันที่เราหยิบใช้ซ้ำแล้วซ้ำอีก', 'ของใช้ประจำวัน'],
+      ['ของใช้ประจำวันที่เราหยิบใช้ซ้ำแล้วซ้ำอีก', 'ของใช้ประจำวัน'],
       ['ของชิ้นเล็ก ๆ ที่ทำโดยผู้คนซึ่งน่าทำความรู้จัก', 'ทำใกล้ ๆ เรา'],
       ['สิ่งของที่ทำให้วันธรรมดาน่าอยู่ขึ้นอีกนิด', 'ของดีเงียบ ๆ'],
     ],
-    beyondNote: 'ไม่มีอะไรถูกใส่ลงไปเพียงเพื่อเติมหน้าให้เต็ม',
-    closingBadge: 'อบสด และมากกว่านั้น',
+    seeMore: 'ดูสิ่งที่พบเพิ่มเติม',
   },
   zh: {
     howTitle: '怎样取到面包',
-    howIntro: '复杂的应该是烘焙本身，而不是来取面包。',
     steps: [
       ['挑选', '看看本周菜单，找到你喜欢的。'],
       ['预订', '在取货日的截止时间前下单。'],
@@ -101,99 +89,67 @@ const copy = {
       ['享用', '好面包，好人，好时光。'],
     ],
     helpTitle: '需要一点挑选灵感吗？',
-    helpIntro: '先从今天笔记里一个真实的偏爱开始；笔记长大后，还会自然出现更多。',
-    todayNotebook: '今天的笔记里',
-    openTodayNote: '打开今天的笔记',
-    notebookRule: '笔记规则',
-    moreFavoriteTitle: '更多偏爱会慢慢出现。',
-    moreFavoriteBody: '只有当它们成为真实的笔记内容时，我们才会加入，而不是为了填满页面。',
+    helpIntro: '社区里的人到底喜欢什么？',
+    favoriteLabel: '来自笔记本的偏爱',
+    moreFavorites: '只有当它们成为真实笔记内容时，更多偏爱才会出现。',
+    seeFavorites: '看看更多偏爱',
+    newTitle: '烘焙桌上的新东西',
+    newIntro: '最近烘焙师在试什么？',
+    openNote: '打开这则笔记',
+    bakeryPrompt: '想看看这周还有什么正在烤吗？',
     browseBakery: '看看烘焙坊',
-    questionTitle: '一个值得带走的问题',
-    questionIntro: 'JOKO 先提问，再回答。',
-    questionLabel: '来自笔记的问题',
-    questionAction: '打开今天的笔记',
-    questionSketchAlt: '为今天的精选问题准备的笔记草图。',
     beyondTitle: '不是面包，也很好。',
-    beyondIntro: '这本笔记也会给那些我们真正遇见的、实用又好看的小东西留位置。',
+    beyondIntro: '这次我们又遇见了什么意外的小东西？',
     finds: [
       ['我们总会一次又一次拿来用的日常物件。', '日常物件'],
       ['由值得认识的人认真做出来的小东西。', '附近制作'],
       ['让普通日子稍微更美好一点的物件。', '安静的小发现'],
     ],
-    beyondNote: '不会为了把页面填满而硬塞任何东西。',
-    closingBadge: '烘焙，以及更多',
+    seeMore: '看看更多发现',
   },
 } as const;
 
 const howIcons = [NotebookPen, CalendarDays, Store, Heart] as const;
 
-function SectionHeading({
-  number,
-  title,
-  intro,
-}: {
-  number: number;
-  title: string;
-  intro?: string;
-}) {
+function SectionHeading({ number, title, intro }: { number: number; title: string; intro?: string }) {
   return (
-    <div className="mb-6 text-center sm:mb-8">
+    <div className="mb-7 text-center sm:mb-9">
       <div className="flex items-center justify-center gap-3">
-        <span className="font-header text-xl font-semibold text-primary-700">{number}.</span>
-        <h2 className="font-header text-2xl font-semibold uppercase tracking-[0.04em] text-primary-950 sm:text-3xl">
+        <span className="text-lg font-semibold text-[#466861]">{number}.</span>
+        <h2 className="text-2xl font-semibold uppercase tracking-[0.05em] text-[#303532] sm:text-3xl">
           {title}
         </h2>
       </div>
-      {intro && (
-        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base">
-          {intro}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function SketchPortrait({ name }: { name: string }) {
-  return (
-    <div
-      className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-primary-900/[.18] bg-background-secondary/60 font-header text-lg font-semibold text-primary-950"
-      aria-hidden="true"
-    >
-      <span className="absolute inset-1 rounded-full border border-primary-900/[.08]" />
-      {name.slice(0, 1)}
+      {intro && <p className="mx-auto mt-1 max-w-2xl text-sm leading-6 text-[#303532]/70 sm:text-base">{intro}</p>}
     </div>
   );
 }
 
 function QuietObjectSketch({ kind, label }: { kind: number; label: string }) {
   return (
-    <div
-      className="relative flex h-28 items-end justify-center overflow-hidden rounded-xl bg-background-secondary/45 p-3"
-      role="img"
-      aria-label={label}
-    >
+    <div className="relative flex h-24 w-28 shrink-0 items-end justify-center overflow-hidden rounded-xl bg-[#F4EFE5]/75 p-3" role="img" aria-label={label}>
       {kind === 0 && (
         <>
-          <span className="absolute left-1/2 top-6 h-14 w-16 -translate-x-1/2 rounded-b-[45%] rounded-t-lg border border-primary-900/[.18]" aria-hidden="true" />
-          <span className="absolute left-[61%] top-9 h-7 w-5 rounded-r-full border border-l-0 border-primary-900/[.18]" aria-hidden="true" />
+          <span className="absolute left-1/2 top-5 h-12 w-14 -translate-x-1/2 rounded-b-[45%] rounded-t-lg border border-[#55766F]/35" />
+          <span className="absolute left-[62%] top-8 h-6 w-4 rounded-r-full border border-l-0 border-[#55766F]/35" />
         </>
       )}
       {kind === 1 && (
         <>
-          <span className="absolute left-1/2 top-8 h-10 w-20 -translate-x-1/2 rounded-[45%] border border-primary-900/[.18]" aria-hidden="true" />
-          <span className="absolute left-[42%] top-10 h-6 w-px bg-primary-900/[.14]" aria-hidden="true" />
-          <span className="absolute left-[58%] top-10 h-6 w-px bg-primary-900/[.14]" aria-hidden="true" />
+          <span className="absolute left-1/2 top-7 h-9 w-16 -translate-x-1/2 rounded-[45%] border border-[#55766F]/35" />
+          <span className="absolute left-[43%] top-9 h-5 w-px bg-[#55766F]/25" />
+          <span className="absolute left-[57%] top-9 h-5 w-px bg-[#55766F]/25" />
         </>
       )}
       {kind === 2 && (
         <>
-          <span className="absolute left-1/2 top-12 h-10 w-11 -translate-x-1/2 rounded-b-[45%] border border-primary-900/[.18]" aria-hidden="true" />
-          <span className="absolute left-1/2 top-5 h-10 w-px -translate-x-1/2 bg-primary-900/[.16]" aria-hidden="true" />
-          <span className="absolute left-[46%] top-7 h-6 w-px -rotate-[28deg] bg-primary-700/[.34]" aria-hidden="true" />
-          <span className="absolute left-[55%] top-7 h-6 w-px rotate-[28deg] bg-primary-700/[.34]" aria-hidden="true" />
+          <span className="absolute left-1/2 top-10 h-9 w-10 -translate-x-1/2 rounded-b-[45%] border border-[#55766F]/35" />
+          <span className="absolute left-1/2 top-4 h-9 w-px -translate-x-1/2 bg-[#55766F]/30" />
+          <span className="absolute left-[46%] top-6 h-5 w-px -rotate-[28deg] bg-[#C76624]/45" />
+          <span className="absolute left-[55%] top-6 h-5 w-px rotate-[28deg] bg-[#C76624]/45" />
         </>
       )}
-      <span className="relative text-[10px] italic text-primary-950/45">{label}</span>
+      <span className="relative text-[9px] italic text-[#303532]/45">{label}</span>
     </div>
   );
 }
@@ -211,43 +167,38 @@ export function HomepageLowerSections({
   const text = (value: Parameters<typeof getNotebookLocalizedText>[0]) =>
     getNotebookLocalizedText(value, language, site.defaultLocale);
 
-  const person = entries.find(
-    (entry): entry is NotebookPersonEntry => entry.kind === 'person',
-  );
-  const product = entries.find(
-    (entry): entry is NotebookProductEntry => entry.kind === 'product',
-  );
-  const question = entries.find(
-    (entry): entry is NotebookQuestionEntry => entry.kind === 'question',
-  );
+  const people = entries.filter((entry): entry is NotebookPersonEntry => entry.kind === 'person');
+  const products = entries.filter((entry): entry is NotebookProductEntry => entry.kind === 'product');
+  const favoritePairs = people
+    .map((person) => {
+      const product = person.favoriteProductRef
+        ? products.find((candidate) => candidate.id === person.favoriteProductRef?.id)
+        : undefined;
+      return product ? { person, product } : null;
+    })
+    .filter((pair): pair is { person: NotebookPersonEntry; product: NotebookProductEntry } => Boolean(pair));
+  const featuredProduct = products[0];
 
   return (
-    <div className="bg-background">
-      <section className="border-b border-primary-900/10 py-12 sm:py-14">
+    <div>
+      <section className="joko-paper-band py-12 sm:py-14">
         <Container width="wide">
-          <SectionHeading number={1} title={labels.howTitle} intro={labels.howIntro} />
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SectionHeading number={1} title={labels.howTitle} />
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-3">
             {labels.steps.map(([title, body], index) => {
               const Icon = howIcons[index];
               return (
-                <article
-                  key={title}
-                  className="relative min-h-48 rounded-2xl border border-primary-900/10 bg-background-secondary/30 px-5 pb-5 pt-6 shadow-sm"
-                >
-                  <div className="mb-5 flex items-center justify-between">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-950 font-header text-lg font-semibold text-background">
-                      {index + 1}
-                    </span>
-                    <Icon className="h-8 w-8 text-primary-700" strokeWidth={1.5} aria-hidden="true" />
+                <article key={title} className="relative px-4 py-3 text-center xl:px-6">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-[#55766F]/20 bg-white/30 text-[#466861]">
+                    <Icon className="h-8 w-8" strokeWidth={1.4} aria-hidden="true" />
                   </div>
-                  <h3 className="font-header text-2xl font-semibold text-primary-950">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-600">{body}</p>
+                  <div className="mb-2 flex items-center justify-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#304B45] text-sm font-semibold text-[#F4EFE5]">{index + 1}</span>
+                    <h3 className="text-xl font-semibold text-[#303532]">{title}</h3>
+                  </div>
+                  <p className="mx-auto max-w-[15rem] text-sm leading-5 text-[#303532]/68">{body}</p>
                   {index < labels.steps.length - 1 && (
-                    <ArrowRight
-                      className="absolute -right-4 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-primary-700 xl:block"
-                      aria-hidden="true"
-                    />
+                    <ArrowRight className="absolute -right-2 top-10 hidden h-5 w-5 text-[#55766F]/45 xl:block" aria-hidden="true" />
                   )}
                 </article>
               );
@@ -256,177 +207,126 @@ export function HomepageLowerSections({
         </Container>
       </section>
 
-      <section className="border-b border-primary-900/10 py-12 sm:py-14">
+      <section className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-14">
         <Container width="wide">
           <SectionHeading number={2} title={labels.helpTitle} intro={labels.helpIntro} />
-
-          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <article className="grid overflow-hidden rounded-2xl border border-primary-900/10 bg-background shadow-sm sm:grid-cols-[1fr_15rem]">
-              <div className="flex flex-col justify-center p-6 sm:p-7">
-                <div className="flex items-center gap-3">
-                  <SketchPortrait name={person ? text(person.title) : 'JOKO'} />
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-700">
-                      {labels.todayNotebook}
-                    </p>
-                    {person && onNotebookNavigate ? (
-                      <button
-                        type="button"
-                        onClick={() => onNotebookNavigate({ type: 'notebook.person', slug: person.slug })}
-                        className="mt-1 font-header text-2xl font-semibold text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                      >
-                        {text(person.title)}
-                      </button>
-                    ) : (
-                      <h3 className="mt-1 font-header text-2xl font-semibold text-primary-950">
-                        {person ? text(person.title) : 'JOKO'}
-                      </h3>
-                    )}
-                  </div>
-                  <Heart className="ml-auto h-5 w-5 shrink-0 text-primary-700" aria-hidden="true" />
-                </div>
-
-                {product && onNotebookNavigate ? (
-                  <button
-                    type="button"
-                    onClick={() => onNotebookNavigate({ type: 'notebook.product', slug: product.slug })}
-                    className="mt-5 w-fit text-left font-header text-2xl font-semibold leading-tight text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:text-3xl"
-                  >
-                    {text(product.title)}
-                  </button>
-                ) : (
-                  <p className="mt-5 font-header text-2xl font-semibold leading-tight text-primary-950 sm:text-3xl">
-                    {product ? text(product.title) : ''}
-                  </p>
-                )}
-                {person && (
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600 sm:text-base">
-                    {text(person.summary)}
-                  </p>
-                )}
-
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,.6fr)]">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {favoritePairs.map(({ person, product }) => (
                 <button
                   type="button"
-                  onClick={() => onNotebookNavigate ? onNotebookNavigate({ type: 'notebook.today' }) : onNavigate('notebook-today')}
-                  className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary-700 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  key={`${person.id}-${product.id}`}
+                  onClick={() => onNotebookNavigate?.({ type: 'notebook.person', slug: person.slug })}
+                  className="joko-shell-card group overflow-hidden rounded-2xl p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#55766F]"
                 >
-                  {labels.openTodayNote}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  <div className="mb-3 flex items-center gap-3 px-1 pt-1">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#55766F]/20 bg-[#DCE9EC] text-lg font-semibold text-[#304B45]">
+                      {text(person.title).slice(0, 1)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.12em] text-[#466861]/70">{labels.favoriteLabel}</p>
+                      <p className="font-medium text-[#303532]">{text(person.title)}</p>
+                      <p className="text-sm text-[#303532]/65">{text(product.title)}</p>
+                    </div>
+                    <Heart className="ml-auto h-4 w-4 text-[#C76624]" aria-hidden="true" />
+                  </div>
+                  <img
+                    src={featuredProductImageUrl}
+                    alt={text(product.title)}
+                    className="h-40 w-full rounded-xl object-cover sm:h-44"
+                    loading="lazy"
+                  />
                 </button>
-              </div>
+              ))}
 
-              <div className="min-h-52 overflow-hidden bg-background-secondary/45 sm:min-h-full">
-                <img
-                  src={featuredProductImageUrl}
-                  alt={product ? text(product.title) : ''}
-                  width={420}
-                  height={360}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover mix-blend-multiply"
-                />
-              </div>
-            </article>
+              {favoritePairs.length === 0 && (
+                <div className="joko-shell-card rounded-2xl p-6 text-sm leading-6 text-[#303532]/70">
+                  {labels.moreFavorites}
+                </div>
+              )}
+            </div>
 
-            <aside className="flex flex-col justify-center rounded-2xl border border-dashed border-primary-900/15 bg-background-secondary/25 p-6 sm:p-7">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">
-                {labels.notebookRule}
-              </p>
-              <h3 className="mt-3 font-header text-2xl font-semibold leading-tight text-primary-950 sm:text-3xl">
-                {labels.moreFavoriteTitle}
-              </h3>
-              <p className="mt-3 text-sm leading-6 text-gray-600 sm:text-base">
-                {labels.moreFavoriteBody}
-              </p>
+            <aside className="joko-shell-card flex flex-col justify-between rounded-2xl p-6">
+              <div>
+                <Sparkles className="h-6 w-6 text-[#C76624]" strokeWidth={1.5} aria-hidden="true" />
+                <p className="mt-4 text-base leading-7 text-[#303532]/75">{labels.moreFavorites}</p>
+              </div>
               <button
                 type="button"
-                onClick={() => onNavigate('products')}
-                className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-primary-700 px-5 py-3 text-sm font-semibold text-background shadow-sm transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                onClick={() => onNotebookNavigate?.({ type: 'notebook.index', index: 'people' })}
+                className="mt-6 inline-flex items-center gap-2 self-start border-b border-[#C76624]/60 pb-0.5 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624] hover:text-[#7A3D1B] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
               >
-                {labels.browseBakery}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                {labels.seeFavorites}<ArrowRight className="h-4 w-4" />
               </button>
             </aside>
           </div>
         </Container>
       </section>
 
-      <section className="border-b border-primary-900/10 py-12 sm:py-14">
+      <section className="joko-paper-band py-12 sm:py-14">
         <Container width="wide">
-          <SectionHeading number={3} title={labels.questionTitle} intro={labels.questionIntro} />
+          <SectionHeading number={3} title={labels.newTitle} intro={labels.newIntro} />
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,.65fr)]">
+            {featuredProduct ? (
+              <article className="grid overflow-hidden rounded-2xl border border-[#55766F]/12 bg-white/25 sm:grid-cols-[minmax(14rem,.95fr)_minmax(0,1.05fr)]">
+                <img
+                  src={featuredProductImageUrl}
+                  alt={text(featuredProduct.title)}
+                  className="h-64 w-full object-cover sm:h-full"
+                  loading="lazy"
+                />
+                <div className="flex flex-col justify-center p-6 sm:p-8">
+                  <h3 className="text-2xl font-semibold text-[#303532]">{text(featuredProduct.title)}</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#303532]/70">{text(featuredProduct.summary)}</p>
+                  <button
+                    type="button"
+                    onClick={() => onNotebookNavigate?.({ type: 'notebook.product', slug: featuredProduct.slug })}
+                    className="mt-5 inline-flex items-center gap-2 self-start rounded-lg bg-[#C76624] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#AE5219] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                  >
+                    {labels.openNote}<ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </article>
+            ) : (
+              <div />
+            )}
 
-          <div className="grid overflow-hidden rounded-2xl border border-primary-900/10 bg-background-secondary/25 shadow-sm lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="relative min-h-64 overflow-hidden border-b border-primary-900/10 bg-gradient-to-br from-background-secondary/75 via-background to-background-secondary/30 p-7 lg:min-h-72 lg:border-b-0 lg:border-r">
-              <div className="absolute inset-0" role="img" aria-label={labels.questionSketchAlt}>
-                <span className="absolute left-[13%] top-[31%] h-px w-[62%] -rotate-3 bg-primary-900/[.12]" aria-hidden="true" />
-                <span className="absolute left-[20%] top-[41%] h-20 w-[58%] rotate-2 rounded-[60%_40%_55%_45%] border border-primary-900/[.16]" aria-hidden="true" />
-                <span className="absolute left-[30%] top-[38%] h-16 w-[48%] rotate-2 rounded-[60%_40%_55%_45%] border border-primary-900/[.12]" aria-hidden="true" />
-                <span className="absolute left-[41%] top-[35%] h-12 w-[38%] rotate-2 rounded-[60%_40%_55%_45%] border border-primary-900/[.1]" aria-hidden="true" />
-                <span className="absolute right-[13%] top-[19%] font-header text-6xl font-semibold text-primary-700/35" aria-hidden="true">?</span>
+            <aside className="flex flex-col justify-between rounded-2xl border border-[#55766F]/12 bg-[#DCE9EC]/45 p-6 sm:p-8">
+              <div>
+                <p className="text-lg font-semibold leading-7 text-[#303532]">{labels.bakeryPrompt}</p>
+                <p className="mt-2 text-sm leading-6 text-[#303532]/65">{language === 'en' ? 'The practical side of JOKO is always one click away.' : language === 'th' ? 'ฝั่งที่เป็นเบเกอรี่ของ JOKO อยู่ห่างแค่คลิกเดียว' : 'JOKO 的烘焙坊一直只差一次点击。'}</p>
               </div>
-
-              <div className="absolute bottom-5 left-6 max-w-[14rem] rotate-[-2deg] border border-primary-900/10 bg-background px-4 py-3 shadow-md">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-700">
-                  {labels.questionLabel}
-                </p>
-                <p className="mt-1 font-header text-sm leading-5 text-primary-950">
-                  {question ? text(question.title) : labels.questionTitle}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col justify-center px-6 py-8 sm:px-8 lg:px-10">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">
-                {labels.questionLabel}
-              </p>
-              <h3 className="mt-3 font-header text-3xl font-semibold leading-tight text-primary-950 sm:text-4xl">
-                {question ? text(question.question) : labels.questionTitle}
-              </h3>
-              {question?.answerTeaser && (
-                <p className="mt-4 max-w-xl text-sm leading-6 text-gray-700 sm:text-base sm:leading-7">
-                  {text(question.answerTeaser)}
-                </p>
-              )}
               <button
                 type="button"
-                onClick={() => question && onNotebookNavigate ? onNotebookNavigate({ type: 'notebook.question', slug: question.slug }) : onNavigate('notebook-today')}
-                className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-primary-700 px-5 py-3 text-sm font-semibold text-background shadow-sm transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                onClick={() => onNavigate('products')}
+                className="joko-shell-primary-button mt-6 inline-flex items-center gap-2 self-start rounded-lg px-5 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F]"
               >
-                {labels.questionAction}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                {labels.browseBakery}<ArrowRight className="h-4 w-4" />
               </button>
-            </div>
+            </aside>
           </div>
         </Container>
       </section>
 
-      <section className="py-12 sm:py-14">
+      <section className="joko-mineral-field border-t border-[#55766F]/10 py-11 sm:py-13">
         <Container width="wide">
           <SectionHeading number={4} title={labels.beyondTitle} intro={labels.beyondIntro} />
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {labels.finds.map(([body, assetLabel], index) => (
-              <article
-                key={assetLabel}
-                className="grid gap-4 rounded-2xl border border-primary-900/10 bg-background p-4 shadow-sm sm:grid-cols-[9rem_1fr] md:grid-cols-1 xl:grid-cols-[9rem_1fr]"
-              >
-                <QuietObjectSketch kind={index} label={assetLabel} />
-                <div className="flex flex-col justify-center">
-                  <p className="font-header text-lg font-semibold leading-6 text-primary-950">{body}</p>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {labels.finds.map(([title, objectLabel], index) => (
+              <article key={title} className="joko-shell-card flex items-center gap-4 rounded-2xl p-4">
+                <QuietObjectSketch kind={index} label={objectLabel} />
+                <div>
+                  <h3 className="text-base font-semibold leading-6 text-[#303532]">{title}</h3>
+                  <button
+                    type="button"
+                    onClick={() => onNotebookNavigate?.({ type: 'notebook.today' })}
+                    className="mt-3 inline-flex items-center gap-1 border-b border-[#C76624]/45 pb-0.5 text-xs font-medium text-[#A44F1D] transition hover:border-[#C76624] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                  >
+                    {labels.seeMore}<ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </article>
             ))}
-          </div>
-
-          <p className="mx-auto mt-7 max-w-xl text-center text-sm leading-6 text-gray-600">
-            {labels.beyondNote}
-          </p>
-
-          <div className="mt-9 flex justify-center">
-            <div className="inline-flex items-center gap-3 rounded-full border border-primary-900/10 bg-background-secondary/40 px-5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary-950/65">
-              <ShoppingBasket className="h-4 w-4 text-primary-700" aria-hidden="true" />
-              JOKO TODAY · {labels.closingBadge}
-            </div>
           </div>
         </Container>
       </section>
