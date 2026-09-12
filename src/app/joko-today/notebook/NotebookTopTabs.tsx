@@ -1,4 +1,4 @@
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, Eye, X } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import type { NotebookIndexKind, NotebookRouteTarget } from '../../../platform/notebook';
 
@@ -13,9 +13,9 @@ type LanguageCode = 'en' | 'th' | 'zh';
 type TabKey = 'today' | NotebookIndexKind | 'history';
 
 const copy = {
-  en: { back: 'Back', close: 'Close for now', today: 'Today', people: 'People', curiosities: 'Curiosities', places: 'Places', products: 'Products', history: 'History' },
-  th: { back: 'ย้อนกลับ', close: 'ปิดไว้ก่อน', today: 'วันนี้', people: 'ผู้คน', curiosities: 'ความสงสัย', places: 'สถานที่', products: 'สินค้า', history: 'ย้อนหลัง' },
-  zh: { back: '返回', close: '先合上', today: '今日', people: '人物', curiosities: '好奇', places: '地点', products: '产品', history: '往期' },
+  en: { back: 'Back', noticed: 'Most noticed', close: 'Close for now', today: 'Today', people: 'People', curiosities: 'Curiosities', places: 'Places', products: 'Products', history: 'History' },
+  th: { back: 'ย้อนกลับ', noticed: 'ถูกสังเกตมากที่สุด', close: 'ปิดไว้ก่อน', today: 'วันนี้', people: 'ผู้คน', curiosities: 'ความสงสัย', places: 'สถานที่', products: 'สินค้า', history: 'ย้อนหลัง' },
+  zh: { back: '返回', noticed: '最受留意', close: '先合上', today: '今日', people: '人物', curiosities: '好奇', places: '地点', products: '产品', history: '往期' },
 } as const;
 
 const tabStyles: Record<TabKey, string> = {
@@ -26,9 +26,11 @@ const tabStyles: Record<TabKey, string> = {
   products: 'border-orange-200 bg-orange-100/85',
   history: 'border-slate-300 bg-slate-100/90',
 };
-function activeTab(target: NotebookRouteTarget): TabKey {
+
+function activeTab(target: NotebookRouteTarget): TabKey | null {
   if (target.type === 'notebook.today') return 'today';
   if (target.type === 'notebook.history') return 'history';
+  if (target.type === 'notebook.noticed') return null;
   if (target.type === 'notebook.person') return 'people';
   if (target.type === 'notebook.product') return 'products';
   if (target.type === 'notebook.question') return 'curiosities';
@@ -46,16 +48,26 @@ export function NotebookTopTabs({ target, onNavigate, onBack, onClose }: Noteboo
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
   const selected = activeTab(target);
+  const noticedActive = target.type === 'notebook.noticed';
   const tabs: TabKey[] = ['today', 'people', 'curiosities', 'places', 'products', 'history'];
 
   return (
     <div className="relative z-40 mx-auto max-w-[68rem] px-2 sm:px-4">
-      <div className="mb-2 flex items-center justify-between px-1 text-sm font-semibold text-primary-950/70 sm:px-2 sm:text-base">
-        <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
+      <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 text-sm font-semibold text-primary-950/70 sm:px-2 sm:text-base">
+        <button type="button" onClick={onBack} className="inline-flex min-h-10 w-fit items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
           <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
           {labels.back}
         </button>
-        <button type="button" onClick={onClose} className="inline-flex min-h-10 items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <button
+          type="button"
+          onClick={() => onNavigate({ type: 'notebook.noticed' })}
+          aria-current={noticedActive ? 'page' : undefined}
+          className={`inline-flex min-h-10 items-center gap-2 rounded-full px-3 transition focus:outline-none focus:ring-2 focus:ring-primary-500 ${noticedActive ? 'bg-primary-50 text-primary-950 shadow-sm' : 'hover:bg-primary-50 hover:text-primary-950'}`}
+        >
+          <Eye className="h-4 w-4" aria-hidden="true" />
+          {labels.noticed}
+        </button>
+        <button type="button" onClick={onClose} className="ml-auto inline-flex min-h-10 w-fit items-center gap-2 rounded-md px-2.5 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500">
           {labels.close}
           <X className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
         </button>
