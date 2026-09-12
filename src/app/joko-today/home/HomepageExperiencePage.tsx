@@ -133,6 +133,7 @@ export function HomepageExperiencePage({
               onClose={onNotebookClose ?? (() => undefined)}
               onOpen={onNotebookOpen ?? (() => undefined)}
               content={notebookContent}
+              onCommerceNavigate={onNavigate}
             />
           </div>
         </Container>

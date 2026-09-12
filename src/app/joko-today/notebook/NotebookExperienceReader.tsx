@@ -1,5 +1,7 @@
 import { ArrowLeft, BookOpen, Clock3, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
+import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
   NotebookReader,
@@ -7,10 +9,12 @@ import {
   type NotebookEntry,
   type NotebookFixtureBundle,
   type NotebookLocalizedText,
+  type NotebookProductEntry,
   type NotebookRouteTarget,
   type NotebookTodayDocument,
 } from '../../../platform/notebook';
 import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
+import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
 
 interface NotebookExperienceReaderProps {
   target: NotebookRouteTarget;
@@ -20,6 +24,7 @@ interface NotebookExperienceReaderProps {
   onClose: () => void;
   onOpen: () => void;
   content: ResolvedNotebookContent;
+  onCommerceNavigate?: (page: string) => void;
 }
 
 const copy = {
@@ -39,6 +44,7 @@ const copy = {
     fromNotebook: 'From the notebook',
     notFound: "This page isn't in the notebook yet.",
     noHistory: 'No earlier pages have been kept yet.',
+    loadingProduct: 'Checking the bakery for this product…',
   },
   th: {
     back: 'ย้อนกลับ',
@@ -56,6 +62,7 @@ const copy = {
     fromNotebook: 'จากสมุดบันทึก',
     notFound: 'ยังไม่มีหน้านี้ในสมุดบันทึก',
     noHistory: 'ยังไม่มีหน้าก่อนหน้านี้ในสมุดบันทึก',
+    loadingProduct: 'กำลังตรวจสอบสินค้านี้จากเบเกอรี่…',
   },
   zh: {
     back: '返回',
@@ -73,6 +80,7 @@ const copy = {
     fromNotebook: '来自笔记本',
     notFound: '这页还没有被收进笔记本。',
     noHistory: '笔记本里还没有保存往期页面。',
+    loadingProduct: '正在从烘焙坊查询这个商品…',
   },
 } as const;
 
@@ -182,6 +190,26 @@ function entryDocument(
   };
 }
 
+function commerceProductEntry(product: CMSProduct): NotebookProductEntry {
+  return {
+    id: `commerce-${product.id}`,
+    kind: 'product',
+    slug: product.slug,
+    status: 'published',
+    title: {
+      en: product.name_en,
+      th: product.name_th || product.name_en,
+      zh: product.name_zh || product.name_en,
+    },
+    summary: {
+      en: product.desc_en || product.name_en,
+      th: product.desc_th || product.desc_en || product.name_th || product.name_en,
+      zh: product.desc_zh || product.desc_en || product.name_zh || product.name_en,
+    },
+    editorialProductRef: `joko-today:${product.slug}`,
+  };
+}
+
 function historyDocument(
   bundle: NotebookFixtureBundle,
   labels: (typeof copy)[LanguageCode],
@@ -243,11 +271,41 @@ export function NotebookExperienceReader({
   onClose,
   onOpen,
   content,
+  onCommerceNavigate,
 }: NotebookExperienceReaderProps) {
   const { language } = useLanguage();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
   const { bundle } = content;
+  const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
+  const [routeProductLoading, setRouteProductLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (target.type !== 'notebook.product') {
+      setRouteProduct(null);
+      setRouteProductLoading(false);
+      return () => { active = false; };
+    }
+
+    if (content.commerceProduct?.slug === target.slug) {
+      setRouteProduct(content.commerceProduct);
+      setRouteProductLoading(false);
+      return () => { active = false; };
+    }
+
+    setRouteProductLoading(true);
+    setRouteProduct(null);
+    void getProductBySlug(target.slug)
+      .then((product) => { if (active) setRouteProduct(product); })
+      .catch((error) => {
+        console.error('Could not resolve Notebook commerce product:', error);
+        if (active) setRouteProduct(null);
+      })
+      .finally(() => { if (active) setRouteProductLoading(false); });
+
+    return () => { active = false; };
+  }, [content.commerceProduct, target]);
 
   if (closed) {
     return (
@@ -271,13 +329,32 @@ export function NotebookExperienceReader({
     );
   }
 
-  const entry = findEntry(bundle, target);
+  const bundleEntry = findEntry(bundle, target);
+  const commerceProduct = target.type === 'notebook.product' ? routeProduct : null;
+  const commerceEntry = !bundleEntry && commerceProduct ? commerceProductEntry(commerceProduct) : null;
+  const entry = bundleEntry ?? commerceEntry;
+  const readerEntries = commerceEntry ? [...bundle.entries, commerceEntry] : bundle.entries;
   const document = target.type === 'notebook.today'
     ? bundle.today
     : target.type === 'notebook.history'
     ? historyDocument(bundle, labels)
     : entry
     ? entryDocument(entry, bundle, labels)
+    : target.type === 'notebook.product' && routeProductLoading
+    ? {
+        schemaVersion: 1 as const,
+        id: 'notebook-product-loading',
+        siteId: bundle.site.siteId,
+        date: bundle.today.date,
+        title: localized(labels.product),
+        surfaces: [{ id: 'notebook-product-loading-surface', blocks: [{
+          id: 'notebook-product-loading-copy',
+          type: 'text' as const,
+          eyebrow: localized(labels.product),
+          heading: localized(labels.loadingProduct),
+        }] }],
+        featuredEntryRefs: [],
+      }
     : notFoundDocument(bundle, labels);
 
   const resolveAsset = (asset: { id: string }) => {
@@ -339,11 +416,18 @@ export function NotebookExperienceReader({
       ) : (
         <NotebookReader
           document={document}
-          entries={bundle.entries}
+          entries={readerEntries}
           locale={lang}
           defaultLocale={bundle.site.defaultLocale}
           resolveAsset={resolveAsset}
           onNavigate={onNavigate}
+        />
+      )}
+
+      {target.type === 'notebook.product' && commerceProduct && onCommerceNavigate && (
+        <NotebookProductCommerceBridge
+          product={commerceProduct}
+          onOpenBakery={() => onCommerceNavigate(`product/${commerceProduct.slug}`)}
         />
       )}
     </section>

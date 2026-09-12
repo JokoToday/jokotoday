@@ -56,6 +56,7 @@ export interface ResolvedNotebookContent {
   bundle: NotebookFixtureBundle;
   assetUrls: Readonly<Record<string, string>>;
   featuredProductImageUrl: string;
+  commerceProduct: CMSProduct | null;
 }
 
 export const DEFAULT_NOTEBOOK_CONTENT_CONFIG: NotebookContentConfigV1 = {
@@ -421,6 +422,7 @@ export function getDefaultResolvedNotebookContent(): ResolvedNotebookContent {
     bundle: buildNotebookBundle(config),
     assetUrls: { 'today-scene': config.scene.imageUrl },
     featuredProductImageUrl: config.featuredProductImageUrl,
+    commerceProduct: null,
   };
 }
 
@@ -445,6 +447,7 @@ export async function getNotebookContent(): Promise<ResolvedNotebookContent> {
     bundle: buildNotebookBundle(config, product),
     assetUrls: { 'today-scene': config.scene.imageUrl },
     featuredProductImageUrl: productImageUrl(product, config.featuredProductImageUrl),
+    commerceProduct: product,
   };
 }
 
