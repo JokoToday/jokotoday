@@ -62,6 +62,7 @@ export type NotebookEntry =
 export type NotebookRouteTarget =
   | { type: 'notebook.today' }
   | { type: 'notebook.history' }
+  | { type: 'notebook.noticed' }
   | { type: 'notebook.index'; index: NotebookIndexKind }
   | { type: 'notebook.person'; slug: string; section?: 'today-story' }
   | { type: 'notebook.product'; slug: string }
