@@ -44,7 +44,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             className="flex items-center group"
           >
             <img
-              src="/assets/brand/joko-today-logo-v0.4.png"
+              src="/assets/brand/joko-today-logo-v0.4.webp"
               alt="JOKO TODAY"
               className="h-10 md:h-12 w-auto object-contain mix-blend-multiply transition-opacity group-hover:opacity-80"
             />
