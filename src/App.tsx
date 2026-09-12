@@ -7,6 +7,8 @@ import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
 import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
+import JokoShell from './app/joko-today/shell/JokoShell';
+import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath } from './platform/notebook';
 import type { NotebookTopLevelTarget } from './app/joko-today/notebook/NotebookShell';
 
@@ -325,6 +327,11 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
+  const isNotebookPage = currentPage === 'notebook-today' || currentPage === 'notebook-history';
+  const isJokoShellPage = isHomepageExperience || isNotebookPage;
+  const jokoShellSection: JokoShellSection | null = currentPage === 'notebook-history'
+    ? null
+    : 'today';
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
@@ -336,10 +343,8 @@ function AppContent() {
     currentPage === 'scan' ||
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
-    currentPage === 'notebook-today' ||
-    currentPage === 'notebook-history' ||
-    isHomepageExperience;
-  const showCartSidebar = !isStandalonePage || isHomepageExperience;
+    isJokoShellPage;
+  const showCartSidebar = !isStandalonePage || isJokoShellPage;
   const pageContent = (
     <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
       {renderPage()}
@@ -348,8 +353,10 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {isHomepageExperience ? (
-        pageContent
+      {isJokoShellPage ? (
+        <JokoShell onNavigate={handleNavigate} activeSection={jokoShellSection}>
+          {pageContent}
+        </JokoShell>
       ) : (
         <>
           {!isStandalonePage && <Header currentPage={currentPage} onNavigate={handleNavigate} />}
