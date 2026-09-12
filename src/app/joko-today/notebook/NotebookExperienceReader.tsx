@@ -4,6 +4,11 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
+  fetchMostNoticed,
+  type NotebookMostNoticedItem,
+  type NotebookReactionTarget,
+} from '../../../lib/notebookReactionsService';
+import {
   NotebookReader,
   type NotebookBlock,
   type NotebookEntry,
@@ -16,6 +21,7 @@ import {
 } from '../../../platform/notebook';
 import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
+import NotebookReactionButton from './NotebookReactionButton';
 import NotebookTopTabs from './NotebookTopTabs';
 
 interface NotebookExperienceReaderProps {
@@ -56,6 +62,12 @@ const copy = {
     openTodayStory: "Open today’s page",
     placeToday: "Today’s place",
     storyTrail: "This is the same note kept on Today’s page.",
+    noticed: 'Most noticed',
+    noticedIntro: 'A quiet look at what readers have been noticing lately.',
+    noticedEmpty: 'Nothing has gathered much attention yet.',
+    openPage: 'Open this page',
+    noticesLately: 'notices lately',
+    loadingNoticed: 'Looking through recent notes…',
   },
   th: {
     back: 'ย้อนกลับ',
@@ -83,6 +95,12 @@ const copy = {
     openTodayStory: 'เปิดหน้าวันนี้',
     placeToday: 'สถานที่ของวันนี้',
     storyTrail: 'นี่คือบันทึกเดียวกับที่เก็บไว้ในหน้าวันนี้',
+    noticed: 'ถูกสังเกตมากที่สุด',
+    noticedIntro: 'มองอย่างเงียบ ๆ ว่าช่วงนี้ผู้อ่านกำลังสังเกตอะไรอยู่',
+    noticedEmpty: 'ยังไม่มีหน้าไหนถูกสังเกตมากเป็นพิเศษ',
+    openPage: 'เปิดหน้านี้',
+    noticesLately: 'ครั้งที่ถูกสังเกตช่วงนี้',
+    loadingNoticed: 'กำลังเปิดดูบันทึกล่าสุด…',
   },
   zh: {
     back: '返回',
@@ -110,6 +128,12 @@ const copy = {
     openTodayStory: '打开今日一页',
     placeToday: '今天的地点',
     storyTrail: '这就是今日一页里保存的同一则笔记。',
+    noticed: '最受留意',
+    noticedIntro: '安静看看最近读者都在留意什么。',
+    noticedEmpty: '暂时还没有哪一页特别受到留意。',
+    openPage: '打开这一页',
+    noticesLately: '次最近留意',
+    loadingNoticed: '正在翻看最近的笔记…',
   },
 } as const;
 
@@ -346,6 +370,74 @@ function indexDocument(
   };
 }
 
+function mostNoticedTarget(
+  item: NotebookMostNoticedItem,
+  bundle: NotebookFixtureBundle,
+): { title: NotebookLocalizedText; target: NotebookRouteTarget } | null {
+  if (item.type === 'today' && item.id === bundle.today.id) {
+    return { title: bundle.today.title, target: { type: 'notebook.today' } };
+  }
+
+  if (item.type === 'person' || item.type === 'product' || item.type === 'question') {
+    const entry = bundle.entries.find((candidate) => candidate.kind === item.type && candidate.slug === item.id);
+    if (!entry) return null;
+    const target: NotebookRouteTarget = item.type === 'person'
+      ? { type: 'notebook.person', slug: entry.slug }
+      : item.type === 'product'
+        ? { type: 'notebook.product', slug: entry.slug }
+        : { type: 'notebook.question', slug: entry.slug };
+    return { title: entry.title, target };
+  }
+
+  return null;
+}
+
+function mostNoticedDocument(
+  items: NotebookMostNoticedItem[],
+  bundle: NotebookFixtureBundle,
+  labels: (typeof copy)[LanguageCode],
+): NotebookTodayDocument {
+  const blocks: NotebookBlock[] = [{
+    id: 'most-noticed-intro',
+    type: 'text',
+    eyebrow: localized(labels.notebook),
+    heading: localized(labels.noticed),
+    body: localized(labels.noticedIntro),
+  }];
+
+  let visibleItems = 0;
+  items.forEach((item, index) => {
+    const resolved = mostNoticedTarget(item, bundle);
+    if (!resolved) return;
+    visibleItems += 1;
+    blocks.push({
+      id: `most-noticed-${item.type}-${item.id}-${index}`,
+      type: 'callout',
+      heading: resolved.title,
+      body: localized(`${item.count} ${labels.noticesLately}`),
+      action: { label: localized(labels.openPage), target: resolved.target },
+    });
+  });
+
+  if (visibleItems === 0) {
+    blocks.push({
+      id: 'most-noticed-empty',
+      type: 'text',
+      heading: localized(labels.noticedEmpty),
+    });
+  }
+
+  return {
+    schemaVersion: 1,
+    id: 'notebook-most-noticed',
+    siteId: bundle.site.siteId,
+    date: bundle.today.date,
+    title: localized(labels.noticed),
+    surfaces: [{ id: 'notebook-most-noticed-surface', blocks }],
+    featuredEntryRefs: [],
+  };
+}
+
 function notFoundDocument(
   bundle: NotebookFixtureBundle,
   labels: (typeof copy)[LanguageCode],
@@ -369,6 +461,19 @@ function notFoundDocument(
   };
 }
 
+function reactionTargetFor(
+  target: NotebookRouteTarget,
+  bundle: NotebookFixtureBundle,
+  entry: NotebookEntry | null,
+): NotebookReactionTarget | null {
+  if (target.type === 'notebook.today') return { type: 'today', id: bundle.today.id };
+  if (!entry) return null;
+  if (target.type === 'notebook.person') return { type: 'person', id: target.slug };
+  if (target.type === 'notebook.product') return { type: 'product', id: target.slug };
+  if (target.type === 'notebook.question') return { type: 'question', id: target.slug };
+  return null;
+}
+
 export function NotebookExperienceReader({
   target,
   closed,
@@ -385,6 +490,8 @@ export function NotebookExperienceReader({
   const { bundle } = content;
   const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
   const [routeProductLoading, setRouteProductLoading] = useState(false);
+  const [mostNoticed, setMostNoticed] = useState<NotebookMostNoticedItem[]>([]);
+  const [mostNoticedLoading, setMostNoticedLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -413,6 +520,20 @@ export function NotebookExperienceReader({
     return () => { active = false; };
   }, [content.commerceProduct, target]);
 
+  useEffect(() => {
+    let active = true;
+    if (target.type !== 'notebook.noticed') {
+      setMostNoticedLoading(false);
+      return () => { active = false; };
+    }
+
+    setMostNoticedLoading(true);
+    void fetchMostNoticed()
+      .then((items) => { if (active) setMostNoticed(items); })
+      .finally(() => { if (active) setMostNoticedLoading(false); });
+
+    return () => { active = false; };
+  }, [target]);
 
   useEffect(() => {
     if (closed || target.type !== 'notebook.person' || target.section !== 'today-story') return;
@@ -459,6 +580,23 @@ export function NotebookExperienceReader({
     ? bundle.today
     : target.type === 'notebook.history'
     ? historyDocument(bundle, labels)
+    : target.type === 'notebook.noticed'
+    ? mostNoticedLoading
+      ? {
+          schemaVersion: 1 as const,
+          id: 'notebook-most-noticed-loading',
+          siteId: bundle.site.siteId,
+          date: bundle.today.date,
+          title: localized(labels.noticed),
+          surfaces: [{ id: 'notebook-most-noticed-loading-surface', blocks: [{
+            id: 'notebook-most-noticed-loading-copy',
+            type: 'text' as const,
+            eyebrow: localized(labels.noticed),
+            heading: localized(labels.loadingNoticed),
+          }] }],
+          featuredEntryRefs: [],
+        }
+      : mostNoticedDocument(mostNoticed, bundle, labels)
     : target.type === 'notebook.index'
     ? indexDocument(target.index, bundle, labels)
     : entry
@@ -479,6 +617,8 @@ export function NotebookExperienceReader({
         featuredEntryRefs: [],
       }
     : notFoundDocument(bundle, labels);
+
+  const reactionTarget = reactionTargetFor(target, bundle, entry);
 
   const resolveAsset = (asset: { id: string }) => {
     const src = content.assetUrls[asset.id];
@@ -514,6 +654,10 @@ export function NotebookExperienceReader({
           onNavigate={onNavigate}
           hideDocumentMeta
         />
+      )}
+
+      {reactionTarget && (
+        <NotebookReactionButton key={`${reactionTarget.type}:${reactionTarget.id}`} target={reactionTarget} locale={lang} />
       )}
 
       {target.type === 'notebook.product' && commerceProduct && onCommerceNavigate && (
