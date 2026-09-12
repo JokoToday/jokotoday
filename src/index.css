@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mali:wght@400;500;600&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mali:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
 @tailwind base;
@@ -27,8 +27,8 @@
     --joko-font-display: 'Playfair Display', serif;
     --joko-font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
     --joko-font-cjk: 'Noto Sans SC', 'PingFang SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    --joko-font-shell: 'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans SC', sans-serif;
-    --joko-font-shell-th: 'Noto Sans Thai Looped', 'Noto Sans', system-ui, sans-serif;
+    --joko-font-shell: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans SC', sans-serif;
+    --joko-font-shell-th: 'Noto Sans Thai Looped', 'Inter', system-ui, sans-serif;
     --joko-font-notebook: 'Mali', 'Noto Sans Thai Looped', cursive;
     --joko-font-notebook-zh: 'LXGW WenKai GB', 'Noto Sans SC', 'PingFang SC', cursive;
 
