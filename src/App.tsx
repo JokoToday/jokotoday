@@ -9,8 +9,7 @@ import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererG
 import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
 import JokoShell from './app/joko-today/shell/JokoShell';
 import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
-import { getNotebookPath } from './platform/notebook';
-import type { NotebookTopLevelTarget } from './app/joko-today/notebook/NotebookShell';
+import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -31,8 +30,6 @@ const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage
 const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
-const NotebookTodayPage = lazy(() => import('./app/joko-today/notebook/NotebookTodayPage'));
-const NotebookHistoryPage = lazy(() => import('./app/joko-today/notebook/NotebookHistoryPage'));
 const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
 
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
@@ -77,9 +74,6 @@ const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
   'notebook-history': getNotebookPath({ type: 'notebook.history' }),
 };
 
-const NOTEBOOK_PATH_PAGES: Record<string, string> = Object.fromEntries(
-  Object.entries(NOTEBOOK_PAGE_PATHS).map(([page, path]) => [path, page]),
-);
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -87,6 +81,8 @@ function AppContent() {
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [qrSource, setQrSource] = useState<string | null>(null);
   const [homepageExperienceFailed, setHomepageExperienceFailed] = useState(false);
+  const [notebookTarget, setNotebookTarget] = useState<NotebookRouteTarget>({ type: 'notebook.today' });
+  const [notebookClosed, setNotebookClosed] = useState(false);
 
   useEffect(() => {
     const syncPageFromLocation = () => {
@@ -169,9 +165,11 @@ function AppContent() {
         return;
       }
 
-      const notebookPage = NOTEBOOK_PATH_PAGES[path];
-      if (notebookPage) {
-        setCurrentPage(notebookPage);
+      const notebookRoute = parseNotebookPath(path);
+      if (notebookRoute) {
+        setNotebookTarget(notebookRoute);
+        setNotebookClosed(false);
+        setCurrentPage('home');
         return;
       }
 
@@ -193,7 +191,11 @@ function AppContent() {
         return;
       }
 
-      if (path === '/') setCurrentPage('home');
+      if (path === '/') {
+        setNotebookTarget({ type: 'notebook.today' });
+        setNotebookClosed(false);
+        setCurrentPage('home');
+      }
     };
 
     syncPageFromLocation();
@@ -218,6 +220,23 @@ function AppContent() {
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
+    if (page === 'home') {
+      setNotebookTarget({ type: 'notebook.today' });
+      setNotebookClosed(false);
+    }
+
+    if (page === 'notebook-today' || page === 'notebook-history') {
+      const target: NotebookRouteTarget = page === 'notebook-today'
+        ? { type: 'notebook.today' }
+        : { type: 'notebook.history' };
+      const targetPath = getNotebookPath(target);
+      if (window.location.pathname !== targetPath) window.history.pushState({ jokoNotebook: true }, '', targetPath);
+      setNotebookTarget(target);
+      setNotebookClosed(false);
+      setCurrentPage('home');
+      return;
+    }
+
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
       setProductSlug(productNavMatch[1]);
@@ -241,17 +260,40 @@ function AppContent() {
     setCurrentPage(page);
   };
 
-  const handleNotebookNavigate = (target: NotebookTopLevelTarget) => {
+  const handleNotebookNavigate = (target: NotebookRouteTarget) => {
     const targetPath = getNotebookPath(target);
-    const targetPage = target.type === 'notebook.today'
-      ? 'notebook-today'
-      : 'notebook-history';
-
     if (window.location.pathname !== targetPath) {
-      window.history.pushState({}, '', targetPath);
+      window.history.pushState({ jokoNotebook: true }, '', targetPath);
     }
+    setNotebookTarget(target);
+    setNotebookClosed(false);
+    setCurrentPage('home');
+    window.requestAnimationFrame(() => {
+      document.getElementById('community-notebook-reader')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
 
-    setCurrentPage(targetPage);
+  const handleNotebookBack = () => {
+    if (window.history.state?.jokoNotebook === true) {
+      window.history.back();
+      return;
+    }
+    if (notebookTarget.type !== 'notebook.today') {
+      handleNotebookNavigate({ type: 'notebook.today' });
+    }
+  };
+
+  const handleNotebookClose = () => {
+    if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
+    setNotebookTarget({ type: 'notebook.today' });
+    setNotebookClosed(true);
+    setCurrentPage('home');
+  };
+
+  const handleNotebookOpen = () => {
+    setNotebookTarget({ type: 'notebook.today' });
+    setNotebookClosed(false);
+    setCurrentPage('home');
   };
 
   const renderPage = () => {
@@ -277,10 +319,24 @@ function AppContent() {
           <HomepageRendererGate
             onNavigate={handleNavigate}
             onExperienceFailure={() => setHomepageExperienceFailed(true)}
+            notebookTarget={notebookTarget}
+            notebookClosed={notebookClosed}
+            onNotebookNavigate={handleNotebookNavigate}
+            onNotebookBack={handleNotebookBack}
+            onNotebookClose={handleNotebookClose}
+            onNotebookOpen={handleNotebookOpen}
           />
         );
       case 'homepage-experience-preview':
-        return <HomepageExperiencePage onNavigate={handleNavigate} />;
+        return <HomepageExperiencePage
+          onNavigate={handleNavigate}
+          notebookTarget={notebookTarget}
+          notebookClosed={notebookClosed}
+          onNotebookNavigate={handleNotebookNavigate}
+          onNotebookBack={handleNotebookBack}
+          onNotebookClose={handleNotebookClose}
+          onNotebookOpen={handleNotebookOpen}
+        />;
       case 'products':
         return <ProductsPage initialProductSlug={productSlug} qrSource={qrSource} onProductOpened={() => { setProductSlug(null); setQrSource(null); }} />;
       case 'checkout':
@@ -311,10 +367,6 @@ function AppContent() {
         return <MyLikesPage onNavigate={handleNavigate} />;
       case 'scan':
         return <ScanPage />;
-      case 'notebook-today':
-        return <NotebookTodayPage onNavigate={handleNotebookNavigate} />;
-      case 'notebook-history':
-        return <NotebookHistoryPage onNavigate={handleNotebookNavigate} />;
       default:
         return <HomepageRendererGate onNavigate={handleNavigate} />;
     }
@@ -327,11 +379,10 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isNotebookPage = currentPage === 'notebook-today' || currentPage === 'notebook-history';
-  const isJokoShellPage = isHomepageExperience || isNotebookPage;
-  const jokoShellSection: JokoShellSection | null = currentPage === 'notebook-history'
-    ? null
-    : 'today';
+  const isJokoShellPage = isHomepageExperience;
+  const jokoShellSection: JokoShellSection | null = !notebookClosed && notebookTarget.type === 'notebook.today'
+    ? 'today'
+    : null;
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
