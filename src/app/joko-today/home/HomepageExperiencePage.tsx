@@ -1,9 +1,7 @@
 import { ArrowRight } from 'lucide-react';
-import Footer from '../../../components/Footer';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useNotebookContent } from '../../../hooks/useNotebookContent';
-import { Container, PageCanvas } from '../../../platform/design-system';
-import HomepageExperienceHeader from './HomepageExperienceHeader';
+import { Container } from '../../../platform/design-system';
 import HomepageLowerSections from './HomepageLowerSections';
 import NotebookFeatureSpread from './NotebookFeatureSpread';
 
@@ -56,86 +54,80 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const notebookContent = useNotebookContent();
 
   return (
-    <PageCanvas surface="soft" className="min-h-screen bg-background">
-      <HomepageExperienceHeader onNavigate={onNavigate} />
+    <>
+      <section className="border-b border-primary-900/10 bg-gradient-to-b from-background-secondary/45 via-background to-background pb-10 pt-4 sm:pb-14 sm:pt-6">
+        <Container width="wide">
+          <p className="mb-5 text-center font-header text-lg font-semibold tracking-wide text-primary-950 sm:text-xl">
+            {labels.life} <span className="text-primary-700" aria-hidden="true">♥</span>
+          </p>
 
-      <main>
-        <section className="border-b border-primary-900/10 bg-gradient-to-b from-background-secondary/45 via-background to-background pb-10 pt-4 sm:pb-14 sm:pt-6">
-          <Container width="wide">
-            <p className="mb-5 text-center font-header text-lg font-semibold tracking-wide text-primary-950 sm:text-xl">
-              {labels.life} <span className="text-primary-700" aria-hidden="true">♥</span>
-            </p>
+          <div className="grid gap-10 xl:grid-cols-[minmax(15rem,0.31fr)_minmax(0,1fr)] xl:items-center xl:gap-12">
+            <div className="max-w-md">
+              <h1 className="font-header text-4xl font-semibold leading-[1.02] tracking-tight text-primary-950 sm:text-5xl xl:text-[3.35rem]">
+                <span className="block">{labels.line1}</span>
+                <span className="mt-1 block">{labels.line2}</span>
+                <span className="mt-1 block text-primary-700">{labels.line3}</span>
+                <span className="mt-1 block text-primary-700">{labels.line4}</span>
+              </h1>
 
-            <div className="grid gap-10 xl:grid-cols-[minmax(15rem,0.31fr)_minmax(0,1fr)] xl:items-center xl:gap-12">
-              <div className="max-w-md">
-                <h1 className="font-header text-4xl font-semibold leading-[1.02] tracking-tight text-primary-950 sm:text-5xl xl:text-[3.35rem]">
-                  <span className="block">{labels.line1}</span>
-                  <span className="mt-1 block">{labels.line2}</span>
-                  <span className="mt-1 block text-primary-700">{labels.line3}</span>
-                  <span className="mt-1 block text-primary-700">{labels.line4}</span>
-                </h1>
+              <p className="mt-6 max-w-sm text-base leading-7 text-gray-700 sm:text-lg">
+                {labels.body}
+              </p>
 
-                <p className="mt-6 max-w-sm text-base leading-7 text-gray-700 sm:text-lg">
-                  {labels.body}
+              <div className="mt-7 flex min-h-32 items-end gap-3 sm:gap-4">
+                <img
+                  src="/assets/home-experience/jokomi-field-notes-v1.webp"
+                  alt={labels.jokomiAlt}
+                  width={200}
+                  height={208}
+                  className="h-28 w-28 shrink-0 object-contain mix-blend-multiply sm:h-32 sm:w-32"
+                  decoding="async"
+                  fetchPriority="high"
+                />
+                <p className="max-w-[12rem] pb-4 font-header text-lg font-semibold leading-6 text-primary-950">
+                  {labels.jokomi} <span className="text-primary-700" aria-hidden="true">♥</span>
                 </p>
-
-                <div className="mt-7 flex min-h-32 items-end gap-3 sm:gap-4">
-                  <img
-                    src="/assets/home-experience/jokomi-field-notes-v1.webp"
-                    alt={labels.jokomiAlt}
-                    width={200}
-                    height={208}
-                    className="h-28 w-28 shrink-0 object-contain mix-blend-multiply sm:h-32 sm:w-32"
-                    decoding="async"
-                    fetchPriority="high"
-                  />
-                  <p className="max-w-[12rem] pb-4 font-header text-lg font-semibold leading-6 text-primary-950">
-                    {labels.jokomi} <span className="text-primary-700" aria-hidden="true">♥</span>
-                  </p>
-                </div>
-
-                <div className="mt-6 space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('products')}
-                    className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-primary-700 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:w-auto"
-                  >
-                    {labels.bakery}
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('how-it-works')}
-                    className="flex items-center gap-2 text-sm font-semibold text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  >
-                    {labels.howItWorks}
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
 
-              <NotebookFeatureSpread
-                locale={language}
-                onNavigate={onNavigate}
-                bundle={notebookContent.bundle}
-                sceneImageUrl={notebookContent.assetUrls['today-scene']}
-                featuredProductImageUrl={notebookContent.featuredProductImageUrl}
-              />
+              <div className="mt-6 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('products')}
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-primary-700 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:w-auto"
+                >
+                  {labels.bakery}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('how-it-works')}
+                  className="flex items-center gap-2 text-sm font-semibold text-primary-950 underline decoration-primary-300 underline-offset-4 transition hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                >
+                  {labels.howItWorks}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </Container>
-        </section>
 
-        <HomepageLowerSections
-          locale={language}
-          onNavigate={onNavigate}
-          bundle={notebookContent.bundle}
-          featuredProductImageUrl={notebookContent.featuredProductImageUrl}
-        />
-      </main>
+            <NotebookFeatureSpread
+              locale={language}
+              onNavigate={onNavigate}
+              bundle={notebookContent.bundle}
+              sceneImageUrl={notebookContent.assetUrls['today-scene']}
+              featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+            />
+          </div>
+        </Container>
+      </section>
 
-      <Footer onNavigate={onNavigate} />
-    </PageCanvas>
+      <HomepageLowerSections
+        locale={language}
+        onNavigate={onNavigate}
+        bundle={notebookContent.bundle}
+        featuredProductImageUrl={notebookContent.featuredProductImageUrl}
+      />
+    </>
   );
 }
 
