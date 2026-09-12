@@ -21,7 +21,6 @@
 
     --joko-surface-canvas: 255 255 255;
     --joko-surface-soft: 254 252 232;
-
     --joko-accent: 239 68 68;
 
     --joko-font-display: 'Playfair Display', serif;
@@ -46,20 +45,13 @@
 
     --color-background: var(--joko-surface-canvas);
     --color-background-secondary: var(--joko-surface-soft);
-
     --color-accent: var(--joko-accent);
-
     --font-header: var(--joko-font-display);
     --font-body: var(--joko-font-body);
   }
 
-  body {
-    font-family: var(--font-body);
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-header);
-  }
+  body { font-family: var(--font-body); }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--font-header); }
 
   :lang(zh) {
     font-family: 'Noto Sans SC', 'PingFang SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -73,21 +65,24 @@
 
 @layer components {
   .joko-home-shell {
+    --joko-shell-mineral: 207 227 223;
+    --joko-shell-mineral-light: 220 233 236;
+    --joko-shell-paper: 244 239 229;
+    --joko-shell-paper-deep: 237 229 214;
+    --joko-shell-teal: 85 118 111;
+    --joko-shell-teal-dark: 48 75 69;
+    --joko-shell-orange: 199 102 36;
+    --joko-shell-ink: 48 53 50;
     font-family: var(--joko-font-shell);
     font-weight: 400;
+    color: rgb(var(--joko-shell-ink));
+    background: rgb(var(--joko-shell-mineral));
   }
 
-  :lang(th) .joko-home-shell {
-    font-family: var(--joko-font-shell-th);
-  }
+  :lang(th) .joko-home-shell { font-family: var(--joko-font-shell-th); }
+  :lang(zh) .joko-home-shell { font-family: var(--joko-font-cjk); }
 
-  :lang(zh) .joko-home-shell {
-    font-family: var(--joko-font-cjk);
-  }
-
-  .joko-home-shell .font-header {
-    font-family: inherit;
-  }
+  .joko-home-shell .font-header { font-family: inherit; }
 
   .joko-home-shell h1,
   .joko-home-shell h2,
@@ -106,14 +101,76 @@
     font-weight: 500;
   }
 
+  .joko-mineral-field {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background-color: rgb(var(--joko-shell-mineral));
+    background-image:
+      radial-gradient(circle at 18% 8%, rgba(255,255,255,.42), transparent 25%),
+      radial-gradient(circle at 78% 12%, rgba(220,233,236,.72), transparent 31%),
+      radial-gradient(circle at 92% 76%, rgba(255,255,255,.2), transparent 24%);
+  }
+
+  .joko-mineral-field::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    opacity: .72;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='900' viewBox='0 0 1400 900'%3E%3Cg fill='none' stroke='%2355766f' stroke-opacity='.13' stroke-width='1.25'%3E%3Ccircle cx='176' cy='154' r='122'/%3E%3Cpath d='M62 302 C210 224 342 252 462 390 S728 552 910 430'/%3E%3Cpath d='M804 64 C890 154 980 182 1118 160 S1316 210 1384 302'/%3E%3Cpath d='M1044 510 C1130 442 1246 452 1340 558'/%3E%3Cpath d='M286 714 C430 640 560 650 692 754'/%3E%3C/g%3E%3Cg fill='%2355766f' fill-opacity='.16'%3E%3Ccircle cx='462' cy='390' r='4'/%3E%3Ccircle cx='910' cy='430' r='5'/%3E%3Ccircle cx='1118' cy='160' r='4'/%3E%3Ccircle cx='692' cy='754' r='4'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: cover;
+    background-position: center;
+  }
+
+  .joko-mineral-field::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .36;
+    background-image:
+      radial-gradient(circle at 14% 31%, rgba(48,75,69,.18) 0 1px, transparent 1.4px),
+      radial-gradient(circle at 71% 68%, rgba(255,255,255,.5) 0 1px, transparent 1.5px);
+    background-size: 31px 37px, 47px 43px;
+  }
+
+  .joko-paper-band {
+    background-color: rgb(var(--joko-shell-paper));
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(255,255,255,.55), transparent 25%),
+      radial-gradient(circle at 84% 76%, rgba(218,201,174,.12), transparent 28%);
+    box-shadow: inset 0 1px 0 rgba(85,118,111,.08), inset 0 -1px 0 rgba(85,118,111,.08);
+  }
+
+  .joko-shell-orange { color: rgb(var(--joko-shell-orange)); }
+  .joko-shell-teal { color: rgb(var(--joko-shell-teal-dark)); }
+  .joko-shell-muted { color: rgba(48, 53, 50, .72); }
+
+  .joko-shell-primary-button {
+    background: rgb(var(--joko-shell-orange));
+    color: white;
+    box-shadow: 0 9px 22px rgba(121, 67, 28, .14);
+  }
+
+  .joko-shell-primary-button:hover { background: rgb(174 82 25); }
+
+  .joko-shell-card {
+    border: 1px solid rgba(85,118,111,.16);
+    background: rgba(244,239,229,.9);
+    box-shadow: 0 8px 24px rgba(48,75,69,.08);
+  }
+
   #community-notebook-reader {
+    --color-background: 248 244 234;
+    --color-background-secondary: 241 233 218;
     font-family: var(--joko-font-notebook);
     font-weight: 400;
   }
 
-  :lang(zh) #community-notebook-reader {
-    font-family: var(--joko-font-notebook-zh);
-  }
+  :lang(zh) #community-notebook-reader { font-family: var(--joko-font-notebook-zh); }
 
   #community-notebook-reader .font-header,
   #community-notebook-reader .font-serif,
@@ -122,18 +179,14 @@
   #community-notebook-reader h3,
   #community-notebook-reader h4,
   #community-notebook-reader h5,
-  #community-notebook-reader h6 {
-    font-family: inherit;
-  }
+  #community-notebook-reader h6 { font-family: inherit; }
 
   #community-notebook-reader h1,
   #community-notebook-reader h2,
   #community-notebook-reader h3,
   #community-notebook-reader h4,
   #community-notebook-reader h5,
-  #community-notebook-reader h6 {
-    font-weight: 600;
-  }
+  #community-notebook-reader h6 { font-weight: 600; }
 
   #community-notebook-reader button,
   #community-notebook-reader [role='button'],
@@ -144,31 +197,15 @@
 }
 
 @keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
