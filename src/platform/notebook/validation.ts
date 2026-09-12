@@ -44,7 +44,7 @@ function validateRouteTarget(
   field: string,
   errors: string[],
 ): void {
-  if (target.type === 'notebook.today' || target.type === 'notebook.history') return;
+  if (target.type === 'notebook.today' || target.type === 'notebook.history' || target.type === 'notebook.index') return;
 
   const kind = target.type === 'notebook.person'
     ? 'person'

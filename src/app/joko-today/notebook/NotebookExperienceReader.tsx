@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Clock3, X } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
@@ -8,6 +8,7 @@ import {
   type NotebookBlock,
   type NotebookEntry,
   type NotebookFixtureBundle,
+  type NotebookIndexKind,
   type NotebookLocalizedText,
   type NotebookProductEntry,
   type NotebookRouteTarget,
@@ -15,6 +16,7 @@ import {
 } from '../../../platform/notebook';
 import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
+import NotebookTopTabs from './NotebookTopTabs';
 
 interface NotebookExperienceReaderProps {
   target: NotebookRouteTarget;
@@ -45,6 +47,15 @@ const copy = {
     notFound: "This page isn't in the notebook yet.",
     noHistory: 'No earlier pages have been kept yet.',
     loadingProduct: 'Checking the bakery for this product…',
+    people: 'People',
+    curiosities: 'Curiosities',
+    places: 'Places',
+    products: 'Products',
+    indexIntro: 'An index of what the notebook has noticed so far.',
+    todayStory: "From today’s page",
+    openTodayStory: "Open today’s page",
+    placeToday: "Today’s place",
+    storyTrail: "This is the same note kept on Today’s page.",
   },
   th: {
     back: 'ย้อนกลับ',
@@ -63,6 +74,15 @@ const copy = {
     notFound: 'ยังไม่มีหน้านี้ในสมุดบันทึก',
     noHistory: 'ยังไม่มีหน้าก่อนหน้านี้ในสมุดบันทึก',
     loadingProduct: 'กำลังตรวจสอบสินค้านี้จากเบเกอรี่…',
+    people: 'ผู้คน',
+    curiosities: 'ความสงสัย',
+    places: 'สถานที่',
+    products: 'สินค้า',
+    indexIntro: 'ดัชนีของสิ่งที่สมุดบันทึกได้พบเห็นจนถึงตอนนี้',
+    todayStory: 'จากหน้าวันนี้',
+    openTodayStory: 'เปิดหน้าวันนี้',
+    placeToday: 'สถานที่ของวันนี้',
+    storyTrail: 'นี่คือบันทึกเดียวกับที่เก็บไว้ในหน้าวันนี้',
   },
   zh: {
     back: '返回',
@@ -81,6 +101,15 @@ const copy = {
     notFound: '这页还没有被收进笔记本。',
     noHistory: '笔记本里还没有保存往期页面。',
     loadingProduct: '正在从烘焙坊查询这个商品…',
+    people: '人物',
+    curiosities: '好奇',
+    places: '地点',
+    products: '产品',
+    indexIntro: '这里收录了笔记本目前留意到的人、事与发现。',
+    todayStory: '来自今日一页',
+    openTodayStory: '打开今日一页',
+    placeToday: '今天的地点',
+    storyTrail: '这就是今日一页里保存的同一则笔记。',
   },
 } as const;
 
@@ -92,7 +121,12 @@ function localized(value: string): NotebookLocalizedText {
 
 function findEntry(bundle: NotebookFixtureBundle, target: NotebookRouteTarget): NotebookEntry | null {
   if (target.type === 'notebook.person') {
-    return bundle.entries.find((entry) => entry.kind === 'person' && entry.slug === target.slug) ?? null;
+    const direct = bundle.entries.find((entry) => entry.kind === 'person' && entry.slug === target.slug) ?? null;
+    if (direct) return direct;
+    if (target.slug === 'featured-person') {
+      return bundle.entries.find((entry) => entry.kind === 'person') ?? null;
+    }
+    return null;
   }
   if (target.type === 'notebook.product') {
     return bundle.entries.find((entry) => entry.kind === 'product' && entry.slug === target.slug) ?? null;
@@ -129,54 +163,75 @@ function entryDocument(
     });
   }
 
-  const firstSurface = { id: `entry-${entry.id}-primary`, blocks: firstBlocks };
+  const surfaces: NotebookTodayDocument['surfaces'] = [
+    { id: `entry-${entry.id}-primary`, blocks: firstBlocks },
+  ];
 
-  const secondBlocks = [] as NotebookTodayDocument['surfaces'][number]['blocks'];
-
-  if (entry.kind === 'person' && entry.favoriteProductRef) {
-    secondBlocks.push({
-      id: `entry-${entry.id}-favorite`,
-      type: 'entry-link',
-      entryRef: entry.favoriteProductRef,
-      label: localized(labels.favorite),
-      note: entry.summary,
+  if (entry.kind === 'person') {
+    const storyBlocks: NotebookBlock[] = [{
+      id: `entry-${entry.id}-today-story`,
+      type: 'text',
+      eyebrow: localized(labels.todayStory),
+      heading: bundle.today.title,
+      body: bundle.today.subtitle,
+    }];
+    const todayScene = bundle.today.surfaces
+      .flatMap((surface) => surface.blocks)
+      .find((block): block is Extract<NotebookBlock, { type: 'asset' }> => block.type === 'asset');
+    if (todayScene) {
+      storyBlocks.push({
+        ...todayScene,
+        id: `entry-${entry.id}-today-scene`,
+      });
+    }
+    storyBlocks.push({
+      id: `entry-${entry.id}-today-link`,
+      type: 'callout',
+      body: localized(labels.storyTrail),
+      action: {
+        label: localized(labels.openTodayStory),
+        target: { type: 'notebook.today' },
+      },
     });
+    surfaces.push({ id: `entry-${entry.id}-story`, blocks: storyBlocks });
+
+    if (entry.favoriteProductRef) {
+      surfaces.push({
+        id: `entry-${entry.id}-favourite`,
+        blocks: [{
+          id: `entry-${entry.id}-favorite`,
+          type: 'entry-link',
+          entryRef: entry.favoriteProductRef,
+          label: localized(labels.favorite),
+          note: entry.summary,
+        }],
+      });
+    }
   }
 
   if (entry.kind === 'product') {
+    const blocks: NotebookBlock[] = [];
     if (entry.heroAsset) {
-      secondBlocks.push({
-        id: `entry-${entry.id}-hero`,
-        type: 'asset',
-        asset: entry.heroAsset,
-        alt: entry.title,
-      });
+      blocks.push({ id: `entry-${entry.id}-hero`, type: 'asset', asset: entry.heroAsset, alt: entry.title });
     }
     if (entry.note) {
-      secondBlocks.push({
-        id: `entry-${entry.id}-note`,
-        type: 'callout',
-        heading: localized(labels.fromNotebook),
-        body: entry.note,
-      });
+      blocks.push({ id: `entry-${entry.id}-note`, type: 'callout', heading: localized(labels.fromNotebook), body: entry.note });
     }
+    if (blocks.length) surfaces.push({ id: `entry-${entry.id}-secondary`, blocks });
   }
 
   if (entry.kind === 'question') {
+    const blocks: NotebookBlock[] = [];
     if (entry.heroAsset) {
-      secondBlocks.push({
-        id: `entry-${entry.id}-hero`,
-        type: 'asset',
-        asset: entry.heroAsset,
-        alt: entry.title,
-      });
+      blocks.push({ id: `entry-${entry.id}-hero`, type: 'asset', asset: entry.heroAsset, alt: entry.title });
     }
-    secondBlocks.push({
+    blocks.push({
       id: `entry-${entry.id}-answer`,
       type: 'callout',
       heading: localized(labels.firstClue),
       body: entry.answerTeaser ?? entry.summary,
     });
+    surfaces.push({ id: `entry-${entry.id}-secondary`, blocks });
   }
 
   return {
@@ -185,7 +240,7 @@ function entryDocument(
     siteId: bundle.site.siteId,
     date: bundle.today.date,
     title: entry.title,
-    surfaces: [firstSurface, ...(secondBlocks.length ? [{ id: `entry-${entry.id}-secondary`, blocks: secondBlocks }] : [])],
+    surfaces,
     featuredEntryRefs: [],
   };
 }
@@ -236,6 +291,57 @@ function historyDocument(
     date: bundle.today.date,
     title: localized(labels.history),
     surfaces: [{ id: 'notebook-history-surface', blocks }],
+    featuredEntryRefs: [],
+  };
+}
+
+function indexDocument(
+  index: NotebookIndexKind,
+  bundle: NotebookFixtureBundle,
+  labels: (typeof copy)[LanguageCode],
+): NotebookTodayDocument {
+  const title = localized(labels[index]);
+  const blocks: NotebookBlock[] = [{
+    id: `index-${index}-intro`,
+    type: 'text',
+    eyebrow: localized(labels.notebook),
+    heading: title,
+    body: localized(labels.indexIntro),
+  }];
+
+  if (index === 'places') {
+    blocks.push({
+      id: 'index-places-today',
+      type: 'callout',
+      heading: localized(labels.placeToday),
+      body: bundle.today.subtitle ?? bundle.today.title,
+      action: {
+        label: localized(labels.openTodayStory),
+        target: { type: 'notebook.today' },
+      },
+    });
+  } else {
+    const kind = index === 'people' ? 'person' : index === 'products' ? 'product' : 'question';
+    bundle.entries
+      .filter((entry) => entry.kind === kind && entry.status === 'published')
+      .forEach((entry) => {
+        blocks.push({
+          id: `index-${index}-${entry.id}`,
+          type: 'entry-link',
+          entryRef: { kind: entry.kind, id: entry.id },
+          label: title,
+          note: entry.summary,
+        });
+      });
+  }
+
+  return {
+    schemaVersion: 1,
+    id: `notebook-index-${index}`,
+    siteId: bundle.site.siteId,
+    date: bundle.today.date,
+    title,
+    surfaces: [{ id: `notebook-index-${index}-surface`, blocks }],
     featuredEntryRefs: [],
   };
 }
@@ -307,6 +413,21 @@ export function NotebookExperienceReader({
     return () => { active = false; };
   }, [content.commerceProduct, target]);
 
+
+  useEffect(() => {
+    if (closed || target.type !== 'notebook.person' || target.section !== 'today-story') return;
+    const person = findEntry(bundle, target);
+    if (!person) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      window.document.getElementById(`notebook-surface-entry-${person.id}-story`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [bundle, closed, target]);
+
   if (closed) {
     return (
       <section className="min-w-0 lg:-mr-3 xl:-mr-6" aria-label={labels.notebook}>
@@ -338,6 +459,8 @@ export function NotebookExperienceReader({
     ? bundle.today
     : target.type === 'notebook.history'
     ? historyDocument(bundle, labels)
+    : target.type === 'notebook.index'
+    ? indexDocument(target.index, bundle, labels)
     : entry
     ? entryDocument(entry, bundle, labels)
     : target.type === 'notebook.product' && routeProductLoading
@@ -364,44 +487,12 @@ export function NotebookExperienceReader({
 
   return (
     <section id="community-notebook-reader" className="min-w-0 lg:-mr-3 xl:-mr-6" aria-label={labels.notebook}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-1 text-sm font-semibold text-primary-950">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 transition hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {labels.back}
-        </button>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'notebook.today' })}
-            aria-current={target.type === 'notebook.today' ? 'page' : undefined}
-            className="inline-flex min-h-10 items-center rounded-md px-3 transition hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {labels.today}
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'notebook.history' })}
-            aria-current={target.type === 'notebook.history' ? 'page' : undefined}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 transition hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {labels.history}
-            <Clock3 className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-primary-950/70 transition hover:bg-primary-50 hover:text-primary-950 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {labels.close}
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+      <NotebookTopTabs
+        target={target}
+        onNavigate={onNavigate}
+        onBack={onBack}
+        onClose={onClose}
+      />
 
       {target.type === 'notebook.today' ? (
         <NotebookFeatureSpread
@@ -421,6 +512,7 @@ export function NotebookExperienceReader({
           defaultLocale={bundle.site.defaultLocale}
           resolveAsset={resolveAsset}
           onNavigate={onNavigate}
+          hideDocumentMeta
         />
       )}
 

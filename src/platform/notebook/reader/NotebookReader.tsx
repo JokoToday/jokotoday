@@ -27,6 +27,7 @@ export interface NotebookReaderProps {
   resolveAsset?: NotebookAssetResolver;
   onNavigate?: (target: NotebookRouteTarget) => void;
   className?: string;
+  hideDocumentMeta?: boolean;
 }
 
 function entryRefKey(ref: NotebookEntryRef): string {
@@ -221,6 +222,7 @@ function NotebookSurface({
 
   return (
     <article
+      id={`notebook-surface-${surface.id}`}
       className={`relative min-h-[34rem] rounded-3xl border border-primary-900/10 bg-gradient-to-br from-background-secondary/80 via-background to-primary-50/25 px-6 py-8 shadow-lg sm:min-h-[38rem] sm:px-8 sm:py-10 lg:min-h-[43rem] lg:rounded-none lg:border-0 lg:px-10 lg:py-12 lg:shadow-none ${desktopPaper}`}
       aria-label={`Notebook surface ${pageNumber}`}
     >
@@ -261,16 +263,19 @@ export function NotebookReader({
   resolveAsset,
   onNavigate,
   className = '',
+  hideDocumentMeta = false,
 }: NotebookReaderProps) {
   const spreads = pairSurfaces(document.surfaces);
   const title = getNotebookLocalizedText(document.title, locale, defaultLocale);
 
   return (
     <div className={className}>
-      <div className="mb-4 flex items-center justify-between gap-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-800/80 sm:px-5">
-        <span>{title}</span>
-        <time dateTime={document.date}>{document.date}</time>
-      </div>
+      {!hideDocumentMeta && (
+        <div className="mb-4 flex items-center justify-between gap-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-800/80 sm:px-5">
+          <span>{title}</span>
+          <time dateTime={document.date}>{document.date}</time>
+        </div>
+      )}
 
       <div className="relative mx-auto max-w-6xl">
         <div className="absolute -bottom-3 left-6 right-6 top-3 rounded-[2.5rem] bg-primary-900/10 blur-sm lg:left-10 lg:right-10" aria-hidden="true" />
