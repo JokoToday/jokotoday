@@ -14,6 +14,8 @@ export function getNotebookPath(target: NotebookRouteTarget): string {
       return '/notebook/today';
     case 'notebook.history':
       return '/notebook/history';
+    case 'notebook.noticed':
+      return '/notebook/most-noticed';
     case 'notebook.index':
       return `/notebook/${target.index}`;
     case 'notebook.person':
@@ -36,7 +38,6 @@ export function getNotebookEntryTarget(entry: NotebookEntry): NotebookRouteTarge
   }
 }
 
-
 function decodeNotebookSlug(value: string): string | null {
   try {
     const decoded = decodeURIComponent(value).trim();
@@ -49,6 +50,7 @@ function decodeNotebookSlug(value: string): string | null {
 export function parseNotebookPath(path: string): NotebookRouteTarget | null {
   if (path === '/notebook/today') return { type: 'notebook.today' };
   if (path === '/notebook/history') return { type: 'notebook.history' };
+  if (path === '/notebook/most-noticed') return { type: 'notebook.noticed' };
   if (path === '/notebook/people') return { type: 'notebook.index', index: 'people' };
   if (path === '/notebook/curiosities') return { type: 'notebook.index', index: 'curiosities' };
   if (path === '/notebook/places') return { type: 'notebook.index', index: 'places' };
