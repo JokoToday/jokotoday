@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mali:wght@400;500;600&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
 @tailwind base;
 @tailwind components;
@@ -26,6 +27,10 @@
     --joko-font-display: 'Playfair Display', serif;
     --joko-font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
     --joko-font-cjk: 'Noto Sans SC', 'PingFang SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --joko-font-shell: 'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Noto Sans SC', sans-serif;
+    --joko-font-shell-th: 'Noto Sans Thai Looped', 'Noto Sans', system-ui, sans-serif;
+    --joko-font-notebook: 'Mali', 'Noto Sans Thai Looped', cursive;
+    --joko-font-notebook-zh: 'LXGW WenKai GB', 'Noto Sans SC', 'PingFang SC', cursive;
 
     --color-primary-50: var(--joko-color-brand-50);
     --color-primary-100: var(--joko-color-brand-100);
@@ -63,6 +68,73 @@
   :lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) h4, :lang(zh) h5, :lang(zh) h6 {
     font-family: 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
     font-weight: 700;
+  }
+}
+
+@layer components {
+  .joko-home-shell {
+    font-family: var(--joko-font-shell);
+    font-weight: 400;
+  }
+
+  :lang(th) .joko-home-shell {
+    font-family: var(--joko-font-shell-th);
+  }
+
+  :lang(zh) .joko-home-shell {
+    font-family: var(--joko-font-cjk);
+  }
+
+  .joko-home-shell h1,
+  .joko-home-shell h2,
+  .joko-home-shell h3,
+  .joko-home-shell h4,
+  .joko-home-shell h5,
+  .joko-home-shell h6 {
+    font-family: inherit;
+    font-weight: 600;
+  }
+
+  .joko-home-shell button,
+  .joko-home-shell [role='button'],
+  .joko-home-shell nav a {
+    font-family: inherit;
+    font-weight: 500;
+  }
+
+  #community-notebook-reader {
+    font-family: var(--joko-font-notebook);
+    font-weight: 400;
+  }
+
+  :lang(zh) #community-notebook-reader {
+    font-family: var(--joko-font-notebook-zh);
+  }
+
+  #community-notebook-reader .font-header,
+  #community-notebook-reader h1,
+  #community-notebook-reader h2,
+  #community-notebook-reader h3,
+  #community-notebook-reader h4,
+  #community-notebook-reader h5,
+  #community-notebook-reader h6 {
+    font-family: inherit;
+  }
+
+  #community-notebook-reader h1,
+  #community-notebook-reader h2,
+  #community-notebook-reader h3,
+  #community-notebook-reader h4,
+  #community-notebook-reader h5,
+  #community-notebook-reader h6 {
+    font-weight: 600;
+  }
+
+  #community-notebook-reader button,
+  #community-notebook-reader [role='button'],
+  #community-notebook-reader nav a {
+    font-family: inherit;
+    font-weight: 500;
   }
 }
 

@@ -11,7 +11,7 @@ interface JokoShellProps {
 
 export function JokoShell({ onNavigate, activeSection = null, children }: JokoShellProps) {
   return (
-    <PageCanvas surface="soft" className="min-h-screen bg-background">
+    <PageCanvas surface="soft" className="joko-home-shell min-h-screen bg-background">
       <div className="flex min-h-screen flex-col">
         <JokoShellHeader onNavigate={onNavigate} activeSection={activeSection} />
         <main className="flex-1">{children}</main>
