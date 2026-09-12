@@ -3,7 +3,6 @@ import { Menu, ShoppingCart, UserRound, X } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { useLanguage } from '../../../context/LanguageContext';
-import { getPublicImageUrl } from '../../../lib/storage';
 import { Container } from '../../../platform/design-system';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
@@ -94,9 +93,9 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               aria-label="JOKO TODAY home"
             >
               <img
-                src={getPublicImageUrl('logos/joko-today-logo.png')}
+                src="/assets/brand/joko-today-logo-v0.4.png"
                 alt="JOKO TODAY"
-                className="h-14 w-auto object-contain sm:h-16"
+                className="h-14 w-auto object-contain mix-blend-multiply sm:h-16"
               />
             </button>
 
