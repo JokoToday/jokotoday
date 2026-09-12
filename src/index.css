@@ -85,6 +85,10 @@
     font-family: var(--joko-font-cjk);
   }
 
+  .joko-home-shell .font-header {
+    font-family: inherit;
+  }
+
   .joko-home-shell h1,
   .joko-home-shell h2,
   .joko-home-shell h3,
@@ -112,6 +116,7 @@
   }
 
   #community-notebook-reader .font-header,
+  #community-notebook-reader .font-serif,
   #community-notebook-reader h1,
   #community-notebook-reader h2,
   #community-notebook-reader h3,

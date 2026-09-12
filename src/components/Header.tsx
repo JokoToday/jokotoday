@@ -5,7 +5,6 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { UserAvatarDropdown } from './UserAvatarDropdown';
-import { getPublicImageUrl } from '../lib/storage';
 
 const AuthModal = lazy(() => import('./AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
@@ -45,9 +44,9 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             className="flex items-center group"
           >
             <img
-              src={getPublicImageUrl('logos/joko-today-logo.png')}
+              src="/assets/brand/joko-today-logo-v0.4.webp"
               alt="JOKO TODAY"
-              className="h-10 md:h-12 w-auto object-contain transition-opacity group-hover:opacity-80"
+              className="h-10 md:h-12 w-auto object-contain mix-blend-multiply transition-opacity group-hover:opacity-80"
             />
           </button>
 
