@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Footer from '../../../components/Footer';
 import { PageCanvas } from '../../../platform/design-system';
 import JokoShellHeader, { type JokoShellSection } from './JokoShellHeader';
+import './jokoShellBackground.css';
 
 interface JokoShellProps {
   onNavigate: (page: string) => void;
