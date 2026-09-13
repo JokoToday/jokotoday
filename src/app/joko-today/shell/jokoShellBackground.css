@@ -1,0 +1,150 @@
+.joko-home-shell .joko-shell-header-organic {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: rgb(var(--joko-shell-mineral));
+}
+
+.joko-home-shell .joko-shell-header-organic::before,
+.joko-home-shell .joko-shell-header-organic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.joko-home-shell .joko-shell-header-organic::before {
+  z-index: -2;
+  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21.svg');
+  background-repeat: no-repeat;
+  background-size: max(100%, 1600px) auto;
+  background-position: center 0;
+  opacity: .72;
+}
+
+.joko-home-shell .joko-shell-header-organic::after {
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.32) 0 20%, transparent 42%),
+    radial-gradient(ellipse at 65% 8%, rgba(220,233,236,.44) 0 24%, transparent 53%),
+    radial-gradient(ellipse at 95% 110%, rgba(85,118,111,.08) 0 28%, transparent 55%);
+}
+
+.joko-home-shell .joko-mineral-field {
+  --joko-structure-position: center -112px;
+  --joko-structure-size: max(100%, 1600px) auto;
+  background-color: rgb(var(--joko-shell-mineral));
+  background-image:
+    radial-gradient(ellipse at 11% 13%, rgba(244,239,229,.34) 0 13%, transparent 34%),
+    radial-gradient(ellipse at 80% 3%, rgba(220,233,236,.5) 0 18%, transparent 43%),
+    radial-gradient(ellipse at 100% 55%, rgba(255,255,255,.18) 0 14%, transparent 38%),
+    radial-gradient(ellipse at 20% 93%, rgba(85,118,111,.08) 0 15%, transparent 42%);
+}
+
+.joko-home-shell .joko-mineral-field::before {
+  inset: -1px;
+  z-index: -2;
+  opacity: .9;
+  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21.svg');
+  background-repeat: no-repeat;
+  background-size: var(--joko-structure-size);
+  background-position: var(--joko-structure-position);
+}
+
+.joko-home-shell .joko-mineral-field::after {
+  inset: 0;
+  z-index: -1;
+  opacity: 1;
+  background:
+    radial-gradient(ellipse at 34% 24%, rgba(244,239,229,.16) 0 10%, transparent 28%),
+    radial-gradient(ellipse at 64% 53%, rgba(220,233,236,.23) 0 14%, transparent 37%),
+    radial-gradient(ellipse at 84% 80%, rgba(85,118,111,.045) 0 16%, transparent 42%);
+}
+
+/* The lower mineral bands reveal different parts of the same hand-drawn field
+   so the page feels observed and accumulated rather than tiled. */
+.joko-home-shell section.joko-mineral-field:nth-of-type(2) {
+  --joko-structure-position: 42% 43%;
+  --joko-structure-size: max(112%, 1780px) auto;
+}
+
+.joko-home-shell section.joko-mineral-field:nth-of-type(4) {
+  --joko-structure-position: 58% 78%;
+  --joko-structure-size: max(108%, 1720px) auto;
+}
+
+/* Keep reading zones calmer than the surrounding margins. */
+.joko-home-shell .joko-mineral-field > * {
+  position: relative;
+  z-index: 1;
+}
+
+.joko-home-shell .joko-mineral-field > *::before {
+  content: '';
+  position: absolute;
+  inset: -1.5rem -1rem;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 2rem;
+  background: radial-gradient(ellipse at center, rgba(207,227,223,.22), transparent 72%);
+}
+
+@media (max-width: 1023px) {
+  .joko-home-shell .joko-shell-header-organic::before,
+  .joko-home-shell .joko-mineral-field::before {
+    background-size: 1420px auto;
+  }
+
+  .joko-home-shell .joko-mineral-field {
+    --joko-structure-position: 48% -72px;
+  }
+
+  .joko-home-shell section.joko-mineral-field:nth-of-type(2) {
+    --joko-structure-position: 37% 48%;
+  }
+
+  .joko-home-shell section.joko-mineral-field:nth-of-type(4) {
+    --joko-structure-position: 63% 76%;
+  }
+}
+
+@media (max-width: 767px) {
+  .joko-home-shell .joko-shell-header-organic::before {
+    background-size: 1120px auto;
+    background-position: 48% 0;
+    opacity: .48;
+  }
+
+  .joko-home-shell .joko-mineral-field::before {
+    background-size: 1180px auto;
+    opacity: .62;
+  }
+
+  .joko-home-shell .joko-mineral-field::after {
+    opacity: .8;
+  }
+
+  .joko-home-shell .joko-mineral-field {
+    --joko-structure-position: 42% -44px;
+  }
+
+  .joko-home-shell section.joko-mineral-field:nth-of-type(2) {
+    --joko-structure-position: 32% 46%;
+  }
+
+  .joko-home-shell section.joko-mineral-field:nth-of-type(4) {
+    --joko-structure-position: 72% 79%;
+  }
+
+  .joko-home-shell .joko-mineral-field > *::before {
+    inset: -1rem -.5rem;
+    background: radial-gradient(ellipse at center, rgba(207,227,223,.3), transparent 70%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joko-home-shell .joko-shell-header-organic::before,
+  .joko-home-shell .joko-mineral-field::before {
+    transform: none;
+  }
+}
