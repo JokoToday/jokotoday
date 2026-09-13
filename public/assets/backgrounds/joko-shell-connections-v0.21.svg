@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" fill="none">
+  <defs>
+    <filter id="softRough" x="-4%" y="-4%" width="108%" height="108%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="23" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.45" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="paperGrain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.34" numOctaves="2" seed="11" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.08"/>
+      </feComponentTransfer>
+    </filter>
+    <linearGradient id="washA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9FCFC9" stop-opacity=".22"/>
+      <stop offset=".45" stop-color="#DCE9EC" stop-opacity=".07"/>
+      <stop offset="1" stop-color="#7FB7AF" stop-opacity=".18"/>
+    </linearGradient>
+    <linearGradient id="washB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4EFE5" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#8ABCB5" stop-opacity=".12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- broad irregular mineral washes -->
+  <g opacity=".9">
+    <path d="M-70 78C118 9 238 57 382 84c175 33 280-76 471-35 185 40 315 79 480 25 110-37 219-68 338-22l10 156c-183-24-310 39-469 7-173-34-292-83-461-35-145 41-246 22-397-20C193 116 53 171-54 205Z" fill="url(#washA)"/>
+    <path d="M-35 733c165-62 306-19 450 22 172 49 310 20 462-28 139-44 272-20 404 14 126 33 229 21 354-26l19 233c-127-24-260-23-393 15-154 44-286 60-452 6-153-49-300-55-450-11-155 46-286 17-390-10Z" fill="url(#washB)"/>
+    <path d="M1194-20c119 80 169 186 154 309-13 106 36 180 135 241 57 35 96 82 117 141v-691Z" fill="#DCE9EC" opacity=".16"/>
+    <path d="M-35 305c103 7 172 57 208 146 29 71 80 112 153 132 37 10 71 29 101 57-165-29-299-21-462 34Z" fill="#F4EFE5" opacity=".11"/>
+  </g>
+
+  <!-- paper/mineral micro texture -->
+  <rect width="1600" height="1050" fill="#55766F" opacity=".055" filter="url(#paperGrain)"/>
+
+  <!-- large hand-drawn structural relationships -->
+  <g stroke="#55766F" stroke-linecap="round" stroke-linejoin="round" filter="url(#softRough)">
+    <path d="M-83 441C22 254 169 148 349 139c142-8 255 50 326 169 47 80 54 173 22 278" stroke-width="1.6" opacity=".18"/>
+    <path d="M29 474c86-136 205-215 358-232 109-13 207 11 289 72" stroke-width=".95" opacity=".11"/>
+    <path d="M434-64c-8 102 15 189 70 261 61 79 83 175 63 281-15 84-7 161 27 230" stroke-width="1.2" opacity=".14"/>
+
+    <path d="M1002-42c62 53 91 122 87 207-5 98 20 179 77 244 50 58 72 127 65 207-5 61 14 120 57 176" stroke-width="1.45" opacity=".17"/>
+    <path d="M1303-31c-9 117 8 223 52 317 37 80 43 165 17 256-21 74-15 146 18 218 26 57 34 120 22 189" stroke-width=".9" opacity=".12"/>
+    <path d="M1510-32c-33 141-21 268 36 379 42 83 50 176 21 278-21 72-20 153 3 242" stroke-width="1.25" opacity=".14"/>
+
+    <path d="M829 91c126 15 213 59 285 134 63 67 145 97 246 91 78-5 145 12 201 51" stroke-width="1.15" opacity=".13"/>
+    <path d="M746 371c119-54 231-55 336-3 83 41 168 55 256 42 80-12 154 4 222 49" stroke-width="1.25" opacity=".14"/>
+    <path d="M720 680c122-44 232-39 330 17 85 48 173 64 264 47 82-16 163 1 244 51" stroke-width="1.1" opacity=".13"/>
+
+    <!-- incomplete circles / arcs -->
+    <path d="M319 178c109-61 247-45 337 41 90 87 113 218 58 329" stroke-width="1.55" opacity=".16"/>
+    <path d="M675 559c-64 72-162 109-260 97-93-12-171-66-214-143" stroke-width="1" opacity=".1"/>
+    <path d="M1179 129c72-45 162-47 237-8 75 40 123 115 127 200" stroke-width="1.35" opacity=".14"/>
+    <path d="M1542 362c-12 95-65 181-146 237-81 55-184 73-279 46" stroke-width="1.15" opacity=".12"/>
+    <path d="M1094 754c68-34 147-37 219-6 72 30 129 88 159 160" stroke-width="1.25" opacity=".12"/>
+
+    <!-- loose connector fragments -->
+    <path d="M155 111c53 50 81 111 84 184" stroke-width=".85" opacity=".1"/>
+    <path d="M220 642c43-40 92-59 148-58" stroke-width=".85" opacity=".09"/>
+    <path d="M627 102c27 24 45 54 54 90" stroke-width=".8" opacity=".09"/>
+    <path d="M884 605c41 19 72 49 94 89" stroke-width=".8" opacity=".1"/>
+    <path d="M1399 194c33 11 61 31 83 59" stroke-width=".85" opacity=".1"/>
+  </g>
+
+  <!-- subtle nodes -->
+  <g fill="#55766F">
+    <circle cx="238" cy="294" r="5" opacity=".12"/>
+    <circle cx="565" cy="473" r="4" opacity=".13"/>
+    <circle cx="678" cy="220" r="3.5" opacity=".12"/>
+    <circle cx="913" cy="356" r="5" opacity=".1"/>
+    <circle cx="1089" cy="164" r="4" opacity=".14"/>
+    <circle cx="1233" cy="615" r="5.5" opacity=".12"/>
+    <circle cx="1417" cy="318" r="3.5" opacity=".15"/>
+    <circle cx="1485" cy="804" r="5" opacity=".1"/>
+  </g>
+  <g fill="none" stroke="#55766F" stroke-width="1">
+    <circle cx="379" cy="153" r="10" opacity=".09"/>
+    <circle cx="812" cy="708" r="9" opacity=".08"/>
+    <circle cx="1322" cy="742" r="12" opacity=".09"/>
+  </g>
+
+  <!-- irregular contour fragments -->
+  <g fill="none" stroke="#668B86" stroke-linecap="round" filter="url(#softRough)">
+    <path d="M26 687c34-12 57-6 72 18 16 26 42 32 80 20 37-12 68-4 92 24" stroke-width="1" opacity=".12"/>
+    <path d="M20 711c37-11 64-4 82 20 19 25 47 31 84 20 36-10 67-1 92 27" stroke-width=".75" opacity=".08"/>
+    <path d="M1329 911c42-25 82-30 120-13 37 17 76 13 115-12" stroke-width="1" opacity=".1"/>
+    <path d="M1340 936c41-21 78-23 112-7 35 17 71 15 108-6" stroke-width=".75" opacity=".08"/>
+  </g>
+
+  <!-- marginal botanical sketches, deliberately sparse -->
+  <g fill="none" stroke="#55766F" stroke-linecap="round" stroke-linejoin="round" filter="url(#softRough)">
+    <path d="M21 520c45-70 75-145 89-226" stroke-width="1.4" opacity=".18"/>
+    <path d="M56 443c-18-26-29-54-33-84 26 14 41 38 46 70" stroke-width="1.1" opacity=".14"/>
+    <path d="M77 387c-19-24-28-49-28-76 26 10 41 29 47 58" stroke-width="1.1" opacity=".14"/>
+    <path d="M92 326c14-24 31-42 52-54 1 27-10 49-34 67" stroke-width="1.1" opacity=".13"/>
+
+    <path d="M1571 664c-42-54-67-115-76-185" stroke-width="1.35" opacity=".17"/>
+    <path d="M1538 596c17-23 28-48 33-75-25 12-40 34-44 63" stroke-width="1.05" opacity=".13"/>
+    <path d="M1517 544c16-20 25-42 27-66-22 10-35 29-39 54" stroke-width="1.05" opacity=".12"/>
+    <path d="M1499 489c-13-19-28-33-46-42 0 23 10 41 31 54" stroke-width="1.05" opacity=".12"/>
+
+    <path d="M1547 1011c-34-34-56-71-67-112" stroke-width="1.25" opacity=".14"/>
+    <path d="M1512 958c15-14 26-31 32-50-20 5-34 17-42 36" stroke-width="1" opacity=".11"/>
+  </g>
+
+  <!-- tiny hand-drawn observation marks -->
+  <g stroke="#55766F" stroke-linecap="round" filter="url(#softRough)" opacity=".13">
+    <path d="M118 815l18 12m-9-18 5 25"/>
+    <path d="M1461 125l22 7m-17-17 7 24"/>
+    <path d="M1446 873c8-9 17-9 24 0 7-9 16-9 24 0-5 13-13 21-24 30-11-9-19-17-24-30Z" fill="none"/>
+    <path d="M92 924c5-7 11-7 17 0 5-7 11-7 17 0-4 9-9 15-17 21-8-6-13-12-17-21Z" fill="none"/>
+  </g>
+</svg>
