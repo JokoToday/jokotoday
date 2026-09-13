@@ -1,4 +1,5 @@
-.joko-home-shell .joko-shell-header-organic {
+.joko-home-shell .joko-shell-header-organic,
+.joko-home-shell header.relative.z-40 {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -6,14 +7,17 @@
 }
 
 .joko-home-shell .joko-shell-header-organic::before,
-.joko-home-shell .joko-shell-header-organic::after {
+.joko-home-shell .joko-shell-header-organic::after,
+.joko-home-shell header.relative.z-40::before,
+.joko-home-shell header.relative.z-40::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.joko-home-shell .joko-shell-header-organic::before {
+.joko-home-shell .joko-shell-header-organic::before,
+.joko-home-shell header.relative.z-40::before {
   z-index: -2;
   background-image: url('/assets/backgrounds/joko-shell-connections-v0.21.svg');
   background-repeat: no-repeat;
@@ -22,7 +26,8 @@
   opacity: .72;
 }
 
-.joko-home-shell .joko-shell-header-organic::after {
+.joko-home-shell .joko-shell-header-organic::after,
+.joko-home-shell header.relative.z-40::after {
   z-index: -1;
   background:
     radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.32) 0 20%, transparent 42%),
@@ -91,6 +96,7 @@
 
 @media (max-width: 1023px) {
   .joko-home-shell .joko-shell-header-organic::before,
+  .joko-home-shell header.relative.z-40::before,
   .joko-home-shell .joko-mineral-field::before {
     background-size: 1420px auto;
   }
@@ -109,7 +115,8 @@
 }
 
 @media (max-width: 767px) {
-  .joko-home-shell .joko-shell-header-organic::before {
+  .joko-home-shell .joko-shell-header-organic::before,
+  .joko-home-shell header.relative.z-40::before {
     background-size: 1120px auto;
     background-position: 48% 0;
     opacity: .48;
@@ -144,6 +151,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .joko-home-shell .joko-shell-header-organic::before,
+  .joko-home-shell header.relative.z-40::before,
   .joko-home-shell .joko-mineral-field::before {
     transform: none;
   }
