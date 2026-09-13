@@ -6,6 +6,12 @@
   background-color: rgb(var(--joko-shell-mineral));
 }
 
+.joko-home-shell .joko-shell-header-organic > *,
+.joko-home-shell header.relative.z-40 > * {
+  position: relative;
+  z-index: 1;
+}
+
 .joko-home-shell .joko-shell-header-organic::before,
 .joko-home-shell .joko-shell-header-organic::after,
 .joko-home-shell header.relative.z-40::before,
@@ -13,104 +19,99 @@
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
 }
 
 .joko-home-shell .joko-shell-header-organic::before,
 .joko-home-shell header.relative.z-40::before {
-  z-index: -2;
-  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21.svg');
+  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21-strong.svg');
   background-repeat: no-repeat;
   background-size: max(100%, 1600px) auto;
   background-position: center 0;
-  opacity: .72;
+  opacity: .98;
 }
 
 .joko-home-shell .joko-shell-header-organic::after,
 .joko-home-shell header.relative.z-40::after {
-  z-index: -1;
   background:
-    radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.32) 0 20%, transparent 42%),
-    radial-gradient(ellipse at 65% 8%, rgba(220,233,236,.44) 0 24%, transparent 53%),
-    radial-gradient(ellipse at 95% 110%, rgba(85,118,111,.08) 0 28%, transparent 55%);
+    radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.18) 0 18%, transparent 39%),
+    radial-gradient(ellipse at 68% 4%, rgba(220,233,236,.18) 0 21%, transparent 48%);
 }
 
 .joko-home-shell .joko-mineral-field {
-  --joko-structure-position: center -112px;
+  --joko-structure-position: center -102px;
   --joko-structure-size: max(100%, 1600px) auto;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background-color: rgb(var(--joko-shell-mineral));
   background-image:
-    radial-gradient(ellipse at 11% 13%, rgba(244,239,229,.34) 0 13%, transparent 34%),
-    radial-gradient(ellipse at 80% 3%, rgba(220,233,236,.5) 0 18%, transparent 43%),
-    radial-gradient(ellipse at 100% 55%, rgba(255,255,255,.18) 0 14%, transparent 38%),
-    radial-gradient(ellipse at 20% 93%, rgba(85,118,111,.08) 0 15%, transparent 42%);
+    radial-gradient(ellipse at 12% 12%, rgba(244,239,229,.16) 0 11%, transparent 30%),
+    radial-gradient(ellipse at 88% 6%, rgba(220,233,236,.16) 0 17%, transparent 38%);
+}
+
+.joko-home-shell .joko-mineral-field::before,
+.joko-home-shell .joko-mineral-field::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .joko-home-shell .joko-mineral-field::before {
   inset: -1px;
-  z-index: -2;
-  opacity: .9;
-  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21.svg');
+  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21-strong.svg');
   background-repeat: no-repeat;
   background-size: var(--joko-structure-size);
   background-position: var(--joko-structure-position);
+  opacity: 1;
 }
 
 .joko-home-shell .joko-mineral-field::after {
-  inset: 0;
-  z-index: -1;
-  opacity: 1;
   background:
-    radial-gradient(ellipse at 34% 24%, rgba(244,239,229,.16) 0 10%, transparent 28%),
-    radial-gradient(ellipse at 64% 53%, rgba(220,233,236,.23) 0 14%, transparent 37%),
-    radial-gradient(ellipse at 84% 80%, rgba(85,118,111,.045) 0 16%, transparent 42%);
+    radial-gradient(ellipse at 38% 25%, rgba(244,239,229,.08) 0 9%, transparent 24%),
+    radial-gradient(ellipse at 69% 58%, rgba(220,233,236,.10) 0 12%, transparent 30%);
 }
 
-/* The lower mineral bands reveal different parts of the same hand-drawn field
-   so the page feels observed and accumulated rather than tiled. */
-.joko-home-shell section.joko-mineral-field:nth-of-type(2) {
-  --joko-structure-position: 42% 43%;
-  --joko-structure-size: max(112%, 1780px) auto;
-}
-
-.joko-home-shell section.joko-mineral-field:nth-of-type(4) {
-  --joko-structure-position: 58% 78%;
-  --joko-structure-size: max(108%, 1720px) auto;
-}
-
-/* Keep reading zones calmer than the surrounding margins. */
 .joko-home-shell .joko-mineral-field > * {
   position: relative;
   z-index: 1;
 }
 
-.joko-home-shell .joko-mineral-field > *::before {
-  content: '';
-  position: absolute;
-  inset: -1.5rem -1rem;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: 2rem;
-  background: radial-gradient(ellipse at center, rgba(207,227,223,.22), transparent 72%);
+/* Lower mineral bands reveal different portions of the same drawing instead of
+   reading as a repeated wallpaper tile. */
+.joko-home-shell section.joko-mineral-field:nth-of-type(2) {
+  --joko-structure-position: 39% 42%;
+  --joko-structure-size: max(116%, 1840px) auto;
+}
+
+.joko-home-shell section.joko-mineral-field:nth-of-type(4) {
+  --joko-structure-position: 62% 79%;
+  --joko-structure-size: max(112%, 1780px) auto;
 }
 
 @media (max-width: 1023px) {
   .joko-home-shell .joko-shell-header-organic::before,
-  .joko-home-shell header.relative.z-40::before,
-  .joko-home-shell .joko-mineral-field::before {
+  .joko-home-shell header.relative.z-40::before {
     background-size: 1420px auto;
   }
 
   .joko-home-shell .joko-mineral-field {
-    --joko-structure-position: 48% -72px;
+    --joko-structure-position: 47% -66px;
+  }
+
+  .joko-home-shell .joko-mineral-field::before {
+    background-size: 1420px auto;
   }
 
   .joko-home-shell section.joko-mineral-field:nth-of-type(2) {
-    --joko-structure-position: 37% 48%;
+    --joko-structure-position: 35% 48%;
   }
 
   .joko-home-shell section.joko-mineral-field:nth-of-type(4) {
-    --joko-structure-position: 63% 76%;
+    --joko-structure-position: 67% 76%;
   }
 }
 
@@ -118,41 +119,24 @@
   .joko-home-shell .joko-shell-header-organic::before,
   .joko-home-shell header.relative.z-40::before {
     background-size: 1120px auto;
-    background-position: 48% 0;
-    opacity: .48;
+    background-position: 46% 0;
+    opacity: .74;
   }
 
   .joko-home-shell .joko-mineral-field::before {
     background-size: 1180px auto;
-    opacity: .62;
-  }
-
-  .joko-home-shell .joko-mineral-field::after {
-    opacity: .8;
+    opacity: .78;
   }
 
   .joko-home-shell .joko-mineral-field {
-    --joko-structure-position: 42% -44px;
+    --joko-structure-position: 40% -38px;
   }
 
   .joko-home-shell section.joko-mineral-field:nth-of-type(2) {
-    --joko-structure-position: 32% 46%;
+    --joko-structure-position: 29% 47%;
   }
 
   .joko-home-shell section.joko-mineral-field:nth-of-type(4) {
-    --joko-structure-position: 72% 79%;
-  }
-
-  .joko-home-shell .joko-mineral-field > *::before {
-    inset: -1rem -.5rem;
-    background: radial-gradient(ellipse at center, rgba(207,227,223,.3), transparent 70%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .joko-home-shell .joko-shell-header-organic::before,
-  .joko-home-shell header.relative.z-40::before,
-  .joko-home-shell .joko-mineral-field::before {
-    transform: none;
+    --joko-structure-position: 75% 80%;
   }
 }
