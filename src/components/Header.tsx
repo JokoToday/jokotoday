@@ -21,17 +21,16 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const notebookLabel = getLabel(
-    'nav.notebook',
+  const curiositiesLabel = getLabel(
+    'nav.curiosities',
     language,
-    language === 'th' ? 'สมุดบันทึก' : language === 'zh' ? '笔记本' : 'Notebook',
+    language === 'th' ? 'ความสงสัย' : language === 'zh' ? '好奇' : 'Curiosities',
   );
 
   const navItems = [
     { label: t.nav.home, value: 'home' },
-    { label: notebookLabel, value: 'notebook-today' },
     { label: t.nav.products, value: 'products' },
-    { label: t.nav.howItWorks, value: 'how-it-works' },
+    { label: curiositiesLabel, value: 'notebook-today' },
     { label: t.nav.about, value: 'about' },
   ];
 
