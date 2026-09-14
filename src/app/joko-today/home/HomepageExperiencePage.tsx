@@ -37,6 +37,10 @@ const copy = {
     life: 'Life is worth noticing.',
     jokomi: 'Jokomi looks after it.',
     jokomiAlt: 'Jokomi quietly reading a notebook.',
+    curiosityNotebook: 'The Curiosity Notebook',
+    curiosityLine1: 'Questions worth wondering about.',
+    curiosityLine2: 'Notice. Wonder. Ask. Understand.',
+    curiosityJokomi: 'Jokomi keeps the questions.',
   },
   th: {
     came: 'มาเพราะ',
@@ -54,6 +58,10 @@ const copy = {
     life: 'ชีวิตมีเรื่องให้สังเกตเสมอ',
     jokomi: 'Jokomi ช่วยดูแลมันอยู่',
     jokomiAlt: 'Jokomi กำลังอ่านสมุดบันทึกอย่างเงียบ ๆ',
+    curiosityNotebook: 'สมุดบันทึกความสงสัย',
+    curiosityLine1: 'คำถามที่น่าหยุดคิดและสงสัย',
+    curiosityLine2: 'สังเกต สงสัย ถาม เข้าใจ',
+    curiosityJokomi: 'Jokomi เก็บคำถามไว้',
   },
   zh: {
     came: '为了',
@@ -71,6 +79,10 @@ const copy = {
     life: '生活值得被留意。',
     jokomi: 'Jokomi 静静照看着它。',
     jokomiAlt: 'Jokomi 安静地读着一本笔记。',
+    curiosityNotebook: '好奇笔记本',
+    curiosityLine1: '值得继续琢磨的问题。',
+    curiosityLine2: '留意。好奇。提问。理解。',
+    curiosityJokomi: 'Jokomi 把问题收好。',
   },
 } as const;
 
@@ -86,6 +98,12 @@ export function HomepageExperiencePage({
   const { language } = useLanguage();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
+  const isCuriositySurface = notebookTarget.type === 'notebook.question'
+    || (notebookTarget.type === 'notebook.index' && notebookTarget.index === 'curiosities');
+  const notebookHeading = isCuriositySurface ? labels.curiosityNotebook : labels.notebook;
+  const notebookLine1 = isCuriositySurface ? labels.curiosityLine1 : labels.notebookLine1;
+  const notebookLine2 = isCuriositySurface ? labels.curiosityLine2 : labels.notebookLine2;
+  const notebookJokomi = isCuriositySurface ? labels.curiosityJokomi : labels.jokomi;
   const notebookContent = useNotebookContent();
   const [bakeryHeroImage, setBakeryHeroImage] = useState('/assets/home-experience/almond-croissant-v1.webp');
 
@@ -211,11 +229,11 @@ export function HomepageExperiencePage({
                   {labels.life}
                 </p>
                 <h2 className="mt-2 text-xl font-semibold uppercase tracking-[0.2em] text-[#303532] sm:text-2xl">
-                  {labels.notebook}
+                  {notebookHeading}
                 </h2>
                 <p className="mt-1 text-sm leading-5 text-[#303532]/75 sm:text-base">
-                  {labels.notebookLine1}<br />
-                  <span className="font-medium text-[#303532]">{labels.notebookLine2}</span>
+                  {notebookLine1}<br />
+                  <span className="font-medium text-[#303532]">{notebookLine2}</span>
                 </p>
 
                 <div className="mx-auto mt-3 flex max-w-sm items-center justify-center gap-3 sm:absolute sm:right-3 sm:top-1/2 sm:mt-0 sm:max-w-[12rem] sm:-translate-y-1/2 sm:justify-end sm:text-left">
@@ -228,7 +246,7 @@ export function HomepageExperiencePage({
                     decoding="async"
                   />
                   <p className="max-w-24 text-xs italic leading-4 text-[#304B45]/80 sm:text-[11px]">
-                    {labels.jokomi}
+                    {notebookJokomi}
                   </p>
                 </div>
               </div>

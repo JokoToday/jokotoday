@@ -1,6 +1,7 @@
 import { BookOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
+import { jokoTodayCuriosityFixture } from '../../../platform/curiosity';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
@@ -20,6 +21,8 @@ import {
   type NotebookTodayDocument,
 } from '../../../platform/notebook';
 import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
+import CuriosityNotebookIndex from './CuriosityNotebookIndex';
+import CuriosityNotebookPage from './CuriosityNotebookPage';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
 import NotebookReactionButton from './NotebookReactionButton';
 import NotebookTopTabs from './NotebookTopTabs';
@@ -488,6 +491,12 @@ export function NotebookExperienceReader({
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
   const { bundle } = content;
+  const curiosityEpisodes = jokoTodayCuriosityFixture.episodes;
+  const curiosityEpisode = target.type === 'notebook.question'
+    ? curiosityEpisodes.find((episode) => episode.slug === target.slug && episode.status === 'published') ?? null
+    : null;
+  const isCuriosityIndex = target.type === 'notebook.index' && target.index === 'curiosities';
+  const openCuriosity = (slug: string) => onNavigate({ type: 'notebook.question', slug });
   const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
   const [routeProductLoading, setRouteProductLoading] = useState(false);
   const [mostNoticed, setMostNoticed] = useState<NotebookMostNoticedItem[]>([]);
@@ -643,6 +652,21 @@ export function NotebookExperienceReader({
           featuredProductImageUrl={content.featuredProductImageUrl}
           hideNavigation
           onNotebookNavigate={onNavigate}
+        />
+      ) : isCuriosityIndex ? (
+        <CuriosityNotebookIndex
+          episodes={curiosityEpisodes}
+          locale={lang}
+          defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
+          onOpen={openCuriosity}
+        />
+      ) : curiosityEpisode ? (
+        <CuriosityNotebookPage
+          episode={curiosityEpisode}
+          episodes={curiosityEpisodes}
+          locale={lang}
+          defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
+          onOpen={openCuriosity}
         />
       ) : (
         <NotebookReader
