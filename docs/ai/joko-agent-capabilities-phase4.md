@@ -1,6 +1,6 @@
 # JOKO Agent Capabilities — Phase 4+
 
-Status: revised Phase 4A implementation candidate
+Status: Phase 4A accepted; Phase 4B implementation candidate
 
 ## Objective
 
@@ -137,22 +137,85 @@ Phase 4A is accepted only when all of the following pass:
 
 ## Phase 4B — Curiosity Candidate Intake
 
-Only after Phase 4A is stable, add candidate creation. The first mutating capability should be narrow and explicit, for example:
+Phase 4B adds the first mutating JOKO capability, but only on a separate unreviewed candidate surface. Canonical Curiosity Episodes remain read-only.
 
-- `curiosity_create_candidate`
+Initial MCP additions:
+
 - `curiosity_candidate_list`
 - `curiosity_candidate_read`
+- `curiosity_create_candidate`
 
-Candidate writes go only to a separate workspace such as:
+Candidate storage is intentionally separate from canonical knowledge:
 
 ```text
-Canonical:  /srv/joko/curiosity/current                      read-only
-Candidates: /home/jokotoday/workspace/candidates/curiosity   writable
+Canonical:  /srv/joko/curiosity/current                      root-owned, read-only
+Candidates: /home/jokotoday/workspace/candidates/curiosity   jokotoday-owned, staging only
 ```
 
-A candidate records the proposed question, requested scope, true origin type, host when relevant, and provenance notes. It is not a published Curiosity and cannot silently become canonical.
+Every candidate records:
 
-Initial write authority should be limited to `editorial` and `research`. `creative` remains read-only; `operator` may inspect workflow state later but should not invent editorial content merely because it orchestrates jobs.
+- generated immutable candidate ID
+- proposed question
+- explicit requested scope: `shared` or `joko`
+- true origin type
+- JOKO host when scope is local
+- provenance notes
+- creating Hermes profile
+- UTC creation time
+- status `candidate`
+
+Allowed origin types for this pilot are `editorial_prompt`, `research_discovery`, `user_question`, `host_observation`, and `import`. This is provenance, not editorial approval.
+
+Shared candidates reject a host-specific scope. JOKO/local candidates require `host=joko-today`. This prevents an agent from silently converting JOKO-specific facts into portable Shared knowledge.
+
+Candidate files are untrusted staging artifacts. Reading a candidate never upgrades its trust level and no Phase 4B tool can promote, approve, move into canonical storage, delete, or publish it.
+
+### Phase 4B capability matrix
+
+| Capability | editorial | research | creative | operator |
+| --- | --- | --- | --- | --- |
+| curiosity_list | read | read | read | read |
+| curiosity_search | read | read | read | read |
+| curiosity_read | read | read | read | read |
+| curiosity_candidate_list | read | read | none | none |
+| curiosity_candidate_read | read | read | none | none |
+| curiosity_create_candidate | create | create | none | none |
+| research_* | none | none | none | none |
+| creative_* | none | none | none | none |
+| editorial_submit_for_review | none | none | none | none |
+| publish_to_production | never | never | never | never |
+
+The MCP server enforces the profile role using `JOKO_PROFILE_ROLE` and Hermes also uses an explicit per-profile tool whitelist. This is deliberate defense in depth. `editorial` and `research` receive six JOKO tools; `creative` and `operator` remain on the three Phase 4A read-only tools.
+
+Example editorial/research MCP environment:
+
+```yaml
+env:
+  JOKO_CURIOSITY_ROOT: /srv/joko/curiosity/current
+  JOKO_CURIOSITY_CANDIDATE_ROOT: /home/jokotoday/workspace/candidates/curiosity
+  JOKO_PROFILE_ROLE: editorial  # or research
+```
+
+Creative/operator set only `JOKO_CURIOSITY_ROOT` plus their own role and do not receive the candidate root.
+
+### Phase 4B acceptance tests
+
+Phase 4B is accepted only when all of the following pass:
+
+1. Existing Phase 4A canonical read tests still pass.
+2. `editorial` and `research` discover exactly six JOKO tools.
+3. `creative` and `operator` still discover exactly three JOKO tools.
+4. Editorial and research can create valid Shared candidates.
+5. JOKO/local candidate creation requires explicit `host=joko-today`.
+6. Shared candidate creation rejects host-specific scope.
+7. Creative and operator cannot discover or call candidate tools.
+8. Candidate IDs are server-generated and candidate reads cannot accept arbitrary filesystem paths.
+9. Candidate writes are atomic, non-overwriting, and mode `0600`.
+10. Malformed/unmarked files in the candidate workspace are not treated as candidates.
+11. Canonical `/srv/joko/curiosity/current` remains non-writable by `jokotoday`.
+12. No candidate operation can publish or promote content.
+13. Hermes can create a test candidate through MCP, read it back, and continue reasoning through the JOKO AI Gateway.
+14. Phase 3 provider isolation and the no-persistent-JOKO-daemon rule remain unchanged.
 
 ## Phase 4C — Question Intelligence and Research
 
