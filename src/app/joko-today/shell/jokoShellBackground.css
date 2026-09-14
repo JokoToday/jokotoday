@@ -3,7 +3,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background-color: rgb(var(--joko-shell-mineral));
+  background-color: rgb(218 235 232);
 }
 
 .joko-home-shell .joko-shell-header-organic > *,
@@ -29,14 +29,14 @@
   background-repeat: no-repeat;
   background-size: max(100%, 1600px) auto;
   background-position: center 0;
-  opacity: .98;
+  opacity: .82;
 }
 
 .joko-home-shell .joko-shell-header-organic::after,
 .joko-home-shell header.relative.z-40::after {
   background:
-    radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.18) 0 18%, transparent 39%),
-    radial-gradient(ellipse at 68% 4%, rgba(220,233,236,.18) 0 21%, transparent 48%);
+    radial-gradient(ellipse at 9% -14%, rgba(244,239,229,.24) 0 18%, transparent 39%),
+    radial-gradient(ellipse at 68% 4%, rgba(235,244,245,.25) 0 21%, transparent 48%);
 }
 
 .joko-home-shell .joko-mineral-field {
@@ -49,6 +49,14 @@
   background-image:
     radial-gradient(ellipse at 12% 12%, rgba(244,239,229,.16) 0 11%, transparent 30%),
     radial-gradient(ellipse at 88% 6%, rgba(220,233,236,.16) 0 17%, transparent 38%);
+}
+
+.joko-home-shell .joko-bakery-hero-field {
+  background-color: rgb(218 235 232);
+  background-image:
+    radial-gradient(ellipse at 12% 8%, rgba(249,246,237,.25) 0 13%, transparent 33%),
+    radial-gradient(ellipse at 86% 9%, rgba(235,244,245,.24) 0 20%, transparent 42%),
+    linear-gradient(180deg, rgba(255,255,255,.07), transparent 48%);
 }
 
 .joko-home-shell .joko-mineral-field::before,
@@ -69,10 +77,20 @@
   opacity: 1;
 }
 
+.joko-home-shell .joko-bakery-hero-field::before {
+  opacity: .78;
+}
+
 .joko-home-shell .joko-mineral-field::after {
   background:
     radial-gradient(ellipse at 38% 25%, rgba(244,239,229,.08) 0 9%, transparent 24%),
     radial-gradient(ellipse at 69% 58%, rgba(220,233,236,.10) 0 12%, transparent 30%);
+}
+
+.joko-home-shell .joko-bakery-hero-field::after {
+  background:
+    radial-gradient(ellipse at 33% 22%, rgba(250,247,239,.15) 0 12%, transparent 30%),
+    radial-gradient(ellipse at 73% 61%, rgba(234,244,242,.14) 0 16%, transparent 34%);
 }
 
 .joko-home-shell .joko-mineral-field > * {
@@ -92,19 +110,46 @@
   --joko-structure-size: max(112%, 1780px) auto;
 }
 
-/* Bakery-first hero: the Curiosity Notebook should read as a companion object,
-   not as a third equal hero column. Keep the bakery image visually dominant. */
+/* Bakery-first hero: keep the Curiosity Notebook clearly secondary to the
+   bakery illustration while preserving a generous editorial text column. */
 @media (min-width: 1280px) {
-  .joko-home-shell section.joko-mineral-field:first-of-type > .max-w-7xl > .grid {
-    grid-template-columns: minmax(17rem, .92fr) minmax(31rem, 1.58fr) minmax(13.5rem, .50fr);
+  .joko-home-shell .joko-bakery-hero-field > .max-w-7xl > .grid {
+    grid-template-columns: minmax(18rem, .94fr) minmax(31rem, 1.62fr) minmax(13.5rem, .48fr);
     column-gap: 1rem;
   }
 
-  .joko-home-shell section.joko-mineral-field:first-of-type > .max-w-7xl > .grid > aside {
+  .joko-home-shell .joko-bakery-hero-field > .max-w-7xl > .grid > aside {
     width: 100%;
-    max-width: 17.5rem;
+    max-width: 17rem;
     justify-self: end;
   }
+}
+
+/* Route-aware floating Notebook stage. The homepage remains mounted and visible
+   beneath the translucent mineral veil. */
+.joko-floating-notebook {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  filter: drop-shadow(0 28px 54px rgba(38, 58, 52, .26));
+}
+
+.joko-floating-notebook #community-notebook-reader {
+  margin-right: 0;
+  padding: .2rem;
+}
+
+.joko-floating-notebook #community-notebook-reader > .relative.z-40 {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.joko-floating-notebook #community-notebook-reader > .relative.z-40 > .mb-2 {
+  margin-bottom: .35rem;
+  border: 1px solid rgba(122, 91, 61, .14);
+  border-radius: 1rem;
+  background: rgba(247, 240, 228, .90);
+  box-shadow: 0 8px 22px rgba(67, 54, 39, .08);
+  backdrop-filter: blur(8px);
 }
 
 @media (max-width: 1023px) {
@@ -135,12 +180,16 @@
   .joko-home-shell header.relative.z-40::before {
     background-size: 1120px auto;
     background-position: 46% 0;
-    opacity: .74;
+    opacity: .66;
   }
 
   .joko-home-shell .joko-mineral-field::before {
     background-size: 1180px auto;
     opacity: .78;
+  }
+
+  .joko-home-shell .joko-bakery-hero-field::before {
+    opacity: .62;
   }
 
   .joko-home-shell .joko-mineral-field {
@@ -153,5 +202,13 @@
 
   .joko-home-shell section.joko-mineral-field:nth-of-type(4) {
     --joko-structure-position: 75% 80%;
+  }
+
+  .joko-floating-notebook {
+    border-radius: 1.5rem;
+  }
+
+  .joko-floating-notebook #community-notebook-reader {
+    padding: 0;
   }
 }
