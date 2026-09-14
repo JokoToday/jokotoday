@@ -57,7 +57,23 @@ function assertEpisode(
     assertLocalizedText(episode.fullAnswer, bundle.site.supportedLocales, `episode(${episode.id}).fullAnswer`);
   }
 
-  if (episode.answerStatus === 'answered' && !episode.shortAnswer && !episode.fullAnswer) {
+  if (episode.steps) {
+    if (episode.steps.length === 0) {
+      throw new Error(`Curiosity ${episode.id} steps must not be empty`);
+    }
+    const stepIds = new Set<string>();
+    for (const step of episode.steps) {
+      assertNonEmpty(step.id, `episode(${episode.id}).step.id`);
+      if (stepIds.has(step.id)) {
+        throw new Error(`Curiosity ${episode.id} has duplicate step id: ${step.id}`);
+      }
+      stepIds.add(step.id);
+      assertLocalizedText(step.title, bundle.site.supportedLocales, `step(${step.id}).title`);
+      assertLocalizedText(step.body, bundle.site.supportedLocales, `step(${step.id}).body`);
+    }
+  }
+
+  if (episode.answerStatus === 'answered' && !episode.shortAnswer && !episode.fullAnswer && !episode.steps?.length) {
     throw new Error(`Answered curiosity ${episode.id} requires answer content`);
   }
 

@@ -1,11 +1,9 @@
 import {
   ArrowRight,
-  CalendarDays,
   Heart,
-  NotebookPen,
-  Store,
   Sparkles,
 } from 'lucide-react';
+import { CuriosityEmbed, jokoTodayCuriosityFixture } from '../../../platform/curiosity';
 import { Container } from '../../../platform/design-system';
 import {
   getNotebookLocalizedText,
@@ -27,13 +25,6 @@ type LanguageCode = 'en' | 'th' | 'zh';
 
 const copy = {
   en: {
-    howTitle: 'How it works',
-    steps: [
-      ['Choose', 'Browse the week’s menu and find what you love.'],
-      ['Pre-Order', 'Place your order before the cut-off for your pickup day.'],
-      ['Pick Up', 'Pick up your order at your chosen location on your scheduled day.'],
-      ['Enjoy', 'Good bread, good people, good moments.'],
-    ],
     helpTitle: 'Need a little help choosing?',
     helpIntro: 'What do people in our community actually like?',
     favoriteLabel: 'A favourite from the notebook',
@@ -54,13 +45,6 @@ const copy = {
     seeMore: 'See more finds',
   },
   th: {
-    howTitle: 'ทำงานอย่างไร',
-    steps: [
-      ['เลือก', 'ดูเมนูประจำสัปดาห์แล้วเลือกสิ่งที่คุณชอบ'],
-      ['สั่งล่วงหน้า', 'สั่งก่อนเวลาปิดรับออเดอร์ของวันรับสินค้า'],
-      ['มารับ', 'รับออเดอร์ที่จุดรับและวันที่คุณเลือกไว้'],
-      ['เพลิดเพลิน', 'ขนมปังดี ๆ ผู้คนดี ๆ และช่วงเวลาดี ๆ'],
-    ],
     helpTitle: 'อยากได้ตัวช่วยเลือกนิดหน่อยไหม?',
     helpIntro: 'คนในชุมชนของเราชอบอะไรกันจริง ๆ?',
     favoriteLabel: 'ของโปรดจากสมุดบันทึก',
@@ -81,13 +65,6 @@ const copy = {
     seeMore: 'ดูสิ่งที่พบเพิ่มเติม',
   },
   zh: {
-    howTitle: '怎样取到面包',
-    steps: [
-      ['挑选', '看看本周菜单，找到你喜欢的。'],
-      ['预订', '在取货日的截止时间前下单。'],
-      ['取货', '按约定日期到你选择的地点领取订单。'],
-      ['享用', '好面包，好人，好时光。'],
-    ],
     helpTitle: '需要一点挑选灵感吗？',
     helpIntro: '社区里的人到底喜欢什么？',
     favoriteLabel: '来自笔记本的偏爱',
@@ -109,7 +86,9 @@ const copy = {
   },
 } as const;
 
-const howIcons = [NotebookPen, CalendarDays, Store, Heart] as const;
+const orderingCuriosity = jokoTodayCuriosityFixture.episodes.find(
+  (episode) => episode.id === 'curiosity-joko-ordering',
+);
 
 function SectionHeading({ number, title, intro }: { number: number; title: string; intro?: string }) {
   return (
@@ -181,31 +160,18 @@ export function HomepageLowerSections({
 
   return (
     <div>
-      <section className="joko-paper-band py-12 sm:py-14">
-        <Container width="wide">
-          <SectionHeading number={1} title={labels.howTitle} />
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-3">
-            {labels.steps.map(([title, body], index) => {
-              const Icon = howIcons[index];
-              return (
-                <article key={title} className="relative px-4 py-3 text-center xl:px-6">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-[#55766F]/20 bg-white/30 text-[#466861]">
-                    <Icon className="h-8 w-8" strokeWidth={1.4} aria-hidden="true" />
-                  </div>
-                  <div className="mb-2 flex items-center justify-center gap-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#304B45] text-sm font-semibold text-[#F4EFE5]">{index + 1}</span>
-                    <h3 className="text-xl font-semibold text-[#303532]">{title}</h3>
-                  </div>
-                  <p className="mx-auto max-w-[15rem] text-sm leading-5 text-[#303532]/68">{body}</p>
-                  {index < labels.steps.length - 1 && (
-                    <ArrowRight className="absolute -right-2 top-10 hidden h-5 w-5 text-[#55766F]/45 xl:block" aria-hidden="true" />
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </Container>
-      </section>
+      {orderingCuriosity && (
+        <section className="joko-paper-band py-12 sm:py-14">
+          <Container width="wide">
+            <CuriosityEmbed
+              episode={orderingCuriosity}
+              locale={language}
+              defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
+              variant="homepage-explainer"
+            />
+          </Container>
+        </section>
+      )}
 
       <section className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-14">
         <Container width="wide">

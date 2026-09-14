@@ -46,6 +46,12 @@ export interface CuriosityAnswerGuide {
   name: CuriosityLocalizedText;
 }
 
+export interface CuriosityAnswerStep {
+  id: string;
+  title: CuriosityLocalizedText;
+  body: CuriosityLocalizedText;
+}
+
 export interface CuriosityRelationRef {
   curiosityId: string;
   relation: 'related' | 'follow-up' | 'background' | 'contrasts-with';
@@ -68,6 +74,7 @@ export interface CuriosityEpisode {
   summary: CuriosityLocalizedText;
   shortAnswer?: CuriosityLocalizedText;
   fullAnswer?: CuriosityLocalizedText;
+  steps?: readonly CuriosityAnswerStep[];
   answerStatus: CuriosityAnswerStatus;
 
   origin: CuriosityOrigin;
