@@ -31,6 +31,8 @@ interface NotebookExperienceReaderProps {
   onBack: () => void;
   onClose: () => void;
   onOpen: () => void;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
   content: ResolvedNotebookContent;
   onCommerceNavigate?: (page: string) => void;
 }
@@ -481,6 +483,8 @@ export function NotebookExperienceReader({
   onBack,
   onClose,
   onOpen,
+  expanded = false,
+  onToggleExpanded,
   content,
   onCommerceNavigate,
 }: NotebookExperienceReaderProps) {
@@ -632,6 +636,8 @@ export function NotebookExperienceReader({
         onNavigate={onNavigate}
         onBack={onBack}
         onClose={onClose}
+        expanded={expanded}
+        onToggleExpanded={onToggleExpanded}
       />
 
       {target.type === 'notebook.today' ? (

@@ -88,6 +88,7 @@ export function HomepageExperiencePage({
   const labels = copy[lang];
   const notebookContent = useNotebookContent();
   const [bakeryHeroImage, setBakeryHeroImage] = useState('/assets/home-experience/almond-croissant-v1.webp');
+  const [notebookExpanded, setNotebookExpanded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -109,6 +110,11 @@ export function HomepageExperiencePage({
     window.document.querySelector('footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const closeNotebook = () => {
+    setNotebookExpanded(false);
+    onNotebookClose?.();
+  };
+
   const bakeryImages = [
     { src: bakeryHeroImage, position: '50% 32%' },
     { src: '/assets/home-experience/almond-croissant-v1.webp', position: '50% 50%' },
@@ -119,8 +125,22 @@ export function HomepageExperiencePage({
     <>
       <section className="joko-mineral-field border-b border-[#55766F]/15 pb-10 pt-5 sm:pb-14 sm:pt-7">
         <Container width="wide">
-          <div className="grid gap-10 xl:grid-cols-[minmax(16rem,0.34fr)_minmax(0,1fr)] xl:items-start xl:gap-10 2xl:gap-12">
-            <div className="relative z-10 max-w-md xl:pt-4">
+          <div
+            className={[
+              'grid gap-10 transition-[grid-template-columns,gap] duration-500 xl:items-start',
+              notebookExpanded
+                ? 'xl:grid-cols-[minmax(0,0fr)_minmax(0,1fr)] xl:gap-0 2xl:gap-0'
+                : 'xl:grid-cols-[minmax(0,37fr)_minmax(0,63fr)] xl:gap-10 2xl:gap-12',
+            ].join(' ')}
+          >
+            <div
+              className={[
+                'relative z-10 max-w-md transition-[opacity,transform] duration-300 xl:min-w-0 xl:pt-4',
+                notebookExpanded
+                  ? 'xl:pointer-events-none xl:overflow-hidden xl:-translate-x-4 xl:opacity-0'
+                  : 'xl:translate-x-0 xl:opacity-100',
+              ].join(' ')}
+            >
               <h1 className="text-[2.7rem] font-medium leading-[1.03] tracking-[-0.035em] text-[#303532] sm:text-[3.4rem] xl:text-[3.55rem]">
                 <span className="block">
                   {labels.came}{' '}
@@ -205,7 +225,7 @@ export function HomepageExperiencePage({
               </div>
             </div>
 
-            <div className="relative z-10 min-w-0">
+            <div className="relative z-10 min-w-0 transition-[width] duration-500">
               <div className="relative mb-4 min-h-24 px-2 text-center sm:mb-5 sm:min-h-28">
                 <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#466861]/80 sm:text-xs">
                   {labels.life}
@@ -238,8 +258,10 @@ export function HomepageExperiencePage({
                 closed={notebookClosed}
                 onNavigate={onNotebookNavigate ?? (() => undefined)}
                 onBack={onNotebookBack ?? (() => undefined)}
-                onClose={onNotebookClose ?? (() => undefined)}
+                onClose={closeNotebook}
                 onOpen={onNotebookOpen ?? (() => undefined)}
+                expanded={notebookExpanded}
+                onToggleExpanded={() => setNotebookExpanded((expanded) => !expanded)}
                 content={notebookContent}
                 onCommerceNavigate={onNavigate}
               />
