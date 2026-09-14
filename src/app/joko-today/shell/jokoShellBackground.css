@@ -92,6 +92,21 @@
   --joko-structure-size: max(112%, 1780px) auto;
 }
 
+/* Bakery-first hero: the Curiosity Notebook should read as a companion object,
+   not as a third equal hero column. Keep the bakery image visually dominant. */
+@media (min-width: 1280px) {
+  .joko-home-shell section.joko-mineral-field:first-of-type > .max-w-7xl > .grid {
+    grid-template-columns: minmax(17rem, .92fr) minmax(31rem, 1.58fr) minmax(13.5rem, .50fr);
+    column-gap: 1rem;
+  }
+
+  .joko-home-shell section.joko-mineral-field:first-of-type > .max-w-7xl > .grid > aside {
+    width: 100%;
+    max-width: 17.5rem;
+    justify-self: end;
+  }
+}
+
 @media (max-width: 1023px) {
   .joko-home-shell .joko-shell-header-organic::before,
   .joko-home-shell header.relative.z-40::before {
