@@ -94,6 +94,44 @@ const fixture = {
         th: 'ดูเมนูที่เปิดขาย เลือกวันและจุดรับที่ใช้ได้ สั่งล่วงหน้าก่อนเวลาปิดรับ แล้วมารับออเดอร์ตามที่นัดไว้',
         zh: '浏览当前菜单，选择可用的取货日期和地点，在截止时间前完成预订，并按约定领取订单。',
       },
+      steps: [
+        {
+          id: 'choose',
+          title: { en: 'Choose', th: 'เลือก', zh: '挑选' },
+          body: {
+            en: 'Browse the week’s menu and find what you love.',
+            th: 'ดูเมนูประจำสัปดาห์แล้วเลือกสิ่งที่คุณชอบ',
+            zh: '看看本周菜单，找到你喜欢的。',
+          },
+        },
+        {
+          id: 'pre-order',
+          title: { en: 'Pre-Order', th: 'สั่งล่วงหน้า', zh: '预订' },
+          body: {
+            en: 'Place your order before the cut-off for your pickup day.',
+            th: 'สั่งก่อนเวลาปิดรับออเดอร์ของวันรับสินค้า',
+            zh: '在取货日的截止时间前下单。',
+          },
+        },
+        {
+          id: 'pick-up',
+          title: { en: 'Pick Up', th: 'มารับ', zh: '取货' },
+          body: {
+            en: 'Pick up your order at your chosen location on your scheduled day.',
+            th: 'รับออเดอร์ที่จุดรับและวันที่คุณเลือกไว้',
+            zh: '按约定日期到你选择的地点领取订单。',
+          },
+        },
+        {
+          id: 'enjoy',
+          title: { en: 'Enjoy', th: 'เพลิดเพลิน', zh: '享用' },
+          body: {
+            en: 'Good bread, good people, good moments.',
+            th: 'ขนมปังดี ๆ ผู้คนดี ๆ และช่วงเวลาดี ๆ',
+            zh: '好面包，好人，好时光。',
+          },
+        },
+      ],
       answerStatus: 'answered',
       origin: { type: 'system', externalRef: 'joko-today:ordering-flow' },
       topics: ['joko-today', 'ordering', 'pickup'],
