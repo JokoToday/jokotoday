@@ -1,6 +1,6 @@
 import { ArrowLeft, Eye, X } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
-import type { NotebookIndexKind, NotebookRouteTarget } from '../../../platform/notebook';
+import type { NotebookRouteTarget } from '../../../platform/notebook';
 
 interface NotebookTopTabsProps {
   target: NotebookRouteTarget;
@@ -10,20 +10,17 @@ interface NotebookTopTabsProps {
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
-type TabKey = 'today' | NotebookIndexKind | 'history';
+type TabKey = 'today' | 'curiosities' | 'history';
 
 const copy = {
-  en: { back: 'Back', noticed: 'Most noticed', close: 'Close for now', today: 'Today', people: 'People', curiosities: 'Curiosities', places: 'Places', products: 'Products', history: 'History' },
-  th: { back: 'ย้อนกลับ', noticed: 'ถูกสังเกตมากที่สุด', close: 'ปิดไว้ก่อน', today: 'วันนี้', people: 'ผู้คน', curiosities: 'ความสงสัย', places: 'สถานที่', products: 'สินค้า', history: 'ย้อนหลัง' },
-  zh: { back: '返回', noticed: '最受留意', close: '先合上', today: '今日', people: '人物', curiosities: '好奇', places: '地点', products: '产品', history: '往期' },
+  en: { back: 'Back', noticed: 'Most noticed', close: 'Close for now', today: 'Today', curiosities: 'All curiosities', history: 'History' },
+  th: { back: 'ย้อนกลับ', noticed: 'ถูกสังเกตมากที่สุด', close: 'ปิดไว้ก่อน', today: 'วันนี้', curiosities: 'ความสงสัยทั้งหมด', history: 'ย้อนหลัง' },
+  zh: { back: '返回', noticed: '最受留意', close: '先合上', today: '今日', curiosities: '全部好奇', history: '往期' },
 } as const;
 
 const tabStyles: Record<TabKey, string> = {
   today: 'border-amber-200 bg-amber-100/90',
-  people: 'border-rose-200 bg-rose-100/85',
   curiosities: 'border-sky-200 bg-sky-100/85',
-  places: 'border-emerald-200 bg-emerald-100/80',
-  products: 'border-orange-200 bg-orange-100/85',
   history: 'border-slate-300 bg-slate-100/90',
 };
 
@@ -31,16 +28,13 @@ function activeTab(target: NotebookRouteTarget): TabKey | null {
   if (target.type === 'notebook.today') return 'today';
   if (target.type === 'notebook.history') return 'history';
   if (target.type === 'notebook.noticed') return null;
-  if (target.type === 'notebook.person') return 'people';
-  if (target.type === 'notebook.product') return 'products';
-  if (target.type === 'notebook.question') return 'curiosities';
-  return target.index;
+  return 'curiosities';
 }
 
 function targetForTab(tab: TabKey): NotebookRouteTarget {
   if (tab === 'today') return { type: 'notebook.today' };
   if (tab === 'history') return { type: 'notebook.history' };
-  return { type: 'notebook.index', index: tab };
+  return { type: 'notebook.index', index: 'curiosities' };
 }
 
 export function NotebookTopTabs({ target, onNavigate, onBack, onClose }: NotebookTopTabsProps) {
@@ -49,7 +43,7 @@ export function NotebookTopTabs({ target, onNavigate, onBack, onClose }: Noteboo
   const labels = copy[lang];
   const selected = activeTab(target);
   const noticedActive = target.type === 'notebook.noticed';
-  const tabs: TabKey[] = ['today', 'people', 'curiosities', 'places', 'products', 'history'];
+  const tabs: TabKey[] = ['today', 'curiosities', 'history'];
 
   return (
     <div className="relative z-40 mx-auto max-w-[68rem] px-2 sm:px-4">

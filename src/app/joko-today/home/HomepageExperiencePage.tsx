@@ -40,7 +40,7 @@ const copy = {
     headlineAccent: 'brighter',
     headline3: 'tomorrow.',
     intro: 'Naturally leavened. Thoughtfully baked. Pre-order online and pick up at our locations across town.',
-    products: 'See our bakery products',
+    products: 'Explore the Bakery',
     howItWorks: 'How it works',
     realIngredients: 'Real ingredients',
     preorderPickup: 'Pre-order & pick up',
@@ -63,7 +63,7 @@ const copy = {
     headlineAccent: 'ที่สดใสกว่า',
     headline3: '',
     intro: 'หมักตามธรรมชาติ อบอย่างตั้งใจ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของของเรา',
-    products: 'ดูสินค้าเบเกอรี่',
+    products: 'สำรวจเบเกอรี่',
     howItWorks: 'วิธีสั่งซื้อ',
     realIngredients: 'วัตถุดิบจริง',
     preorderPickup: 'สั่งล่วงหน้าและรับของ',
@@ -86,7 +86,7 @@ const copy = {
     headlineAccent: '更明亮的',
     headline3: '明天。',
     intro: '自然发酵，用心烘焙。线上预订，到我们的取货点领取新鲜出炉的面包。',
-    products: '查看烘焙产品',
+    products: '探索烘焙坊',
     howItWorks: '如何订购',
     realIngredients: '真实食材',
     preorderPickup: '预订并取货',
@@ -172,7 +172,7 @@ export function HomepageExperiencePage({
   };
 
   const heroSerif = lang === 'en' ? { fontFamily: 'var(--joko-font-display)' } : undefined;
-  const notebookSerif = lang === 'en' ? { fontFamily: 'var(--joko-font-display)' } : undefined;
+  const notebookFont = { fontFamily: 'var(--joko-font-notebook)' };
 
   const floatingNotebook = notebookOpen && typeof document !== 'undefined'
     ? createPortal(
@@ -211,14 +211,14 @@ export function HomepageExperiencePage({
     <>
       <section className="joko-mineral-field joko-bakery-hero-field border-b border-[#55766F]/14 pb-10 pt-3 sm:pb-12 sm:pt-5 xl:pb-10">
         <Container width="wide">
-          <div className="relative grid gap-8 lg:grid-cols-2 lg:items-center xl:min-h-[38rem] xl:grid-cols-[minmax(18rem,.96fr)_minmax(31rem,1.72fr)_minmax(13.5rem,.52fr)] xl:gap-4 2xl:min-h-[40rem] 2xl:gap-6">
-            <div className="relative z-10 max-w-[28rem] lg:pr-4 xl:self-center">
+          <div className="relative grid gap-8 lg:grid-cols-2 lg:items-center xl:min-h-[34rem] xl:grid-cols-[minmax(17rem,.91fr)_minmax(32rem,1.76fr)_minmax(13.5rem,.50fr)] xl:items-start xl:gap-3 2xl:min-h-[36rem] 2xl:gap-5">
+            <div className="relative z-10 max-w-[27rem] lg:pr-4 xl:self-start xl:pt-8 2xl:pt-10">
               <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
                 {labels.kicker}
               </p>
 
               <h1
-                className="mt-5 text-[3.45rem] font-bold leading-[.92] tracking-[-0.045em] text-[#292D2B] sm:text-[4.4rem] lg:text-[4.85rem] xl:text-[4.65rem] 2xl:text-[5.15rem]"
+                className="mt-4 text-[2.85rem] font-bold leading-[.92] tracking-[-0.042em] text-[#292D2B] sm:text-[3.5rem] lg:text-[3.85rem] xl:text-[3.72rem] 2xl:text-[4.08rem]"
                 style={heroSerif}
               >
                 <span className="block">{labels.headline1}</span>
@@ -277,13 +277,13 @@ export function HomepageExperiencePage({
               </p>
             </div>
 
-            <div className="relative z-10 min-w-0 xl:self-center">
+            <div className="relative z-10 min-w-0 xl:-mt-4 xl:self-start 2xl:-mt-6">
               <div className="relative mx-auto max-w-[47rem] xl:max-w-none">
                 <div className="pointer-events-none absolute inset-x-[9%] bottom-[7%] h-[18%] rounded-full bg-[#55766F]/13 blur-3xl" aria-hidden="true" />
                 <img
                   src={BAKERY_HERO}
                   alt={labels.bakeryAlt}
-                  className="relative z-10 mx-auto max-h-[44rem] w-full object-contain drop-shadow-[0_24px_34px_rgba(48,75,69,0.10)] xl:scale-[1.04]"
+                  className="joko-bakery-hero-image relative z-10 mx-auto max-h-[44rem] w-full object-contain drop-shadow-[0_24px_34px_rgba(48,75,69,0.10)] xl:scale-[1.07] 2xl:scale-[1.09]"
                   decoding="async"
                   loading="eager"
                 />
@@ -302,33 +302,33 @@ export function HomepageExperiencePage({
               </div>
             </div>
 
-            <aside className="relative z-10 mx-auto w-full max-w-[17rem] lg:col-span-2 xl:col-span-1 xl:self-center xl:justify-self-end">
+            <aside className="relative z-10 mx-auto w-full max-w-[16.5rem] lg:col-span-2 xl:col-span-1 xl:mt-16 xl:self-start xl:justify-self-end 2xl:mt-14">
               <button
                 type="button"
                 onClick={openNotebook}
                 aria-haspopup="dialog"
-                className="group relative block min-h-[22rem] w-full text-left focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-4 focus:ring-offset-[#D9ECE9]"
+                className="joko-notebook-cover group relative block min-h-[22rem] w-full text-left focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-4 focus:ring-offset-[#D9ECE9]"
               >
-                <span className="absolute inset-[10px_-7px_-10px_8px] rounded-[1.35rem] border border-[#B9A98F]/40 bg-[#EAE1D2]/75 shadow-[0_18px_36px_rgba(48,53,50,0.12)]" aria-hidden="true" />
-                <span className="absolute inset-[5px_-3px_-5px_4px] rounded-[1.35rem] border border-[#C8B99D]/45 bg-[#F0E8DA]" aria-hidden="true" />
-                <span className="absolute inset-0 rounded-[1.35rem] border border-[#B9A98F]/55 bg-[#F7F0E4] shadow-[0_20px_42px_rgba(48,75,69,0.16)] transition group-hover:-translate-y-1 group-hover:shadow-[0_26px_55px_rgba(48,75,69,0.20)]" aria-hidden="true" />
+                <span className="absolute inset-[9px_-8px_-10px_9px] rounded-[1.35rem] border border-[#B9A98F]/38 bg-[#E9DFCF]/82 shadow-[0_18px_36px_rgba(48,53,50,0.12)]" aria-hidden="true" />
+                <span className="absolute inset-[4px_-4px_-5px_5px] rounded-[1.35rem] border border-[#C8B99D]/42 bg-[#F0E7D7]" aria-hidden="true" />
+                <span className="absolute inset-0 rounded-[1.35rem] border border-[#B7A589]/58 bg-[#F8F1E6] shadow-[0_20px_42px_rgba(48,75,69,0.16)] transition group-hover:-translate-y-1 group-hover:shadow-[0_26px_55px_rgba(48,75,69,0.20)]" aria-hidden="true" />
 
-                {[17, 31, 45, 59, 73].map((top) => (
+                {[14, 27, 40, 53, 66, 79].map((top) => (
                   <span
                     key={top}
-                    className="absolute -left-2.5 z-20 h-2.5 w-5 rounded-full border-2 border-[#89633C] bg-[#D5B374] shadow-sm"
+                    className="absolute -left-3 z-20 h-2.5 w-6 rounded-full border-2 border-[#77522E] bg-[#D7B77C] shadow-[0_1px_2px_rgba(70,45,25,.25)]"
                     style={{ top: `${top}%` }}
                     aria-hidden="true"
                   />
                 ))}
 
-                <span className="relative z-10 flex min-h-[22rem] flex-col px-6 pb-5 pt-7">
+                <span className="relative z-10 flex min-h-[22rem] flex-col px-6 pb-5 pl-7 pt-7">
                   <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[#7A5B3D]">
                     {labels.notebookEyebrow}
                   </span>
                   <span
-                    className="mt-4 flex items-start justify-between gap-3 text-[2.15rem] font-bold leading-[.95] tracking-[-0.035em] text-[#292D2B]"
-                    style={notebookSerif}
+                    className="mt-4 flex items-start justify-between gap-3 text-[2.05rem] font-medium leading-[.95] tracking-[-0.02em] text-[#292D2B]"
+                    style={notebookFont}
                   >
                     <span>
                       <span className="block">{labels.notebookTitle1}</span>
@@ -337,12 +337,12 @@ export function HomepageExperiencePage({
                     <ArrowRight className="mt-3 h-5 w-5 shrink-0 text-[#7A3D1B] transition group-hover:translate-x-1" aria-hidden="true" />
                   </span>
 
-                  <span className="mt-5 block text-[13px] leading-5 text-[#303532]/72">
+                  <span className="mt-5 block text-[14px] leading-5 text-[#303532]/72">
                     {labels.notebookIntro}
                   </span>
 
                   <span
-                    className="mt-6 block -rotate-3 text-sm italic leading-5 text-[#4E7770]/76"
+                    className="mt-6 block -rotate-3 text-[15px] leading-5 text-[#4E7770]/78"
                     style={{ fontFamily: 'var(--joko-font-notebook)' }}
                   >
                     {labels.notebookNote}
@@ -352,6 +352,8 @@ export function HomepageExperiencePage({
                     <BookOpen className="absolute bottom-1 right-2 h-11 w-11 rotate-[-8deg] text-[#816B56]/52" strokeWidth={1.2} />
                     <Coffee className="absolute bottom-4 right-10 h-9 w-9 text-[#76583F]/66" strokeWidth={1.25} />
                     <Flower2 className="absolute bottom-8 right-0 h-10 w-10 rotate-6 text-[#68856B]/60" strokeWidth={1.2} />
+                    <Leaf className="absolute -bottom-3 -right-5 h-12 w-12 rotate-[22deg] text-[#6D896F]/42" strokeWidth={1.1} />
+                    <Leaf className="absolute bottom-8 -right-8 h-10 w-10 rotate-[-18deg] text-[#6D896F]/34" strokeWidth={1.1} />
                   </span>
                 </span>
               </button>
