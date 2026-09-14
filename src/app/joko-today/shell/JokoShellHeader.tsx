@@ -7,7 +7,7 @@ import { Container } from '../../../platform/design-system';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
-export type JokoShellSection = 'today' | 'bakery' | 'about';
+export type JokoShellSection = 'today' | 'curiosities' | 'bakery' | 'about';
 
 type JokoShellHeaderProps = {
   onNavigate: (page: string) => void;
@@ -69,7 +69,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, page: 'home', activeKey: 'today' },
     { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
-    { key: 'curiosities', label: labels.curiosities, notebookPath: '/notebook/today' },
+    { key: 'curiosities', label: labels.curiosities, notebookPath: '/notebook/curiosities/today', activeKey: 'curiosities' },
     { key: 'about', label: labels.about, page: 'about', activeKey: 'about' },
   ];
 

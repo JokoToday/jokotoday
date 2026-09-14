@@ -60,6 +60,7 @@ export type NotebookEntry =
   | NotebookQuestionEntry;
 
 export type NotebookRouteTarget =
+  | { type: 'notebook.collection'; slug: string }
   | { type: 'notebook.today' }
   | { type: 'notebook.history' }
   | { type: 'notebook.noticed' }

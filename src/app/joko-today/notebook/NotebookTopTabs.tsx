@@ -25,6 +25,7 @@ const tabStyles: Record<TabKey, string> = {
 };
 
 function activeTab(target: NotebookRouteTarget): TabKey | null {
+  if (target.type === 'notebook.collection') return null;
   if (target.type === 'notebook.today') return 'today';
   if (target.type === 'notebook.history') return 'history';
   if (target.type === 'notebook.noticed') return null;

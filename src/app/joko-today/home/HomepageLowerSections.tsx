@@ -29,10 +29,10 @@ const copy = {
     helpIntro: 'What do people in our community actually like?',
     favoriteLabel: 'A favourite from the notebook',
     moreFavorites: 'More favourites appear when they become real notebook entries — never just to fill the page.',
-    seeFavorites: 'See all favourites',
+    seeFavorites: 'Questions from people',
     newTitle: "New from the baker’s table",
     newIntro: 'What have the bakers been experimenting with?',
-    openNote: 'See the notebook note',
+    openNote: 'See in the Bakery',
     bakeryPrompt: 'Curious what else is baking this week?',
     browseBakery: 'Browse the Bakery',
     beyondTitle: 'Not bread. Still good.',
@@ -49,10 +49,10 @@ const copy = {
     helpIntro: 'คนในชุมชนของเราชอบอะไรกันจริง ๆ?',
     favoriteLabel: 'ของโปรดจากสมุดบันทึก',
     moreFavorites: 'ของโปรดจะค่อย ๆ เพิ่มเมื่อกลายเป็นบันทึกจริง ไม่เติมเพื่อให้หน้าดูเต็ม',
-    seeFavorites: 'ดูของโปรดทั้งหมด',
+    seeFavorites: 'คำถามจากผู้คน',
     newTitle: 'ของใหม่จากโต๊ะคนทำขนม',
     newIntro: 'ช่วงนี้คนทำขนมกำลังลองอะไรอยู่?',
-    openNote: 'เปิดบันทึกนี้',
+    openNote: 'ดูในเบเกอรี่',
     bakeryPrompt: 'อยากรู้ว่าสัปดาห์นี้มีอะไรอยู่ในเตาอีกไหม?',
     browseBakery: 'ดูเมนูเบเกอรี่',
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
@@ -69,10 +69,10 @@ const copy = {
     helpIntro: '社区里的人到底喜欢什么？',
     favoriteLabel: '来自笔记本的偏爱',
     moreFavorites: '只有当它们成为真实笔记内容时，更多偏爱才会出现。',
-    seeFavorites: '看看更多偏爱',
+    seeFavorites: '看看大家的问题',
     newTitle: '烘焙桌上的新东西',
     newIntro: '最近烘焙师在试什么？',
-    openNote: '打开这则笔记',
+    openNote: '去烘焙坊查看',
     bakeryPrompt: '想看看这周还有什么正在烤吗？',
     browseBakery: '看看烘焙坊',
     beyondTitle: '不是面包，也很好。',
@@ -219,7 +219,7 @@ export function HomepageLowerSections({
               </div>
               <button
                 type="button"
-                onClick={() => onNotebookNavigate?.({ type: 'notebook.index', index: 'people' })}
+                onClick={() => onNotebookNavigate?.({ type: 'notebook.collection', slug: 'people' })}
                 className="mt-6 inline-flex items-center gap-2 self-start border-b border-[#C76624]/60 pb-0.5 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624] hover:text-[#7A3D1B] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
               >
                 {labels.seeFavorites}<ArrowRight className="h-4 w-4" />
@@ -246,7 +246,7 @@ export function HomepageLowerSections({
                   <p className="mt-3 text-sm leading-6 text-[#303532]/70">{text(featuredProduct.summary)}</p>
                   <button
                     type="button"
-                    onClick={() => onNotebookNavigate?.({ type: 'notebook.product', slug: featuredProduct.slug })}
+                    onClick={() => onNavigate(`product/${featuredProduct.slug}`)}
                     className="mt-5 inline-flex items-center gap-2 self-start rounded-lg bg-[#C76624] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#AE5219] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
                   >
                     {labels.openNote}<ArrowRight className="h-4 w-4" />
@@ -285,7 +285,7 @@ export function HomepageLowerSections({
                   <h3 className="text-base font-semibold leading-6 text-[#303532]">{title}</h3>
                   <button
                     type="button"
-                    onClick={() => onNotebookNavigate?.({ type: 'notebook.today' })}
+                    onClick={() => onNotebookNavigate?.({ type: 'notebook.collection', slug: 'everyday' })}
                     className="mt-3 inline-flex items-center gap-1 border-b border-[#C76624]/45 pb-0.5 text-xs font-medium text-[#A44F1D] transition hover:border-[#C76624] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
                   >
                     {labels.seeMore}<ArrowRight className="h-3.5 w-3.5" />
