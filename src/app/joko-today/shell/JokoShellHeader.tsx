@@ -15,7 +15,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: string;
+  key: 'home' | 'products' | 'curiosities' | 'about';
   label: string;
   page?: string;
   notebookPath?: string;
@@ -24,33 +24,27 @@ type NavItem = {
 
 const copy = {
   en: {
-    today: 'Today',
-    stories: 'Stories',
+    home: 'Home',
+    products: 'Products',
     curiosities: 'Curiosities',
-    people: 'People',
-    bakery: 'Bakery',
     about: 'About',
     account: 'Account',
     cart: 'Cart',
     menu: 'Menu',
   },
   th: {
-    today: 'วันนี้',
-    stories: 'เรื่องราว',
+    home: 'หน้าแรก',
+    products: 'สินค้า',
     curiosities: 'ความสงสัย',
-    people: 'ผู้คน',
-    bakery: 'เบเกอรี่',
     about: 'เกี่ยวกับเรา',
     account: 'บัญชี',
     cart: 'ตะกร้า',
     menu: 'เมนู',
   },
   zh: {
-    today: '今日',
-    stories: '故事',
+    home: '首页',
+    products: '产品',
     curiosities: '好奇',
-    people: '人物',
-    bakery: '烘焙坊',
     about: '关于',
     account: '账户',
     cart: '购物车',
@@ -73,11 +67,9 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const labels = copy[language];
 
   const navItems: NavItem[] = [
-    { key: 'today', label: labels.today, page: 'home', activeKey: 'today' },
-    { key: 'stories', label: labels.stories, notebookPath: '/notebook/today' },
-    { key: 'curiosities', label: labels.curiosities, notebookPath: '/notebook/curiosities' },
-    { key: 'people', label: labels.people, notebookPath: '/notebook/people' },
-    { key: 'bakery', label: labels.bakery, page: 'products', activeKey: 'bakery' },
+    { key: 'home', label: labels.home, page: 'home', activeKey: 'today' },
+    { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
+    { key: 'curiosities', label: labels.curiosities, notebookPath: '/notebook/today' },
     { key: 'about', label: labels.about, page: 'about', activeKey: 'about' },
   ];
 
@@ -105,11 +97,18 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     setIsAuthModalOpen(true);
   };
 
+  const isNavItemActive = (item: NavItem) => {
+    const path = window.location.pathname;
+    if (item.key === 'curiosities') return path.startsWith('/notebook/');
+    if (item.key === 'home') return path === '/';
+    return item.activeKey ? activeSection === item.activeKey : false;
+  };
+
   return (
     <>
       <header className="relative z-40 border-b border-[#55766F]/15 bg-[#CFE3DF]">
         <Container width="wide">
-          <div className="flex min-h-24 items-center justify-between gap-5 py-4 lg:min-h-28">
+          <div className="flex min-h-20 items-center justify-between gap-5 py-3 lg:min-h-24">
             <button
               type="button"
               onClick={() => handleNav(navItems[0])}
@@ -124,9 +123,9 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             </button>
 
             <nav className="hidden lg:block" aria-label="JOKO TODAY">
-              <ul className="flex items-center gap-6 xl:gap-8">
+              <ul className="flex items-center gap-8 xl:gap-10">
                 {navItems.map((item) => {
-                  const isActive = item.activeKey ? activeSection === item.activeKey : false;
+                  const isActive = isNavItemActive(item);
                   return (
                     <li key={item.key}>
                       <button
@@ -206,9 +205,9 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
           {isMobileMenuOpen && (
             <div className="border-t border-[#55766F]/15 pb-5 pt-4 lg:hidden">
               <nav aria-label="JOKO TODAY mobile">
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <ul className="grid grid-cols-2 gap-2">
                   {navItems.map((item) => {
-                    const isActive = item.activeKey ? activeSection === item.activeKey : false;
+                    const isActive = isNavItemActive(item);
                     return (
                       <li key={item.key}>
                         <button
