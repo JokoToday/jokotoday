@@ -44,7 +44,7 @@ const copy = {
     today: 'Today',
     history: 'History',
     close: 'Close for now',
-    notebook: 'Community Notebook',
+    notebook: 'Curiosity Notebook',
     keptBy: 'kept by Jokomi',
     open: 'Open notebook',
     person: 'Person',
@@ -77,7 +77,7 @@ const copy = {
     today: 'วันนี้',
     history: 'ย้อนหลัง',
     close: 'ปิดไว้ก่อน',
-    notebook: 'สมุดบันทึกชุมชน',
+    notebook: 'Curiosity Notebook',
     keptBy: 'เก็บไว้โดย Jokomi',
     open: 'เปิดสมุดบันทึก',
     person: 'ผู้คน',
@@ -110,7 +110,7 @@ const copy = {
     today: '今日',
     history: '往期',
     close: '先合上',
-    notebook: '社区笔记本',
+    notebook: 'Curiosity Notebook',
     keptBy: '由 Jokomi 保管',
     open: '打开笔记本',
     person: '人物',
@@ -348,18 +348,22 @@ function indexDocument(
       },
     });
   } else {
-    const kind = index === 'people' ? 'person' : index === 'products' ? 'product' : 'question';
-    bundle.entries
-      .filter((entry) => entry.kind === kind && entry.status === 'published')
-      .forEach((entry) => {
-        blocks.push({
-          id: `index-${index}-${entry.id}`,
-          type: 'entry-link',
-          entryRef: { kind: entry.kind, id: entry.id },
-          label: title,
-          note: entry.summary,
+    const visibleEntries = index === 'curiosities'
+      ? bundle.entries.filter((entry) => entry.status === 'published')
+      : bundle.entries.filter((entry) => {
+          const kind = index === 'people' ? 'person' : index === 'products' ? 'product' : 'question';
+          return entry.kind === kind && entry.status === 'published';
         });
+
+    visibleEntries.forEach((entry) => {
+      blocks.push({
+        id: `index-${index}-${entry.id}`,
+        type: 'entry-link',
+        entryRef: { kind: entry.kind, id: entry.id },
+        label: title,
+        note: entry.summary,
       });
+    });
   }
 
   return {
