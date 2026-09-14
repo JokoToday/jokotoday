@@ -106,7 +106,7 @@ const copy = {
 
 export function HomepageExperiencePage({
   onNavigate,
-  notebookTarget = { type: 'notebook.today' },
+  notebookTarget = { type: 'notebook.collection', slug: 'today' },
   notebookClosed = false,
   onNotebookNavigate,
   onNotebookBack,
@@ -154,7 +154,7 @@ export function HomepageExperiencePage({
   const openNotebook = () => {
     setNotebookOpen(true);
     onNotebookOpen?.();
-    onNotebookNavigate?.({ type: 'notebook.today' });
+    onNotebookNavigate?.({ type: 'notebook.collection', slug: 'today' });
   };
 
   const closeNotebook = () => {

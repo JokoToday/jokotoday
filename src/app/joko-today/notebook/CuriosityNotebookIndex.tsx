@@ -1,8 +1,13 @@
 import { ArrowRight, BookOpen, HelpCircle } from 'lucide-react';
-import type { CuriosityEpisode, CuriosityLocalizedText } from '../../../platform/curiosity';
+import type {
+  CuriosityEpisode,
+  CuriosityLocalizedText,
+  CuriosityNotebookCollection,
+} from '../../../platform/curiosity';
 import { curiosityTopicLabel } from './curiosityPresentation';
 
 interface CuriosityNotebookIndexProps {
+  collection: CuriosityNotebookCollection;
   episodes: readonly CuriosityEpisode[];
   locale: string;
   defaultLocale: string;
@@ -52,6 +57,7 @@ function text(value: CuriosityLocalizedText, locale: string, fallback: string): 
 }
 
 export function CuriosityNotebookIndex({
+  collection,
   episodes,
   locale,
   defaultLocale,
@@ -60,6 +66,11 @@ export function CuriosityNotebookIndex({
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
   const published = episodes.filter((episode) => episode.status === 'published');
+  const collectionLabel = text(collection.label, language, defaultLocale);
+  const collectionDescription = text(collection.description, language, defaultLocale);
+  const emptyMessage = collection.emptyMessage
+    ? text(collection.emptyMessage, language, defaultLocale)
+    : labels.empty;
 
   return (
     <div className="mx-auto max-w-[68rem] overflow-hidden rounded-[2.35rem] border border-[#55766F]/15 bg-[#FBF7ED] shadow-xl">
@@ -69,9 +80,9 @@ export function CuriosityNotebookIndex({
           <p className="text-xs font-semibold uppercase tracking-[0.2em]">{labels.eyebrow}</p>
         </div>
         <h1 className="mt-4 max-w-3xl font-header text-4xl font-semibold leading-tight text-[#303532] sm:text-5xl">
-          {labels.title}
+          {collectionLabel}
         </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[#303532]/70 sm:text-base">{labels.intro}</p>
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-[#303532]/70 sm:text-base">{collectionDescription}</p>
       </header>
 
       <div className="grid gap-px bg-[#55766F]/10 sm:grid-cols-2">
@@ -115,7 +126,7 @@ export function CuriosityNotebookIndex({
       </div>
 
       {published.length === 0 && (
-        <p className="px-6 py-12 text-center text-sm italic text-[#303532]/60">{labels.empty}</p>
+        <p className="px-6 py-12 text-center text-sm italic text-[#303532]/60">{emptyMessage}</p>
       )}
     </div>
   );

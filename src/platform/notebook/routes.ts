@@ -10,6 +10,8 @@ function encodeNotebookSlug(slug: string): string {
 
 export function getNotebookPath(target: NotebookRouteTarget): string {
   switch (target.type) {
+    case 'notebook.collection':
+      return `/notebook/curiosities/${encodeNotebookSlug(target.slug)}`;
     case 'notebook.today':
       return '/notebook/today';
     case 'notebook.history':
@@ -48,11 +50,17 @@ function decodeNotebookSlug(value: string): string | null {
 }
 
 export function parseNotebookPath(path: string): NotebookRouteTarget | null {
+  if (path === '/notebook/curiosities') return { type: 'notebook.collection', slug: 'today' };
+  const collection = path.match(/^\/notebook\/curiosities\/([^/]+)$/);
+  if (collection) {
+    const slug = decodeNotebookSlug(collection[1]);
+    return slug ? { type: 'notebook.collection', slug } : null;
+  }
+
   if (path === '/notebook/today') return { type: 'notebook.today' };
   if (path === '/notebook/history') return { type: 'notebook.history' };
   if (path === '/notebook/most-noticed') return { type: 'notebook.noticed' };
-  if (path === '/notebook/people') return { type: 'notebook.index', index: 'people' };
-  if (path === '/notebook/curiosities') return { type: 'notebook.index', index: 'curiosities' };
+  if (path === '/notebook/people') return { type: 'notebook.collection', slug: 'people' };
   if (path === '/notebook/places') return { type: 'notebook.index', index: 'places' };
   if (path === '/notebook/products') return { type: 'notebook.index', index: 'products' };
 

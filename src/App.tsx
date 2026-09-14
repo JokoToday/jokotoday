@@ -70,7 +70,7 @@ const STANDALONE_PATH_PAGES: Record<string, string> = Object.fromEntries(
 );
 
 const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
-  'notebook-today': getNotebookPath({ type: 'notebook.today' }),
+  'notebook-today': getNotebookPath({ type: 'notebook.collection', slug: 'today' }),
   'notebook-history': getNotebookPath({ type: 'notebook.history' }),
 };
 
@@ -81,7 +81,7 @@ function AppContent() {
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [qrSource, setQrSource] = useState<string | null>(null);
   const [homepageExperienceFailed, setHomepageExperienceFailed] = useState(false);
-  const [notebookTarget, setNotebookTarget] = useState<NotebookRouteTarget>({ type: 'notebook.today' });
+  const [notebookTarget, setNotebookTarget] = useState<NotebookRouteTarget>({ type: 'notebook.collection', slug: 'today' });
   const [notebookClosed, setNotebookClosed] = useState(false);
 
   useEffect(() => {
@@ -192,7 +192,7 @@ function AppContent() {
       }
 
       if (path === '/') {
-        setNotebookTarget({ type: 'notebook.today' });
+        setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
         setNotebookClosed(false);
         setCurrentPage('home');
       }
@@ -221,13 +221,13 @@ function AppContent() {
 
   const handleNavigate = (page: string) => {
     if (page === 'home') {
-      setNotebookTarget({ type: 'notebook.today' });
+      setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
       setNotebookClosed(false);
     }
 
     if (page === 'notebook-today' || page === 'notebook-history') {
       const target: NotebookRouteTarget = page === 'notebook-today'
-        ? { type: 'notebook.today' }
+        ? { type: 'notebook.collection', slug: 'today' }
         : { type: 'notebook.history' };
       const targetPath = getNotebookPath(target);
       if (window.location.pathname !== targetPath) window.history.pushState({ jokoNotebook: true }, '', targetPath);
@@ -278,20 +278,20 @@ function AppContent() {
       window.history.back();
       return;
     }
-    if (notebookTarget.type !== 'notebook.today') {
-      handleNotebookNavigate({ type: 'notebook.today' });
+    if (notebookTarget.type !== 'notebook.collection' || notebookTarget.slug !== 'today') {
+      handleNotebookNavigate({ type: 'notebook.collection', slug: 'today' });
     }
   };
 
   const handleNotebookClose = () => {
     if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
-    setNotebookTarget({ type: 'notebook.today' });
+    setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
     setNotebookClosed(true);
     setCurrentPage('home');
   };
 
   const handleNotebookOpen = () => {
-    setNotebookTarget({ type: 'notebook.today' });
+    setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
     setNotebookClosed(false);
     setCurrentPage('home');
   };
@@ -380,9 +380,13 @@ function AppContent() {
       && !homepageExperienceFailed
     );
   const isJokoShellPage = isHomepageExperience;
-  const jokoShellSection: JokoShellSection | null = !notebookClosed && notebookTarget.type === 'notebook.today'
-    ? 'today'
-    : null;
+  const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
+    || window.location.pathname.startsWith('/notebook/questions');
+  const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
+    ? 'curiosities'
+    : currentPage === 'home'
+      ? 'today'
+      : null;
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||

@@ -93,6 +93,68 @@ export interface CuriosityEpisode {
   updatedAt?: string;
 }
 
+export type CuriosityNotebookCollectionKind =
+  | 'editorial'
+  | 'topic'
+  | 'host'
+  | 'provenance'
+  | 'answer-state'
+  | 'ranking';
+
+interface CuriosityNotebookCollectionBase<TKind extends CuriosityNotebookCollectionKind> {
+  id: string;
+  slug: string;
+  kind: TKind;
+  label: CuriosityLocalizedText;
+  navLabel?: CuriosityLocalizedText;
+  description: CuriosityLocalizedText;
+  emptyMessage?: CuriosityLocalizedText;
+  order: number;
+  visible: boolean;
+}
+
+export interface CuriosityEditorialCollection extends CuriosityNotebookCollectionBase<'editorial'> {
+  episodeIds: readonly string[];
+}
+
+export interface CuriosityTopicCollection extends CuriosityNotebookCollectionBase<'topic'> {
+  topics: readonly string[];
+  match?: 'any' | 'all';
+  scopes?: readonly CuriosityScope[];
+}
+
+export interface CuriosityHostCollection extends CuriosityNotebookCollectionBase<'host'> {
+  hostId: string;
+}
+
+export interface CuriosityProvenanceCollection extends CuriosityNotebookCollectionBase<'provenance'> {
+  originTypes: readonly CuriosityOrigin['type'][];
+}
+
+export interface CuriosityAnswerStateCollection extends CuriosityNotebookCollectionBase<'answer-state'> {
+  answerStatuses: readonly CuriosityAnswerStatus[];
+}
+
+export interface CuriosityRankingCollection extends CuriosityNotebookCollectionBase<'ranking'> {
+  metric: 'wonder-count';
+  minimumCount?: number;
+  limit?: number;
+}
+
+export type CuriosityNotebookCollection =
+  | CuriosityEditorialCollection
+  | CuriosityTopicCollection
+  | CuriosityHostCollection
+  | CuriosityProvenanceCollection
+  | CuriosityAnswerStateCollection
+  | CuriosityRankingCollection;
+
+export interface CuriosityNotebookConfig {
+  siteId: string;
+  defaultCollectionSlug: string;
+  collections: readonly CuriosityNotebookCollection[];
+}
+
 export interface CuriosityFixtureBundle {
   schemaVersion: typeof CURIOSITY_SCHEMA_VERSION;
   site: CuriositySiteIdentity;

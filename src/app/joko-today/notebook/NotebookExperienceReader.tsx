@@ -1,7 +1,13 @@
 import { BookOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
-import { jokoTodayCuriosityFixture } from '../../../platform/curiosity';
+import {
+  episodesForCuriosityNotebookCollection,
+  findCuriosityNotebookCollection,
+  jokoTodayCuriosityFixture,
+  jokoTodayNotebookConfig,
+  visibleCuriosityNotebookCollections,
+} from '../../../platform/curiosity';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
@@ -23,6 +29,7 @@ import {
 import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
 import CuriosityNotebookIndex from './CuriosityNotebookIndex';
 import CuriosityNotebookPage from './CuriosityNotebookPage';
+import CuriosityNotebookTabs from './CuriosityNotebookTabs';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
 import NotebookReactionButton from './NotebookReactionButton';
 import NotebookTopTabs from './NotebookTopTabs';
@@ -496,10 +503,22 @@ export function NotebookExperienceReader({
   const labels = copy[lang];
   const { bundle } = content;
   const curiosityEpisodes = jokoTodayCuriosityFixture.episodes;
+  const curiosityCollections = visibleCuriosityNotebookCollections(jokoTodayNotebookConfig);
+  const requestedCollectionSlug = target.type === 'notebook.collection'
+    ? target.slug
+    : target.type === 'notebook.index' && target.index === 'curiosities'
+      ? jokoTodayNotebookConfig.defaultCollectionSlug
+      : null;
+  const curiosityCollection = requestedCollectionSlug
+    ? findCuriosityNotebookCollection(jokoTodayNotebookConfig, requestedCollectionSlug)
+    : null;
+  const collectionEpisodes = curiosityCollection
+    ? episodesForCuriosityNotebookCollection(curiosityCollection, curiosityEpisodes)
+    : [];
   const curiosityEpisode = target.type === 'notebook.question'
     ? curiosityEpisodes.find((episode) => episode.slug === target.slug && episode.status === 'published') ?? null
     : null;
-  const isCuriosityIndex = target.type === 'notebook.index' && target.index === 'curiosities';
+  const isCuriosityExperience = Boolean(curiosityCollection || curiosityEpisode);
   const openCuriosity = (slug: string) => onNavigate({ type: 'notebook.question', slug });
   const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
   const [routeProductLoading, setRouteProductLoading] = useState(false);
@@ -640,26 +659,27 @@ export function NotebookExperienceReader({
 
   return (
     <section id="community-notebook-reader" className="min-w-0 lg:-mr-3 xl:-mr-6" aria-label={labels.notebook}>
-      <NotebookTopTabs
-        target={target}
-        onNavigate={onNavigate}
-        onBack={onBack}
-        onClose={onClose}
-      />
-
-      {target.type === 'notebook.today' ? (
-        <NotebookFeatureSpread
-          locale={lang}
-          onNavigate={() => undefined}
-          bundle={bundle}
-          sceneImageUrl={content.assetUrls['today-scene']}
-          featuredProductImageUrl={content.featuredProductImageUrl}
-          hideNavigation
-          onNotebookNavigate={onNavigate}
+      {isCuriosityExperience ? (
+        <CuriosityNotebookTabs
+          collections={curiosityCollections}
+          target={target}
+          onNavigate={onNavigate}
+          onBack={onBack}
+          onClose={onClose}
         />
-      ) : isCuriosityIndex ? (
+      ) : (
+        <NotebookTopTabs
+          target={target}
+          onNavigate={onNavigate}
+          onBack={onBack}
+          onClose={onClose}
+        />
+      )}
+
+      {curiosityCollection ? (
         <CuriosityNotebookIndex
-          episodes={curiosityEpisodes}
+          collection={curiosityCollection}
+          episodes={collectionEpisodes}
           locale={lang}
           defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
           onOpen={openCuriosity}
@@ -671,6 +691,16 @@ export function NotebookExperienceReader({
           locale={lang}
           defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
           onOpen={openCuriosity}
+        />
+      ) : target.type === 'notebook.today' ? (
+        <NotebookFeatureSpread
+          locale={lang}
+          onNavigate={() => undefined}
+          bundle={bundle}
+          sceneImageUrl={content.assetUrls['today-scene']}
+          featuredProductImageUrl={content.featuredProductImageUrl}
+          hideNavigation
+          onNotebookNavigate={onNavigate}
         />
       ) : (
         <NotebookReader
