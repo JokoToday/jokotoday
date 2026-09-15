@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import multiprocessing
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,23 @@ from joko_creative_answer_workspace import (
 from joko_editorial_review import EditorialReviewWorkspace
 from joko_question_intelligence import QuestionIntelligenceError
 from joko_research_workspace import ResearchWorkspace
+
+
+def _quota_worker(root: str, asset_root: str, cid: str, board_id: str, fingerprint: str, start_event, result_queue):
+    workspace = CreativeAnswerWorkspace(
+        Path(root), CreativeAssetStore(Path(asset_root)),
+        per_candidate_daily_units=1, global_daily_units=1,
+    )
+    start_event.wait()
+    try:
+        workspace.request_generation(
+            cid, "creative", {"package_fingerprint": fingerprint},
+            board_id, "storyboard_frames", 1,
+        )
+    except QuestionIntelligenceError:
+        result_queue.put("blocked")
+    else:
+        result_queue.put("ok")
 
 
 class Phase4ECreativeTests(unittest.TestCase):
@@ -145,6 +163,74 @@ class Phase4ECreativeTests(unittest.TestCase):
         }])
         with self.assertRaises(QuestionIntelligenceError):
             service.create_script(self.cid, guide["guide_proposal_id"], 20, bad, "Accessible explanation")
+
+
+    def test_non_finite_beat_duration_is_rejected(self):
+        self.clear()
+        service = self.service()
+        guide = service.propose_guide(
+            self.cid, "jokomi", "Jokomi", "jokomi-master-v1", "first_person_inner"
+        )
+        beats = json.dumps([{
+            "seconds": float("nan"), "claim_type": "factual_explanation",
+            "visual": "Layers", "source_ids": [self.source["source_id"]],
+        }])
+        with self.assertRaises(QuestionIntelligenceError):
+            service.create_script(
+                self.cid, guide["guide_proposal_id"], 20, beats, "Accessible explanation"
+            )
+
+    def test_asset_files_directory_symlink_cannot_escape_asset_root(self):
+        self.clear()
+        service = self.service()
+        aid = "asset-20260915T090000Z-feedbeef"
+        folder = self.asset_root / self.cid
+        folder.mkdir(parents=True)
+        outside = Path(self.tmp.name) / "outside-assets"
+        outside.mkdir()
+        data = b"outside-creative-asset"
+        (outside / "fixture.png").write_bytes(data)
+        (folder / "files").symlink_to(outside, target_is_directory=True)
+        metadata = {
+            "schema_version": 1, "artifact_type": "creative_staging_asset", "asset_id": aid,
+            "candidate_id": self.cid, "generation_request_id": "gen-20260915T090000Z-cafed00d",
+            "review_package_fingerprint": self.releases.latest(self.cid)["package_fingerprint"],
+            "file_name": "fixture.png", "mime_type": "image/png",
+            "sha256": hashlib.sha256(data).hexdigest(), "status": "candidate",
+            "created_at": "2026-09-15T09:00:00Z", "review_required": True,
+        }
+        (folder / f"{aid}.json").write_text(json.dumps(metadata), encoding="utf-8")
+        bundle = service.bundle(self.cid)
+        self.assertEqual(bundle["staging_assets"], [])
+
+    def test_generation_quota_reservation_is_process_safe(self):
+        fingerprint = self.submission["package_fingerprint"]
+        board_id = "board-20260915T090000Z-deadbeef"
+        board_dir = self.creative_root / self.cid / "storyboards"
+        board_dir.mkdir(parents=True)
+        (board_dir / f"{board_id}.json").write_text(json.dumps({
+            "schema_version": 1, "artifact_type": "storyboard_candidate",
+            "storyboard_id": board_id, "candidate_id": self.cid,
+            "review_package_fingerprint": fingerprint, "created_at": "2026-09-15T09:00:00Z",
+        }), encoding="utf-8")
+        ctx = multiprocessing.get_context("fork")
+        start_event = ctx.Event()
+        result_queue = ctx.Queue()
+        processes = [ctx.Process(target=_quota_worker, args=(
+            str(self.creative_root), str(self.asset_root), self.cid, board_id, fingerprint,
+            start_event, result_queue,
+        )) for _ in range(4)]
+        for process in processes:
+            process.start()
+        start_event.set()
+        for process in processes:
+            process.join(5)
+            self.assertEqual(process.exitcode, 0)
+        results = [result_queue.get(timeout=2) for _ in processes]
+        self.assertEqual(results.count("ok"), 1)
+        self.assertEqual(results.count("blocked"), 3)
+        requests = list((self.creative_root / self.cid / "generation_requests").glob("gen-*.json"))
+        self.assertEqual(len(requests), 1)
 
     def test_storyboard_and_generation_request_are_staging_only(self):
         service, _, _, board = self.build_creative_chain()

@@ -2,11 +2,15 @@
 """Phase 4E candidate-stage Creative Answer workspace and staging-asset reader."""
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import math
 import os
 import re
+import stat
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -65,6 +69,28 @@ def _safe_root(root: str | Path, label: str) -> Path:
     if not path.is_absolute() or path.is_symlink() or not path.is_dir():
         raise QuestionIntelligenceError(f"{label} root must be an absolute ordinary directory")
     return path.resolve(strict=True)
+
+
+@contextmanager
+def _exclusive_quota_lock(root: Path):
+    lock_path = root / ".generation-quota.lock"
+    if lock_path.is_symlink():
+        raise QuestionIntelligenceError("creative quota lock must not be a symlink")
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(lock_path, flags, 0o600)
+    except OSError as exc:
+        raise QuestionIntelligenceError("creative quota lock could not be opened safely") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise QuestionIntelligenceError("creative quota lock must be a regular file")
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
 
 
 def _atomic_json(path: Path, payload: dict[str, Any], mode: int = 0o600) -> None:
@@ -219,11 +245,21 @@ class CreativeAssetStore:
                 filename = Path(str(data.get("file_name") or "")).name
                 if not filename or filename != data.get("file_name"):
                     continue
-                media = folder / "files" / filename
-                if media.is_symlink() or not media.is_file() or media.stat().st_size > MAX_ASSET_BYTES:
+                files_dir = folder / "files"
+                if files_dir.is_symlink() or not files_dir.is_dir():
+                    continue
+                media = files_dir / filename
+                if media.is_symlink() or not media.is_file():
+                    continue
+                try:
+                    resolved_media = media.resolve(strict=True)
+                    resolved_media.relative_to(self.root)
+                except (FileNotFoundError, ValueError):
+                    continue
+                if resolved_media.stat().st_size > MAX_ASSET_BYTES:
                     continue
                 expected = str(data.get("sha256") or "")
-                digest = hashlib.sha256(media.read_bytes()).hexdigest()
+                digest = hashlib.sha256(resolved_media.read_bytes()).hexdigest()
                 if expected != digest:
                     continue
                 output.append({
@@ -342,7 +378,7 @@ class CreativeAnswerWorkspace:
             if not isinstance(raw, dict):
                 raise QuestionIntelligenceError("each doodle beat must be an object")
             seconds = float(raw.get("seconds", 0))
-            if seconds <= 0 or seconds > 12:
+            if not math.isfinite(seconds) or seconds <= 0 or seconds > 12:
                 raise QuestionIntelligenceError("each doodle beat needs seconds between 0 and 12")
             claim_type = str(raw.get("claim_type") or "").strip().casefold()
             if claim_type not in CLAIM_TYPES:
@@ -468,29 +504,30 @@ class CreativeAnswerWorkspace:
         candidate_count = int(candidate_count)
         if candidate_count < 1 or candidate_count > 3:
             raise QuestionIntelligenceError("candidate_count must be between 1 and 3")
-        candidate_units, global_units = self._generation_units_today(cid)
-        if candidate_units + candidate_count > self.per_candidate_daily_units:
-            raise QuestionIntelligenceError("per-candidate daily Creative Lab staging quota exceeded")
-        if global_units + candidate_count > self.global_daily_units:
-            raise QuestionIntelligenceError("global daily Creative Lab staging quota exceeded")
-        request_id = _new_id("gen")
-        payload = {
-            "schema_version": 1, "artifact_type": "creative_lab_generation_request", "generation_request_id": request_id,
-            "candidate_id": cid, "storyboard_id": storyboard_id, "generation_mode": generation_mode,
-            "candidate_count": candidate_count, "route_hint": "joko/image-standard",
-            "status": "queued_for_creative_lab", "queue_only": True,
-            "provider_call_executed": False, "review_package_fingerprint": clearance["package_fingerprint"],
-            "quota": {
-                "per_candidate_daily_units": self.per_candidate_daily_units,
-                "global_daily_units": self.global_daily_units,
-                "candidate_units_after_request": candidate_units + candidate_count,
-                "global_units_after_request": global_units + candidate_count,
-            },
-            "created_by_profile": role, "created_at": _now(), "publication_authority": False,
-            "trust": "provider-neutral Creative Lab staging request only; no provider call is executed by Phase 4E",
-        }
-        _atomic_json(self._folder(cid, "generation_requests", create=True) / f"{request_id}.json", payload)
-        return payload
+        with _exclusive_quota_lock(self.root):
+            candidate_units, global_units = self._generation_units_today(cid)
+            if candidate_units + candidate_count > self.per_candidate_daily_units:
+                raise QuestionIntelligenceError("per-candidate daily Creative Lab staging quota exceeded")
+            if global_units + candidate_count > self.global_daily_units:
+                raise QuestionIntelligenceError("global daily Creative Lab staging quota exceeded")
+            request_id = _new_id("gen")
+            payload = {
+                "schema_version": 1, "artifact_type": "creative_lab_generation_request", "generation_request_id": request_id,
+                "candidate_id": cid, "storyboard_id": storyboard_id, "generation_mode": generation_mode,
+                "candidate_count": candidate_count, "route_hint": "joko/image-standard",
+                "status": "queued_for_creative_lab", "queue_only": True,
+                "provider_call_executed": False, "review_package_fingerprint": clearance["package_fingerprint"],
+                "quota": {
+                    "per_candidate_daily_units": self.per_candidate_daily_units,
+                    "global_daily_units": self.global_daily_units,
+                    "candidate_units_after_request": candidate_units + candidate_count,
+                    "global_units_after_request": global_units + candidate_count,
+                },
+                "created_by_profile": role, "created_at": _now(), "publication_authority": False,
+                "trust": "provider-neutral Creative Lab staging request only; no provider call is executed by Phase 4E",
+            }
+            _atomic_json(self._folder(cid, "generation_requests", create=True) / f"{request_id}.json", payload)
+            return payload
 
     def bundle(self, candidate_id: str, profile_role: str, clearance: dict[str, Any]) -> dict[str, Any]:
         _role(profile_role)
