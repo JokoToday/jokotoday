@@ -450,6 +450,15 @@ class CandidateStore:
             "trust": "unreviewed candidate only; never canonical or publishable without human review",
         }
 
+    def rollback_created_candidate(self, candidate_id: str, expected_created_at: str) -> None:
+        """Remove only the exact candidate just created by a failed compound operation."""
+        target = self._candidate_file(candidate_id)
+        text = target.read_text(encoding="utf-8", errors="replace")
+        metadata = self._validated_metadata(self._metadata_from_text(text), target.stem)
+        if metadata.get("created_at") != expected_created_at:
+            raise CuriosityError("candidate rollback identity mismatch")
+        target.unlink()
+
     def list_candidates(self, scope: str = "all", limit: int = 100) -> dict[str, Any]:
         normalized_scope = self._candidate_scope(scope, allow_all=True)
         limit = max(1, min(int(limit), MAX_LIST_RESULTS))

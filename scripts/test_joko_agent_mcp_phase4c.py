@@ -58,8 +58,20 @@ class FakeCandidates:
 
     def create(self, profile_role, question, requested_scope, origin_type, provenance_notes="", host=""):
         cid = f"cur-20260915T020000Z-{len(self.rows):08x}"
-        self.rows[cid] = {"scope": requested_scope, "question": question, "origin": origin_type}
-        return {"candidate_id": cid, "origin_type": origin_type, "requested_scope": requested_scope}
+        created_at = "2026-09-15T02:00:00Z"
+        self.rows[cid] = {
+            "scope": requested_scope, "question": question, "origin": origin_type, "created_at": created_at
+        }
+        return {
+            "candidate_id": cid, "origin_type": origin_type, "requested_scope": requested_scope,
+            "created_at": created_at,
+        }
+
+    def rollback_created_candidate(self, candidate_id, expected_created_at):
+        row = self.rows[candidate_id]
+        if row.get("created_at") != expected_created_at:
+            raise QuestionIntelligenceError("candidate rollback identity mismatch")
+        del self.rows[candidate_id]
 
 
 class Phase4CMcpTests(unittest.TestCase):
@@ -118,6 +130,46 @@ class Phase4CMcpTests(unittest.TestCase):
         self.assertEqual(grounding["source_pack_id"], pack["source_pack_id"])
         self.assertEqual(grounding["trigger_type"], "boundary")
         self.assertEqual(grounding["source_refs"], ["source-01", "source-02"])
+
+    def test_source_grounded_spark_rolls_back_batch_if_grounding_write_fails(self):
+        service = self.service("editorial")
+        pack = service.source_pack_create([{
+            "kind": "paper",
+            "title": "Lamination mechanics",
+            "excerpt": "Cold butter may fracture while warm butter may smear.",
+        }])
+        before = set(self.candidates.rows)
+        original = service.source_packs.record_candidate_grounding
+        calls = {"count": 0}
+
+        def fail_second(*args, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 2:
+                raise QuestionIntelligenceError("simulated grounding write failure")
+            return original(*args, **kwargs)
+
+        service.source_packs.record_candidate_grounding = fail_second
+        rows = [
+            {
+                "question": "Can butter be too cold for croissants?",
+                "trigger_type": "boundary",
+                "source_refs": ["source-01"],
+                "rationale": "The source describes a lower workable boundary.",
+                "why_interesting": "It challenges a simple keep-it-cold rule.",
+            },
+            {
+                "question": "Can butter be too warm for croissants?",
+                "trigger_type": "boundary",
+                "source_refs": ["source-01"],
+                "rationale": "The source describes an upper workable boundary.",
+                "why_interesting": "It shows the rule has two failure directions.",
+            },
+        ]
+        with self.assertRaises(QuestionIntelligenceError):
+            service.source_spark_create(pack["source_pack_id"], rows, "challenge_assumptions", "shared")
+        self.assertEqual(set(self.candidates.rows), before)
+        grounding_dir = Path(self.tmp.name) / "source-grounding"
+        self.assertFalse(grounding_dir.exists() and any(grounding_dir.iterdir()))
 
     def test_source_grounded_spark_rejects_unknown_source_reference(self):
         service = self.service("research")

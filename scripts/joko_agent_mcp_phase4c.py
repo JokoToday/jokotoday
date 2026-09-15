@@ -127,25 +127,54 @@ class Phase4CService:
         pack = self.source_pack_read(source_pack_id)
         validated = validate_source_grounded_candidates(candidate_rows, pack, lens=lens)
         created = []
-        for item in validated:
-            notes = (
-                f"SPARK mode=source_grounded; source_pack_id={source_pack_id}; "
-                f"lens={item['lens']}; trigger_type={item['trigger_type']}; "
-                f"source_refs={','.join(item['source_refs'])}; "
-                f"rationale={item['rationale']}; why_interesting={item['why_interesting']}"
-            )
-            candidate = self.candidates.create(
-                profile_role=self.role,
-                question=item["question"],
-                requested_scope=requested_scope,
-                origin_type="spark_discovery",
-                provenance_notes=notes,
-                host=host,
-            )
-            self.source_packs.record_candidate_grounding(
-                source_pack_id, candidate["candidate_id"], item, self.role
-            )
-            created.append(candidate)
+        grounded = []
+        try:
+            for item in validated:
+                notes = (
+                    f"SPARK mode=source_grounded; source_pack_id={source_pack_id}; "
+                    f"lens={item['lens']}; trigger_type={item['trigger_type']}; "
+                    f"source_refs={','.join(item['source_refs'])}; "
+                    f"rationale={item['rationale']}; why_interesting={item['why_interesting']}"
+                )
+                candidate = self.candidates.create(
+                    profile_role=self.role,
+                    question=item["question"],
+                    requested_scope=requested_scope,
+                    origin_type="spark_discovery",
+                    provenance_notes=notes,
+                    host=host,
+                )
+                try:
+                    grounding = self.source_packs.record_candidate_grounding(
+                        source_pack_id, candidate["candidate_id"], item, self.role
+                    )
+                except Exception:
+                    self.candidates.rollback_created_candidate(
+                        candidate["candidate_id"], candidate["created_at"]
+                    )
+                    raise
+                created.append(candidate)
+                grounded.append(grounding)
+        except Exception as exc:
+            rollback_errors = []
+            for candidate, grounding in reversed(list(zip(created, grounded))):
+                try:
+                    self.source_packs.rollback_candidate_grounding(
+                        candidate["candidate_id"], source_pack_id, grounding["source_pack_sha256"]
+                    )
+                except Exception as rollback_exc:
+                    rollback_errors.append(str(rollback_exc))
+                try:
+                    self.candidates.rollback_created_candidate(
+                        candidate["candidate_id"], candidate["created_at"]
+                    )
+                except Exception as rollback_exc:
+                    rollback_errors.append(str(rollback_exc))
+            if rollback_errors:
+                raise QuestionIntelligenceError(
+                    "source-grounded SPARK failed and rollback was incomplete: " + "; ".join(rollback_errors)
+                ) from exc
+            raise
         return {
             "count": len(created),
             "mode": "source_grounded",

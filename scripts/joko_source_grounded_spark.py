@@ -376,6 +376,28 @@ class SourcePackWorkspace:
             os.close(fd)
         return payload
 
+    def rollback_candidate_grounding(self, candidate_id: str, source_pack_id: str, source_pack_sha256: str) -> None:
+        """Remove only the exact grounding sidecar created by a failed batch operation."""
+        candidate_id = (candidate_id or "").strip()
+        if not CANDIDATE_ID_RE.fullmatch(candidate_id):
+            raise QuestionIntelligenceError("candidate_id is invalid for source-grounding rollback")
+        folder = self.root / "source-grounding"
+        path = folder / f"{candidate_id}.json"
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_SOURCE_PACK_BYTES:
+            raise QuestionIntelligenceError("source-grounding rollback target is invalid")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise QuestionIntelligenceError("source-grounding rollback target is malformed") from exc
+        if (
+            not isinstance(payload, dict)
+            or payload.get("candidate_id") != candidate_id
+            or payload.get("source_pack_id") != source_pack_id
+            or payload.get("source_pack_sha256") != source_pack_sha256
+        ):
+            raise QuestionIntelligenceError("source-grounding rollback identity mismatch")
+        path.unlink()
+
     def read_candidate_grounding(self, candidate_id: str, profile_role: str) -> dict[str, Any] | None:
         _role(profile_role)
         candidate_id = (candidate_id or "").strip()
