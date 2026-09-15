@@ -153,7 +153,11 @@ class ResearchWorkspace:
 
     def get_sources(self, candidate_id: str, profile_role: str) -> list[dict[str, Any]]:
         _role(profile_role, READ_ROLES)
-        cid, folder = _cid(candidate_id), self._dir(candidate_id) / "sources"
+        cid = _cid(candidate_id)
+        base = self.root / cid
+        if not base.exists():
+            return []
+        folder = self._dir(cid) / "sources"
         if not folder.exists():
             return []
         if folder.is_symlink() or not folder.is_dir():
@@ -188,13 +192,19 @@ class ResearchWorkspace:
             "trust": "unreviewed answer candidate; not canonical and not publishable",
         }
         folder = self._dir(cid, create=True) / "answers"
+        if folder.exists() and folder.is_symlink():
+            raise QuestionIntelligenceError("symlinked answer directory is not allowed")
         folder.mkdir(mode=0o700, exist_ok=True)
         _atomic_json(folder / f"{aid}.json", payload)
         return payload
 
     def get_answers(self, candidate_id: str, profile_role: str) -> list[dict[str, Any]]:
         _role(profile_role, READ_ROLES)
-        cid, folder = _cid(candidate_id), self._dir(candidate_id) / "answers"
+        cid = _cid(candidate_id)
+        base = self.root / cid
+        if not base.exists():
+            return []
+        folder = self._dir(cid) / "answers"
         if not folder.exists():
             return []
         output = []
