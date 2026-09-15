@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from joko_agent_mcp import CuriosityStore
 from joko_agent_mcp_phase4c import Phase4CService, phase4c_capability_names
 from joko_question_intelligence import QuestionIntelligenceError
 from joko_research_workspace import ResearchWorkspace
@@ -13,14 +14,24 @@ OTHER = "cur-20260915T010001Z-cafebabe"
 
 
 class FakeCanonical:
-    def list_episodes(self, scope="all", limit=200):
-        episodes = [
-            {"path": "shared/flaky.md", "scope": "shared", "title": "Why are croissants flaky?"},
-            {"path": "hosts/joko-today/pickup.md", "scope": "joko", "title": "Why does JOKO use pickup cutoffs?"},
+    @staticmethod
+    def _title(text, fallback):
+        for line in text.splitlines():
+            if line.startswith("# "):
+                return line[2:].strip()
+        return fallback
+
+    def _iter_markdown(self, scope="all"):
+        rows = [
+            ("shared/flaky.md", "shared", "Why are croissants flaky?"),
+            ("hosts/joko-today/pickup.md", "joko", "Why does JOKO use pickup cutoffs?"),
         ]
-        if scope != "all":
-            episodes = [item for item in episodes if item["scope"] == scope]
-        return {"episodes": episodes[:limit]}
+        for rel, item_scope, title in rows:
+            if scope != "all" and item_scope != scope:
+                continue
+            tmp = Path(tempfile.gettempdir()) / ("joko-test-" + rel.replace("/", "-"))
+            tmp.write_text(f"# {title}\n", encoding="utf-8")
+            yield tmp, rel, item_scope
 
 
 class FakeCandidates:
@@ -77,6 +88,18 @@ class Phase4CMcpTests(unittest.TestCase):
         result = self.service().duplicate_check(CID, "shared")
         self.assertTrue(result["possible_matches"])
         self.assertIn("never auto-merge", result["authority"])
+
+    def test_duplicate_check_scans_beyond_200_canonical_episodes(self):
+        with tempfile.TemporaryDirectory() as root:
+            shared = Path(root) / "shared"
+            shared.mkdir()
+            for i in range(200):
+                (shared / f"a-{i:03d}.md").write_text(f"# Unrelated question {i}?\n", encoding="utf-8")
+            (shared / "z-duplicate.md").write_text("# What makes croissant layers flaky?\n", encoding="utf-8")
+            service = Phase4CService(CuriosityStore(root), self.candidates, self.workspace, "research")
+            result = service.duplicate_check(CID, "shared")
+            ids = {row["id"] for row in result["possible_matches"]}
+            self.assertIn("shared/z-duplicate.md", ids)
 
     def test_research_workflow_reaches_editorial_gate(self):
         service = self.service()

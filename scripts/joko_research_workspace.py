@@ -240,12 +240,14 @@ class ResearchWorkspace:
             {"check": "answer_present", "pass": len(answers) >= 1, "count": len(answers)},
         ]
         cited = set(answers[0].get("source_ids") or []) if answers else set()
-        known = {source["source_id"] for source in sources}
+        known_by_id = {source["source_id"]: source for source in sources}
+        known = set(known_by_id)
         checks.append({"check": "answer_cites_known_sources", "pass": bool(cited) and cited.issubset(known), "count": len(cited)})
         if classification and classification.get("sensitivity") == "high":
-            strong = sum(1 for source in sources if source.get("source_type") in STRONG_SOURCE_TYPES)
+            cited_sources = [known_by_id[sid] for sid in cited if sid in known_by_id]
+            strong = sum(1 for source in cited_sources if source.get("source_type") in STRONG_SOURCE_TYPES)
             checks += [
-                {"check": "high_sensitivity_two_sources", "pass": len(sources) >= 2, "count": len(sources)},
+                {"check": "high_sensitivity_two_sources", "pass": len(cited_sources) >= 2, "count": len(cited_sources)},
                 {"check": "high_sensitivity_strong_source", "pass": strong >= 1, "count": strong},
             ]
         return {

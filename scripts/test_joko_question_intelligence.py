@@ -46,6 +46,10 @@ class Phase4CTests(unittest.TestCase):
         with self.assertRaises(QuestionIntelligenceError):
             validate_spark_questions(["Why bread?", "Why bread ?"], mode="childlike")
 
+    def test_spark_rejects_non_question_output(self):
+        with self.assertRaises(QuestionIntelligenceError):
+            validate_spark_questions(["Bread contains flour."], mode="never_asked")
+
     def test_scope_classification_and_high_risk_escalation(self):
         with self.assertRaises(QuestionIntelligenceError):
             self.ws.save_classification(CID, "research", "joko", "operations")
@@ -85,6 +89,18 @@ class Phase4CTests(unittest.TestCase):
         result = self.ws.readiness(CID, "editorial")
         self.assertFalse(result["eligible_for_editorial_review"])
         checks = {row["check"]: row["pass"] for row in result["checks"]}
+        self.assertFalse(checks["high_sensitivity_two_sources"])
+        self.assertFalse(checks["high_sensitivity_strong_source"])
+
+    def test_high_sensitivity_ignores_uncited_sources(self):
+        self.ws.save_classification(CID, "research", "shared", "food_safety", "high")
+        cited = self.ws.add_source(CID, "research", "https://example.org/article", "Cited secondary")
+        self.ws.add_source(CID, "research", "https://example.org/official", "Unused official", source_type="official")
+        self.ws.add_source(CID, "research", "https://example.org/other", "Unused secondary")
+        self.ws.create_answer(CID, "research", "Short", "Full", [cited["source_id"]])
+        result = self.ws.readiness(CID, "editorial")
+        checks = {row["check"]: row["pass"] for row in result["checks"]}
+        self.assertFalse(result["eligible_for_editorial_review"])
         self.assertFalse(checks["high_sensitivity_two_sources"])
         self.assertFalse(checks["high_sensitivity_strong_source"])
 

@@ -103,10 +103,11 @@ class Phase4CService:
             raise QuestionIntelligenceError("scope must be all, shared, or joko")
         question = self._candidate_question(candidate_id)
         items: list[dict[str, Any]] = []
-        for episode in self.canonical.list_episodes(scope=scope, limit=200).get("episodes", []):
+        for path, rel, episode_scope in self.canonical._iter_markdown(scope):
+            text = path.read_text(encoding="utf-8", errors="replace")
             items.append({
-                "id": episode.get("path"), "kind": "reviewed",
-                "scope": episode.get("scope"), "question": episode.get("title", ""),
+                "id": rel, "kind": "reviewed",
+                "scope": episode_scope, "question": self.canonical._title(text, path.stem),
             })
         for candidate in self.candidates.list_candidates(scope=scope, limit=200).get("candidates", []):
             other_id = str(candidate.get("candidate_id", ""))
