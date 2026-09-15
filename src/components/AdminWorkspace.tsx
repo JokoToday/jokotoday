@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Palette, QrCode, Rocket, Sparkles, Users } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
+import { CuriosityManagement } from './CuriosityManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
 import { NotebookContentManagement } from './NotebookContentManagement';
@@ -19,6 +20,7 @@ interface AdminWorkspaceProps {
 type WorkspaceTab =
   | 'cms'
   | 'homepage'
+  | 'curiosities'
   | 'notebook-content'
   | 'customer-experience'
   | 'qr-pass'
@@ -29,6 +31,7 @@ type WorkspaceTab =
   | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
+  if (window.location.pathname.startsWith('/admin/curiosities')) return 'curiosities';
   if (window.location.pathname.startsWith('/admin/qr-pass')) return 'qr-pass';
   if (window.location.pathname.startsWith('/admin/notebook')) return 'notebook-content';
   if (window.location.pathname.startsWith('/admin/homepage')) return 'homepage';
@@ -48,6 +51,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
     setActiveTab(tab);
     const targetPath = tab === 'homepage'
       ? '/admin/homepage'
+      : tab === 'curiosities'
+      ? '/admin/curiosities'
       : tab === 'notebook-content'
       ? '/admin/notebook'
       : tab === 'qr-pass'
@@ -77,9 +82,13 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
               <Monitor className="w-4 h-4" />
               Website / Homepage
             </button>
+            <button type="button" onClick={() => selectWorkspaceTab('curiosities')} className={tabClass('curiosities')}>
+              <Sparkles className="w-4 h-4" />
+              Curiosities
+            </button>
             <button type="button" onClick={() => selectWorkspaceTab('notebook-content')} className={tabClass('notebook-content')}>
               <BookOpen className="w-4 h-4" />
-              Notebook Content
+              Legacy Notebook Content
             </button>
             <button
               type="button"
@@ -129,11 +138,21 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         </Suspense>
       )}
 
+      {activeTab === 'curiosities' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Curiosity Publishing</h1>
+            <p className="text-gray-600 mt-2">Create, review and publish canonical Curiosity Episodes. Public pages only consume published revisions.</p>
+          </div>
+          <CuriosityManagement />
+        </div>
+      )}
+
       {activeTab === 'notebook-content' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Notebook / Homepage Content</h1>
-            <p className="text-gray-600 mt-2">Manage the shared Today story shown in Jokomi’s notebook and on the public Homepage.</p>
+            <h1 className="text-3xl font-bold text-gray-900">Legacy Notebook / Homepage Content</h1>
+            <p className="text-gray-600 mt-2">Temporary compatibility editor for the older shared Today story. Curiosity publishing now lives in its own workspace.</p>
           </div>
           <NotebookContentManagement />
         </div>
