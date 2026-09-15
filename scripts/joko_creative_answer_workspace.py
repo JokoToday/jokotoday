@@ -33,6 +33,7 @@ SCRIPT_RE = re.compile(r"^script-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 BOARD_RE = re.compile(r"^board-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 GEN_RE = re.compile(r"^gen-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 ASSET_RE = re.compile(r"^asset-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+REV_RE = re.compile(r"^rev-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
 
 
@@ -115,8 +116,12 @@ def create_clearance_receipt(release_root: str | Path, candidate_id: str,
         raise QuestionIntelligenceError("creative clearance requires an awaiting_human_review submission")
     submission_id = str(review_submission.get("review_submission_id") or "")
     fingerprint = str(review_submission.get("package_fingerprint") or "")
-    if not submission_id.startswith("rev-") or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
+    if not REV_RE.fullmatch(submission_id) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
         raise QuestionIntelligenceError("review submission is missing a valid fingerprint")
+    if review_submission.get("human_review_required") is not True:
+        raise QuestionIntelligenceError("review submission must retain the human review gate")
+    if review_submission.get("approval_authority") is not False or review_submission.get("publication_authority") is not False:
+        raise QuestionIntelligenceError("review submission authority boundary is invalid")
     cleared_by = clean_text(cleared_by, "cleared_by", 200)
     note = clean_text(note, "clearance note", MAX_RATIONALE_CHARS, required=False)
     clearance_id = _new_id("clr")
@@ -139,6 +144,8 @@ def create_clearance_receipt(release_root: str | Path, candidate_id: str,
     if folder.exists() and (folder.is_symlink() or not folder.is_dir()):
         raise QuestionIntelligenceError("creative clearance candidate directory is invalid")
     folder.mkdir(mode=0o750, exist_ok=True)
+    if folder.is_symlink() or not folder.is_dir():
+        raise QuestionIntelligenceError("creative clearance candidate directory is invalid")
     _atomic_json(folder / f"{clearance_id}.json", payload, mode=0o440)
     return payload
 
@@ -163,6 +170,8 @@ class CreativeReleaseStore:
                     and data.get("clearance_id") == path.stem
                     and CLEAR_RE.fullmatch(path.stem)
                     and data.get("creative_derivation_authority") is True
+                    and data.get("canonicalization_authority") is False
+                    and data.get("publication_authority") is False
                 ):
                     rows.append(data)
             except QuestionIntelligenceError:
@@ -189,7 +198,7 @@ class CreativeAssetStore:
     def __init__(self, root: str | Path):
         self.root = _safe_root(root, "creative asset")
 
-    def list_assets(self, candidate_id: str) -> list[dict[str, Any]]:
+    def list_assets(self, candidate_id: str, current_fingerprint: str | None = None) -> list[dict[str, Any]]:
         cid = _cid(candidate_id)
         folder = self.root / cid
         if not folder.exists():
@@ -202,6 +211,10 @@ class CreativeAssetStore:
                 data = _read_json(path, MAX_ASSET_METADATA_BYTES)
                 aid = str(data.get("asset_id") or "")
                 if data.get("candidate_id") != cid or aid != path.stem or not ASSET_RE.fullmatch(aid):
+                    continue
+                request_id = str(data.get("generation_request_id") or "")
+                fingerprint = str(data.get("review_package_fingerprint") or "")
+                if not GEN_RE.fullmatch(request_id) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
                     continue
                 filename = Path(str(data.get("file_name") or "")).name
                 if not filename or filename != data.get("file_name"):
@@ -217,6 +230,7 @@ class CreativeAssetStore:
                     **data,
                     "file_size": media.stat().st_size,
                     "content_available": True,
+                    "stale": bool(current_fingerprint and fingerprint != current_fingerprint),
                     "publication_authority": False,
                 })
             except (QuestionIntelligenceError, OSError):
@@ -494,7 +508,7 @@ class CreativeAnswerWorkspace:
             "doodle_script_candidates": mark(scripts),
             "storyboard_candidates": mark(boards),
             "generation_requests": mark(requests),
-            "staging_assets": self.assets.list_assets(cid),
+            "staging_assets": self.assets.list_assets(cid, str(fingerprint or "")),
             "creative_clearance_id": clearance.get("clearance_id"),
             "publication_authority": False,
             "trust": "creative staging bundle only; human creative review is still required",

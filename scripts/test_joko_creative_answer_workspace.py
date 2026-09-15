@@ -172,6 +172,7 @@ class Phase4ECreativeTests(unittest.TestCase):
         metadata = {
             "schema_version": 1, "artifact_type": "creative_staging_asset", "asset_id": aid,
             "candidate_id": self.cid, "generation_request_id": "gen-20260915T090000Z-cafebabe",
+            "review_package_fingerprint": self.releases.latest(self.cid)["package_fingerprint"],
             "file_name": "fixture.png", "mime_type": "image/png",
             "sha256": hashlib.sha256(data).hexdigest(), "status": "candidate",
             "created_at": "2026-09-15T09:00:00Z", "review_required": True,
