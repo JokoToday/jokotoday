@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, HelpCircle, Sparkles } from 'lucide-react';
 import type { CuriosityEpisode, CuriosityLocalizedText } from '../../../platform/curiosity';
 import { curiosityTopicLabel } from './curiosityPresentation';
+import CuriosityWonderButton from './CuriosityWonderButton';
 
 interface CuriosityNotebookPageProps {
   episode: CuriosityEpisode;
@@ -8,6 +9,7 @@ interface CuriosityNotebookPageProps {
   locale: string;
   defaultLocale: string;
   onOpen: (slug: string) => void;
+  onWonderCountChange?: (curiosityId: string, count: number) => void;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -65,6 +67,7 @@ export function CuriosityNotebookPage({
   locale,
   defaultLocale,
   onOpen,
+  onWonderCountChange,
 }: CuriosityNotebookPageProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
@@ -140,6 +143,14 @@ export function CuriosityNotebookPage({
               ))}
             </div>
           ) : null}
+
+          <CuriosityWonderButton
+            curiosityId={episode.id}
+            locale={language}
+            onCountChange={onWonderCountChange
+              ? (count) => onWonderCountChange(episode.id, count)
+              : undefined}
+          />
 
           {episode.sources?.length ? (
             <section className="mt-10 border-t border-[#55766F]/12 pt-7">
