@@ -106,10 +106,10 @@ class Phase4CService:
         }
 
     def source_pack_create(self, sources: list[dict[str, Any]], topic: str = "",
-                           objective: str = "") -> dict[str, Any]:
+                           objective: str = "", seed_question: str = "") -> dict[str, Any]:
         if self.role not in PHASE4C_READ_ROLES:
             raise QuestionIntelligenceError("this profile cannot invoke source-grounded SPARK")
-        return self.source_packs.create(self.role, sources, topic, objective)
+        return self.source_packs.create(self.role, sources, topic, objective, seed_question)
 
     def source_pack_read(self, source_pack_id: str) -> dict[str, Any]:
         if self.role not in PHASE4C_READ_ROLES:
@@ -296,10 +296,11 @@ def create_server():
         ), ensure_ascii=False)
 
     @server.tool()
-    def spark_source_pack_create(sources_json: str, topic: str = "", objective: str = "") -> str:
+    def spark_source_pack_create(sources_json: str, topic: str = "", objective: str = "",
+                                 seed_question: str = "") -> str:
         """Store a private pre-candidate source pack for source-grounded question discovery."""
         return json.dumps(service.source_pack_create(
-            _json_object_list(sources_json, "sources_json"), topic, objective
+            _json_object_list(sources_json, "sources_json"), topic, objective, seed_question
         ), ensure_ascii=False)
 
     @server.tool()

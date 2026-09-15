@@ -35,13 +35,15 @@ The source pack explains **why a question was generated**. It does **not** autom
 
 1. **Topic SPARK** — topic/context → unusual questions.
 2. **Source-Grounded SPARK** — supplied source pack → insight triggers → focused questions.
-3. **Hybrid SPARK** — source pack may also carry a topic and editorial objective.
+3. **Hybrid SPARK** — source pack may also carry a topic, a broad seed question, and an editorial objective.
 
 V1 uses the same editorial/research profiles as existing SPARK. No fifth persistent Hermes profile is introduced.
 
 ## Source Pack
 
 A Source Pack is private pre-candidate staging material under the existing Curiosity research workspace.
+
+A Source Pack can optionally carry a `topic`, a **seed question**, and an editorial `objective`. A seed question is useful when the goal is explicit reverse engineering: use trusted source material to break a broad question into sharper sub-questions.
 
 Each source contains:
 
@@ -95,6 +97,7 @@ These are discovery labels, not factual verdicts. For example, `contradiction` m
 The caller may select a lens:
 
 - `mixed`
+- `decompose` — use supplied evidence to break a seed question into narrower mechanism, boundary, variable, exception, and consequence questions
 - `explain`
 - `surprise`
 - `challenge_assumptions`
@@ -104,7 +107,7 @@ The caller may select a lens:
 - `unanswered`
 - `never_asked`
 
-`never_asked` is the closest implementation of the NAQ idea: questions a normal reader would not know they needed to ask.
+`never_asked` is the closest implementation of the NAQ idea: questions a normal reader would not know they needed to ask. `decompose` requires a seed question and is the closest implementation of the user-facing **reverse-engineering** workflow.
 
 ## Grounded candidate contract
 
@@ -175,9 +178,10 @@ operator    3
 ```text
 1. spark_source_pack_create
    → source pack about croissant lamination
+   → optional seed_question="Why does butter temperature matter in croissant lamination?"
 
 2. insight_foundry_source_brief
-   lens=challenge_assumptions
+   lens=decompose (or challenge_assumptions / never_asked / etc.)
    → source excerpts + trigger taxonomy + constrained generation contract
 
 3. model identifies:
@@ -199,6 +203,7 @@ operator    3
 Source-Grounded SPARK must preserve the existing Question Intelligence boundaries:
 
 - source packs are unreviewed staging material
+- source excerpts are treated as **untrusted data**, never as instructions to the agent
 - supplied claims are not treated as true merely because they were supplied
 - source-pack URLs are not automatically fetched
 - source-pack material is not automatically copied into answer evidence

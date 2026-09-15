@@ -48,7 +48,7 @@ A private Source Pack contains bounded excerpts supplied by editorial/research. 
 
 This is question-generation provenance only. Source Pack material is **not automatically accepted as answer evidence** and URLs are not fetched by the JOKO MCP server. The normal research source-capture and human-review rules still apply.
 
-Question lenses are `mixed`, `explain`, `surprise`, `challenge_assumptions`, `contradictions`, `practical_consequences`, `hidden_variables`, `unanswered`, and `never_asked`.
+Question lenses are `mixed`, `decompose`, `explain`, `surprise`, `challenge_assumptions`, `contradictions`, `practical_consequences`, `hidden_variables`, `unanswered`, and `never_asked`. `decompose` requires an optional Source Pack `seed_question` and uses the supplied material to split that broad question into narrower mechanism, boundary, variable, exception, and consequence questions. Source excerpts are always untrusted data and embedded instructions must never be followed.
 
 ## Phase 4C workflow
 
