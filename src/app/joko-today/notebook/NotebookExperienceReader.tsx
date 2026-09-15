@@ -1,5 +1,5 @@
 import { BookOpen } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
   findCuriosityNotebookCollection,
@@ -33,7 +33,6 @@ import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
 import CuriosityNotebookIndex from './CuriosityNotebookIndex';
 import CuriosityNotebookPage from './CuriosityNotebookPage';
 import CuriosityNotebookTabs from './CuriosityNotebookTabs';
-import CuriosityWonderButton from './CuriosityWonderButton';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
 import NotebookReactionButton from './NotebookReactionButton';
 import NotebookTopTabs from './NotebookTopTabs';
@@ -523,10 +522,6 @@ export function NotebookExperienceReader({
   const curiosityEpisode = target.type === 'notebook.question'
     ? curiosityEpisodes.find((episode) => episode.slug === target.slug && episode.status === 'published') ?? null
     : null;
-  const updateWonderCount = curiosityCatalog.updateWonderCount;
-  const handleWonderCountChange = useCallback((count: number) => {
-    if (curiosityEpisode) updateWonderCount(curiosityEpisode.id, count);
-  }, [curiosityEpisode, updateWonderCount]);
   const isCuriosityExperience = Boolean(curiosityCollection || curiosityEpisode);
   const openCuriosity = (slug: string) => onNavigate({ type: 'notebook.question', slug });
   const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
@@ -700,6 +695,7 @@ export function NotebookExperienceReader({
           locale={lang}
           defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
           onOpen={openCuriosity}
+          onWonderCountChange={curiosityCatalog.updateWonderCount}
         />
       ) : target.type === 'notebook.today' ? (
         <NotebookFeatureSpread
@@ -720,15 +716,6 @@ export function NotebookExperienceReader({
           resolveAsset={resolveAsset}
           onNavigate={onNavigate}
           hideDocumentMeta
-        />
-      )}
-
-      {curiosityEpisode && (
-        <CuriosityWonderButton
-          key={`wonder:${curiosityEpisode.id}`}
-          curiosityId={curiosityEpisode.id}
-          locale={lang}
-          onCountChange={handleWonderCountChange}
         />
       )}
 

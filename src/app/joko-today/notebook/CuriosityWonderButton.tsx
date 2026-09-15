@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   loadCuriosityWonderState,
   toggleCuriosityWonder,
@@ -42,6 +42,11 @@ export function CuriosityWonderButton({
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
   const labels = copy[locale];
+  const onCountChangeRef = useRef(onCountChange);
+
+  useEffect(() => {
+    onCountChangeRef.current = onCountChange;
+  }, [onCountChange]);
 
   useEffect(() => {
     let active = true;
@@ -55,13 +60,13 @@ export function CuriosityWonderButton({
       } else {
         setCount(state.count);
         setWondered(state.wondered);
-        onCountChange?.(state.count);
+        onCountChangeRef.current?.(state.count);
       }
       setLoading(false);
     });
 
     return () => { active = false; };
-  }, [curiosityId, onCountChange]);
+  }, [curiosityId]);
 
   if (!available) return null;
 
@@ -72,7 +77,7 @@ export function CuriosityWonderButton({
     if (state) {
       setCount(state.count);
       setWondered(state.wondered);
-      onCountChange?.(state.count);
+      onCountChangeRef.current?.(state.count);
     }
     setLoading(false);
   };
