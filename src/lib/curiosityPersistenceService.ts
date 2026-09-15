@@ -162,7 +162,7 @@ export async function loadCuriosityWonderState(curiosityId: string): Promise<Cur
     return null;
   }
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return { count: 0, wondered: false };
+  if (!row) return null;
   return {
     count: Number((row as { wonder_count: number | string }).wonder_count) || 0,
     wondered: Boolean((row as { wondered: boolean }).wondered),

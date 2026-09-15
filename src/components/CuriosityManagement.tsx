@@ -105,7 +105,9 @@ export function CuriosityManagement() {
     }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // Load once on mount; selection changes are handled explicitly by the editor.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load(); }, []);
 
   const select = (item: CuriosityAdminState) => {
     if (dirty && !window.confirm('Discard your unsaved Curiosity changes?')) return;

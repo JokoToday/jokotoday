@@ -1,13 +1,16 @@
 import { BookOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
-  episodesForCuriosityNotebookCollection,
   findCuriosityNotebookCollection,
   jokoTodayCuriosityFixture,
   jokoTodayNotebookConfig,
   visibleCuriosityNotebookCollections,
 } from '../../../platform/curiosity';
+import {
+  useCuriosityCatalog,
+  useCuriosityCollectionEpisodes,
+} from '../../../hooks/useCuriosityCatalog';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
@@ -30,6 +33,7 @@ import NotebookFeatureSpread from '../home/NotebookFeatureSpread';
 import CuriosityNotebookIndex from './CuriosityNotebookIndex';
 import CuriosityNotebookPage from './CuriosityNotebookPage';
 import CuriosityNotebookTabs from './CuriosityNotebookTabs';
+import CuriosityWonderButton from './CuriosityWonderButton';
 import NotebookProductCommerceBridge from './NotebookProductCommerceBridge';
 import NotebookReactionButton from './NotebookReactionButton';
 import NotebookTopTabs from './NotebookTopTabs';
@@ -502,7 +506,10 @@ export function NotebookExperienceReader({
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
   const { bundle } = content;
-  const curiosityEpisodes = jokoTodayCuriosityFixture.episodes;
+  const curiosityCatalog = useCuriosityCatalog({
+    fallbackEpisodes: jokoTodayCuriosityFixture.episodes,
+  });
+  const curiosityEpisodes = curiosityCatalog.episodes;
   const curiosityCollections = visibleCuriosityNotebookCollections(jokoTodayNotebookConfig);
   const requestedCollectionSlug = target.type === 'notebook.collection'
     ? target.slug
@@ -512,12 +519,14 @@ export function NotebookExperienceReader({
   const curiosityCollection = requestedCollectionSlug
     ? findCuriosityNotebookCollection(jokoTodayNotebookConfig, requestedCollectionSlug)
     : null;
-  const collectionEpisodes = curiosityCollection
-    ? episodesForCuriosityNotebookCollection(curiosityCollection, curiosityEpisodes)
-    : [];
+  const collectionEpisodes = useCuriosityCollectionEpisodes(curiosityCollection, curiosityCatalog);
   const curiosityEpisode = target.type === 'notebook.question'
     ? curiosityEpisodes.find((episode) => episode.slug === target.slug && episode.status === 'published') ?? null
     : null;
+  const updateWonderCount = curiosityCatalog.updateWonderCount;
+  const handleWonderCountChange = useCallback((count: number) => {
+    if (curiosityEpisode) updateWonderCount(curiosityEpisode.id, count);
+  }, [curiosityEpisode, updateWonderCount]);
   const isCuriosityExperience = Boolean(curiosityCollection || curiosityEpisode);
   const openCuriosity = (slug: string) => onNavigate({ type: 'notebook.question', slug });
   const [routeProduct, setRouteProduct] = useState<CMSProduct | null>(null);
@@ -714,7 +723,16 @@ export function NotebookExperienceReader({
         />
       )}
 
-      {reactionTarget && (
+      {curiosityEpisode && (
+        <CuriosityWonderButton
+          key={`wonder:${curiosityEpisode.id}`}
+          curiosityId={curiosityEpisode.id}
+          locale={lang}
+          onCountChange={handleWonderCountChange}
+        />
+      )}
+
+      {reactionTarget && !curiosityEpisode && (
         <NotebookReactionButton key={`${reactionTarget.type}:${reactionTarget.id}`} target={reactionTarget} locale={lang} />
       )}
 
