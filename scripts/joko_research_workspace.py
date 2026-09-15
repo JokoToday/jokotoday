@@ -16,7 +16,7 @@ from joko_question_intelligence import QuestionIntelligenceError, clean_text
 MAX_FILE_BYTES = 256 * 1024
 MAX_ANSWER_CHARS = 30000
 WRITE_ROLES = {"research"}
-READ_ROLES = {"research", "editorial"}
+READ_ROLES = {"research", "editorial", "creative"}
 SCOPES = {"shared", "joko"}
 SENSITIVITIES = {"normal", "elevated", "high"}
 HIGH_TOPIC_MARKERS = {

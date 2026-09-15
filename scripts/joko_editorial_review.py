@@ -16,7 +16,7 @@ from joko_question_intelligence import QuestionIntelligenceError, clean_text
 MAX_FILE_BYTES = 256 * 1024
 MAX_REVIEW_NOTES_CHARS = 12000
 MAX_RELATION_RATIONALE_CHARS = 8000
-READ_ROLES = {"editorial", "research"}
+READ_ROLES = {"editorial", "research", "creative"}
 RELATION_WRITE_ROLES = {"editorial", "research"}
 SUBMIT_ROLES = {"editorial"}
 RELATION_TYPES = {"related", "follow_up"}
@@ -241,6 +241,10 @@ class EditorialReviewWorkspace:
             except QuestionIntelligenceError:
                 continue
         return sorted(output, key=lambda x: str(x.get("submitted_at", "")), reverse=True)
+
+    def latest_submission(self, candidate_id: str, profile_role: str) -> dict[str, Any] | None:
+        submissions = self._submissions(candidate_id, profile_role)
+        return submissions[0] if submissions else None
 
     def submit(self, candidate_id: str, profile_role: str, package: dict[str, Any], review_notes: str = "") -> dict[str, Any]:
         role, cid = _role(profile_role, SUBMIT_ROLES), _cid(candidate_id)
