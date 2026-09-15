@@ -212,10 +212,10 @@ export function HomepageExperiencePage({
       <section className="joko-mineral-field joko-bakery-hero-field border-b border-[#55766F]/14 pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
-            <div className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block" aria-hidden="true">
+            <div className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block">
               <img
                 src={BAKERY_HERO}
-                alt=""
+                alt={labels.bakeryAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 decoding="async"
                 loading="eager"
@@ -288,7 +288,7 @@ export function HomepageExperiencePage({
                 </p>
               </div>
 
-              <div className="relative min-w-0 xl:min-h-[37rem]" aria-hidden="true">
+              <div className="relative min-w-0 xl:min-h-[37rem]">
                 <div className="relative mx-auto mt-1 max-w-[48rem] xl:hidden">
                   <img
                     src={BAKERY_HERO}
