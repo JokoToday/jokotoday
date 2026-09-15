@@ -109,17 +109,32 @@ class Phase4CService:
                 "id": rel, "kind": "reviewed",
                 "scope": episode_scope, "question": self.canonical._title(text, path.stem),
             })
-        for candidate in self.candidates.list_candidates(scope=scope, limit=200).get("candidates", []):
-            other_id = str(candidate.get("candidate_id", ""))
+        # Duplicate discovery must inspect the full candidate corpus, not the
+        # presentation-oriented list limit. Malformed candidates are skipped.
+        candidate_root = getattr(self.candidates, "root", None)
+        if candidate_root is not None:
+            candidate_rows = [(path.stem, None) for path in sorted(candidate_root.glob("cur-*.md"))]
+        else:
+            # Test doubles / compatibility adapters may not expose a filesystem root.
+            candidate_rows = [
+                (str(item.get("candidate_id", "")), item)
+                for item in self.candidates.list_candidates(scope=scope, limit=200).get("candidates", [])
+            ]
+        for other_id, listed in candidate_rows:
             if not other_id or other_id == candidate_id:
                 continue
             try:
-                other_question = self._candidate_question(other_id)
+                payload = self.candidates.read(other_id)
+                metadata = payload.get("metadata") or {}
+                candidate_scope = str(metadata.get("requested_scope") or (listed or {}).get("requested_scope") or "")
+                if scope != "all" and candidate_scope != scope:
+                    continue
+                other_question = _parse_question(payload)
             except Exception:
                 continue
             items.append({
                 "id": other_id, "kind": "candidate",
-                "scope": candidate.get("requested_scope"), "question": other_question,
+                "scope": candidate_scope, "question": other_question,
             })
         return {
             "candidate_id": candidate_id,
