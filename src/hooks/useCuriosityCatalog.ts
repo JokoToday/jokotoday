@@ -21,21 +21,6 @@ export interface CuriosityCatalogState {
   updateWonderCount: (curiosityId: string, count: number) => void;
 }
 
-function mergePersistedCatalog(
-  fallbackEpisodes: readonly CuriosityEpisode[],
-  persistedEpisodes: readonly CuriosityEpisode[],
-): readonly CuriosityEpisode[] {
-  const persistedById = new Map(persistedEpisodes.map((episode) => [episode.id, episode]));
-  const fallbackIds = new Set(fallbackEpisodes.map((episode) => episode.id));
-  const merged = fallbackEpisodes.map((episode) => persistedById.get(episode.id) ?? episode);
-
-  for (const episode of persistedEpisodes) {
-    if (!fallbackIds.has(episode.id)) merged.push(episode);
-  }
-
-  return merged;
-}
-
 export function useCuriosityCatalog({ fallbackEpisodes }: UseCuriosityCatalogOptions): CuriosityCatalogState {
   const [episodes, setEpisodes] = useState<readonly CuriosityEpisode[]>(fallbackEpisodes);
   const [wonderCounts, setWonderCounts] = useState<Readonly<Record<string, number>>>({});
@@ -55,7 +40,10 @@ export function useCuriosityCatalog({ fallbackEpisodes }: UseCuriosityCatalogOpt
     ]).then(([catalog, counts]) => {
       if (!active) return;
       if (catalog) {
-        setEpisodes(mergePersistedCatalog(fallbackEpisodes, catalog));
+        // A successful catalog response is authoritative. Static fixtures are
+        // fallback-only when persistence is unavailable; otherwise an archived
+        // persisted Curiosity could be resurrected by its published fixture.
+        setEpisodes(catalog);
         setPersistenceActive(true);
       } else {
         setEpisodes(fallbackEpisodes);
