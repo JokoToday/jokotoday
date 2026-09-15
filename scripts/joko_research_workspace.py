@@ -31,7 +31,7 @@ AID_RE = re.compile(r"^ans-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _new_id(prefix: str) -> str:

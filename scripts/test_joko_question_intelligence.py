@@ -104,6 +104,17 @@ class Phase4CTests(unittest.TestCase):
         self.assertFalse(checks["high_sensitivity_two_sources"])
         self.assertFalse(checks["high_sensitivity_strong_source"])
 
+    def test_latest_answer_is_ordered_by_high_resolution_creation_time(self):
+        self.ws.save_classification(CID, "research", "shared", "food_safety", "high")
+        secondary = self.ws.add_source(CID, "research", "https://example.org/article", "Secondary")
+        official = self.ws.add_source(CID, "research", "https://example.org/official", "Official", source_type="official")
+        first = self.ws.create_answer(CID, "research", "Old", "Old", [secondary["source_id"]])
+        second = self.ws.create_answer(CID, "research", "New", "New", [secondary["source_id"], official["source_id"]])
+        answers = self.ws.get_answers(CID, "editorial")
+        self.assertEqual(answers[0]["answer_id"], second["answer_id"])
+        self.assertGreater(second["created_at"], first["created_at"])
+        self.assertTrue(self.ws.readiness(CID, "editorial")["eligible_for_editorial_review"])
+
     def test_relative_workspace_root_rejected(self):
         with self.assertRaises(QuestionIntelligenceError):
             ResearchWorkspace("relative/path")
