@@ -19,7 +19,10 @@ WRITE_ROLES = {"research"}
 READ_ROLES = {"research", "editorial"}
 SCOPES = {"shared", "joko"}
 SENSITIVITIES = {"normal", "elevated", "high"}
-HIGH_TOPICS = {"allergens", "food_safety", "health", "medical", "legal", "financial", "dangerous"}
+HIGH_TOPIC_MARKERS = {
+    "allergy", "allergen", "allergens", "food_safety", "nutrition", "health",
+    "medical", "legal", "financial", "dangerous",
+}
 SOURCE_TYPES = {"primary", "official", "academic", "expert", "reputable_secondary", "other"}
 STRONG_SOURCE_TYPES = {"primary", "official", "academic"}
 CID_RE = re.compile(r"^cur-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
@@ -110,7 +113,13 @@ class ResearchWorkspace:
         host = (host or "").strip().casefold()
         if (scope == "joko" and host != "joko-today") or (scope == "shared" and host):
             raise QuestionIntelligenceError("classification scope/host mismatch")
-        if topic.casefold() in HIGH_TOPICS and sensitivity == "normal":
+        topic_key = re.sub(r"[^a-z0-9]+", "_", topic.casefold()).strip("_")
+        topic_parts = set(topic_key.split("_")) if topic_key else set()
+        high_topic = any(
+            marker == topic_key or marker in topic_parts or marker in topic_key
+            for marker in HIGH_TOPIC_MARKERS
+        )
+        if high_topic and sensitivity != "high":
             sensitivity = "high"
         payload = {
             "schema_version": 1, "candidate_id": cid, "artifact_type": "classification_candidate",

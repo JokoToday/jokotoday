@@ -51,6 +51,10 @@ class Phase4CTests(unittest.TestCase):
             self.ws.save_classification(CID, "research", "joko", "operations")
         result = self.ws.save_classification(CID, "research", "shared", "allergens")
         self.assertEqual(result["sensitivity"], "high")
+        food_safety = self.ws.save_classification(CID, "research", "shared", "Food Safety", "normal")
+        self.assertEqual(food_safety["sensitivity"], "high")
+        nutrition = self.ws.save_classification(CID, "research", "shared", "nutrition claims", "elevated")
+        self.assertEqual(nutrition["sensitivity"], "high")
 
     def test_only_research_can_write(self):
         with self.assertRaises(QuestionIntelligenceError):

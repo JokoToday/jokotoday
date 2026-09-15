@@ -131,12 +131,17 @@ Phase 4C stores **source metadata**, not scraped source content, in its own rese
 
 Recording a source does not certify the truth of its claims. It only establishes provenance for the answer candidate.
 
+For live research, Phase 4C may use Hermes' existing read-only `web_search` and `web_extract` core tools. These are discovery/retrieval tools only: results must still be evaluated by the research profile and then recorded explicitly through the JOKO source-candidate tool before an answer may cite them. Search/extract output never becomes canonical knowledge by itself.
+
+No private customer identity, order data, account information, or secrets may be sent in external web-search/extract queries. JOKO-local facts should prefer reviewed local Curiosity material or first-party/official sources where available.
+
 ## Sensitivity policy
 
 At minimum, these topics are automatically escalated to high sensitivity when classified under the matching topic label:
 
-- allergens
+- allergy / allergens
 - food safety
+- nutrition
 - health / medical
 - legal
 - financial
@@ -167,7 +172,7 @@ No tool named or equivalent to `approve`, `promote_to_canonical`, or `publish_to
 3. Duplicate scoring is explicitly advisory and cannot auto-merge candidates.
 4. Shared/JOKO scope remains explicit.
 5. Only research can write classification/source/answer artifacts.
-6. Source URLs are restricted to HTTP(S) metadata entries.
+6. Source URLs are restricted to HTTP(S) metadata entries, and external web research remains read-only discovery rather than authority.
 7. Answer candidates may reference only source IDs actually stored for the same candidate.
 8. High-sensitivity readiness rules are stricter than ordinary topics.
 9. Every readiness result still requires human editorial review.
@@ -183,7 +188,7 @@ The following are intentionally not decided by this slice:
 - whether SPARK later becomes its own Hermes profile
 - semantic embeddings/vector search for duplicate detection
 - database-backed Curiosity entities
-- automatic web retrieval inside the MCP server
+- automatic web retrieval inside the JOKO MCP server (Hermes core `web_search` / `web_extract` remain the read-only research path)
 - editorial approval/promotion workflow (Phase 4D)
 - automatic publishing
 
