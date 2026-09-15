@@ -99,6 +99,23 @@ class SourceGroundedSparkTests(unittest.TestCase):
         with self.assertRaises(QuestionIntelligenceError):
             self.workspace.create("editorial", bad)
 
+    def test_decompose_candidate_validation_requires_seed_question_even_without_brief(self):
+        with tempfile.TemporaryDirectory() as root:
+            workspace = SourcePackWorkspace(root)
+            pack = workspace.create("editorial", [{
+                "kind": "paper",
+                "title": "Lamination mechanics",
+                "excerpt": "Cold butter can fracture while warm butter can smear.",
+            }])
+            with self.assertRaises(QuestionIntelligenceError):
+                validate_source_grounded_candidates([{
+                    "question": "When does cold butter become too cold?",
+                    "trigger_type": "boundary",
+                    "source_refs": ["source-01"],
+                    "rationale": "The source describes a lower workable boundary.",
+                    "why_interesting": "The common rule has a limit.",
+                }], pack, lens="decompose")
+
     def test_seed_question_supports_decompose_lens(self):
         pack = self.workspace.create(
             "editorial", SOURCES,

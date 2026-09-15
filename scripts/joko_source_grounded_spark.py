@@ -178,6 +178,8 @@ def validate_source_grounded_candidates(
     rows: list[dict[str, Any]], source_pack: dict[str, Any], lens: str = "mixed"
 ) -> list[dict[str, Any]]:
     lens = _lens(lens)
+    if lens == "decompose" and not source_pack.get("seed_question"):
+        raise QuestionIntelligenceError("decompose lens requires a seed_question in the source pack")
     if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_SOURCE_SPARK_BATCH:
         raise QuestionIntelligenceError(
             f"source-grounded SPARK batches must contain 1-{MAX_SOURCE_SPARK_BATCH} candidates"
