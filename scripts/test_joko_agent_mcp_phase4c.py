@@ -43,7 +43,10 @@ class FakeCandidates:
 
     def read(self, candidate_id):
         row = self.rows[candidate_id]
-        return {"content": f"# Candidate\n\n## Proposed question\n\n{row['question']}\n\n## Provenance notes\n\nNone\n"}
+        return {
+            "metadata": {"candidate_id": candidate_id, "requested_scope": row["scope"]},
+            "content": f"# Candidate\n\n## Proposed question\n\n{row['question']}\n\n## Provenance notes\n\nNone\n",
+        }
 
     def list_candidates(self, scope="all", limit=200):
         rows = []
@@ -100,6 +103,23 @@ class Phase4CMcpTests(unittest.TestCase):
             result = service.duplicate_check(CID, "shared")
             ids = {row["id"] for row in result["possible_matches"]}
             self.assertIn("shared/z-duplicate.md", ids)
+
+    def test_duplicate_check_scans_beyond_200_candidate_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            rooted = FakeCandidates()
+            rooted.root = Path(root)
+            # Make >200 candidate files. The final one is an exact duplicate of CID.
+            for i in range(205):
+                cid = f"cur-20260915T030000Z-{i:08x}"
+                question = f"Unrelated candidate question {i}?"
+                if i == 204:
+                    question = "What makes croissant layers flaky?"
+                rooted.rows[cid] = {"scope": "shared", "question": question, "origin": "editorial_prompt"}
+                (rooted.root / f"{cid}.md").touch()
+            service = Phase4CService(FakeCanonical(), rooted, self.workspace, "research")
+            result = service.duplicate_check(CID, "shared")
+            ids = {row["id"] for row in result["possible_matches"]}
+            self.assertIn("cur-20260915T030000Z-000000cc", ids)
 
     def test_research_workflow_reaches_editorial_gate(self):
         service = self.service()
