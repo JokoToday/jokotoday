@@ -75,8 +75,8 @@ class Phase4CMcpTests(unittest.TestCase):
         return Phase4CService(FakeCanonical(), self.candidates, self.workspace, role)
 
     def test_capability_matrix(self):
-        self.assertEqual(len(phase4c_capability_names("editorial")), 5)
-        self.assertEqual(len(phase4c_capability_names("research")), 8)
+        self.assertEqual(len(phase4c_capability_names("editorial")), 9)
+        self.assertEqual(len(phase4c_capability_names("research")), 12)
         self.assertEqual(phase4c_capability_names("creative"), ())
         self.assertEqual(phase4c_capability_names("operator"), ())
 
@@ -86,6 +86,54 @@ class Phase4CMcpTests(unittest.TestCase):
         )
         self.assertEqual(result["count"], 1)
         self.assertEqual(result["candidates"][0]["origin_type"], "spark_discovery")
+
+    def test_source_grounded_spark_preserves_pack_trigger_and_source_provenance(self):
+        service = self.service("editorial")
+        pack = service.source_pack_create([
+            {
+                "kind": "paper",
+                "title": "Lamination mechanics",
+                "url": "https://example.org/lamination",
+                "excerpt": "Butter that is too cold can fracture while warm butter may smear.",
+            },
+            {
+                "kind": "interview",
+                "title": "Baker interview",
+                "excerpt": "The baker watches whether dough and butter bend together.",
+            },
+        ], topic="croissant lamination")
+        brief = service.source_brief(pack["source_pack_id"], "challenge_assumptions", 4)
+        self.assertEqual(brief["mode"], "source_grounded")
+        result = service.source_spark_create(pack["source_pack_id"], [{
+            "question": "Can butter actually be too cold for croissants?",
+            "trigger_type": "boundary",
+            "source_refs": ["source-01", "source-02"],
+            "rationale": "Both sources point to a workable range rather than one simple cold rule.",
+            "why_interesting": "It challenges an oversimplified instruction.",
+        }], "challenge_assumptions", "shared")
+        self.assertEqual(result["count"], 1)
+        cid = result["candidates"][0]["candidate_id"]
+        self.assertEqual(self.candidates.rows[cid]["origin"], "spark_discovery")
+        grounding = service.source_grounding(cid)
+        self.assertEqual(grounding["source_pack_id"], pack["source_pack_id"])
+        self.assertEqual(grounding["trigger_type"], "boundary")
+        self.assertEqual(grounding["source_refs"], ["source-01", "source-02"])
+
+    def test_source_grounded_spark_rejects_unknown_source_reference(self):
+        service = self.service("research")
+        pack = service.source_pack_create([{
+            "kind": "article",
+            "title": "Bread",
+            "excerpt": "Warm bread releases more volatile aroma compounds into the air.",
+        }])
+        with self.assertRaises(QuestionIntelligenceError):
+            service.source_spark_create(pack["source_pack_id"], [{
+                "question": "Why does warm bread smell stronger?",
+                "trigger_type": "causal_mechanism",
+                "source_refs": ["source-99"],
+                "rationale": "A mechanism is described.",
+                "why_interesting": "A familiar experience has a hidden cause.",
+            }], "explain", "shared")
 
     def test_duplicate_check_is_advisory(self):
         result = self.service().duplicate_check(CID, "shared")

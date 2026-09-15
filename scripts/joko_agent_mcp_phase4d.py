@@ -65,6 +65,7 @@ class Phase4DService:
         candidate = self.candidates.read(candidate_id)
         question = p4c._parse_question(candidate)
         metadata = candidate.get("metadata") or {}
+        source_grounding = self.phase4c.source_grounding(candidate_id)
         try:
             classification = self.research.read_classification(candidate_id, self.role)
         except QuestionIntelligenceError:
@@ -85,6 +86,7 @@ class Phase4DService:
             "candidate_id": candidate_id,
             "candidate_metadata": metadata,
             "question": question,
+            "source_grounding": source_grounding,
             "classification": classification,
             "latest_answer": latest_answer,
             "cited_sources": cited_sources,

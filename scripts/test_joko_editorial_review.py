@@ -114,6 +114,29 @@ class Phase4DTests(unittest.TestCase):
         with self.assertRaises(QuestionIntelligenceError):
             self.service().submit_for_review(CID)
 
+    def test_source_grounding_is_included_in_human_review_package(self):
+        service = self.service("editorial")
+        pack = service.phase4c.source_pack_create([{
+            "kind": "paper",
+            "title": "Lamination mechanics",
+            "excerpt": "Butter can fracture when too cold and smear when too warm.",
+        }], topic="croissant lamination")
+        service.phase4c.source_packs.record_candidate_grounding(
+            pack["source_pack_id"], CID, {
+                "lens": "challenge_assumptions",
+                "trigger_type": "boundary",
+                "source_refs": ["source-01"],
+                "rationale": "The source describes failure at both extremes.",
+                "why_interesting": "It challenges the simplistic colder-is-better rule.",
+            }, "editorial"
+        )
+        package = service.prepare_review(CID)
+        grounding = package["source_grounding"]
+        self.assertEqual(grounding["source_pack_id"], pack["source_pack_id"])
+        self.assertEqual(grounding["trigger_type"], "boundary")
+        self.assertFalse(package["approval_authority"])
+        self.assertFalse(package["publication_authority"])
+
     def test_only_editorial_can_prepare_or_submit(self):
         self.make_ready()
         with self.assertRaises(QuestionIntelligenceError):

@@ -15,6 +15,11 @@ from joko_question_intelligence import (
     validate_spark_questions,
 )
 from joko_research_workspace import ResearchWorkspace
+from joko_source_grounded_spark import (
+    SourcePackWorkspace,
+    build_source_grounded_brief,
+    validate_source_grounded_candidates,
+)
 
 RESEARCH_ROOT_ENV = "JOKO_CURIOSITY_RESEARCH_ROOT"
 PHASE4C_READ_ROLES = {"editorial", "research"}
@@ -22,6 +27,10 @@ PHASE4C_WRITE_ROLES = {"research"}
 PHASE4C_COMMON_CAPABILITIES = (
     "spark_question_brief",
     "spark_create_candidates",
+    "spark_source_pack_create",
+    "spark_source_pack_read",
+    "insight_foundry_source_brief",
+    "spark_source_create_candidates",
     "curiosity_duplicate_check",
     "research_get_sources",
     "answer_run_checks",
@@ -62,6 +71,7 @@ class Phase4CService:
         self.canonical = canonical_store
         self.candidates = candidate_store
         self.research = research_workspace
+        self.source_packs = SourcePackWorkspace(research_workspace.root)
         self.role = role
 
     def _candidate_question(self, candidate_id: str) -> str:
@@ -94,6 +104,65 @@ class Phase4CService:
             "count": len(created), "mode": mode, "candidates": created,
             "trust": "SPARK created question candidates only; no factual or publication authority",
         }
+
+    def source_pack_create(self, sources: list[dict[str, Any]], topic: str = "",
+                           objective: str = "") -> dict[str, Any]:
+        if self.role not in PHASE4C_READ_ROLES:
+            raise QuestionIntelligenceError("this profile cannot invoke source-grounded SPARK")
+        return self.source_packs.create(self.role, sources, topic, objective)
+
+    def source_pack_read(self, source_pack_id: str) -> dict[str, Any]:
+        if self.role not in PHASE4C_READ_ROLES:
+            raise QuestionIntelligenceError("this profile cannot inspect source-grounded SPARK packs")
+        return self.source_packs.read(source_pack_id, self.role)
+
+    def source_brief(self, source_pack_id: str, lens: str = "mixed", count: int = 8) -> dict[str, Any]:
+        pack = self.source_pack_read(source_pack_id)
+        return build_source_grounded_brief(pack, lens=lens, count=count)
+
+    def source_spark_create(self, source_pack_id: str, candidate_rows: list[dict[str, Any]],
+                            lens: str, requested_scope: str, host: str = "") -> dict[str, Any]:
+        if self.role not in PHASE4C_READ_ROLES:
+            raise QuestionIntelligenceError("this profile cannot invoke source-grounded SPARK")
+        pack = self.source_pack_read(source_pack_id)
+        validated = validate_source_grounded_candidates(candidate_rows, pack, lens=lens)
+        created = []
+        for item in validated:
+            notes = (
+                f"SPARK mode=source_grounded; source_pack_id={source_pack_id}; "
+                f"lens={item['lens']}; trigger_type={item['trigger_type']}; "
+                f"source_refs={','.join(item['source_refs'])}; "
+                f"rationale={item['rationale']}; why_interesting={item['why_interesting']}"
+            )
+            candidate = self.candidates.create(
+                profile_role=self.role,
+                question=item["question"],
+                requested_scope=requested_scope,
+                origin_type="spark_discovery",
+                provenance_notes=notes,
+                host=host,
+            )
+            self.source_packs.record_candidate_grounding(
+                source_pack_id, candidate["candidate_id"], item, self.role
+            )
+            created.append(candidate)
+        return {
+            "count": len(created),
+            "mode": "source_grounded",
+            "source_pack_id": source_pack_id,
+            "lens": lens,
+            "candidates": created,
+            "trust": (
+                "source-grounded SPARK created question candidates only; source-pack material is "
+                "not automatically accepted as answer evidence and no publication authority exists"
+            ),
+        }
+
+    def source_grounding(self, candidate_id: str) -> dict[str, Any] | None:
+        if self.role not in PHASE4C_READ_ROLES:
+            raise QuestionIntelligenceError("this profile cannot inspect source-grounded SPARK provenance")
+        self._candidate_question(candidate_id)
+        return self.source_packs.read_candidate_grounding(candidate_id, self.role)
 
     def duplicate_check(self, candidate_id: str, scope: str = "all", limit: int = 5) -> dict[str, Any]:
         if self.role not in PHASE4C_READ_ROLES:
@@ -186,6 +255,16 @@ def _json_list(value: str, name: str) -> list[str]:
     return parsed
 
 
+def _json_object_list(value: str, name: str) -> list[dict[str, Any]]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise QuestionIntelligenceError(f"{name} must be a JSON array") from exc
+    if not isinstance(parsed, list) or not all(isinstance(item, dict) for item in parsed):
+        raise QuestionIntelligenceError(f"{name} must be a JSON array of objects")
+    return parsed
+
+
 def create_server():
     import joko_agent_mcp as base
 
@@ -214,6 +293,32 @@ def create_server():
         """Store SPARK-generated questions as unreviewed Curiosity candidates only."""
         return json.dumps(service.spark_create(
             _json_list(questions_json, "questions_json"), mode, requested_scope, host, provenance_notes
+        ), ensure_ascii=False)
+
+    @server.tool()
+    def spark_source_pack_create(sources_json: str, topic: str = "", objective: str = "") -> str:
+        """Store a private pre-candidate source pack for source-grounded question discovery."""
+        return json.dumps(service.source_pack_create(
+            _json_object_list(sources_json, "sources_json"), topic, objective
+        ), ensure_ascii=False)
+
+    @server.tool()
+    def spark_source_pack_read(source_pack_id: str) -> str:
+        """Read one private source pack; it is unreviewed discovery material, not answer evidence."""
+        return json.dumps(service.source_pack_read(source_pack_id), ensure_ascii=False)
+
+    @server.tool()
+    def insight_foundry_source_brief(source_pack_id: str, lens: str = "mixed", count: int = 8) -> str:
+        """Build an Insight Foundry -> SPARK brief grounded only in the supplied source pack."""
+        return json.dumps(service.source_brief(source_pack_id, lens, count), ensure_ascii=False)
+
+    @server.tool()
+    def spark_source_create_candidates(source_pack_id: str, candidates_json: str,
+                                       lens: str, requested_scope: str, host: str = "") -> str:
+        """Store source-grounded SPARK questions with trigger/source provenance as unreviewed candidates."""
+        return json.dumps(service.source_spark_create(
+            source_pack_id, _json_object_list(candidates_json, "candidates_json"),
+            lens, requested_scope, host
         ), ensure_ascii=False)
 
     @server.tool()

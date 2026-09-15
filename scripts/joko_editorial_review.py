@@ -82,6 +82,7 @@ def package_fingerprint(package: dict[str, Any]) -> str:
         "candidate_id": package.get("candidate_id"),
         "candidate_metadata": package.get("candidate_metadata"),
         "question": package.get("question"),
+        "source_grounding": package.get("source_grounding"),
         "classification": package.get("classification"),
         "latest_answer": package.get("latest_answer"),
         "cited_sources": package.get("cited_sources"),
