@@ -111,6 +111,8 @@ def validate_spark_questions(questions: list[str], mode: str) -> list[dict[str, 
     output: list[dict[str, Any]] = []
     for raw in questions:
         question = clean_text(raw, "SPARK question", MAX_QUESTION_CHARS)
+        if "\n" in question or "\r" in question:
+            raise QuestionIntelligenceError("SPARK questions must be single-line text")
         if not question.rstrip().endswith(("?", "？")):
             raise QuestionIntelligenceError("SPARK output must be an explicit question ending in '?' or '？'")
         key = re.sub(r"\s+", " ", question.casefold()).strip().rstrip("?？").strip()

@@ -58,8 +58,20 @@ class FakeCandidates:
 
     def create(self, profile_role, question, requested_scope, origin_type, provenance_notes="", host=""):
         cid = f"cur-20260915T020000Z-{len(self.rows):08x}"
-        self.rows[cid] = {"scope": requested_scope, "question": question, "origin": origin_type}
-        return {"candidate_id": cid, "origin_type": origin_type, "requested_scope": requested_scope}
+        created_at = "2026-09-15T02:00:00Z"
+        self.rows[cid] = {
+            "scope": requested_scope, "question": question, "origin": origin_type, "created_at": created_at
+        }
+        return {
+            "candidate_id": cid, "origin_type": origin_type, "requested_scope": requested_scope,
+            "created_at": created_at,
+        }
+
+    def rollback_created_candidate(self, candidate_id, expected_created_at):
+        row = self.rows[candidate_id]
+        if row.get("created_at") != expected_created_at:
+            raise QuestionIntelligenceError("candidate rollback identity mismatch")
+        del self.rows[candidate_id]
 
 
 class Phase4CMcpTests(unittest.TestCase):
@@ -75,8 +87,8 @@ class Phase4CMcpTests(unittest.TestCase):
         return Phase4CService(FakeCanonical(), self.candidates, self.workspace, role)
 
     def test_capability_matrix(self):
-        self.assertEqual(len(phase4c_capability_names("editorial")), 5)
-        self.assertEqual(len(phase4c_capability_names("research")), 8)
+        self.assertEqual(len(phase4c_capability_names("editorial")), 9)
+        self.assertEqual(len(phase4c_capability_names("research")), 12)
         self.assertEqual(phase4c_capability_names("creative"), ())
         self.assertEqual(phase4c_capability_names("operator"), ())
 
@@ -86,6 +98,94 @@ class Phase4CMcpTests(unittest.TestCase):
         )
         self.assertEqual(result["count"], 1)
         self.assertEqual(result["candidates"][0]["origin_type"], "spark_discovery")
+
+    def test_source_grounded_spark_preserves_pack_trigger_and_source_provenance(self):
+        service = self.service("editorial")
+        pack = service.source_pack_create([
+            {
+                "kind": "paper",
+                "title": "Lamination mechanics",
+                "url": "https://example.org/lamination",
+                "excerpt": "Butter that is too cold can fracture while warm butter may smear.",
+            },
+            {
+                "kind": "interview",
+                "title": "Baker interview",
+                "excerpt": "The baker watches whether dough and butter bend together.",
+            },
+        ], topic="croissant lamination")
+        brief = service.source_brief(pack["source_pack_id"], "challenge_assumptions", 4)
+        self.assertEqual(brief["mode"], "source_grounded")
+        result = service.source_spark_create(pack["source_pack_id"], [{
+            "question": "Can butter actually be too cold for croissants?",
+            "trigger_type": "boundary",
+            "source_refs": ["source-01", "source-02"],
+            "rationale": "Both sources point to a workable range rather than one simple cold rule.",
+            "why_interesting": "It challenges an oversimplified instruction.",
+        }], "challenge_assumptions", "shared")
+        self.assertEqual(result["count"], 1)
+        cid = result["candidates"][0]["candidate_id"]
+        self.assertEqual(self.candidates.rows[cid]["origin"], "spark_discovery")
+        grounding = service.source_grounding(cid)
+        self.assertEqual(grounding["source_pack_id"], pack["source_pack_id"])
+        self.assertEqual(grounding["trigger_type"], "boundary")
+        self.assertEqual(grounding["source_refs"], ["source-01", "source-02"])
+
+    def test_source_grounded_spark_rolls_back_batch_if_grounding_write_fails(self):
+        service = self.service("editorial")
+        pack = service.source_pack_create([{
+            "kind": "paper",
+            "title": "Lamination mechanics",
+            "excerpt": "Cold butter may fracture while warm butter may smear.",
+        }])
+        before = set(self.candidates.rows)
+        original = service.source_packs.record_candidate_grounding
+        calls = {"count": 0}
+
+        def fail_second(*args, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 2:
+                raise QuestionIntelligenceError("simulated grounding write failure")
+            return original(*args, **kwargs)
+
+        service.source_packs.record_candidate_grounding = fail_second
+        rows = [
+            {
+                "question": "Can butter be too cold for croissants?",
+                "trigger_type": "boundary",
+                "source_refs": ["source-01"],
+                "rationale": "The source describes a lower workable boundary.",
+                "why_interesting": "It challenges a simple keep-it-cold rule.",
+            },
+            {
+                "question": "Can butter be too warm for croissants?",
+                "trigger_type": "boundary",
+                "source_refs": ["source-01"],
+                "rationale": "The source describes an upper workable boundary.",
+                "why_interesting": "It shows the rule has two failure directions.",
+            },
+        ]
+        with self.assertRaises(QuestionIntelligenceError):
+            service.source_spark_create(pack["source_pack_id"], rows, "challenge_assumptions", "shared")
+        self.assertEqual(set(self.candidates.rows), before)
+        grounding_dir = Path(self.tmp.name) / "source-grounding"
+        self.assertFalse(grounding_dir.exists() and any(grounding_dir.iterdir()))
+
+    def test_source_grounded_spark_rejects_unknown_source_reference(self):
+        service = self.service("research")
+        pack = service.source_pack_create([{
+            "kind": "article",
+            "title": "Bread",
+            "excerpt": "Warm bread releases more volatile aroma compounds into the air.",
+        }])
+        with self.assertRaises(QuestionIntelligenceError):
+            service.source_spark_create(pack["source_pack_id"], [{
+                "question": "Why does warm bread smell stronger?",
+                "trigger_type": "causal_mechanism",
+                "source_refs": ["source-99"],
+                "rationale": "A mechanism is described.",
+                "why_interesting": "A familiar experience has a hidden cause.",
+            }], "explain", "shared")
 
     def test_duplicate_check_is_advisory(self):
         result = self.service().duplicate_check(CID, "shared")

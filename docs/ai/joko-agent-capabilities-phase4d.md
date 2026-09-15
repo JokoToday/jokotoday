@@ -88,6 +88,7 @@ The review workspace is candidate-stage operational state, not durable canonical
 `editorial_prepare_review` assembles a deterministic package containing:
 
 - candidate metadata and question
+- structured Source-Grounded SPARK provenance when the candidate came from a Source Pack
 - classification candidate
 - latest answer candidate
 - sources cited by that latest answer
@@ -149,8 +150,8 @@ No tool named or equivalent to `approve`, `reject_as_final`, `promote_to_canonic
 Expected JOKO MCP tool counts after installation:
 
 ```text
-editorial  16
-research   17
+editorial  20
+research   21
 creative    3
 operator    3
 ```
