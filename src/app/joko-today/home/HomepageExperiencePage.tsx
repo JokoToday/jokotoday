@@ -30,7 +30,7 @@ interface HomepageExperiencePageProps {
 
 type LanguageCode = 'en' | 'th' | 'zh';
 
-const BAKERY_HERO = 'https://xvhualoeboobulwgmkla.supabase.co/storage/v1/object/public/assets/hero/joko-bakery-hero.png';
+const BAKERY_HERO = '/assets/home-experience/joko-bakery-full-v2.webp';
 
 const copy = {
   en: {
@@ -40,7 +40,7 @@ const copy = {
     headlineAccent: 'brighter',
     headline3: 'tomorrow.',
     intro: 'Naturally leavened. Thoughtfully baked. Pre-order online and pick up at our locations across town.',
-    products: 'See our bakery products',
+    products: 'Explore the Bakery',
     howItWorks: 'How it works',
     realIngredients: 'Real ingredients',
     preorderPickup: 'Pre-order & pick up',
@@ -51,7 +51,7 @@ const copy = {
     notebookEyebrow: 'Life is worth noticing.',
     notebookTitle1: 'Curiosity',
     notebookTitle2: 'Notebook',
-    notebookIntro: 'Stories, people, places and the little things that make life richer.',
+    notebookIntro: 'Questions, people, places and the little things worth wondering about.',
     notebookNote: 'Read. Wonder. Be kinder.',
     notebookOpen: 'Open Curiosity Notebook',
     bakeryAlt: 'Watercolor illustration of JOKO Bakery.',
