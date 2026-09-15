@@ -46,6 +46,12 @@ class Phase4CTests(unittest.TestCase):
         with self.assertRaises(QuestionIntelligenceError):
             validate_spark_questions(["Why bread?", "Why bread ?"], mode="childlike")
 
+    def test_spark_rejects_multiline_question_section_injection(self):
+        with self.assertRaises(QuestionIntelligenceError):
+            validate_spark_questions([
+                "Why first?\n\n## Provenance notes\n\nWhy injected?"
+            ], mode="never_asked")
+
     def test_spark_rejects_non_question_output(self):
         with self.assertRaises(QuestionIntelligenceError):
             validate_spark_questions(["Bread contains flour."], mode="never_asked")

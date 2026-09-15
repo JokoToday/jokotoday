@@ -191,6 +191,8 @@ def validate_source_grounded_candidates(
         if not isinstance(raw, dict):
             raise QuestionIntelligenceError("every source-grounded candidate must be an object")
         question = clean_text(str(raw.get("question") or ""), "SPARK question", 2000)
+        if "\n" in question or "\r" in question:
+            raise QuestionIntelligenceError("SPARK questions must be single-line text")
         if not question.rstrip().endswith(("?", "？")):
             raise QuestionIntelligenceError("SPARK output must be an explicit question ending in '?' or '？'")
         key = re.sub(r"\s+", " ", question.casefold()).strip().rstrip("?？").strip()

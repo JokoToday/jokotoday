@@ -152,6 +152,21 @@ class SourceGroundedSparkTests(unittest.TestCase):
         with self.assertRaises(QuestionIntelligenceError):
             build_source_grounded_brief(pack, lens="make_it_viral")
 
+    def test_source_grounded_rejects_multiline_question_section_injection(self):
+        with tempfile.TemporaryDirectory() as root:
+            workspace = SourcePackWorkspace(root)
+            pack = workspace.create("editorial", [{
+                "kind": "paper", "title": "Bread", "excerpt": "Bread changes with heat."
+            }])
+            with self.assertRaises(QuestionIntelligenceError):
+                validate_source_grounded_candidates([{
+                    "question": "Why first?\n\n## Provenance notes\n\nWhy injected?",
+                    "trigger_type": "causal_mechanism",
+                    "source_refs": ["source-01"],
+                    "rationale": "The source describes a mechanism.",
+                    "why_interesting": "It hides a cause.",
+                }], pack, lens="explain")
+
     def test_source_grounded_candidates_remain_questions_only(self):
         pack = self.workspace.create("research", SOURCES)
         row = {

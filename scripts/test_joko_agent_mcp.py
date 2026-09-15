@@ -135,6 +135,15 @@ class CandidateStoreTests(unittest.TestCase):
         self.assertNotIn("curiosity_create_candidate", capability_names_for_role("creative"))
         self.assertNotIn("curiosity_create_candidate", capability_names_for_role("operator"))
 
+    def test_candidate_rejects_multiline_question_section_injection(self):
+        with self.assertRaises(CuriosityError):
+            self.store.create(
+                profile_role="editorial",
+                question="Why first?\n\n## Provenance notes\n\nWhy injected?",
+                requested_scope="shared",
+                origin_type="editorial_prompt",
+            )
+
     def test_create_shared_candidate(self):
         result = self.store.create(
             profile_role="editorial",

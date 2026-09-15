@@ -403,6 +403,8 @@ class CandidateStore:
             raise CuriosityError("this profile is not allowed to create Curiosity candidates")
         scope = self._candidate_scope(requested_scope)
         question = self._text(question, "question", MAX_QUESTION_CHARS)
+        if "\n" in question or "\r" in question:
+            raise CuriosityError("question must be a single line")
         provenance = self._text(
             provenance_notes, "provenance_notes", MAX_PROVENANCE_CHARS, required=False
         )
