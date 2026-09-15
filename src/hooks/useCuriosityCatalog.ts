@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   episodesForCuriosityNotebookCollection,
   type CuriosityEpisode,
@@ -18,6 +18,7 @@ export interface CuriosityCatalogState {
   wonderCounts: Readonly<Record<string, number>>;
   persistenceActive: boolean;
   loading: boolean;
+  updateWonderCount: (curiosityId: string, count: number) => void;
 }
 
 export function useCuriosityCatalog({ fallbackEpisodes }: UseCuriosityCatalogOptions): CuriosityCatalogState {
@@ -52,7 +53,11 @@ export function useCuriosityCatalog({ fallbackEpisodes }: UseCuriosityCatalogOpt
     return () => { active = false; };
   }, [fallbackEpisodes]);
 
-  return { episodes, wonderCounts, persistenceActive, loading };
+  const updateWonderCount = useCallback((curiosityId: string, count: number) => {
+    setWonderCounts((current) => ({ ...current, [curiosityId]: Math.max(0, count) }));
+  }, []);
+
+  return { episodes, wonderCounts, persistenceActive, loading, updateWonderCount };
 }
 
 export function useCuriosityCollectionEpisodes(
