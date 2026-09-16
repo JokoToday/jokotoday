@@ -222,7 +222,7 @@ export function HomepageExperiencePage({
               />
             </div>
 
-            <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(18rem,.94fr)_minmax(31rem,1.62fr)_minmax(13.5rem,.48fr)] xl:items-start xl:gap-4">
+            <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(18rem,.98fr)_minmax(28rem,1.42fr)_minmax(13.5rem,.52fr)] xl:items-start xl:gap-4">
               <div className="relative max-w-[27rem] xl:pt-7 2xl:pt-9">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
                   {labels.kicker}
@@ -289,7 +289,7 @@ export function HomepageExperiencePage({
               </div>
 
               <div className="relative min-w-0 xl:min-h-[37rem]">
-                <div className="relative mx-auto mt-1 max-w-[48rem] xl:hidden">
+                <div className="relative mx-auto mt-1 max-w-[42rem] xl:hidden">
                   <img
                     src={BAKERY_HERO}
                     alt={labels.bakeryAlt}
@@ -300,7 +300,7 @@ export function HomepageExperiencePage({
                 </div>
               </div>
 
-              <aside className="relative mx-auto w-full max-w-[16.4rem] xl:mt-16 xl:self-start xl:justify-self-end 2xl:mt-[4.6rem]">
+              <aside className="relative mx-auto w-full max-w-[15.6rem] xl:mt-14 xl:self-start xl:justify-self-end 2xl:mt-[4.6rem]">
                 <p
                   className="absolute -top-16 right-0 hidden max-w-32 -rotate-6 text-base italic leading-5 text-[#47736B]/78 2xl:block"
                   style={{ fontFamily: 'var(--joko-font-notebook)' }}
@@ -312,7 +312,7 @@ export function HomepageExperiencePage({
                   type="button"
                   onClick={openNotebook}
                   aria-haspopup="dialog"
-                  className="joko-notebook-cover group relative block min-h-[22.5rem] w-full text-left focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-4 focus:ring-offset-[#D9ECE9]"
+                  className="joko-notebook-cover group relative block min-h-[21.75rem] w-full text-left focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-4 focus:ring-offset-[#D9ECE9]"
                 >
                   <span className="joko-notebook-page-stack absolute inset-[10px_-9px_-11px_10px]" aria-hidden="true" />
                   <span className="joko-notebook-page-stack joko-notebook-page-stack--middle absolute inset-[5px_-5px_-6px_5px]" aria-hidden="true" />
@@ -322,13 +322,16 @@ export function HomepageExperiencePage({
                   {[13, 26, 39, 52, 65, 78].map((top) => (
                     <span
                       key={top}
-                      className="joko-notebook-ring absolute -left-3 z-30"
+                      className="joko-notebook-binding absolute z-30"
                       style={{ top: `${top}%` }}
                       aria-hidden="true"
-                    />
+                    >
+                      <span className="joko-notebook-hole absolute" />
+                      <span className="joko-notebook-ring absolute" />
+                    </span>
                   ))}
 
-                  <span className="relative z-20 flex min-h-[22.5rem] flex-col px-6 pb-5 pl-8 pt-7" style={notebookFont}>
+                  <span className="relative z-20 flex min-h-[21.75rem] flex-col px-6 pb-5 pl-8 pt-7" style={notebookFont}>
                     <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#7A5B3D]">
                       {labels.notebookEyebrow}
                     </span>

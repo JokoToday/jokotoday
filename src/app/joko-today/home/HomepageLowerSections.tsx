@@ -241,7 +241,11 @@ export function HomepageLowerSections({ locale, onNavigate, bundle, featuredProd
                       {image ? <img src={image} alt={name} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="lazy" /> : (
                         <div className="flex h-full items-center justify-center"><Croissant className="h-10 w-10 text-[#9A7655]/45" strokeWidth={1.2} /></div>
                       )}
-                      <Heart className="absolute right-2 top-2 h-5 w-5 text-white drop-shadow" strokeWidth={1.6} aria-hidden="true" />
+                      {(product.is_sold_out || product.stock_remaining <= 0) && (
+                        <span className="absolute right-2 top-2 rounded-full bg-[#303532]/82 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-white shadow-sm">
+                          {labels.soldOut}
+                        </span>
+                      )}
                       {product.is_sold_out && (
                         <span className="absolute bottom-2 left-2 rounded-full bg-[#303532]/88 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
                           {labels.soldOut}
