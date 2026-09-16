@@ -91,6 +91,15 @@ class Phase4EService:
         candidate = self.candidates.read(candidate_id)
         question = p4c._parse_question(candidate)
         metadata = candidate.get("metadata") or {}
+        # Phase 4D owns the review-package fingerprint contract. Source-grounded
+        # SPARK provenance was added there after Phase 4E first shipped, so the
+        # creative package must carry the same field or every new submission is
+        # incorrectly reported stale. Read it through an editorial-scoped Phase
+        # 4C service; this is read-only and does not expose editorial tools to
+        # the creative profile.
+        source_grounding = p4c.Phase4CService(
+            self.canonical, self.candidates, self.research, "editorial"
+        ).source_grounding(candidate_id)
         try:
             classification = self.research.read_classification(candidate_id, self.role)
         except QuestionIntelligenceError:
@@ -111,6 +120,7 @@ class Phase4EService:
             "candidate_id": candidate_id,
             "candidate_metadata": metadata,
             "question": question,
+            "source_grounding": source_grounding,
             "classification": classification,
             "latest_answer": latest_answer,
             "cited_sources": cited_sources,
@@ -118,6 +128,7 @@ class Phase4EService:
             "answer_count": len(answers),
             "relationship_candidates": relationships,
             "duplicate_check": duplicates,
+            "duplicate_limit": max(1, min(int(duplicate_limit), 20)),
             "readiness": readiness,
             "ready_to_submit": bool(readiness.get("eligible_for_editorial_review")),
             "human_review_required": True,
@@ -127,10 +138,11 @@ class Phase4EService:
         }
 
     def _released(self, candidate_id: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-        package = self._current_package(candidate_id)
         latest = self.review.latest_submission(candidate_id, self.role)
         if latest is None:
             raise QuestionIntelligenceError("candidate has not been submitted for human editorial review")
+        duplicate_limit = int(latest.get("duplicate_limit", 5))
+        package = self._current_package(candidate_id, duplicate_limit)
         status = self.review.status(candidate_id, self.role, package)
         if status.get("status") != "awaiting_human_review" or status.get("stale") is True:
             raise QuestionIntelligenceError("editorial review handoff is missing or stale")

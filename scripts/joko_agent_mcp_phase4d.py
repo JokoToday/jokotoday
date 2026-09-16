@@ -62,6 +62,7 @@ class Phase4DService:
         return self.review.list_relations(candidate_id, self.role)
 
     def _review_package(self, candidate_id: str, duplicate_limit: int = 5) -> dict[str, Any]:
+        duplicate_limit = max(1, min(int(duplicate_limit), 20))
         candidate = self.candidates.read(candidate_id)
         question = p4c._parse_question(candidate)
         metadata = candidate.get("metadata") or {}
@@ -94,6 +95,7 @@ class Phase4DService:
             "answer_count": len(answers),
             "relationship_candidates": relationships,
             "duplicate_check": duplicates,
+            "duplicate_limit": duplicate_limit,
             "readiness": readiness,
             "ready_to_submit": bool(readiness.get("eligible_for_editorial_review")),
             "human_review_required": True,
