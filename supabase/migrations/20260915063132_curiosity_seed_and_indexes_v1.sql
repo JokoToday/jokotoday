@@ -1,0 +1,88 @@
+-- Seed the source-controlled Curiosity library into persistent storage and add FK indexes.
+
+create index if not exists curiosities_published_revision_idx on public.curiosities (published_revision_id);
+create index if not exists curiosities_draft_updated_by_idx on public.curiosities (draft_updated_by);
+create index if not exists curiosities_published_by_idx on public.curiosities (published_by);
+create index if not exists curiosities_created_by_idx on public.curiosities (created_by);
+create index if not exists curiosity_revisions_published_by_idx on public.curiosity_revisions (published_by);
+create index if not exists curiosity_wonders_user_id_idx on public.curiosity_wonders (user_id);
+
+do $seed$
+declare
+  v_site_id uuid;
+  v_episode jsonb;
+  v_revision_id uuid;
+  v_fixture jsonb := $fixture${"schemaVersion":1,"site":{"siteId":"joko-today","siteKey":"joko-today","supportedLocales":["en","th","zh"],"defaultLocale":"en"},"episodes":[{"schemaVersion":1,"id":"curiosity-croissant-texture","slug":"why-are-croissants-crisp-outside-and-airy-inside","status":"published","scope":"shared","question":{"en":"Why are good croissants crisp outside and airy inside?","th":"ทำไมครัวซองต์ที่ดีจึงกรอบด้านนอกแต่โปร่งเบาด้านใน?","zh":"为什么好的可颂外层酥脆，里面却轻盈蓬松？"},"summary":{"en":"Layers, steam and careful fermentation create two very different textures in one pastry.","th":"ชั้นแป้ง ไอน้ำ และการหมักอย่างเหมาะสมทำให้ขนมชิ้นเดียวมีสองเนื้อสัมผัสที่ต่างกัน","zh":"层次、蒸汽和恰当发酵，让一只可颂同时拥有两种不同口感。"},"shortAnswer":{"en":"Thin dough-and-butter layers separate in the oven while steam expands the interior. Fermentation and baking then set that open structure while drying and browning the outside.","th":"ชั้นแป้งและเนยบาง ๆ แยกตัวในเตาอบ ขณะที่ไอน้ำดันด้านในให้ขยาย การหมักและการอบช่วยตรึงโครงสร้างโปร่งนั้นไว้ พร้อมทำให้ด้านนอกแห้งและเป็นสีน้ำตาลกรอบ","zh":"薄薄的面团与黄油层在烘烤时分开，蒸汽撑开内部；发酵和烘烤固定这种开放结构，同时让外层干燥上色并变得酥脆。"},"answerStatus":"answered","origin":{"type":"jokomi"},"topics":["baking","croissants","lamination"],"guide":{"kind":"character","id":"guide-baker","name":{"en":"The Baker","th":"คนทำขนม","zh":"烘焙师"}},"heroMedia":{"id":"croissant-layer-sketch","kind":"sketch","alt":{"en":"A hand-drawn cross-section of a layered croissant.","th":"ภาพสเก็ตช์ตัดขวางของครัวซองต์เป็นชั้น ๆ","zh":"层层可颂横切面的手绘草图。"}},"related":[{"curiosityId":"curiosity-butter-layers","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-butter-layers","slug":"why-does-butter-need-to-stay-cool-in-laminated-dough","status":"published","scope":"shared","question":{"en":"Why does butter need to stay cool in laminated dough?","th":"ทำไมเนยจึงต้องเย็นอยู่เสมอเวลารีดแป้งลามิเนต?","zh":"为什么制作层压面团时黄油要保持低温？"},"summary":{"en":"Temperature helps preserve distinct layers until the oven can turn them into lift.","th":"อุณหภูมิช่วยรักษาชั้นแป้งและเนยให้แยกกันจนถึงเวลาที่เตาอบเปลี่ยนชั้นเหล่านั้นให้เกิดการพองตัว","zh":"合适温度能让面团与黄油保持分层，直到进入烤箱后转化成膨松结构。"},"shortAnswer":{"en":"If butter becomes too soft, it can smear into the dough instead of remaining as separate sheets. Distinct layers help steam and expanding gases create lift.","th":"ถ้าเนยนิ่มเกินไป เนยจะผสมเข้าไปในแป้งแทนที่จะคงเป็นแผ่นแยกกัน ชั้นที่ชัดเจนช่วยให้ไอน้ำและก๊าซที่ขยายตัวดันแป้งให้พองขึ้น","zh":"如果黄油过软，就会抹进面团而不是保持独立薄层。清晰的分层能让蒸汽和膨胀气体把面团撑起来。"},"answerStatus":"answered","origin":{"type":"editorial"},"topics":["baking","lamination","temperature"],"guide":{"kind":"character","id":"guide-baker","name":{"en":"The Baker","th":"คนทำขนม","zh":"烘焙师"}},"related":[{"curiosityId":"curiosity-croissant-texture","relation":"background"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-joko-ordering","slug":"how-does-ordering-at-joko-work","status":"published","scope":"local","siteId":"joko-today","question":{"en":"How does ordering at JOKO TODAY work?","th":"การสั่งซื้อที่ JOKO TODAY ทำงานอย่างไร?","zh":"在 JOKO TODAY 要怎样预订？"},"summary":{"en":"Choose what you want, pre-order before the cutoff, then collect it at your selected pickup time and place.","th":"เลือกสิ่งที่ต้องการ สั่งล่วงหน้าก่อนเวลาปิดรับ แล้วมารับตามวัน เวลา และสถานที่ที่เลือก","zh":"选好想要的商品，在截止时间前预订，然后按所选时间和地点取货。"},"shortAnswer":{"en":"Browse the available menu, choose an eligible pickup date and location, place your pre-order before the cutoff, and collect your order as scheduled.","th":"ดูเมนูที่เปิดขาย เลือกวันและจุดรับที่ใช้ได้ สั่งล่วงหน้าก่อนเวลาปิดรับ แล้วมารับออเดอร์ตามที่นัดไว้","zh":"浏览当前菜单，选择可用的取货日期和地点，在截止时间前完成预订，并按约定领取订单。"},"steps":[{"id":"choose","title":{"en":"Choose","th":"เลือก","zh":"挑选"},"body":{"en":"Browse the week’s menu and find what you love.","th":"ดูเมนูประจำสัปดาห์แล้วเลือกสิ่งที่คุณชอบ","zh":"看看本周菜单，找到你喜欢的。"}},{"id":"pre-order","title":{"en":"Pre-Order","th":"สั่งล่วงหน้า","zh":"预订"},"body":{"en":"Place your order before the cut-off for your pickup day.","th":"สั่งก่อนเวลาปิดรับออเดอร์ของวันรับสินค้า","zh":"在取货日的截止时间前下单。"}},{"id":"pick-up","title":{"en":"Pick Up","th":"มารับ","zh":"取货"},"body":{"en":"Pick up your order at your chosen location on your scheduled day.","th":"รับออเดอร์ที่จุดรับและวันที่คุณเลือกไว้","zh":"按约定日期到你选择的地点领取订单。"}},{"id":"enjoy","title":{"en":"Enjoy","th":"เพลิดเพลิน","zh":"享用"},"body":{"en":"Good bread, good people, good moments.","th":"ขนมปังดี ๆ ผู้คนดี ๆ และช่วงเวลาดี ๆ","zh":"好面包，好人，好时光。"}}],"answerStatus":"answered","origin":{"type":"system","externalRef":"joko-today:ordering-flow"},"topics":["joko-today","ordering","pickup"],"hostRefs":[{"domain":"page","id":"how-it-works"},{"domain":"site","id":"joko-today"}],"sources":[{"id":"source-joko-ordering-rules","kind":"internal","title":{"en":"JOKO TODAY ordering rules","th":"กติกาการสั่งซื้อของ JOKO TODAY","zh":"JOKO TODAY 预订规则"},"publisher":"JOKO TODAY"}],"related":[{"curiosityId":"curiosity-joko-preorder","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-warm-bread-smell","slug":"why-does-warm-bread-smell-stronger","status":"published","scope":"shared","question":{"en":"Why does warm bread smell stronger?","th":"ทำไมขนมปังอุ่น ๆ จึงมีกลิ่นชัดกว่า?","zh":"为什么温热的面包闻起来更香？"},"summary":{"en":"Warmth helps aroma molecules escape into the air, so more of them reach your nose.","th":"ความอุ่นช่วยให้โมเลกุลของกลิ่นระเหยออกสู่อากาศได้มากขึ้น จึงมาถึงจมูกเราได้มากกว่า","zh":"温度升高会让更多香气分子进入空气，因此更容易到达我们的鼻子。"},"shortAnswer":{"en":"Many aroma compounds become more volatile as food warms. That means more scent molecules move from the bread into the surrounding air, making the aroma easier to notice.","th":"สารให้กลิ่นหลายชนิดระเหยได้ง่ายขึ้นเมื่ออาหารอุ่นขึ้น จึงมีโมเลกุลของกลิ่นเคลื่อนจากขนมปังสู่อากาศรอบ ๆ มากขึ้น และเรารับรู้กลิ่นได้ชัดขึ้น","zh":"许多香气化合物在食物变暖时更容易挥发，于是更多气味分子从面包进入周围空气，我们便更容易闻到。"},"answerStatus":"answered","origin":{"type":"jokomi"},"topics":["bread","aroma","everyday-science"],"guide":{"kind":"character","id":"guide-food-scientist","name":{"en":"The Food Scientist","th":"นักวิทยาศาสตร์อาหาร","zh":"食品科学家"}},"related":[{"curiosityId":"curiosity-yeast-rise","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-dough-rest","slug":"why-do-bakers-let-dough-rest","status":"published","scope":"shared","question":{"en":"Why do bakers let dough rest?","th":"ทำไมคนทำขนมปังจึงพักแป้ง?","zh":"为什么烘焙师要让面团静置？"},"summary":{"en":"Resting gives flour time to hydrate and the dough structure time to relax or develop.","th":"การพักแป้งให้เวลาแป้งดูดน้ำ และให้โครงสร้างของแป้งได้คลายตัวหรือพัฒนาต่อ","zh":"静置让面粉有时间吸水，也让面团结构有时间放松或继续发展。"},"shortAnswer":{"en":"A rest can let flour absorb water more evenly, make stretched gluten relax, and—when yeast or starter is present—allow fermentation to continue. The exact reason depends on the stage of the recipe.","th":"การพักช่วยให้แป้งดูดน้ำสม่ำเสมอขึ้น ให้กลูเตนที่ถูกยืดได้คลายตัว และเมื่อมียีสต์หรือหัวเชื้อก็เปิดเวลาให้การหมักดำเนินต่อ เหตุผลหลักจะแตกต่างกันตามช่วงของสูตร","zh":"静置可以让面粉更均匀地吸水，让被拉伸的面筋放松；如果有酵母或酵种，也能让发酵继续。具体作用取决于配方进行到哪一步。"},"answerStatus":"answered","origin":{"type":"editorial"},"topics":["baking","dough","resting"],"guide":{"kind":"character","id":"guide-baker","name":{"en":"The Baker","th":"คนทำขนม","zh":"烘焙师"}},"related":[{"curiosityId":"curiosity-yeast-rise","relation":"background"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-yeast-rise","slug":"why-does-yeast-make-bread-rise","status":"published","scope":"shared","question":{"en":"Why does yeast make bread rise?","th":"ทำไมยีสต์จึงทำให้ขนมปังฟูขึ้น?","zh":"为什么酵母会让面包膨起来？"},"summary":{"en":"Yeast produces carbon dioxide during fermentation, and the dough traps much of that gas in bubbles.","th":"ยีสต์สร้างก๊าซคาร์บอนไดออกไซด์ระหว่างการหมัก และแป้งกักก๊าซส่วนหนึ่งไว้เป็นฟอง","zh":"酵母发酵时会产生二氧化碳，面团把其中许多气体困在气泡里。"},"shortAnswer":{"en":"Yeast uses available sugars and releases carbon dioxide. A developed dough structure holds many of those gas bubbles, so the dough expands before and during baking.","th":"ยีสต์ใช้น้ำตาลที่มีอยู่และปล่อยคาร์บอนไดออกไซด์ออกมา โครงสร้างแป้งที่พัฒนาดีจะกักฟองก๊าซเหล่านั้นไว้ ทำให้แป้งขยายตัวก่อนและระหว่างการอบ","zh":"酵母利用可用的糖并释放二氧化碳。形成良好结构的面团能留住许多气泡，因此面团会在烘烤前和烘烤过程中膨胀。"},"answerStatus":"answered","origin":{"type":"jokomi"},"topics":["bread","yeast","fermentation"],"guide":{"kind":"character","id":"guide-baker","name":{"en":"The Baker","th":"คนทำขนม","zh":"烘焙师"}},"related":[{"curiosityId":"curiosity-dough-rest","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-yellow-flowers","slug":"why-are-some-flowers-yellow","status":"published","scope":"shared","question":{"en":"Why are some flowers yellow?","th":"ทำไมดอกไม้บางชนิดจึงมีสีเหลือง?","zh":"为什么有些花是黄色的？"},"summary":{"en":"Pigments in petals interact with light so our eyes receive a colour we perceive as yellow.","th":"รงควัตถุในกลีบดอกมีปฏิสัมพันธ์กับแสง ทำให้แสงที่มาถึงตาเราถูกมองเห็นเป็นสีเหลือง","zh":"花瓣中的色素与光发生作用，使到达我们眼睛的光被感知为黄色。"},"shortAnswer":{"en":"Petal pigments absorb some parts of visible light more strongly than others. The light that is reflected or transmitted back toward us can be rich in wavelengths our visual system interprets as yellow.","th":"รงควัตถุในกลีบดอกดูดกลืนแสงที่มองเห็นบางช่วงมากกว่าช่วงอื่น แสงที่สะท้อนหรือผ่านกลับมาหาเราจึงอาจมีช่วงคลื่นที่ระบบการมองเห็นของเราตีความว่าเป็นสีเหลืองมากกว่า","zh":"花瓣色素会更强地吸收可见光中的某些波段。被反射或透射回来的光可能富含我们视觉系统会解释成黄色的波长。"},"answerStatus":"answered","origin":{"type":"jokomi"},"topics":["flowers","plants","colour"],"guide":{"kind":"character","id":"guide-botanist","name":{"en":"The Botanist","th":"นักพฤกษศาสตร์","zh":"植物学家"}},"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-joko-preorder","slug":"why-does-joko-use-preorder-cutoffs","status":"published","scope":"local","siteId":"joko-today","question":{"en":"Why does JOKO use pre-order cutoffs?","th":"ทำไม JOKO จึงมีเวลาปิดรับพรีออเดอร์?","zh":"为什么 JOKO 会设置预订截止时间？"},"summary":{"en":"The cutoff gives the bakery a clear production window before each scheduled pickup day.","th":"เวลาปิดรับช่วยให้เบเกอรี่มีช่วงเวลาชัดเจนสำหรับวางแผนการผลิตก่อนวันรับสินค้าแต่ละวัน","zh":"截止时间让烘焙坊在每个取货日前拥有明确的生产安排窗口。"},"shortAnswer":{"en":"JOKO’s pickup days are scheduled in advance. A cutoff gives the bakery time to plan what needs to be prepared for those orders and match production to the selected pickup day and location.","th":"วันรับสินค้าของ JOKO ถูกกำหนดไว้ล่วงหน้า เวลาปิดรับจึงให้เวลาทีมเบเกอรี่วางแผนสิ่งที่ต้องเตรียมสำหรับออเดอร์ และจัดการผลิตให้ตรงกับวันและจุดรับที่ลูกค้าเลือก","zh":"JOKO 的取货日是预先安排的。截止时间让烘焙坊有时间根据订单规划准备内容，并让生产与所选取货日期和地点相匹配。"},"answerStatus":"answered","origin":{"type":"system","externalRef":"joko-today:pickup-cutoffs"},"topics":["joko-today","pre-order","planning"],"hostRefs":[{"domain":"site","id":"joko-today"}],"sources":[{"id":"source-joko-pickup-cutoffs","kind":"internal","title":{"en":"JOKO TODAY pickup and cutoff rules","th":"กติกาวันรับสินค้าและเวลาปิดรับของ JOKO TODAY","zh":"JOKO TODAY 取货与截止时间规则"},"publisher":"JOKO TODAY"}],"related":[{"curiosityId":"curiosity-joko-ordering","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-soft-bread","slug":"why-do-some-breads-stay-soft-longer","status":"published","scope":"shared","question":{"en":"Why do some breads stay soft longer than others?","th":"ทำไมขนมปังบางชนิดจึงนุ่มได้นานกว่าชนิดอื่น?","zh":"为什么有些面包能比其他面包保持柔软更久？"},"summary":{"en":"Ingredients, moisture and bread structure all seem to matter. Jokomi is still following this question.","th":"วัตถุดิบ ความชื้น และโครงสร้างของขนมปังล้วนดูเหมือนจะมีส่วน Jokomi ยังตามหาคำตอบของคำถามนี้อยู่","zh":"原料、水分和面包结构似乎都有关。Jokomi 还在继续追这个问题。"},"answerStatus":"still-wondering","origin":{"type":"jokomi"},"topics":["bread","texture","ingredients"],"related":[{"curiosityId":"curiosity-warm-bread-smell","relation":"related"}],"publishedAt":"2026-09-14T00:00:00Z"},{"schemaVersion":1,"id":"curiosity-flour-protein","slug":"why-do-bakers-care-about-flour-protein","status":"researching","scope":"shared","question":{"en":"Why do bakers care about the protein in flour?","th":"ทำไมคนทำขนมปังจึงสนใจปริมาณโปรตีนในแป้ง?","zh":"为什么烘焙师会在意面粉的蛋白质含量？"},"summary":{"en":"Protein is one clue to how a flour may behave, but it is not the whole story.","th":"โปรตีนเป็นหนึ่งในเบาะแสว่าแป้งจะทำงานอย่างไร แต่ไม่ใช่คำตอบทั้งหมด","zh":"蛋白质含量能提示面粉可能怎样表现，但它并不是全部答案。"},"answerStatus":"partial","origin":{"type":"jokomi"},"topics":["baking","flour","ingredients"]}]}
+$fixture$::jsonb;
+begin
+  select id into v_site_id from public.platform_sites where site_key = 'joko-today';
+  if v_site_id is null then
+    raise exception 'JOKO TODAY platform site is missing';
+  end if;
+
+  for v_episode in select value from jsonb_array_elements(v_fixture->'episodes') loop
+    perform private.assert_curiosity_document_v1(v_episode, v_episode->>'id', v_site_id);
+
+    insert into public.curiosities (
+      id, site_id, slug, schema_version, scope, answer_status, origin_type, topics,
+      draft_document, draft_updated_at
+    ) values (
+      v_episode->>'id', v_site_id, v_episode->>'slug', (v_episode->>'schemaVersion')::integer,
+      v_episode->>'scope', v_episode->>'answerStatus', v_episode#>>'{origin,type}',
+      array(select jsonb_array_elements_text(v_episode->'topics')), v_episode,
+      coalesce((v_episode->>'updatedAt')::timestamptz, (v_episode->>'publishedAt')::timestamptz, now())
+    ) on conflict (id) do nothing;
+
+    if v_episode->>'status' = 'published' then
+      select id into v_revision_id
+      from public.curiosity_revisions
+      where curiosity_id = v_episode->>'id' and revision_number = 1;
+
+      if v_revision_id is null then
+        insert into public.curiosity_revisions (curiosity_id, revision_number, document, published_at)
+        values (v_episode->>'id', 1, v_episode, (v_episode->>'publishedAt')::timestamptz)
+        returning id into v_revision_id;
+      end if;
+
+      update public.curiosities
+      set published_revision_id = v_revision_id,
+          published_at = (v_episode->>'publishedAt')::timestamptz
+      where id = v_episode->>'id' and published_revision_id is null;
+    end if;
+  end loop;
+end;
+$seed$;
+
+-- A static fallback Curiosity that is not persisted yet must not expose a dead wonder control.
+create or replace function private.curiosity_wonder_state_v1(
+  p_curiosity_id text,
+  p_reader_token uuid
+)
+returns table(wonder_count bigint, wondered boolean)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if not exists (
+    select 1 from public.curiosities c
+    where c.id = p_curiosity_id and c.published_revision_id is not null
+  ) then
+    return;
+  end if;
+
+  return query
+  select count(cw.id)::bigint,
+    exists (
+      select 1 from public.curiosity_wonders mine
+      where mine.curiosity_id = p_curiosity_id
+        and ((v_user_id is not null and mine.user_id = v_user_id)
+          or (mine.user_id is null and mine.reader_token = p_reader_token))
+    )
+  from public.curiosity_wonders cw
+  where cw.curiosity_id = p_curiosity_id;
+end;
+$$;

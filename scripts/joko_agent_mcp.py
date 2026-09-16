@@ -403,6 +403,8 @@ class CandidateStore:
             raise CuriosityError("this profile is not allowed to create Curiosity candidates")
         scope = self._candidate_scope(requested_scope)
         question = self._text(question, "question", MAX_QUESTION_CHARS)
+        if "\n" in question or "\r" in question:
+            raise CuriosityError("question must be a single line")
         provenance = self._text(
             provenance_notes, "provenance_notes", MAX_PROVENANCE_CHARS, required=False
         )
@@ -449,6 +451,15 @@ class CandidateStore:
             "path": target.name,
             "trust": "unreviewed candidate only; never canonical or publishable without human review",
         }
+
+    def rollback_created_candidate(self, candidate_id: str, expected_created_at: str) -> None:
+        """Remove only the exact candidate just created by a failed compound operation."""
+        target = self._candidate_file(candidate_id)
+        text = target.read_text(encoding="utf-8", errors="replace")
+        metadata = self._validated_metadata(self._metadata_from_text(text), target.stem)
+        if metadata.get("created_at") != expected_created_at:
+            raise CuriosityError("candidate rollback identity mismatch")
+        target.unlink()
 
     def list_candidates(self, scope: str = "all", limit: int = 100) -> dict[str, Any]:
         normalized_scope = self._candidate_scope(scope, allow_all=True)

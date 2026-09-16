@@ -2,12 +2,15 @@ import { BookOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
-  episodesForCuriosityNotebookCollection,
   findCuriosityNotebookCollection,
   jokoTodayCuriosityFixture,
   jokoTodayNotebookConfig,
   visibleCuriosityNotebookCollections,
 } from '../../../platform/curiosity';
+import {
+  useCuriosityCatalog,
+  useCuriosityCollectionEpisodes,
+} from '../../../hooks/useCuriosityCatalog';
 import { getProductBySlug, type CMSProduct } from '../../../lib/cmsService';
 import type { ResolvedNotebookContent } from '../../../lib/notebookContent';
 import {
@@ -502,7 +505,10 @@ export function NotebookExperienceReader({
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
   const { bundle } = content;
-  const curiosityEpisodes = jokoTodayCuriosityFixture.episodes;
+  const curiosityCatalog = useCuriosityCatalog({
+    fallbackEpisodes: jokoTodayCuriosityFixture.episodes,
+  });
+  const curiosityEpisodes = curiosityCatalog.episodes;
   const curiosityCollections = visibleCuriosityNotebookCollections(jokoTodayNotebookConfig);
   const requestedCollectionSlug = target.type === 'notebook.collection'
     ? target.slug
@@ -512,9 +518,7 @@ export function NotebookExperienceReader({
   const curiosityCollection = requestedCollectionSlug
     ? findCuriosityNotebookCollection(jokoTodayNotebookConfig, requestedCollectionSlug)
     : null;
-  const collectionEpisodes = curiosityCollection
-    ? episodesForCuriosityNotebookCollection(curiosityCollection, curiosityEpisodes)
-    : [];
+  const collectionEpisodes = useCuriosityCollectionEpisodes(curiosityCollection, curiosityCatalog);
   const curiosityEpisode = target.type === 'notebook.question'
     ? curiosityEpisodes.find((episode) => episode.slug === target.slug && episode.status === 'published') ?? null
     : null;
@@ -691,6 +695,7 @@ export function NotebookExperienceReader({
           locale={lang}
           defaultLocale={jokoTodayCuriosityFixture.site.defaultLocale}
           onOpen={openCuriosity}
+          onWonderCountChange={curiosityCatalog.updateWonderCount}
         />
       ) : target.type === 'notebook.today' ? (
         <NotebookFeatureSpread
@@ -714,7 +719,7 @@ export function NotebookExperienceReader({
         />
       )}
 
-      {reactionTarget && (
+      {reactionTarget && !curiosityEpisode && (
         <NotebookReactionButton key={`${reactionTarget.type}:${reactionTarget.id}`} target={reactionTarget} locale={lang} />
       )}
 
