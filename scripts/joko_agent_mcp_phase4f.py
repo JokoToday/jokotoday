@@ -70,9 +70,10 @@ class Phase4FService:
         )
 
     def _context(self, candidate_id: str, require_current: bool = True) -> dict[str, Any]:
-        package = self.package_builder._review_package(candidate_id)
-        fingerprint = package_fingerprint(package)
         latest = self.review.latest_submission(candidate_id, "editorial")
+        duplicate_limit = int((latest or {}).get("duplicate_limit", 5))
+        package = self.package_builder._review_package(candidate_id, duplicate_limit)
+        fingerprint = package_fingerprint(package)
         status = self.review.status(candidate_id, "editorial", package)
         current = bool(
             latest

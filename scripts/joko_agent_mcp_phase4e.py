@@ -128,6 +128,7 @@ class Phase4EService:
             "answer_count": len(answers),
             "relationship_candidates": relationships,
             "duplicate_check": duplicates,
+            "duplicate_limit": max(1, min(int(duplicate_limit), 20)),
             "readiness": readiness,
             "ready_to_submit": bool(readiness.get("eligible_for_editorial_review")),
             "human_review_required": True,
@@ -137,10 +138,11 @@ class Phase4EService:
         }
 
     def _released(self, candidate_id: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-        package = self._current_package(candidate_id)
         latest = self.review.latest_submission(candidate_id, self.role)
         if latest is None:
             raise QuestionIntelligenceError("candidate has not been submitted for human editorial review")
+        duplicate_limit = int(latest.get("duplicate_limit", 5))
+        package = self._current_package(candidate_id, duplicate_limit)
         status = self.review.status(candidate_id, self.role, package)
         if status.get("status") != "awaiting_human_review" or status.get("stale") is True:
             raise QuestionIntelligenceError("editorial review handoff is missing or stale")

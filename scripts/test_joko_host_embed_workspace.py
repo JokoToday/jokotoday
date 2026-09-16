@@ -155,6 +155,48 @@ class Phase4FHostEmbedTests(unittest.TestCase):
                 "", "en", "paper", "Open", "/products"
             )
 
+    def test_backslashes_are_rejected_in_host_and_cta_paths(self):
+        service = self.editorial()
+        with self.assertRaises(QuestionIntelligenceError):
+            service.create_host_relationship(
+                self.cid, "joko-today", "page", "homepage", "featured_on",
+                "JOKO homepage", "/\\evil.example/path",
+            )
+        relationship = self.create_relationship()
+        with self.assertRaises(QuestionIntelligenceError):
+            service.create_embed(
+                self.cid, relationship["host_relationship_id"], "homepage-feature",
+                "", "en", "paper", "Open", "/\\evil.example/path",
+            )
+
+    def test_nondefault_duplicate_limit_is_preserved_across_phase4e_and_phase4f(self):
+        for index in range(3):
+            (self.canonical_root / "shared" / f"similar-{index}.md").write_text(
+                f"# Why does laminated dough puff into layers number {index}?\n", encoding="utf-8"
+            )
+        self.submission = self.editorial4d.submit_for_review(
+            self.cid, "Non-default duplicate limit", duplicate_limit=1
+        )
+        self.assertEqual(self.submission["duplicate_limit"], 1)
+        context = self.editorial()._context(self.cid)
+        self.assertFalse(context["review_status"]["stale"])
+        self.assertEqual(context["package"]["duplicate_limit"], 1)
+        self.assertLessEqual(len(context["package"]["duplicate_check"]["possible_matches"]), 1)
+
+        create_clearance_receipt(
+            self.release_root, self.cid, self.submission,
+            "human-admin:test", "Cleared after non-default duplicate limit",
+        )
+        phase4e = Phase4EService(
+            self.canonical, self.candidates, self.research, self.review,
+            self.releases, CreativeAnswerWorkspace(self.creative_root, CreativeAssetStore(self.asset_root)),
+            "creative",
+        )
+        released_package, released_submission, _ = phase4e._released(self.cid)
+        self.assertEqual(released_submission["duplicate_limit"], 1)
+        self.assertEqual(released_package["duplicate_limit"], 1)
+        self.assertEqual(package_fingerprint(released_package), self.submission["package_fingerprint"])
+
     def test_creative_requires_current_human_clearance(self):
         relationship = self.create_relationship()
         with self.assertRaises(QuestionIntelligenceError):

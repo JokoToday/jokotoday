@@ -257,6 +257,12 @@ class EditorialReviewWorkspace:
         if readiness.get("requires_human_review") is not True:
             raise QuestionIntelligenceError("human editorial review gate must remain enabled")
         fingerprint = package_fingerprint(package)
+        try:
+            duplicate_limit = int(package.get("duplicate_limit", 5))
+        except (TypeError, ValueError) as exc:
+            raise QuestionIntelligenceError("review package duplicate_limit is invalid") from exc
+        if not 1 <= duplicate_limit <= 20:
+            raise QuestionIntelligenceError("review package duplicate_limit is invalid")
         notes = clean_text(review_notes, "review_notes", MAX_REVIEW_NOTES_CHARS, required=False)
         existing = self._submissions(cid, role)
         if (
@@ -276,6 +282,7 @@ class EditorialReviewWorkspace:
             "candidate_id": cid,
             "status": "awaiting_human_review",
             "package_fingerprint": fingerprint,
+            "duplicate_limit": duplicate_limit,
             "snapshot": {
                 "proposed_scope": classification.get("proposed_scope"),
                 "topic": classification.get("topic"),

@@ -152,7 +152,7 @@ def _relative_path(value: str) -> str:
     value = (value or "").strip()
     if not value:
         return ""
-    if not value.startswith("/") or value.startswith("//") or "://" in value:
+    if not value.startswith("/") or value.startswith("//") or "://" in value or "\\" in value:
         raise QuestionIntelligenceError("host/CTA path must be a site-relative path")
     if any(ord(ch) < 32 for ch in value):
         raise QuestionIntelligenceError("host/CTA path contains control characters")
