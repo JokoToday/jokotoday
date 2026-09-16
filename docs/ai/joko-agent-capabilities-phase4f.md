@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation candidate. Live installation remains gated behind explicit production/security approval.
+Implemented. Protected live acceptance passed on 2026-09-16; activation/publication authority remains unavailable.
 
 ## Purpose
 

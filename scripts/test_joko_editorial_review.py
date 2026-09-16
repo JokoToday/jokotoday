@@ -6,7 +6,7 @@ from pathlib import Path
 
 from joko_agent_mcp import CuriosityStore
 from joko_agent_mcp_phase4d import Phase4DService, phase4d_capability_names
-from joko_editorial_review import EditorialReviewWorkspace
+from joko_editorial_review import EditorialReviewWorkspace, package_fingerprint
 from joko_question_intelligence import QuestionIntelligenceError
 from joko_research_workspace import ResearchWorkspace
 
@@ -158,6 +158,22 @@ class Phase4DTests(unittest.TestCase):
         status = self.service().review_status(CID)
         self.assertFalse(status["stale"])
         self.assertEqual(status["submission_count"], 2)
+
+    def test_duplicate_limit_change_creates_new_submission_even_when_matches_are_unchanged(self):
+        self.make_ready()
+        service = self.service()
+        package_19 = service.prepare_review(CID, duplicate_limit=19)
+        package_20 = service.prepare_review(CID, duplicate_limit=20)
+        self.assertEqual(package_19["duplicate_check"], package_20["duplicate_check"])
+        self.assertEqual(package_fingerprint(package_19), package_fingerprint(package_20))
+
+        first = service.submit_for_review(CID, "Same review note.", duplicate_limit=19)
+        second = service.submit_for_review(CID, "Same review note.", duplicate_limit=20)
+        self.assertNotIn("already_submitted", second)
+        self.assertNotEqual(first["review_submission_id"], second["review_submission_id"])
+        self.assertEqual(first["duplicate_limit"], 19)
+        self.assertEqual(second["duplicate_limit"], 20)
+        self.assertEqual(service.review_status(CID, duplicate_limit=20)["submission_count"], 2)
 
     def test_submission_becomes_stale_when_answer_changes(self):
         src, _ = self.make_ready()
