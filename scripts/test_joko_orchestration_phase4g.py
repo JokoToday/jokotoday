@@ -231,6 +231,23 @@ class Phase4GOrchestrationTests(unittest.TestCase):
         )
         service.request_generation(self.cid, board["storyboard_id"], "doodle_keyframes", 1)
 
+    def test_uncleared_host_embed_handoff_keeps_embed_creation_editorial_only(self):
+        self.make_research_ready(); self.submit_review()
+        run = self.service().create_run(self.cid, "host-embed")
+        service = Phase4FService(
+            self.canonical, self.candidates, self.research, self.review,
+            self.host, "editorial",
+        )
+        service.create_host_relationship(
+            self.cid, "joko-today", "page", "homepage", "featured_on",
+            "Homepage", "/", "Featured Curiosity",
+        )
+        action = self.service().next_action(run["orchestration_run_id"])["next_action"]
+        self.assertEqual(action["tool"], "embed_create_candidate")
+        self.assertEqual(action["required_profile"], "editorial")
+        creative_view = self.service("creative").next_action(run["orchestration_run_id"])
+        self.assertFalse(creative_view["caller_can_execute_suggested_action"])
+
     def test_host_embed_progression_stops_before_activation(self):
         self.make_research_ready(); self.submit_review()
         run = self.service().create_run(self.cid, "host-embed")

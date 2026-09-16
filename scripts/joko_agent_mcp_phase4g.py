@@ -266,8 +266,13 @@ class Phase4GService:
                     "reason": "current host relationship candidate is missing",
                 }
             if not host["embed_ready"]:
+                required_profile = (
+                    "editorial_or_creative"
+                    if snapshot["creative"]["clearance_current"]
+                    else "editorial"
+                )
                 return {
-                    "kind": "tool", "required_profile": "editorial_or_creative",
+                    "kind": "tool", "required_profile": required_profile,
                     "tool": "embed_create_candidate",
                     "reason": "current native embed candidate is missing",
                 }
