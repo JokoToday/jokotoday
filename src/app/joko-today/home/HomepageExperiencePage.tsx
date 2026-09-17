@@ -84,17 +84,25 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   };
 
   const heroSerif = lang === 'en' ? { fontFamily: 'var(--joko-font-display)' } : undefined;
+  const desktopHeroMask = {
+    WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
+    maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
+  };
 
   return (
     <>
       <section className="joko-mineral-field joko-bakery-hero-field border-b border-[#55766F]/14 pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
-            <div className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block">
+            <div
+              className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
+              style={{ left: '22%' }}
+            >
               <img
                 src={BAKERY_HERO}
                 alt={labels.bakeryAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
+                style={desktopHeroMask}
                 decoding="async"
                 loading="eager"
               />
