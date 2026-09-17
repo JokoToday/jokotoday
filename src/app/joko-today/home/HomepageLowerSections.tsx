@@ -3,7 +3,6 @@ import {
   Check,
   Clock3,
   Croissant,
-  Heart,
   MapPin,
   PackageCheck,
   ShoppingBasket,
@@ -18,22 +17,11 @@ import {
   type CMSProduct,
 } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
-import { jokoTodayCuriosityFixture } from '../../../platform/curiosity';
 import { Container } from '../../../platform/design-system';
-import {
-  getNotebookLocalizedText,
-  type NotebookFixtureBundle,
-  type NotebookPersonEntry,
-  type NotebookProductEntry,
-  type NotebookRouteTarget,
-} from '../../../platform/notebook';
 
 interface HomepageLowerSectionsProps {
   locale: string;
   onNavigate: (page: string) => void;
-  bundle: NotebookFixtureBundle;
-  featuredProductImageUrl: string;
-  onNotebookNavigate?: (target: NotebookRouteTarget) => void;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -58,11 +46,6 @@ const copy = {
     cutoff: 'Order cutoff',
     maps: 'View on map',
     pickupEmpty: 'Pickup details are temporarily unavailable.',
-    helpTitle: 'Need a Little Help Choosing?',
-    helpIntro: 'Real favourites from people around JOKO.',
-    favorite: 'likes',
-    moreFavorites: 'More genuine favourites will appear as they are added to the Notebook.',
-    seePeople: 'See what others love',
     newTitle: "New from the Baker’s Table",
     newIntro: 'Experiments, seasonal bakes and genuinely new things from the bakery.',
     newEmpty: 'When the bakers publish a true new or experimental bake, it will appear here.',
@@ -70,9 +53,6 @@ const copy = {
     beyondTitle: 'Not Bread. Still Good.',
     beyondIntro: 'A small home for carefully selected non-bakery things.',
     beyondEmpty: 'We will only put something here when there is a real JOKO-curated find worth sharing.',
-    curiosityEyebrow: 'A Curiosity',
-    curiosityTitle: 'A question worth following',
-    curiosityCta: 'Read this curiosity',
   },
   th: {
     bakingTitle: 'สัปดาห์นี้ JOKO อบอะไรบ้าง',
@@ -93,11 +73,6 @@ const copy = {
     cutoff: 'ปิดรับออเดอร์',
     maps: 'เปิดแผนที่',
     pickupEmpty: 'ข้อมูลจุดรับสินค้ายังไม่พร้อมใช้งานชั่วคราว',
-    helpTitle: 'อยากได้ตัวช่วยเลือกนิดหน่อยไหม?',
-    helpIntro: 'ของโปรดจริง ๆ จากผู้คนรอบ JOKO',
-    favorite: 'ชอบ',
-    moreFavorites: 'ของโปรดจริงจะค่อย ๆ ปรากฏเมื่อถูกเพิ่มลงใน Notebook',
-    seePeople: 'ดูว่าคนอื่นชอบอะไร',
     newTitle: 'ของใหม่จากโต๊ะคนทำขนม',
     newIntro: 'ของทดลอง เมนูตามฤดูกาล และของใหม่จริง ๆ จากเบเกอรี่',
     newEmpty: 'เมื่อทีมเบเกอรี่เผยแพร่ของใหม่หรือของทดลองจริง เมนูนั้นจะปรากฏที่นี่',
@@ -105,9 +80,6 @@ const copy = {
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
     beyondIntro: 'พื้นที่เล็ก ๆ สำหรับสิ่งที่ไม่ใช่เบเกอรี่แต่ JOKO เลือกจริง ๆ',
     beyondEmpty: 'เราจะใส่ของไว้ตรงนี้ก็ต่อเมื่อมีสิ่งที่ JOKO คัดเลือกจริงและควรค่าแก่การแบ่งปัน',
-    curiosityEyebrow: 'Curiosity วันนี้',
-    curiosityTitle: 'คำถามที่น่าตามต่อ',
-    curiosityCta: 'อ่าน Curiosity นี้',
   },
   zh: {
     bakingTitle: 'JOKO 本周在烤什么',
@@ -128,11 +100,6 @@ const copy = {
     cutoff: '预订截止',
     maps: '打开地图',
     pickupEmpty: '取货信息暂时无法显示。',
-    helpTitle: '需要一点挑选灵感吗？',
-    helpIntro: '来自 JOKO 身边真实人物的偏爱。',
-    favorite: '喜欢',
-    moreFavorites: '只有真实偏爱被加入 Notebook 后，更多内容才会出现在这里。',
-    seePeople: '看看大家喜欢什么',
     newTitle: '烘焙桌上的新东西',
     newIntro: '实验、季节限定，以及真正的新烘焙。',
     newEmpty: '当烘焙师真正发布新品或实验作品时，它会出现在这里。',
@@ -140,9 +107,6 @@ const copy = {
     beyondTitle: '不是面包，也很好。',
     beyondIntro: '留给 JOKO 真正精选的非烘焙小物。',
     beyondEmpty: '只有遇到真正值得分享的 JOKO 精选物件，我们才会把它放在这里。',
-    curiosityEyebrow: '一则 Curiosity',
-    curiosityTitle: '一个值得继续追问的问题',
-    curiosityCta: '阅读这个 Curiosity',
   },
 } as const;
 
@@ -177,7 +141,7 @@ function SectionTitle({ title, intro, action }: { title: string; intro?: string;
   );
 }
 
-export function HomepageLowerSections({ locale, onNavigate, bundle, featuredProductImageUrl, onNotebookNavigate }: HomepageLowerSectionsProps) {
+export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
   const [products, setProducts] = useState<CMSProduct[]>([]);
@@ -197,25 +161,11 @@ export function HomepageLowerSections({ locale, onNavigate, bundle, featuredProd
     return () => { active = false; };
   }, []);
 
-  const text = (value: Parameters<typeof getNotebookLocalizedText>[0]) =>
-    getNotebookLocalizedText(value, language, bundle.site.defaultLocale);
-
-  const people = bundle.entries.filter((entry): entry is NotebookPersonEntry => entry.kind === 'person');
-  const notebookProducts = bundle.entries.filter((entry): entry is NotebookProductEntry => entry.kind === 'product');
-  const favorites = people.flatMap((person) => {
-    const product = person.favoriteProductRef
-      ? notebookProducts.find((candidate) => candidate.id === person.favoriteProductRef?.id)
-      : undefined;
-    return product ? [{ person, product }] : [];
-  }).slice(0, 3);
-
   const weeklyProducts = products.filter((product) => Boolean(productImage(product))).slice(0, 6);
 
   const genuinelyNew = getEditorialNewProduct();
 
-  const curiosity = jokoTodayCuriosityFixture.episodes.find((episode) => episode.id === 'curiosity-warm-bread-smell')
-    ?? jokoTodayCuriosityFixture.episodes.find((episode) => episode.status === 'published');
-  const curiosityText = (value: Record<string, string> | undefined) => value?.[language] ?? value?.en ?? '';
+
 
   return (
     <div>
@@ -316,26 +266,6 @@ export function HomepageLowerSections({ locale, onNavigate, bundle, featuredProd
         </Container>
       </section>
 
-      <section id="help-choosing" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
-        <Container width="wide">
-          <SectionTitle title={labels.helpTitle} intro={labels.helpIntro} />
-          {favorites.length ? (
-            <div className="grid gap-4 md:grid-cols-3">
-              {favorites.map(({ person, product }) => (
-                <button key={`${person.id}-${product.id}`} type="button" onClick={() => onNotebookNavigate?.({ type: 'notebook.person', slug: person.slug })} className="rounded-2xl border border-[#55766F]/13 bg-[#F7F1E7]/75 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md">
-                  <div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#DCE9EC] font-semibold text-[#304B45]">{text(person.title).slice(0, 1)}</span><div><p className="font-semibold text-[#303532]">{text(person.title)}</p><p className="text-sm text-[#303532]/55">{labels.favorite}</p></div></div>
-                  <div className="mt-5 flex items-center gap-4">
-                    <img src={featuredProductImageUrl} alt={text(product.title)} className="h-20 w-24 rounded-xl object-cover" loading="lazy" />
-                    <div><p className="font-semibold text-[#303532]">{text(product.title)}</p><Heart className="mt-2 h-4 w-4 text-[#C76624]" /></div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : <p className="rounded-2xl border border-[#55766F]/12 bg-[#F7F1E7]/60 p-6 text-sm text-[#303532]/65">{labels.moreFavorites}</p>}
-          <button type="button" onClick={() => onNotebookNavigate?.({ type: 'notebook.collection', slug: 'people' })} className="mt-6 inline-flex items-center gap-2 border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D]">{labels.seePeople}<ArrowRight className="h-4 w-4" /></button>
-        </Container>
-      </section>
-
       <section id="bakers-table" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle title={labels.newTitle} intro={labels.newIntro} />
@@ -355,19 +285,6 @@ export function HomepageLowerSections({ locale, onNavigate, bundle, featuredProd
         </Container>
       </section>
 
-      <section id="curiosity-feature" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
-        <Container width="wide">
-          {curiosity && (
-            <article className="grid gap-6 rounded-3xl border border-[#8B765E]/15 bg-[#FFFDF7]/55 p-6 sm:p-8 lg:grid-cols-[.7fr_1.3fr] lg:items-center">
-              <div className="relative min-h-44 overflow-hidden rounded-2xl bg-[#DCE9EC]/45">
-                <div className="absolute inset-0 opacity-60 [background-image:radial-gradient(circle_at_30%_30%,rgba(244,239,229,.9),transparent_35%),linear-gradient(135deg,transparent_45%,rgba(85,118,111,.13)_46%,transparent_47%)]" />
-                <div className="relative flex h-full min-h-44 items-center justify-center"><span className="text-7xl font-semibold text-[#55766F]/25" style={{ fontFamily: 'var(--joko-font-notebook)' }}>?</span></div>
-              </div>
-              <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#55766F]">{labels.curiosityEyebrow}</p><h2 className="mt-3 text-3xl font-semibold leading-tight text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{curiosityText(curiosity.question)}</h2><p className="mt-4 max-w-2xl text-sm leading-6 text-[#303532]/68 sm:text-base">{curiosityText(curiosity.summary)}</p><button type="button" onClick={() => onNotebookNavigate?.({ type: 'notebook.collection', slug: 'bakery-science' })} className="mt-6 inline-flex items-center gap-2 border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D]">{labels.curiosityCta}<ArrowRight className="h-4 w-4" /></button></div>
-            </article>
-          )}
-        </Container>
-      </section>
     </div>
   );
 }

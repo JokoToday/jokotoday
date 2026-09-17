@@ -15,18 +15,19 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'curiosities' | 'about';
+  key: 'home' | 'products' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
-  notebookPath?: string;
+  targetId?: string;
   activeKey?: JokoShellSection;
 };
 
 const copy = {
   en: {
     home: 'Home',
-    products: 'Products',
-    curiosities: 'Curiosities',
+    products: 'Bakery',
+    howItWorks: 'How It Works',
+    pickup: 'Pickup',
     about: 'About',
     account: 'Account',
     cart: 'Cart',
@@ -34,8 +35,9 @@ const copy = {
   },
   th: {
     home: 'หน้าแรก',
-    products: 'สินค้า',
-    curiosities: 'ความสงสัย',
+    products: 'เบเกอรี่',
+    howItWorks: 'วิธีสั่งซื้อ',
+    pickup: 'จุดรับสินค้า',
     about: 'เกี่ยวกับเรา',
     account: 'บัญชี',
     cart: 'ตะกร้า',
@@ -43,8 +45,9 @@ const copy = {
   },
   zh: {
     home: '首页',
-    products: '产品',
-    curiosities: '好奇',
+    products: '烘焙坊',
+    howItWorks: '如何订购',
+    pickup: '取货',
     about: '关于',
     account: '账户',
     cart: '购物车',
@@ -69,19 +72,28 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, page: 'home', activeKey: 'today' },
     { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
-    { key: 'curiosities', label: labels.curiosities, notebookPath: '/notebook/curiosities/today', activeKey: 'curiosities' },
+    { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
+    { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
     { key: 'about', label: labels.about, page: 'about', activeKey: 'about' },
   ];
 
-  const handleNotebookPath = (path: string) => {
-    if (window.location.pathname !== path) window.history.pushState({ jokoNotebook: true }, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  const handleHomeSection = (targetId: string) => {
+    const scrollToTarget = () => {
+      window.document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    if (window.location.pathname !== '/') {
+      onNavigate('home');
+      window.setTimeout(scrollToTarget, 80);
+    } else {
+      scrollToTarget();
+    }
     setIsMobileMenuOpen(false);
   };
 
   const handleNav = (item: NavItem) => {
-    if (item.notebookPath) {
-      handleNotebookPath(item.notebookPath);
+    if (item.targetId) {
+      handleHomeSection(item.targetId);
       return;
     }
     if (item.page) onNavigate(item.page);
@@ -99,7 +111,6 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
 
   const isNavItemActive = (item: NavItem) => {
     const path = window.location.pathname;
-    if (item.key === 'curiosities') return path.startsWith('/notebook/');
     if (item.key === 'home') return path === '/';
     return item.activeKey ? activeSection === item.activeKey : false;
   };
