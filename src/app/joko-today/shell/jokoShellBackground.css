@@ -110,18 +110,11 @@
   --joko-structure-size: max(112%, 1780px) auto;
 }
 
-/* Bakery-first hero: keep the Curiosity Notebook clearly secondary to the
-   bakery illustration while preserving a generous editorial text column. */
+/* Bakery-first hero: the bakery scene now owns the full visual field beside
+   the editorial text column. No space is reserved for an embedded experience. */
 @media (min-width: 1280px) {
-  .joko-home-shell .joko-bakery-hero-field > .max-w-7xl > .grid {
-    grid-template-columns: minmax(18rem, .94fr) minmax(31rem, 1.62fr) minmax(13.5rem, .48fr);
-    column-gap: 1rem;
-  }
-
-  .joko-home-shell .joko-bakery-hero-field > .max-w-7xl > .grid > aside {
-    width: 100%;
-    max-width: 17rem;
-    justify-self: end;
+  .joko-home-shell .joko-bakery-hero-stage {
+    min-height: 40rem;
   }
 }
 
@@ -222,11 +215,11 @@
 
 .joko-home-shell .joko-bakery-scene-layer {
   z-index: 1;
-  top: .1rem;
-  right: 15.5%;
-  bottom: 2.1rem;
-  left: 26.5%;
-  overflow: visible;
+  top: -1.25rem;
+  right: -6.5%;
+  bottom: -1.2rem;
+  left: 27.5%;
+  overflow: hidden;
 }
 
 .joko-home-shell .joko-bakery-scene-layer .joko-bakery-hero-image {
@@ -235,8 +228,8 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: 50% 48%;
-  transform: scale(.96);
+  object-position: 54% 54%;
+  transform: translateY(1.35rem) scale(1.035);
   transform-origin: 50% 50%;
   filter: saturate(1.02) contrast(1.015);
 }
@@ -258,9 +251,9 @@
       rgba(218,235,232,.48) 8%,
       rgba(218,235,232,.10) 15%,
       transparent 23%,
-      transparent 86%,
-      rgba(218,235,232,.16) 93%,
-      rgba(218,235,232,.78) 100%);
+      transparent 91%,
+      rgba(218,235,232,.08) 97%,
+      rgba(218,235,232,.30) 100%);
 }
 
 .joko-home-shell .joko-bakery-scene-layer::after {
@@ -268,8 +261,9 @@
     linear-gradient(180deg,
       rgba(218,235,232,.24) 0%,
       transparent 10%,
-      transparent 74%,
-      rgba(218,235,232,.20) 86%,
+      transparent 70%,
+      rgba(218,235,232,.10) 80%,
+      rgba(218,235,232,.42) 90%,
       rgb(218 235 232) 100%),
     radial-gradient(ellipse at 48% 18%, rgba(250,247,239,.06), transparent 46%);
 }
@@ -376,9 +370,9 @@
 
 @media (min-width: 1536px) {
   .joko-home-shell .joko-bakery-scene-layer {
-    right: 15%;
-    left: 25.5%;
-    bottom: 1.75rem;
+    right: -8%;
+    left: 26.5%;
+    bottom: -1.5rem;
   }
 }
 
