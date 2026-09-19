@@ -228,8 +228,8 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: 54% 49%;
-  transform: scale(1.08);
+  object-position: 54% 54%;
+  transform: translateY(1.35rem) scale(1.035);
   transform-origin: 50% 50%;
   filter: saturate(1.02) contrast(1.015);
 }
