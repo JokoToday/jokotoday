@@ -70,23 +70,38 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const labels = copy[language];
 
   const navItems: NavItem[] = [
-    { key: 'home', label: labels.home, page: 'home', activeKey: 'today' },
+    { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
     { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
     { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
     { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
-    { key: 'about', label: labels.about, page: 'about', activeKey: 'about' },
+    { key: 'about', label: labels.about, targetId: 'about', activeKey: 'about' },
   ];
 
   const handleHomeSection = (targetId: string) => {
+    const isTop = targetId === 'top';
+    const targetPath = isTop ? '/' : `/#${targetId}`;
+
     const scrollToTarget = () => {
+      if (isTop) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       window.document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const pushSectionStateAndScroll = () => {
+      const currentPath = `${window.location.pathname}${window.location.hash}`;
+      if (currentPath !== targetPath) {
+        window.history.pushState({ jokoHomepageSection: isTop ? null : targetId }, '', targetPath);
+      }
+      scrollToTarget();
     };
 
     if (window.location.pathname !== '/') {
       onNavigate('home');
-      window.setTimeout(scrollToTarget, 80);
+      window.setTimeout(pushSectionStateAndScroll, 80);
     } else {
-      scrollToTarget();
+      pushSectionStateAndScroll();
     }
     setIsMobileMenuOpen(false);
   };

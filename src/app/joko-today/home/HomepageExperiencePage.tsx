@@ -77,6 +77,11 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const showHowItWorks = () => {
     const section = window.document.getElementById('how-it-works');
     if (section) {
+      const targetPath = '/#how-it-works';
+      const currentPath = `${window.location.pathname}${window.location.hash}`;
+      if (window.location.pathname === '/' && currentPath !== targetPath) {
+        window.history.pushState({ jokoHomepageSection: 'how-it-works' }, '', targetPath);
+      }
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }

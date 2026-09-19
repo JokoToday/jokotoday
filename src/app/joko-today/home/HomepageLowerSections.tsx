@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ArrowUp,
   Check,
   Clock3,
   Croissant,
@@ -9,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useLanguage } from '../../../context/LanguageContext';
 import { getPickupDays, type PickupDay } from '../../../lib/availabilityService';
 import {
   getPickupLocations,
@@ -53,6 +55,7 @@ const copy = {
     beyondTitle: 'Not Bread. Still Good.',
     beyondIntro: 'A small home for carefully selected non-bakery things.',
     beyondEmpty: 'We will only put something here when there is a real JOKO-curated find worth sharing.',
+    backToTop: 'Back to top',
   },
   th: {
     bakingTitle: 'สัปดาห์นี้ JOKO อบอะไรบ้าง',
@@ -80,6 +83,7 @@ const copy = {
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
     beyondIntro: 'พื้นที่เล็ก ๆ สำหรับสิ่งที่ไม่ใช่เบเกอรี่แต่ JOKO เลือกจริง ๆ',
     beyondEmpty: 'เราจะใส่ของไว้ตรงนี้ก็ต่อเมื่อมีสิ่งที่ JOKO คัดเลือกจริงและควรค่าแก่การแบ่งปัน',
+    backToTop: 'กลับด้านบน',
   },
   zh: {
     bakingTitle: 'JOKO 本周在烤什么',
@@ -107,6 +111,7 @@ const copy = {
     beyondTitle: '不是面包，也很好。',
     beyondIntro: '留给 JOKO 真正精选的非烘焙小物。',
     beyondEmpty: '只有遇到真正值得分享的 JOKO 精选物件，我们才会把它放在这里。',
+    backToTop: '返回顶部',
   },
 } as const;
 
@@ -127,7 +132,19 @@ function pickupLabel(day: PickupDay, language: LanguageCode): string {
   return day.label_en || day.label;
 }
 
-function SectionTitle({ title, intro, action }: { title: string; intro?: string; action?: React.ReactNode }) {
+function SectionTitle({
+  title,
+  intro,
+  action,
+  backToTopLabel,
+  onBackToTop,
+}: {
+  title: string;
+  intro?: string;
+  action?: React.ReactNode;
+  backToTopLabel: string;
+  onBackToTop: () => void;
+}) {
   return (
     <div className="mb-7 flex flex-col gap-3 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -136,7 +153,17 @@ function SectionTitle({ title, intro, action }: { title: string; intro?: string;
         </h2>
         {intro && <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/66 sm:text-base">{intro}</p>}
       </div>
-      {action}
+      <div className="flex flex-wrap items-center gap-4">
+        {action}
+        <button
+          type="button"
+          onClick={onBackToTop}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#55766F]/72 transition hover:text-[#3F665E] focus:outline-none focus:ring-2 focus:ring-[#55766F]/35 focus:ring-offset-2"
+        >
+          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+          {backToTopLabel}
+        </button>
+      </div>
     </div>
   );
 }
@@ -144,6 +171,7 @@ function SectionTitle({ title, intro, action }: { title: string; intro?: string;
 export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
+  const { t } = useLanguage();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
@@ -160,6 +188,36 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
       .catch((error) => console.error('Homepage bakery data failed to load:', error));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const syncHomepagePositionFromHistory = () => {
+      if (window.location.pathname !== '/') return;
+      const targetId = window.location.hash.replace(/^#/, '');
+      window.requestAnimationFrame(() => {
+        if (!targetId) {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+          return;
+        }
+        window.document.getElementById(targetId)?.scrollIntoView({ behavior: 'auto', block: 'start' });
+      });
+    };
+
+    window.addEventListener('popstate', syncHomepagePositionFromHistory);
+    syncHomepagePositionFromHistory();
+    return () => window.removeEventListener('popstate', syncHomepagePositionFromHistory);
+  }, []);
+
+  const backToTop = () => {
+    if (window.location.pathname !== '/') {
+      onNavigate('home');
+      window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80);
+      return;
+    }
+    if (window.location.hash) {
+      window.history.pushState({ jokoHomepageSection: null }, '', '/');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const weeklyProducts = products.filter((product) => Boolean(productImage(product))).slice(0, 6);
 
@@ -179,6 +237,8 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
                 {labels.seeAll}<ArrowRight className="h-4 w-4" />
               </button>
             )}
+            backToTopLabel={labels.backToTop}
+            onBackToTop={backToTop}
           />
           {weeklyProducts.length ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
@@ -216,7 +276,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
       <section id="how-it-works" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
-          <SectionTitle title={labels.howTitle} intro={labels.howIntro} />
+          <SectionTitle title={labels.howTitle} intro={labels.howIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {labels.howSteps.map(([title, body], index) => {
               const icons = [ShoppingBasket, Clock3, MapPin, PackageCheck];
@@ -237,7 +297,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
       <section id="pickup" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
-          <SectionTitle title={labels.pickupTitle} intro={labels.pickupIntro} />
+          <SectionTitle title={labels.pickupTitle} intro={labels.pickupIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           {locations.length ? (
             <div className="grid gap-4 lg:grid-cols-2">
               {locations.map((location) => {
@@ -268,7 +328,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
       <section id="bakers-table" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
-          <SectionTitle title={labels.newTitle} intro={labels.newIntro} />
+          <SectionTitle title={labels.newTitle} intro={labels.newIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           {genuinelyNew ? (
             <article className="grid overflow-hidden rounded-3xl border border-[#8B765E]/15 bg-[#FFFDF7]/65 md:grid-cols-[.9fr_1.1fr]">
               <div className="min-h-64 bg-[#E9E0D0]">{productImage(genuinelyNew) ? <img src={productImage(genuinelyNew)!} alt={genuinelyNew.name_en} className="h-full w-full object-cover" /> : null}</div>
@@ -280,8 +340,32 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
       <section id="not-bread" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
-          <SectionTitle title={labels.beyondTitle} intro={labels.beyondIntro} />
+          <SectionTitle title={labels.beyondTitle} intro={labels.beyondIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           <div className="rounded-3xl border border-dashed border-[#55766F]/20 bg-[#F7F1E7]/55 p-8 text-center"><Check className="mx-auto h-7 w-7 text-[#668B86]" /><p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[#303532]/62">{labels.beyondEmpty}</p></div>
+        </Container>
+      </section>
+
+      <section id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
+        <Container width="wide">
+          <SectionTitle
+            title={t.about.title}
+            backToTopLabel={labels.backToTop}
+            onBackToTop={backToTop}
+          />
+          <div className="grid gap-4 md:grid-cols-3">
+            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]">{t.about.story}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.storyText}</p>
+            </article>
+            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]">{t.about.mission}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.missionText}</p>
+            </article>
+            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]">{t.about.commitment}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.commitmentText}</p>
+            </article>
+          </div>
         </Container>
       </section>
 
