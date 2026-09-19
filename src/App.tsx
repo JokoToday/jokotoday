@@ -379,14 +379,16 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience;
+  const isJokoShellPage = isHomepageExperience || currentPage === 'products';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
     ? 'curiosities'
-    : currentPage === 'home'
-      ? 'today'
-      : null;
+    : currentPage === 'products'
+      ? 'bakery'
+      : currentPage === 'home'
+        ? 'today'
+        : null;
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||

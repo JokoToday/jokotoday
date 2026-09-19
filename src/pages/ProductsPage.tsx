@@ -435,28 +435,35 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-header font-bold text-primary-900 mb-4">
+    <div className="joko-products-page joko-mineral-field min-h-screen">
+      <div className="relative z-10 mx-auto max-w-[88rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+        <div className="mb-9 max-w-3xl sm:mb-11">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+            JOKO TODAY
+          </p>
+          <h1
+            className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#292D2B] sm:text-5xl lg:text-6xl"
+            style={{ fontFamily: 'var(--joko-font-display)' }}
+          >
             {t.nav.products}
           </h1>
-          <p className="text-lg text-gray-700">
+          <span className="mt-3 block h-[3px] w-44 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[#303532]/70 sm:text-lg">
             {t.product.preOrderOnly}
           </p>
         </div>
 
         {!rolloutResolved ? (
-          <div className="max-w-3xl mx-auto mb-8 rounded-2xl border-2 border-amber-200 bg-amber-50 py-12 text-center text-sm text-gray-500">
+          <div className="joko-products-control-card mx-auto mb-8 max-w-3xl py-12 text-center text-sm text-[#303532]/60">
             {language === 'th' ? 'กำลังโหลดสินค้า…' : language === 'zh' ? '正在加载商品…' : 'Loading products…'}
           </div>
         ) : pickupV2Enabled ? (
           <>
-            <div className="max-w-3xl mx-auto mb-5 rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm grid sm:grid-cols-2 gap-1.5">
+            <div className="joko-products-mode-switch mx-auto mb-5 grid max-w-3xl gap-1.5 p-1.5 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setBrowseMode('all')}
-                className={`rounded-lg px-4 py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${browseMode === 'all' ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'all' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
               >
                 <ShoppingBag className="w-4 h-4" />
                 {browseEverythingModeLabel}
@@ -464,7 +471,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               <button
                 type="button"
                 onClick={() => setBrowseMode('pickup')}
-                className={`rounded-lg px-4 py-3 text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${browseMode === 'pickup' ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'pickup' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
               >
                 <CalendarDays className="w-4 h-4" />
                 {browseByPickupModeLabel}
@@ -472,59 +479,63 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
             </div>
 
             {browseMode === 'all' ? (
-              <div className="max-w-3xl mx-auto mb-8 rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
+              <div className="joko-products-control-card mx-auto mb-8 max-w-3xl p-5 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center shrink-0">
-                      <ShoppingBag className="w-5 h-5 text-amber-700" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C76624]/18 bg-[#FFF9EE]/82">
+                      <ShoppingBag className="h-5 w-5 text-[#A44F1D]" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-gray-900">{browseTitle}</h2>
-                      <p className="text-sm text-gray-600 mt-1">{browseHelper}</p>
+                      <h2 className="font-semibold text-[#303532]">{browseTitle}</h2>
+                      <p className="mt-1 text-sm leading-6 text-[#303532]/64">{browseHelper}</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => void loadV2Availability(products.map((product) => product.id))}
                     disabled={v2AvailabilityLoading || products.length === 0}
-                    className="p-2 rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 disabled:opacity-40 shrink-0"
+                    className="shrink-0 rounded-lg border border-[#55766F]/18 bg-[#FFF9EE]/78 p-2 text-[#55766F] transition hover:bg-[#FFF9EE] disabled:opacity-40"
                     aria-label="Refresh product availability"
                   >
                     <RefreshCw className={`w-4 h-4 ${v2AvailabilityLoading ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
                 {v2AvailabilityError && (
-                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <div className="mt-4 rounded-xl border border-[#B95C4B]/20 bg-[#F9E9E5]/72 px-4 py-3 text-sm text-[#944235]">
                     {v2AvailabilityError}
                   </div>
                 )}
               </div>
             ) : (
-              <PickupBrowseDateSelectorV2
-                productIds={products.map((product) => product.id)}
-                value={selectedPickupV2}
-                onChange={handleBrowsePickupChange}
-                onAvailabilityRowsChange={setV2AvailabilityRows}
-              />
+              <div className="joko-products-control-card mx-auto mb-8 max-w-4xl p-4 sm:p-5">
+                <PickupBrowseDateSelectorV2
+                  productIds={products.map((product) => product.id)}
+                  value={selectedPickupV2}
+                  onChange={handleBrowsePickupChange}
+                  onAvailabilityRowsChange={setV2AvailabilityRows}
+                />
+              </div>
             )}
           </>
         ) : (
-          <PickupDaySelector
-            selectedPickupDay={selectedPickupDay}
-            onPickupDayChange={setSelectedPickupDay}
-            availableDays={availableDays}
-            closedDays={closedDays}
-          />
+          <div className="joko-products-control-card mx-auto mb-8 max-w-4xl p-4 sm:p-5">
+            <PickupDaySelector
+              selectedPickupDay={selectedPickupDay}
+              onPickupDayChange={setSelectedPickupDay}
+              availableDays={availableDays}
+              closedDays={closedDays}
+            />
+          </div>
         )}
 
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-3 justify-center">
+        <div className="mb-9">
+          <div className="joko-products-category-strip flex flex-wrap gap-2.5 p-2.5 sm:gap-3 sm:p-3">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-6 py-2.5 rounded-full font-medium transition-colors ${
+              className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
                 selectedCategory === 'all'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-background text-primary-900 hover:bg-primary-100 border border-primary-200'
+                  ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
+                  : 'border-[#55766F]/18 bg-[#FFF9EE]/62 text-[#303532]/78 hover:border-[#C76624]/35 hover:bg-[#FFF9EE]'
               }`}
             >
               {t.categories.all}
@@ -539,10 +550,10 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`px-6 py-2.5 rounded-full font-medium transition-colors ${
+                  className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
                     selectedCategory === category.id
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-background text-primary-900 hover:bg-primary-100 border border-primary-200'
+                      ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
+                      : 'border-[#55766F]/18 bg-[#FFF9EE]/62 text-[#303532]/78 hover:border-[#C76624]/35 hover:bg-[#FFF9EE]'
                   }`}
                 >
                   {categoryName}
@@ -553,20 +564,20 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         </div>
 
         {loading || (pickupV2Enabled && v2AvailabilityLoading && v2AvailabilityRows.length === 0) ? (
-          <div className="text-center py-20">
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading delicious items...</p>
+          <div className="py-20 text-center">
+            <div className="inline-block h-11 w-11 animate-spin rounded-full border-[3px] border-solid border-[#55766F] border-r-transparent"></div>
+            <p className="mt-4 text-sm text-[#303532]/62">Loading delicious items...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-xl text-gray-600">
+          <div className="joko-products-control-card py-16 text-center">
+            <p className="text-lg text-[#303532]/62">
               {(pickupV2Enabled && browseMode === 'pickup' && selectedPickupV2) || (selectedPickupDay && !pickupV2Enabled)
                 ? 'No products available for this pickup date and category.'
                 : 'No products are currently available in this category.'}
             </p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="joko-products-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
             {filteredProducts.map((product) => {
               const v2State = pickupV2Enabled ? getV2ProductDisplayState(product.id) : null;
               const nextPickupLabel = pickupV2Enabled && browseMode === 'all' ? getNextPickupLabel(product.id) : null;
@@ -575,7 +586,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
                 <div
                   key={product.id}
                   onClick={() => setSelectedProduct(product)}
-                  className="cursor-pointer"
+                  className="joko-products-card-wrap cursor-pointer"
                 >
                   <ProductCard
                     product={product}

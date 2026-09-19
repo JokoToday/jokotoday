@@ -118,18 +118,18 @@ export default function ProductCard({
   };
 
   return (
-    <div className="bg-background rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
-      <div className="aspect-square overflow-hidden bg-primary-50 relative group">
+    <div className="joko-product-card overflow-hidden bg-background shadow-md transition-all duration-300 hover:shadow-xl">
+      <div className="joko-product-card-image relative aspect-square overflow-hidden bg-primary-50 group">
         <img
           src={getProductImage()}
           alt={productName}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
           loading="lazy"
         />
         <button
           onClick={handleLikeClick}
           className={`
-            absolute top-3 right-3 p-2 rounded-full shadow-md
+            joko-product-card-like absolute right-3 top-3 rounded-full p-2 shadow-md
             transition-all duration-200 ease-out
             ${liked
               ? 'bg-primary-100 text-primary-600'
@@ -156,9 +156,9 @@ export default function ProductCard({
         )}
       </div>
 
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-primary-900 mb-2">{productName}</h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{productDescription}</p>
+      <div className="joko-product-card-body p-4">
+        <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productName}</h3>
+        <p className="joko-product-card-description mb-4 line-clamp-2 text-sm text-gray-600">{productDescription}</p>
 
         {(nextPickupLabel || basketFit) && (
           <div className="mb-3">
@@ -192,7 +192,7 @@ export default function ProductCard({
         )}
 
         <div className="flex items-center justify-between mb-4">
-          <span className="text-2xl font-bold text-primary-900">฿{product.price}</span>
+          <span className="joko-product-card-price text-2xl font-bold text-primary-900">฿{product.price}</span>
           {isSoldOut && !selectedDay && (
             <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
               {t.product.soldOut}
@@ -217,14 +217,14 @@ export default function ProductCard({
             <div className="flex items-center justify-center space-x-3">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
+                className="joko-product-card-quantity-button rounded-full bg-primary-100 p-2 text-primary-900 transition-colors hover:bg-primary-200"
               >
                 <Minus className="h-4 w-4" />
               </button>
               <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
               <button
                 onClick={() => setQuantity(Math.min(quantityLimit ?? 999, quantity + 1))}
-                className="p-2 rounded-full bg-primary-100 text-primary-900 hover:bg-primary-200 transition-colors"
+                className="joko-product-card-quantity-button rounded-full bg-primary-100 p-2 text-primary-900 transition-colors hover:bg-primary-200"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -232,7 +232,7 @@ export default function ProductCard({
 
             <button
               onClick={handleAddToCart}
-              className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="joko-product-card-add w-full rounded-lg bg-primary-600 py-2.5 font-medium text-white transition-colors hover:bg-primary-700"
             >
               {t.product.addToCart}
             </button>
