@@ -261,9 +261,10 @@
     linear-gradient(180deg,
       rgba(218,235,232,.24) 0%,
       transparent 10%,
-      transparent 78%,
-      rgba(218,235,232,.12) 90%,
-      rgba(218,235,232,.62) 100%),
+      transparent 70%,
+      rgba(218,235,232,.10) 80%,
+      rgba(218,235,232,.42) 90%,
+      rgb(218 235 232) 100%),
     radial-gradient(ellipse at 48% 18%, rgba(250,247,239,.06), transparent 46%);
 }
 
