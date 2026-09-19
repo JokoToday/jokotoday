@@ -382,6 +382,141 @@
   }
 }
 
+/* Bakery / Products page: carry the homepage mineral field into commerce
+   without changing product, pickup, cart, likes, or availability behaviour. */
+.joko-home-shell .joko-products-page {
+  --joko-structure-position: 52% -34px;
+  --joko-structure-size: max(116%, 1780px) auto;
+  background-color: rgb(218 235 232);
+  background-image:
+    radial-gradient(ellipse at 8% 8%, rgba(249,246,237,.24) 0 12%, transparent 31%),
+    radial-gradient(ellipse at 92% 18%, rgba(239,246,243,.22) 0 16%, transparent 37%),
+    radial-gradient(ellipse at 48% 76%, rgba(244,239,229,.12) 0 18%, transparent 42%);
+}
+
+.joko-home-shell .joko-products-page::before {
+  opacity: .78;
+}
+
+.joko-home-shell .joko-products-page::after {
+  background:
+    radial-gradient(ellipse at 18% 31%, rgba(250,247,239,.16) 0 9%, transparent 25%),
+    radial-gradient(ellipse at 76% 42%, rgba(236,245,242,.17) 0 14%, transparent 31%),
+    radial-gradient(ellipse at 58% 88%, rgba(244,239,229,.13) 0 13%, transparent 32%);
+}
+
+.joko-home-shell .joko-products-control-card,
+.joko-home-shell .joko-products-mode-switch,
+.joko-home-shell .joko-products-category-strip {
+  border: 1px solid rgba(85,118,111,.15);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255,255,255,.58), transparent 25%),
+    rgba(255,249,238,.74);
+  box-shadow: 0 14px 34px rgba(48,75,69,.065);
+  backdrop-filter: blur(8px);
+}
+
+.joko-home-shell .joko-products-control-card {
+  border-radius: 1.45rem 1.85rem 1.55rem 1.9rem;
+}
+
+.joko-home-shell .joko-products-mode-switch {
+  border-radius: 1.1rem 1.45rem 1.2rem 1.5rem;
+}
+
+.joko-home-shell .joko-products-category-strip {
+  border-radius: 1.35rem 1.7rem 1.45rem 1.75rem;
+}
+
+.joko-home-shell .joko-products-card-wrap .joko-product-card {
+  border: 1px solid rgba(85,118,111,.14);
+  border-radius: 1.55rem 1.9rem 1.62rem 1.82rem;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255,255,255,.58), transparent 24%),
+    linear-gradient(145deg, rgba(255,252,245,.94), rgba(247,240,228,.88));
+  box-shadow: 0 12px 30px rgba(48,75,69,.075);
+}
+
+.joko-home-shell .joko-products-card-wrap:nth-child(4n+2) .joko-product-card {
+  border-radius: 1.85rem 1.55rem 1.95rem 1.5rem;
+}
+
+.joko-home-shell .joko-products-card-wrap:nth-child(4n+3) .joko-product-card {
+  border-radius: 1.48rem 1.92rem 1.72rem 1.58rem;
+}
+
+.joko-home-shell .joko-products-card-wrap:nth-child(4n) .joko-product-card {
+  border-radius: 1.92rem 1.62rem 1.48rem 1.82rem;
+}
+
+.joko-home-shell .joko-products-card-wrap .joko-product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 42px rgba(48,75,69,.12);
+}
+
+.joko-home-shell .joko-product-card-image {
+  aspect-ratio: 4 / 3;
+  background: rgba(229,224,208,.72);
+}
+
+.joko-home-shell .joko-product-card-body {
+  background: linear-gradient(180deg, rgba(255,252,245,.18), rgba(247,240,228,.22));
+}
+
+.joko-home-shell .joko-product-card-title {
+  color: #303532;
+  letter-spacing: -.018em;
+}
+
+.joko-home-shell .joko-product-card-description {
+  color: rgba(48,53,50,.64);
+  line-height: 1.55;
+}
+
+.joko-home-shell .joko-product-card-price {
+  color: #A44F1D;
+  font-family: var(--joko-font-display);
+}
+
+.joko-home-shell .joko-product-card-like {
+  border: 1px solid rgba(85,118,111,.13);
+  background: rgba(255,249,238,.92);
+  color: #55766F;
+  backdrop-filter: blur(8px);
+}
+
+.joko-home-shell .joko-product-card-quantity-button {
+  background: rgba(85,118,111,.12);
+  color: #304B45;
+}
+
+.joko-home-shell .joko-product-card-quantity-button:hover {
+  background: rgba(85,118,111,.20);
+}
+
+.joko-home-shell .joko-product-card-add {
+  border-radius: .9rem;
+  background: #C76624;
+  box-shadow: 0 7px 18px rgba(164,79,29,.14);
+}
+
+.joko-home-shell .joko-product-card-add:hover {
+  background: #A95122;
+}
+
+@media (max-width: 767px) {
+  .joko-home-shell .joko-products-page {
+    --joko-structure-position: 44% -10px;
+    --joko-structure-size: 1260px auto;
+  }
+
+  .joko-home-shell .joko-products-control-card,
+  .joko-home-shell .joko-products-mode-switch,
+  .joko-home-shell .joko-products-category-strip {
+    backdrop-filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .joko-home-shell .joko-notebook-paper,
   .joko-home-shell .joko-notebook-cover {
