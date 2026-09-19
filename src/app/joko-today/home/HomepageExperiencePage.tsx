@@ -91,7 +91,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
   return (
     <>
-      <section className="joko-mineral-field joko-bakery-hero-field border-b border-[#55766F]/14 pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
+      <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             <div
