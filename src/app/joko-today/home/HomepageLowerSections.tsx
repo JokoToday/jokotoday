@@ -349,7 +349,6 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
         <Container width="wide">
           <SectionTitle
             title={t.about.title}
-            intro={t.about.storyText}
             backToTopLabel={labels.backToTop}
             onBackToTop={backToTop}
           />
