@@ -3,21 +3,32 @@ import { X, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSPage } from '../lib/cmsService';
 
+interface PageFormPreset {
+  page_key?: string;
+  title_en?: string;
+  title_th?: string;
+  title_zh?: string;
+  body_en?: string;
+  body_th?: string;
+  body_zh?: string;
+}
+
 interface PageFormProps {
   page: CMSPage | null;
+  preset?: PageFormPreset | null;
   onSave: () => void;
   onCancel: () => void;
 }
 
-export function PageForm({ page, onSave, onCancel }: PageFormProps) {
+export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProps) {
   const [formData, setFormData] = useState({
-    page_key: page?.page_key || '',
-    title_en: page?.title_en || '',
-    title_th: page?.title_th || '',
-    title_zh: page?.title_zh || '',
-    body_en: page?.body_en || '',
-    body_th: page?.body_th || '',
-    body_zh: page?.body_zh || '',
+    page_key: page?.page_key || preset?.page_key || '',
+    title_en: page?.title_en || preset?.title_en || '',
+    title_th: page?.title_th || preset?.title_th || '',
+    title_zh: page?.title_zh || preset?.title_zh || '',
+    body_en: page?.body_en || preset?.body_en || '',
+    body_th: page?.body_th || preset?.body_th || '',
+    body_zh: page?.body_zh || preset?.body_zh || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,7 +90,7 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
           <h2 className="text-2xl font-bold text-gray-900">
-            {page ? 'Edit Page' : 'New Page'}
+            {page ? 'Edit Page' : preset?.page_key ? 'Create Page' : 'New Page'}
           </h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
