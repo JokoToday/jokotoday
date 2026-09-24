@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { Container } from '../../../platform/design-system';
+import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
 import HomepageLowerSections from './HomepageLowerSections';
 
@@ -23,7 +24,7 @@ interface HomepageExperiencePageProps {
 
 type LanguageCode = 'en' | 'th' | 'zh';
 
-const BAKERY_HERO = '/assets/home-experience/joko-bakery-full-v2.webp';
+const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 
 const copy = {
   en: {

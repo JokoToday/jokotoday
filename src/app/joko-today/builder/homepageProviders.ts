@@ -1,13 +1,14 @@
 import { getCategories, getImageUrl } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
 import { supabase } from '../../../lib/supabase';
+import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type {
   BuilderCategory,
   BuilderTopLikedProduct,
   HomepageBuilderProviders,
 } from '../../../platform/builder';
 
-const DEFAULT_HERO_IMAGE = getPublicImageUrl('hero/joko-bakery-hero.png');
+const DEFAULT_HERO_IMAGE = JOKO_BAKERY_HERO_ASSET;
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400';
 
 type TopLikedRow = {

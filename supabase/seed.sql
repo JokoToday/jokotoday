@@ -325,7 +325,7 @@ INSERT INTO "public"."cms_settings" ("id", "setting_key", "value", "created_at",
 	('be952bae-dac7-49a9-a770-32c4680a37e7', 'store_name', 'JOKO TODAY', '2026-01-27 02:59:30.575688+00', '2026-01-27 02:59:30.575688+00'),
 	('c69d926e-787c-455a-b2bf-cb6f14dccfea', 'store_description', 'Artisan Bakery in Chiang Mai', '2026-01-27 02:59:30.575688+00', '2026-01-27 02:59:30.575688+00'),
 	('26fd74fa-bbd3-4557-beec-b3b5ff874279', 'contact_email', 'hello@jokotoday.com', '2026-01-27 02:59:30.575688+00', '2026-01-27 02:59:30.575688+00'),
-	('a9800bf2-5339-488e-9e50-1c029244a94d', 'hero_image_url', 'https://xvhualoeboobulwgmkla.supabase.co/storage/v1/object/public/assets/hero/joko-bakery-hero.png', '2026-02-17 02:04:18.415635+00', '2026-02-17 02:04:18.415635+00');
+	('a9800bf2-5339-488e-9e50-1c029244a94d', 'hero_image_url', '/assets/home-experience/joko-bakery-full-v2.webp', '2026-02-17 02:04:18.415635+00', '2026-02-17 02:04:18.415635+00');
 
 
 --
