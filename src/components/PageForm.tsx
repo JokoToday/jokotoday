@@ -16,11 +16,12 @@ interface PageFormPreset {
 interface PageFormProps {
   page: CMSPage | null;
   preset?: PageFormPreset | null;
+  lockPageKey?: boolean;
   onSave: () => void;
   onCancel: () => void;
 }
 
-export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProps) {
+export function PageForm({ page, preset = null, lockPageKey = false, onSave, onCancel }: PageFormProps) {
   const [formData, setFormData] = useState({
     page_key: page?.page_key || preset?.page_key || '',
     title_en: page?.title_en || preset?.title_en || '',
@@ -113,11 +114,11 @@ export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProp
               type="text"
               value={formData.page_key}
               onChange={(e) => setFormData({ ...formData, page_key: e.target.value })}
-              disabled={!!page?.id}
+              disabled={!!page?.id || lockPageKey}
               className={`w-full px-3 py-2 border rounded-lg text-sm font-mono transition-colors ${
                 errors.page_key
                   ? 'border-red-300 bg-red-50'
-                  : page?.id
+                  : page?.id || lockPageKey
                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
               }`}
@@ -185,8 +186,8 @@ export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProp
             <textarea
               value={formData.body_en}
               onChange={(e) => setFormData({ ...formData, body_en: e.target.value })}
-              rows={5}
-              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-none ${
+              rows={9}
+              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-y ${
                 errors.body_en
                   ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
@@ -203,8 +204,8 @@ export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProp
             <textarea
               value={formData.body_th}
               onChange={(e) => setFormData({ ...formData, body_th: e.target.value })}
-              rows={5}
-              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-none ${
+              rows={9}
+              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-y ${
                 errors.body_th
                   ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
@@ -221,8 +222,8 @@ export function PageForm({ page, preset = null, onSave, onCancel }: PageFormProp
             <textarea
               value={formData.body_zh}
               onChange={(e) => setFormData({ ...formData, body_zh: e.target.value })}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              rows={9}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors resize-y focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="中文页面内容..."
             />
           </div>
