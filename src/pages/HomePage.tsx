@@ -3,9 +3,9 @@ import { ArrowRight, Cookie, Croissant, Pizza, Wheat } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { getImageUrl, getCategories, CMSCategory } from '../lib/cmsService';
 import { useCart } from '../context/CartContext';
-import { getPublicImageUrl } from '../lib/storage';
 import TopLikedSection from '../components/TopLikedSection';
 import { Container, PageCanvas, Section } from '../platform/design-system';
+import { JOKO_BAKERY_HERO_ASSET } from '../lib/staticAssetPolicy';
 
 type HomePageProps = {
   onNavigate: (page: string) => void;
@@ -14,7 +14,7 @@ type HomePageProps = {
 export default function HomePage({ onNavigate }: HomePageProps) {
   const { t, language } = useLanguage();
   const { setSelectedCategory } = useCart();
-  const defaultHeroImage = getPublicImageUrl('hero/joko-bakery-hero.png');
+  const defaultHeroImage = JOKO_BAKERY_HERO_ASSET;
   const [heroImageUrl, setHeroImageUrl] = useState(defaultHeroImage);
   const [categories, setCategories] = useState<CMSCategory[]>([]);
 

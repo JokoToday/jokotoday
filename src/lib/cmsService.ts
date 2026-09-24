@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { resolveStaticSiteAssetUrl } from './staticAssetPolicy';
 
 export interface CMSCategory {
   id: string;
@@ -219,7 +220,7 @@ export async function getPickupLocationById(id: string): Promise<CMSPickupLocati
 // Image URLs
 export async function getImageUrl(key: string, fallback: string = ''): Promise<string> {
   const setting = await getSetting(key);
-  return setting?.value || fallback;
+  return resolveStaticSiteAssetUrl(setting?.value, fallback);
 }
 
 export async function getImageUrls(): Promise<Record<string, string>> {
@@ -228,7 +229,7 @@ export async function getImageUrls(): Promise<Record<string, string>> {
 
   const urls: Record<string, string> = {};
   imageSettings.forEach(setting => {
-    urls[setting.setting_key] = setting.value;
+    urls[setting.setting_key] = resolveStaticSiteAssetUrl(setting.value);
   });
 
   return urls;
