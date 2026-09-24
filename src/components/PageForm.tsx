@@ -3,21 +3,33 @@ import { X, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSPage } from '../lib/cmsService';
 
+interface PageFormPreset {
+  page_key?: string;
+  title_en?: string;
+  title_th?: string;
+  title_zh?: string;
+  body_en?: string;
+  body_th?: string;
+  body_zh?: string;
+}
+
 interface PageFormProps {
   page: CMSPage | null;
+  preset?: PageFormPreset | null;
+  lockPageKey?: boolean;
   onSave: () => void;
   onCancel: () => void;
 }
 
-export function PageForm({ page, onSave, onCancel }: PageFormProps) {
+export function PageForm({ page, preset = null, lockPageKey = false, onSave, onCancel }: PageFormProps) {
   const [formData, setFormData] = useState({
-    page_key: page?.page_key || '',
-    title_en: page?.title_en || '',
-    title_th: page?.title_th || '',
-    title_zh: page?.title_zh || '',
-    body_en: page?.body_en || '',
-    body_th: page?.body_th || '',
-    body_zh: page?.body_zh || '',
+    page_key: page?.page_key || preset?.page_key || '',
+    title_en: page?.title_en || preset?.title_en || '',
+    title_th: page?.title_th || preset?.title_th || '',
+    title_zh: page?.title_zh || preset?.title_zh || '',
+    body_en: page?.body_en || preset?.body_en || '',
+    body_th: page?.body_th || preset?.body_th || '',
+    body_zh: page?.body_zh || preset?.body_zh || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,7 +91,7 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
           <h2 className="text-2xl font-bold text-gray-900">
-            {page ? 'Edit Page' : 'New Page'}
+            {page ? 'Edit Page' : preset?.page_key ? 'Create Page' : 'New Page'}
           </h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
@@ -102,11 +114,11 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
               type="text"
               value={formData.page_key}
               onChange={(e) => setFormData({ ...formData, page_key: e.target.value })}
-              disabled={!!page?.id}
+              disabled={!!page?.id || lockPageKey}
               className={`w-full px-3 py-2 border rounded-lg text-sm font-mono transition-colors ${
                 errors.page_key
                   ? 'border-red-300 bg-red-50'
-                  : page?.id
+                  : page?.id || lockPageKey
                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
               }`}
@@ -174,8 +186,8 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
             <textarea
               value={formData.body_en}
               onChange={(e) => setFormData({ ...formData, body_en: e.target.value })}
-              rows={5}
-              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-none ${
+              rows={9}
+              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-y ${
                 errors.body_en
                   ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
@@ -192,8 +204,8 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
             <textarea
               value={formData.body_th}
               onChange={(e) => setFormData({ ...formData, body_th: e.target.value })}
-              rows={5}
-              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-none ${
+              rows={9}
+              className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors resize-y ${
                 errors.body_th
                   ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent'
                   : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'
@@ -210,8 +222,8 @@ export function PageForm({ page, onSave, onCancel }: PageFormProps) {
             <textarea
               value={formData.body_zh}
               onChange={(e) => setFormData({ ...formData, body_zh: e.target.value })}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              rows={9}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors resize-y focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="中文页面内容..."
             />
           </div>

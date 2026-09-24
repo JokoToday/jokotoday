@@ -471,6 +471,32 @@ function CategoriesTab({ categories, onRefresh, onDelete }: CategoriesTabProps) 
 function PagesTab({ pages, onRefresh }: PagesTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CMSPage | null>(null);
+  const [preset, setPreset] = useState<{
+    page_key: string;
+    title_en: string;
+    title_th: string;
+    title_zh: string;
+    body_en: string;
+    body_th: string;
+    body_zh: string;
+  } | null>(null);
+
+  const ourStoryPage = pages.find((page) => page.page_key === 'our_story') || null;
+  const ourStoryPreset = {
+    page_key: 'our_story',
+    title_en: 'Our Story',
+    title_th: 'เรื่องราวของเรา',
+    title_zh: '我们的故事',
+    body_en: 'Our full story is coming soon.\n\nWe’re putting the words together with the same care we bring to the bakery.',
+    body_th: 'เรื่องราวฉบับเต็มของเรากำลังจะมาถึงเร็ว ๆ นี้\n\nเรากำลังเรียบเรียงเรื่องราวด้วยความใส่ใจแบบเดียวกับที่เราใส่ลงไปในงานเบเกอรี่ทุกชิ้น',
+    body_zh: '我们的完整故事即将上线。\n\n我们正在认真整理这些文字，就像认真对待每天出炉的烘焙一样。',
+  };
+
+  const openOurStoryEditor = () => {
+    setEditing(ourStoryPage);
+    setPreset(ourStoryPage ? null : ourStoryPreset);
+    setShowForm(true);
+  };
 
   return (
     <div>
@@ -479,6 +505,7 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
         <button
           onClick={() => {
             setEditing(null);
+            setPreset(null);
             setShowForm(true);
           }}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
@@ -487,17 +514,50 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
         </button>
       </div>
 
+      <div className="mb-6 rounded-2xl border border-[#55766F]/18 bg-[#F7F1E7]/70 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#55766F]">Public page</p>
+          <h3 className="mt-1 text-lg font-semibold text-gray-900">Our Story</h3>
+          <p className="mt-1 text-sm text-gray-600">
+            {ourStoryPage
+              ? 'Connected to /our-story. Edit the English, Thai and Chinese story here.'
+              : 'Ready to create the CMS content for /our-story. Until then the public page uses a safe fallback.'}
+          </p>
+        </div>
+        <div className="mt-4 flex shrink-0 gap-2 sm:mt-0">
+          <a
+            href="/our-story"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+          >
+            Open page
+          </a>
+          <button
+            type="button"
+            onClick={openOurStoryEditor}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
+          >
+            {ourStoryPage ? 'Edit Our Story' : 'Create Our Story'}
+          </button>
+        </div>
+      </div>
+
       {showForm && (
         <PageForm
           page={editing}
+          preset={preset}
+          lockPageKey={Boolean(preset?.page_key === 'our_story')}
           onSave={() => {
             setShowForm(false);
             setEditing(null);
+            setPreset(null);
             void onRefresh();
           }}
           onCancel={() => {
             setShowForm(false);
             setEditing(null);
+            setPreset(null);
           }}
         />
       )}
@@ -524,6 +584,7 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
                   <button
                     onClick={() => {
                       setEditing(page);
+                      setPreset(null);
                       setShowForm(true);
                     }}
                     className="text-primary-600 hover:text-primary-700 font-medium text-sm"

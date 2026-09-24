@@ -349,6 +349,16 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
         <Container width="wide">
           <SectionTitle
             title={t.about.title}
+            action={(
+              <button
+                type="button"
+                onClick={() => onNavigate('our-story')}
+                className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]"
+              >
+                {t.about.story}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             backToTopLabel={labels.backToTop}
             onBackToTop={backToTop}
           />
