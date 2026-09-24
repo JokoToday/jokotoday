@@ -547,6 +547,7 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
         <PageForm
           page={editing}
           preset={preset}
+          lockPageKey={Boolean(preset?.page_key === 'our_story')}
           onSave={() => {
             setShowForm(false);
             setEditing(null);
