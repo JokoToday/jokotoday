@@ -34,6 +34,7 @@ interface ProductsPageProps {
   initialProductSlug?: string | null;
   qrSource?: string | null;
   onProductOpened?: () => void;
+  onNavigate?: (page: string) => void;
 }
 
 type V2ProductDisplayState = {
@@ -76,7 +77,7 @@ function localizedLocationLabel(row: PickupAvailabilityRow, language: SupportedL
   return location.name_en;
 }
 
-export default function ProductsPage({ initialProductSlug, qrSource, onProductOpened }: ProductsPageProps) {
+export default function ProductsPage({ initialProductSlug, qrSource, onProductOpened, onNavigate }: ProductsPageProps) {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { getLabel } = useCMSLabels();
@@ -585,7 +586,15 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               return (
                 <div
                   key={product.id}
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={(event) => {
+                    const target = event.target as HTMLElement;
+                    if (target.closest('button, a, input, select, textarea')) return;
+                    if (onNavigate) {
+                      onNavigate(`product/${product.slug}`);
+                      return;
+                    }
+                    setSelectedProduct(product);
+                  }}
                   className="joko-products-card-wrap cursor-pointer"
                 >
                   <ProductCard
