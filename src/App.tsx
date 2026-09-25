@@ -365,7 +365,7 @@ function AppContent() {
           onNotebookOpen={handleNotebookOpen}
         />;
       case 'products':
-        return <ProductsPage />;
+        return <ProductsPage onNavigate={handleNavigate} />;
       case 'product-detail':
         return (
           <ProductDetailPage
