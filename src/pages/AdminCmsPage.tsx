@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Settings, Package, Tag, FileText, Type, MapPin, Zap, LogOut, ScanLine, Clock, Share2, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductForm } from '../components/ProductManagement';
+import ProductQRPanel from '../components/ProductQRPanel';
 import { QuickAddProduct } from '../components/QuickAddProduct';
 import { AdminPasswordProtection } from '../components/AdminPasswordProtection';
 import { CutoffRulesManagement } from '../components/CutoffRulesManagement';
@@ -257,6 +258,7 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
   const [showForm, setShowForm] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editing, setEditing] = useState<CMSProduct | null>(null);
+  const [qrProduct, setQrProduct] = useState<CMSProduct | null>(null);
 
   const getCategoryName = (id: string) => {
     const category = categories.find((item) => item.id === id);
@@ -325,12 +327,13 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">Stock</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Pickup Slots</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">Status</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700">QR</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody>
             {products.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-500 text-sm">No products yet. Add your first product!</td></tr>
+              <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-500 text-sm">No products yet. Add your first product!</td></tr>
             ) : products.map((product) => (
               <tr key={product.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
@@ -361,6 +364,21 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
                     {product.is_active && !product.is_sold_out && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">Active</span>}
                   </div>
                 </td>
+                <td className="px-4 py-3 text-center">
+                  {product.public_code ? (
+                    <button
+                      type="button"
+                      onClick={() => setQrProduct(product)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 font-mono text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                      title="Preview, download and print product QR"
+                    >
+                      <ScanLine className="h-3.5 w-3.5" />
+                      {product.public_code}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-400">Not assigned</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right space-x-3">
                   <button
                     onClick={() => {
@@ -383,6 +401,10 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
           </tbody>
         </table>
       </div>
+
+      {qrProduct && (
+        <ProductQRPanel product={qrProduct} onClose={() => setQrProduct(null)} />
+      )}
     </div>
   );
 }
