@@ -108,6 +108,15 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+
+  useEffect(() => {
+    getPickupDays().then(setPickupDays).catch((error) => {
+      console.error('Error loading pickup days for product form:', error);
+      setErrors((current) => ({ ...current, pickup_days: 'Could not load pickup schedule.' }));
+    });
+  }, []);
+
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
     if (!formData.name_en.trim()) newErrors.name_en = 'Product name (English) is required';
