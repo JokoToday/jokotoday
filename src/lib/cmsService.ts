@@ -27,6 +27,28 @@ export interface CMSProduct {
   price: number;
   image: string | null;
   qr_code_url?: string | null;
+  public_code?: string | null;
+  short_desc_en?: string | null;
+  short_desc_th?: string | null;
+  short_desc_zh?: string | null;
+  joko_note_en?: string | null;
+  joko_note_th?: string | null;
+  joko_note_zh?: string | null;
+  ingredients_en?: string | null;
+  ingredients_th?: string | null;
+  ingredients_zh?: string | null;
+  allergens_en?: string | null;
+  allergens_th?: string | null;
+  allergens_zh?: string | null;
+  storage_en?: string | null;
+  storage_th?: string | null;
+  storage_zh?: string | null;
+  best_enjoyed_en?: string | null;
+  best_enjoyed_th?: string | null;
+  best_enjoyed_zh?: string | null;
+  reheating_en?: string | null;
+  reheating_th?: string | null;
+  reheating_zh?: string | null;
   is_sold_out: boolean;
   is_active: boolean;
   sort_order: number;
@@ -117,12 +139,33 @@ export async function getProducts(categoryId?: string): Promise<CMSProduct[]> {
   return data || [];
 }
 
-export async function getProductBySlug(slug: string): Promise<CMSProduct | null> {
+export async function getProductBySlug(
+  slug: string,
+  options: { includeInactive?: boolean } = {},
+): Promise<CMSProduct | null> {
+  let query = supabase
+    .from('cms_products')
+    .select('*')
+    .eq('slug', slug);
+
+  if (!options.includeInactive) {
+    query = query.eq('is_active', true);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProductByPublicCode(publicCode: string): Promise<CMSProduct | null> {
+  const normalized = publicCode.trim().toUpperCase();
+  if (!normalized) return null;
+
   const { data, error } = await supabase
     .from('cms_products')
     .select('*')
-    .eq('slug', slug)
-    .eq('is_active', true)
+    .ilike('public_code', normalized)
     .maybeSingle();
 
   if (error) throw error;
