@@ -12,6 +12,7 @@ import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const OurStoryPage = lazy(() => import('./pages/OurStoryPage'));
@@ -81,7 +82,8 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
-  const [qrSource, setQrSource] = useState<string | null>(null);
+  const [productPublicCode, setProductPublicCode] = useState<string | null>(null);
+  const [productEntrySource, setProductEntrySource] = useState<'qr' | 'web'>('web');
   const [homepageExperienceFailed, setHomepageExperienceFailed] = useState(false);
   const [notebookTarget, setNotebookTarget] = useState<NotebookRouteTarget>({ type: 'notebook.collection', slug: 'today' });
   const [notebookClosed, setNotebookClosed] = useState(false);
@@ -93,7 +95,9 @@ function AppContent() {
       const qrCustomerMatch = path.match(/^\/c\/([^/]+)$/);
       const qrResolverMatch = path.match(/^\/q\/([^/]+)$/);
       const scanMatch = path.match(/^\/scan\/([A-Za-z0-9]+)$/);
-      const productMatch = path.match(/^\/product\/([^/]+)$/);
+      const legacyProductMatch = path.match(/^\/product\/([^/]+)$/);
+      const productDetailMatch = path.match(/^\/products\/([^/]+)$/);
+      const productQrMatch = path.match(/^\/p\/([^/]+)$/);
 
       if (path === '/auth/callback') {
         setCurrentPage('auth-callback');
@@ -105,13 +109,30 @@ function AppContent() {
         return;
       }
 
-      if (productMatch) {
-        const slug = productMatch[1];
+      if (productQrMatch) {
+        setProductPublicCode(decodeURIComponent(productQrMatch[1]));
+        setProductSlug(null);
+        setProductEntrySource('qr');
+        setCurrentPage('product-detail');
+        return;
+      }
+
+      if (productDetailMatch) {
+        setProductSlug(decodeURIComponent(productDetailMatch[1]));
+        setProductPublicCode(null);
+        setProductEntrySource('web');
+        setCurrentPage('product-detail');
+        return;
+      }
+
+      if (legacyProductMatch) {
+        const slug = decodeURIComponent(legacyProductMatch[1]);
         const source = params.get('source');
         setProductSlug(slug);
-        if (source) setQrSource(source);
-        setCurrentPage('products');
-        window.history.replaceState({}, '', '/products');
+        setProductPublicCode(null);
+        setProductEntrySource(source === 'qr' ? 'qr' : 'web');
+        setCurrentPage('product-detail');
+        window.history.replaceState({}, '', `/products/${encodeURIComponent(slug)}`);
         return;
       }
 
@@ -241,11 +262,15 @@ function AppContent() {
 
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
-      setProductSlug(productNavMatch[1]);
-      if (window.location.pathname !== '/products') {
-        window.history.pushState({}, '', '/products');
+      const slug = productNavMatch[1];
+      const targetPath = `/products/${encodeURIComponent(slug)}`;
+      setProductSlug(slug);
+      setProductPublicCode(null);
+      setProductEntrySource('web');
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
       }
-      setCurrentPage('products');
+      setCurrentPage('product-detail');
       return;
     }
 
@@ -340,7 +365,16 @@ function AppContent() {
           onNotebookOpen={handleNotebookOpen}
         />;
       case 'products':
-        return <ProductsPage initialProductSlug={productSlug} qrSource={qrSource} onProductOpened={() => { setProductSlug(null); setQrSource(null); }} />;
+        return <ProductsPage onNavigate={handleNavigate} />;
+      case 'product-detail':
+        return (
+          <ProductDetailPage
+            productSlug={productSlug}
+            publicCode={productPublicCode}
+            entrySource={productEntrySource}
+            onNavigate={handleNavigate}
+          />
+        );
       case 'checkout':
         return <CheckoutPage onNavigate={handleNavigate} />;
       case 'about':
@@ -383,12 +417,12 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'products' || currentPage === 'our-story';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'our-story';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
     ? 'curiosities'
-    : currentPage === 'products'
+    : currentPage === 'products' || currentPage === 'product-detail'
       ? 'bakery'
       : currentPage === 'our-story'
         ? 'about'

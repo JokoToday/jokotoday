@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, AlertCircle, Upload, Trash2, QrCode } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, AlertCircle, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../lib/cmsService';
 import { getPickupDays, PickupDay } from '../lib/availabilityService';
@@ -22,7 +22,28 @@ interface FormData {
   price: string;
   category_id: string;
   image: string;
-  qr_code_url: string;
+  public_code: string;
+  short_desc_en: string;
+  short_desc_th: string;
+  short_desc_zh: string;
+  joko_note_en: string;
+  joko_note_th: string;
+  joko_note_zh: string;
+  ingredients_en: string;
+  ingredients_th: string;
+  ingredients_zh: string;
+  allergens_en: string;
+  allergens_th: string;
+  allergens_zh: string;
+  storage_en: string;
+  storage_th: string;
+  storage_zh: string;
+  best_enjoyed_en: string;
+  best_enjoyed_th: string;
+  best_enjoyed_zh: string;
+  reheating_en: string;
+  reheating_th: string;
+  reheating_zh: string;
   is_sold_out: boolean;
   is_active: boolean;
   slug: string;
@@ -52,7 +73,28 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     price: product?.price?.toString() || '',
     category_id: product?.category_id || '',
     image: product?.image || '',
-    qr_code_url: product?.qr_code_url || '',
+    public_code: product?.public_code || '',
+    short_desc_en: product?.short_desc_en || '',
+    short_desc_th: product?.short_desc_th || '',
+    short_desc_zh: product?.short_desc_zh || '',
+    joko_note_en: product?.joko_note_en || '',
+    joko_note_th: product?.joko_note_th || '',
+    joko_note_zh: product?.joko_note_zh || '',
+    ingredients_en: product?.ingredients_en || '',
+    ingredients_th: product?.ingredients_th || '',
+    ingredients_zh: product?.ingredients_zh || '',
+    allergens_en: product?.allergens_en || '',
+    allergens_th: product?.allergens_th || '',
+    allergens_zh: product?.allergens_zh || '',
+    storage_en: product?.storage_en || '',
+    storage_th: product?.storage_th || '',
+    storage_zh: product?.storage_zh || '',
+    best_enjoyed_en: product?.best_enjoyed_en || '',
+    best_enjoyed_th: product?.best_enjoyed_th || '',
+    best_enjoyed_zh: product?.best_enjoyed_zh || '',
+    reheating_en: product?.reheating_en || '',
+    reheating_th: product?.reheating_th || '',
+    reheating_zh: product?.reheating_zh || '',
     is_sold_out: product?.is_sold_out || false,
     is_active: product?.is_active ?? true,
     slug: product?.slug || '',
@@ -66,9 +108,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
-  const [qrUploading, setQrUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
-  const qrInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getPickupDays().then(setPickupDays).catch((error) => {
@@ -76,53 +116,6 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
       setErrors((current) => ({ ...current, pickup_days: 'Could not load pickup schedule.' }));
     });
   }, []);
-
-  const uploadQrCode = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
-    const fileName = `qr/${product?.id || 'new'}-${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('product-qr')
-      .upload(fileName, file, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from('product-qr')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
-  };
-
-  const handleQrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setErrors({ ...errors, qr_code: 'Please select an image file' });
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      setErrors({ ...errors, qr_code: 'File size must be less than 2MB' });
-      return;
-    }
-
-    setQrUploading(true);
-    try {
-      const url = await uploadQrCode(file);
-      setFormData({ ...formData, qr_code_url: url });
-      setErrors({ ...errors, qr_code: '' });
-    } catch (error) {
-      console.error('QR upload error:', error);
-      setErrors({ ...errors, qr_code: 'Failed to upload QR code' });
-    } finally {
-      setQrUploading(false);
-      if (qrInputRef.current) qrInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveQr = () => setFormData({ ...formData, qr_code_url: '' });
 
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
@@ -132,6 +125,9 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
     if (!formData.slug.trim()) newErrors.slug = 'Slug is required';
+    if (formData.public_code && !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(formData.public_code)) {
+      newErrors.public_code = 'Use 3–32 uppercase letters, numbers, hyphens or underscores';
+    }
     if (!formData.stock_total) newErrors.stock_total = 'Total stock is required';
     else if (isNaN(parseInt(formData.stock_total)) || parseInt(formData.stock_total) < 0) newErrors.stock_total = 'Total stock must be a valid positive number';
     if (product && !formData.stock_remaining) newErrors.stock_remaining = 'Remaining stock is required';
@@ -188,7 +184,28 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
         price: parseFloat(formData.price),
         category_id: formData.category_id,
         image: formData.image.trim() || null,
-        qr_code_url: formData.qr_code_url.trim() || null,
+        public_code: formData.public_code.trim() || null,
+        short_desc_en: formData.short_desc_en.trim() || null,
+        short_desc_th: formData.short_desc_th.trim() || null,
+        short_desc_zh: formData.short_desc_zh.trim() || null,
+        joko_note_en: formData.joko_note_en.trim() || null,
+        joko_note_th: formData.joko_note_th.trim() || null,
+        joko_note_zh: formData.joko_note_zh.trim() || null,
+        ingredients_en: formData.ingredients_en.trim() || null,
+        ingredients_th: formData.ingredients_th.trim() || null,
+        ingredients_zh: formData.ingredients_zh.trim() || null,
+        allergens_en: formData.allergens_en.trim() || null,
+        allergens_th: formData.allergens_th.trim() || null,
+        allergens_zh: formData.allergens_zh.trim() || null,
+        storage_en: formData.storage_en.trim() || null,
+        storage_th: formData.storage_th.trim() || null,
+        storage_zh: formData.storage_zh.trim() || null,
+        best_enjoyed_en: formData.best_enjoyed_en.trim() || null,
+        best_enjoyed_th: formData.best_enjoyed_th.trim() || null,
+        best_enjoyed_zh: formData.best_enjoyed_zh.trim() || null,
+        reheating_en: formData.reheating_en.trim() || null,
+        reheating_th: formData.reheating_th.trim() || null,
+        reheating_zh: formData.reheating_zh.trim() || null,
         is_sold_out: formData.is_sold_out,
         is_active: formData.is_active,
         slug,
@@ -234,7 +251,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">{product ? 'Edit Product' : 'Add New Product'}</h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
@@ -311,6 +328,60 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               </div>
             </div>
 
+            <div className="mt-6 border-t border-gray-200 pt-5">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Product Card Descriptor</h4>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {(['en', 'th', 'zh'] as const).map((lang) => (
+                  <textarea
+                    key={lang}
+                    value={formData[`short_desc_${lang}`]}
+                    onChange={(e) => setFormData({ ...formData, [`short_desc_${lang}`]: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder={lang === 'en' ? 'Flaky • almond cream • lightly dusted' : lang === 'th' ? 'คำอธิบายสั้น ๆ' : '简短描述'}
+                  />
+                ))}
+              </div>
+
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 mt-5">JOKO Note</h4>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                {(['en', 'th', 'zh'] as const).map((lang) => (
+                  <textarea
+                    key={lang}
+                    value={formData[`joko_note_${lang}`]}
+                    onChange={(e) => setFormData({ ...formData, [`joko_note_${lang}`]: e.target.value })}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder={lang === 'en' ? 'A short JOKO observation…' : lang === 'th' ? 'บันทึกสั้น ๆ จาก JOKO…' : 'JOKO 小注…'}
+                  />
+                ))}
+              </div>
+
+              {([
+                ['ingredients', 'Ingredients / ส่วนผสม / 配料'],
+                ['allergens', 'Allergens / สารก่อภูมิแพ้ / 过敏原'],
+                ['best_enjoyed', 'Best enjoyed / แนะนำการรับประทาน / 最佳食用'],
+                ['storage', 'Storage / การเก็บรักษา / 保存方式'],
+                ['reheating', 'Reheating / การอุ่น / 加热建议'],
+              ] as const).map(([field, label]) => (
+                <div key={field} className="mt-5">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">{label}</h4>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {(['en', 'th', 'zh'] as const).map((lang) => (
+                      <textarea
+                        key={lang}
+                        value={formData[`${field}_${lang}`]}
+                        onChange={(e) => setFormData({ ...formData, [`${field}_${lang}`]: e.target.value })}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder={lang.toUpperCase()}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Product Image URL</label>
               <input type="url" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="https://example.com/image.jpg" />
@@ -321,32 +392,24 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               )}
             </div>
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1"><div className="flex items-center gap-2"><QrCode className="w-4 h-4" />QR Code (In-Store)</div></label>
-              <p className="text-xs text-gray-500 mb-2">Upload a QR code that links to this product. When scanned in-store, customers go directly to this product page.</p>
-
-              {formData.qr_code_url ? (
-                <div className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <img src={formData.qr_code_url} alt="QR Code" className="w-24 h-24 object-contain border rounded bg-white" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 truncate mb-2">{formData.qr_code_url}</p>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => qrInputRef.current?.click()} disabled={qrUploading} className="text-xs px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors disabled:opacity-50">Replace</button>
-                      <button type="button" onClick={handleRemoveQr} className="text-xs px-3 py-1.5 bg-white border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors flex items-center gap-1"><Trash2 className="w-3 h-3" />Remove</button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div onClick={() => qrInputRef.current?.click()} className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${qrUploading ? 'border-gray-300 bg-gray-50' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'}`}>
-                  {qrUploading ? (
-                    <div className="flex flex-col items-center gap-2"><div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" /><span className="text-sm text-gray-600">Uploading...</span></div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2"><Upload className="w-8 h-8 text-gray-400" /><span className="text-sm text-gray-600">Click to upload QR code</span><span className="text-xs text-gray-400">PNG, JPG up to 2MB</span></div>
-                  )}
-                </div>
-              )}
-              <input ref={qrInputRef} type="file" accept="image/*" onChange={handleQrFileChange} className="hidden" />
-              {errors.qr_code && <p className="text-red-600 text-xs mt-1">{errors.qr_code}</p>}
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+              <label className="block text-sm font-medium text-gray-800 mb-1">
+                <span className="flex items-center gap-2"><QrCode className="w-4 h-4" />Permanent Product QR Code</span>
+              </label>
+              <input
+                type="text"
+                value={formData.public_code}
+                disabled={Boolean(product?.public_code)}
+                onChange={(e) => setFormData({ ...formData, public_code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })}
+                className={`w-full px-3 py-2 border rounded-lg text-sm font-mono uppercase ${errors.public_code ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${product?.public_code ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500 focus:border-transparent'}`}
+                placeholder="e.g. AC101"
+              />
+              {errors.public_code && <p className="text-red-600 text-xs mt-1">{errors.public_code}</p>}
+              <p className="text-xs text-gray-600 mt-2">
+                {product?.public_code
+                  ? 'Permanent once assigned. Use the Products table → QR action to preview, download and print the generated code.'
+                  : 'Optional. Assign only to real products that need a permanent /p/CODE printed identity.'}
+              </p>
             </div>
           </div>
 
