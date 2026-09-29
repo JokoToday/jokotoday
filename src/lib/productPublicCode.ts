@@ -29,15 +29,24 @@ function productCodePrefix(name: string): string {
 export async function suggestProductPublicCode(productName: string): Promise<string> {
   const prefix = productCodePrefix(productName);
 
-  const { data, error } = await supabase
-    .from('cms_products')
-    .select('public_code')
-    .not('public_code', 'is', null);
+  const [
+    { data: currentCodes, error: currentError },
+    { data: historicalCodes, error: historicalError },
+  ] = await Promise.all([
+    supabase
+      .from('cms_products')
+      .select('public_code')
+      .not('public_code', 'is', null),
+    supabase
+      .from('cms_product_public_code_aliases')
+      .select('public_code'),
+  ]);
 
-  if (error) throw error;
+  if (currentError) throw currentError;
+  if (historicalError) throw historicalError;
 
   const existingCodes = new Set(
-    (data || [])
+    [...(currentCodes || []), ...(historicalCodes || [])]
       .map((row) => String(row.public_code || '').trim().toUpperCase())
       .filter(Boolean),
   );
