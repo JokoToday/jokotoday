@@ -51,7 +51,14 @@ export function HomeCategoryGridSectionRenderer({
   return (
     <Section spacing={section.design.spacing} className="bg-[#DAEBE8]">
       <Container width={section.design.width}>
-        <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+        <h2
+          className="font-semibold tracking-[-0.03em]"
+          style={{
+            fontFamily: 'var(--joko-font-display)',
+            fontSize: 'var(--joko-size-section-heading)',
+            color: 'rgb(var(--joko-shell-ink))',
+          }}
+        >
           {localize(section.props.title, locale, fallbackLocale)}
         </h2>
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
