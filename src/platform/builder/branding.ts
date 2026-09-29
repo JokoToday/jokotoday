@@ -1,8 +1,12 @@
 import type { CSSProperties } from 'react';
 import type {
   BuilderBodyFont,
+  BuilderChineseBodyFont,
+  BuilderChineseDisplayFont,
   BuilderDisplayFont,
   BuilderHomepageBranding,
+  BuilderThaiBodyFont,
+  BuilderThaiDisplayFont,
 } from './contracts';
 
 export type JokoHomepageBranding = BuilderHomepageBranding;
@@ -12,8 +16,10 @@ export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   typography: {
     displayFont: 'noto-sans',
     bodyFont: 'inter',
-    thaiFont: 'noto-sans-thai-looped',
-    chineseFont: 'noto-sans-sc',
+    thaiDisplayFont: 'maitree',
+    thaiBodyFont: 'noto-sans-thai-looped',
+    chineseDisplayFont: 'noto-serif-sc',
+    chineseBodyFont: 'noto-sans-sc',
     heroSize: 65,
     sectionHeadingSize: 36,
     bodySize: 16,
@@ -37,6 +43,31 @@ const DISPLAY_FONT_STACKS: Record<BuilderDisplayFont, string> = {
 const BODY_FONT_STACKS: Record<BuilderBodyFont, string> = {
   inter: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   'noto-sans': "'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+};
+
+const THAI_DISPLAY_FONT_STACKS: Record<BuilderThaiDisplayFont, string> = {
+  'noto-sans-thai-looped': "'Noto Sans Thai Looped', Tahoma, sans-serif",
+  'noto-sans-thai': "'Noto Sans Thai', Tahoma, sans-serif",
+  sarabun: "'Sarabun', Tahoma, sans-serif",
+  'bai-jamjuree': "'Bai Jamjuree', Tahoma, sans-serif",
+  maitree: "'Maitree', Georgia, serif",
+};
+
+const THAI_BODY_FONT_STACKS: Record<BuilderThaiBodyFont, string> = {
+  'noto-sans-thai-looped': "'Noto Sans Thai Looped', Tahoma, sans-serif",
+  'noto-sans-thai': "'Noto Sans Thai', Tahoma, sans-serif",
+  sarabun: "'Sarabun', Tahoma, sans-serif",
+  'bai-jamjuree': "'Bai Jamjuree', Tahoma, sans-serif",
+};
+
+const CHINESE_DISPLAY_FONT_STACKS: Record<BuilderChineseDisplayFont, string> = {
+  'noto-sans-sc': "'Noto Sans SC', 'PingFang SC', system-ui, sans-serif",
+  'noto-serif-sc': "'Noto Serif SC', 'Songti SC', serif",
+};
+
+const CHINESE_BODY_FONT_STACKS: Record<BuilderChineseBodyFont, string> = {
+  'noto-sans-sc': "'Noto Sans SC', 'PingFang SC', system-ui, sans-serif",
+  'noto-serif-sc': "'Noto Serif SC', 'Songti SC', serif",
 };
 
 function numberInRange(value: unknown, fallback: number, min: number, max: number): number {
@@ -65,14 +96,30 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
   const bodyFont = ['inter', 'noto-sans'].includes(String(typography.bodyFont))
     ? typography.bodyFont as BuilderBodyFont
     : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.bodyFont;
+  const legacyThaiFont = typography.thaiFont === 'noto-sans-thai-looped' ? typography.thaiFont : undefined;
+  const legacyChineseFont = typography.chineseFont === 'noto-sans-sc' ? typography.chineseFont : undefined;
+  const thaiDisplayFont = ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree', 'maitree'].includes(String(typography.thaiDisplayFont))
+    ? typography.thaiDisplayFont as BuilderThaiDisplayFont
+    : legacyThaiFont ?? DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.thaiDisplayFont;
+  const thaiBodyFont = ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree'].includes(String(typography.thaiBodyFont))
+    ? typography.thaiBodyFont as BuilderThaiBodyFont
+    : legacyThaiFont ?? DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.thaiBodyFont;
+  const chineseDisplayFont = ['noto-sans-sc', 'noto-serif-sc'].includes(String(typography.chineseDisplayFont))
+    ? typography.chineseDisplayFont as BuilderChineseDisplayFont
+    : legacyChineseFont ?? DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.chineseDisplayFont;
+  const chineseBodyFont = ['noto-sans-sc', 'noto-serif-sc'].includes(String(typography.chineseBodyFont))
+    ? typography.chineseBodyFont as BuilderChineseBodyFont
+    : legacyChineseFont ?? DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.chineseBodyFont;
 
   return {
     logoScale: numberInRange(input.logoScale, DEFAULT_JOKO_HOMEPAGE_BRANDING.logoScale, 70, 150),
     typography: {
       displayFont,
       bodyFont,
-      thaiFont: 'noto-sans-thai-looped',
-      chineseFont: 'noto-sans-sc',
+      thaiDisplayFont,
+      thaiBodyFont,
+      chineseDisplayFont,
+      chineseBodyFont,
       heroSize: numberInRange(typography.heroSize, DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.heroSize, 42, 88),
       sectionHeadingSize: numberInRange(typography.sectionHeadingSize, DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.sectionHeadingSize, 24, 56),
       bodySize: numberInRange(typography.bodySize, DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.bodySize, 14, 20),
@@ -88,12 +135,23 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
   };
 }
 
-export function jokoBrandingCssVariables(branding: JokoHomepageBranding): CSSProperties {
+export function jokoBrandingCssVariables(branding: JokoHomepageBranding, locale = 'en'): CSSProperties {
+  const displayStack = locale === 'th'
+    ? THAI_DISPLAY_FONT_STACKS[branding.typography.thaiDisplayFont]
+    : locale === 'zh'
+      ? CHINESE_DISPLAY_FONT_STACKS[branding.typography.chineseDisplayFont]
+      : DISPLAY_FONT_STACKS[branding.typography.displayFont];
+  const bodyStack = locale === 'th'
+    ? THAI_BODY_FONT_STACKS[branding.typography.thaiBodyFont]
+    : locale === 'zh'
+      ? CHINESE_BODY_FONT_STACKS[branding.typography.chineseBodyFont]
+      : BODY_FONT_STACKS[branding.typography.bodyFont];
+
   return {
     '--joko-logo-scale': String(branding.logoScale / 100),
-    '--joko-font-display': DISPLAY_FONT_STACKS[branding.typography.displayFont],
-    '--joko-font-shell': BODY_FONT_STACKS[branding.typography.bodyFont],
-    '--joko-font-body': BODY_FONT_STACKS[branding.typography.bodyFont],
+    '--joko-font-display': displayStack,
+    '--joko-font-shell': bodyStack,
+    '--joko-font-body': bodyStack,
     '--joko-brand-text': branding.colors.text,
     '--joko-brand-accent': branding.colors.accent,
     '--joko-brand-turquoise': branding.colors.turquoise,
@@ -115,4 +173,30 @@ export const JOKO_DISPLAY_FONT_OPTIONS = [
 export const JOKO_BODY_FONT_OPTIONS = [
   { value: 'inter', label: 'Inter' },
   { value: 'noto-sans', label: 'Noto Sans' },
+] as const;
+
+
+export const JOKO_THAI_DISPLAY_FONT_OPTIONS = [
+  { value: 'maitree', label: 'Maitree' },
+  { value: 'noto-sans-thai-looped', label: 'Noto Sans Thai Looped' },
+  { value: 'noto-sans-thai', label: 'Noto Sans Thai' },
+  { value: 'sarabun', label: 'Sarabun' },
+  { value: 'bai-jamjuree', label: 'Bai Jamjuree' },
+] as const;
+
+export const JOKO_THAI_BODY_FONT_OPTIONS = [
+  { value: 'noto-sans-thai-looped', label: 'Noto Sans Thai Looped' },
+  { value: 'noto-sans-thai', label: 'Noto Sans Thai' },
+  { value: 'sarabun', label: 'Sarabun' },
+  { value: 'bai-jamjuree', label: 'Bai Jamjuree' },
+] as const;
+
+export const JOKO_CHINESE_DISPLAY_FONT_OPTIONS = [
+  { value: 'noto-serif-sc', label: 'Noto Serif SC' },
+  { value: 'noto-sans-sc', label: 'Noto Sans SC' },
+] as const;
+
+export const JOKO_CHINESE_BODY_FONT_OPTIONS = [
+  { value: 'noto-sans-sc', label: 'Noto Sans SC' },
+  { value: 'noto-serif-sc', label: 'Noto Serif SC' },
 ] as const;
