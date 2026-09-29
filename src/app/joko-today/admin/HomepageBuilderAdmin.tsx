@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Eye,
   History,
@@ -101,6 +101,7 @@ export function HomepageBuilderAdmin() {
   const [mediaUploading, setMediaUploading] = useState(false);
   const [notice, setNotice] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   const applyServerState = (state: HomepageBuilderState, remountEditor = false) => {
     setPageState(state);
@@ -231,6 +232,9 @@ export function HomepageBuilderAdmin() {
     }
     setMode('preview');
     setNotice('Previewing the persisted Draft. This is not the public Homepage.');
+    window.requestAnimationFrame(() => {
+      previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const handlePublish = async () => {
@@ -417,16 +421,18 @@ export function HomepageBuilderAdmin() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-        <HomepageLogoUploader
-          value={logoUrl}
-          onChange={updateLogoUrl}
-          onUploadingChange={setMediaUploading}
-        />
-        <div className="mt-3 rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
-          Homepage structure such as live Pickup, How It Works and About remains driven by the dedicated JOKO Experience/CMS systems. The Builder controls its editable brand/content layer without duplicating operational data.
+      {mode === 'edit' && (
+        <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+          <HomepageLogoUploader
+            value={logoUrl}
+            onChange={updateLogoUrl}
+            onUploadingChange={setMediaUploading}
+          />
+          <div className="mt-3 rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
+            Homepage structure such as live Pickup, How It Works and About remains driven by the dedicated JOKO Experience/CMS systems. The Builder controls its editable brand/content layer without duplicating operational data.
+          </div>
         </div>
-      </div>
+      )}
 
       {(notice || issues.length > 0) && (
         <div className="max-w-7xl mx-auto px-4 pt-4 sm:px-6 lg:px-8">
@@ -446,8 +452,9 @@ export function HomepageBuilderAdmin() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 pt-4 sm:px-6 lg:px-8">
-        <details className="joko-admin-paper-card overflow-hidden" open={mode === 'preview'}>
+      {mode === 'edit' && (
+        <div className="max-w-7xl mx-auto px-4 pt-4 sm:px-6 lg:px-8">
+          <details className="joko-admin-paper-card overflow-hidden">
           <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-800">
             <History className="w-4 h-4 text-primary-600" />
             Revision history ({revisions.length})
@@ -494,8 +501,9 @@ export function HomepageBuilderAdmin() {
               </div>
             )}
           </div>
-        </details>
-      </div>
+          </details>
+        </div>
+      )}
 
       {mode === 'edit' ? (
         <div className="mt-4 border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
@@ -521,10 +529,11 @@ export function HomepageBuilderAdmin() {
           />
         </div>
       ) : (
-        <div className="mt-4">
+        <div ref={previewRef} className="scroll-mt-4 pt-4">
           <div className="max-w-7xl mx-auto px-4 pb-3 sm:px-6 lg:px-8">
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Persisted Draft preview — this is not the public Homepage. Publish stores an immutable Builder revision; production / continues to use the source-controlled Experience layout.
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-semibold">Draft preview.</span>{' '}
+              This is the persisted Builder draft, not the public Homepage. Use “Back to editor” to make changes or “Publish” when the draft is ready.
             </div>
           </div>
           <div className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
