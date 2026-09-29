@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import { CMSProduct } from '../lib/cmsService';
 import { useLanguage } from '../context/LanguageContext';
+import { getProductCanonicalUrl, getProductQrUrl } from '../lib/publicProductUrls';
 
 type SupportedLanguage = 'en' | 'th' | 'zh';
 
@@ -81,11 +82,11 @@ export function ProductQRPanel({ product, onClose }: ProductQRPanelProps) {
 
   const publicCode = String(product.public_code || '').trim().toUpperCase();
   const qrUrl = useMemo(
-    () => publicCode ? `${window.location.origin}/p/${encodeURIComponent(publicCode)}` : '',
+    () => getProductQrUrl(publicCode),
     [publicCode],
   );
   const canonicalUrl = useMemo(
-    () => `${window.location.origin}/products/${encodeURIComponent(product.slug)}`,
+    () => getProductCanonicalUrl(product.slug),
     [product.slug],
   );
 
