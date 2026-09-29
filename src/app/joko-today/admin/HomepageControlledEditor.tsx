@@ -134,7 +134,7 @@ export function HomepageControlledEditor({
         </div>
 
         <div
-          className="max-h-[700px] overflow-auto rounded-2xl border border-[#55766F]/18 bg-white shadow-[0_18px_44px_rgba(48,75,69,.10)]"
+          className="joko-home-shell max-h-[700px] overflow-auto rounded-2xl border border-[#55766F]/18 bg-white shadow-[0_18px_44px_rgba(48,75,69,.10)]"
           style={builderSiteStyleToCssVariables(siteStyle)}
         >
           <BuilderPageRenderer
