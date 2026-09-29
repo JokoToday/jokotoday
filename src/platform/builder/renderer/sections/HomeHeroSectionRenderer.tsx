@@ -88,8 +88,8 @@ export function HomeHeroSectionRenderer({
               {chrome.eyebrow}
             </p>
             <h1
-              className="mt-4 whitespace-pre-line font-bold leading-[.93] tracking-[-0.042em]"
-              style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'clamp(2.7rem, 5vw, var(--joko-size-hero, 65px))', color: 'var(--joko-brand-text, #292D2B)' }}
+              className="mt-4 whitespace-pre-line leading-[.93] tracking-[-0.042em]"
+              style={{ fontFamily: 'var(--joko-font-display)', fontWeight: 'var(--joko-font-display-weight, 700)', fontSize: 'clamp(2.7rem, 5vw, var(--joko-size-hero, 65px))', color: 'var(--joko-brand-text, #292D2B)' }}
               aria-label={richTextToPlainText(titleRichText)}
             >
               {titleRichText.map((run, index) => {
