@@ -114,13 +114,7 @@ export function BuilderPageRenderer({
           return (
             <div
               key={section.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`Edit ${section.id}`}
               onClickCapture={() => onSectionSelect(section.id)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') onSectionSelect(section.id);
-              }}
               className={[
                 'relative cursor-pointer transition',
                 selectedSectionId === section.id
