@@ -27,6 +27,7 @@ export type BuilderSectionSpacing = 'none' | SectionSpacingRole;
 
 export type BuilderDisplayFont = 'noto-sans' | 'inter' | 'playfair-display';
 export type BuilderBodyFont = 'inter' | 'noto-sans';
+export type BuilderFontWeight = 300 | 400 | 500 | 600 | 700 | 800 | 900;
 export type BuilderThaiDisplayFont =
   | 'noto-sans-thai-looped'
   | 'noto-sans-thai'
@@ -46,6 +47,8 @@ export interface BuilderHomepageBranding {
   typography: {
     displayFont: BuilderDisplayFont;
     bodyFont: BuilderBodyFont;
+    displayWeight: BuilderFontWeight;
+    bodyWeight: BuilderFontWeight;
     thaiDisplayFont: BuilderThaiDisplayFont;
     thaiBodyFont: BuilderThaiBodyFont;
     chineseDisplayFont: BuilderChineseDisplayFont;
