@@ -1,28 +1,11 @@
 import type { CSSProperties } from 'react';
+import type {
+  BuilderBodyFont,
+  BuilderDisplayFont,
+  BuilderHomepageBranding,
+} from '../../../platform/builder/contracts';
 
-export type JokoDisplayFont = 'noto-sans' | 'inter' | 'playfair-display';
-export type JokoBodyFont = 'inter' | 'noto-sans';
-
-export interface JokoHomepageBranding {
-  logoScale: number;
-  typography: {
-    displayFont: JokoDisplayFont;
-    bodyFont: JokoBodyFont;
-    thaiFont: 'noto-sans-thai-looped';
-    chineseFont: 'noto-sans-sc';
-    heroSize: number;
-    sectionHeadingSize: number;
-    bodySize: number;
-    navSize: number;
-    buttonSize: number;
-    labelSize: number;
-  };
-  colors: {
-    text: string;
-    accent: string;
-    turquoise: string;
-  };
-}
+export type JokoHomepageBranding = BuilderHomepageBranding;
 
 export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   logoScale: 120,
@@ -45,13 +28,13 @@ export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   },
 };
 
-const DISPLAY_FONT_STACKS: Record<JokoDisplayFont, string> = {
+const DISPLAY_FONT_STACKS: Record<BuilderDisplayFont, string> = {
   'noto-sans': "'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   inter: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   'playfair-display': "'Playfair Display', Georgia, serif",
 };
 
-const BODY_FONT_STACKS: Record<JokoBodyFont, string> = {
+const BODY_FONT_STACKS: Record<BuilderBodyFont, string> = {
   inter: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   'noto-sans': "'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
@@ -77,10 +60,10 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
     : {};
 
   const displayFont = ['noto-sans', 'inter', 'playfair-display'].includes(String(typography.displayFont))
-    ? typography.displayFont as JokoDisplayFont
+    ? typography.displayFont as BuilderDisplayFont
     : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.displayFont;
   const bodyFont = ['inter', 'noto-sans'].includes(String(typography.bodyFont))
-    ? typography.bodyFont as JokoBodyFont
+    ? typography.bodyFont as BuilderBodyFont
     : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.bodyFont;
 
   return {
