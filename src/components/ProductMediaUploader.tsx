@@ -52,6 +52,7 @@ export function ProductMediaUploader({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [remoteImageError, setRemoteImageError] = useState(false);
 
   useEffect(() => () => {
     if (localPreview) URL.revokeObjectURL(localPreview);
@@ -131,6 +132,16 @@ export function ProductMediaUploader({
     }
   };
 
+  const isIncompleteJokoMediaUrl = (() => {
+    if (!value) return false;
+    try {
+      const url = new URL(value);
+      return url.hostname === 'media.joko.today' && (url.pathname === '/' || url.pathname.endsWith('/'));
+    } catch {
+      return false;
+    }
+  })();
+
   const aspectRatio = imageInfo ? imageInfo.width / imageInfo.height : null;
   const isFourThree = aspectRatio ? Math.abs(aspectRatio - 4 / 3) <= 0.03 : true;
   const isRecommendedSize = imageInfo
@@ -143,7 +154,7 @@ export function ProductMediaUploader({
         <div>
           <h4 className="text-sm font-semibold text-gray-900">Product image</h4>
           <p className="mt-1 text-xs text-gray-600">
-            JOKO standard: 1800 × 1350 px · 4:3 · JPG/WebP preferred · max {MAX_MB} MB
+            JOKO standard: 1800 × 1350 px · 4:3 · JPG/WebP preferred · max {MAX_MB} MB · metadata removed automatically
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full border border-[#55766F]/20 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#55766F]">
@@ -154,14 +165,29 @@ export function ProductMediaUploader({
       {value && (
         <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="grid gap-4 p-3 sm:grid-cols-[160px_1fr] sm:items-center">
-            <img
-              src={value}
-              alt="Current product"
-              className="h-32 w-full rounded-lg object-cover sm:h-28"
-            />
+            {isIncompleteJokoMediaUrl || remoteImageError ? (
+              <div className="flex h-32 w-full items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-center text-xs font-medium text-amber-800 sm:h-28">
+                {isIncompleteJokoMediaUrl
+                  ? 'This is a folder URL, not an image file.'
+                  : 'This URL did not load as an image.'}
+              </div>
+            ) : (
+              <img
+                src={value}
+                alt="Current product"
+                className="h-32 w-full rounded-lg object-cover sm:h-28"
+                onLoad={() => setRemoteImageError(false)}
+                onError={() => setRemoteImageError(true)}
+              />
+            )}
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Current image</p>
               <p className="mt-1 truncate text-xs text-gray-600">{value}</p>
+              {isIncompleteJokoMediaUrl && (
+                <p className="mt-2 text-xs text-amber-700">
+                  Upload an image to JOKO Media first. The generated URL will include the image filename.
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -231,7 +257,11 @@ export function ProductMediaUploader({
                   className="inline-flex items-center gap-2 rounded-lg bg-[#55766F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#45625D] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                  {uploading ? `Uploading ${progress}%` : 'Upload to JOKO Media'}
+                  {uploading
+                    ? progress === 0
+                      ? 'Preparing image…'
+                      : `Uploading ${progress}%`
+                    : 'Upload to JOKO Media'}
                 </button>
                 <button
                   type="button"
@@ -296,7 +326,10 @@ export function ProductMediaUploader({
           <input
             type="url"
             value={value}
-            onChange={(event) => onChange(event.target.value)}
+            onChange={(event) => {
+              setRemoteImageError(false);
+              onChange(event.target.value);
+            }}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary-500"
             placeholder="https://media.joko.today/products/..."
           />
