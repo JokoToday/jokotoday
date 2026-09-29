@@ -6,19 +6,54 @@ export const BUILDER_REGISTRY_VERSION = 1 as const;
 export type LocaleCode = string;
 export type LocalizedText = Readonly<Record<LocaleCode, string>>;
 
+export type BuilderRichTextColor = 'text' | 'accent' | 'turquoise';
+
+export interface BuilderRichTextMarks {
+  bold?: boolean;
+  italic?: boolean;
+  color?: BuilderRichTextColor;
+}
+
+export interface BuilderRichTextRun {
+  text: string;
+  marks?: BuilderRichTextMarks;
+}
+
+export type BuilderRichText = readonly BuilderRichTextRun[];
+export type LocalizedRichText = Readonly<Record<LocaleCode, BuilderRichText>>;
+
 export type BuilderSectionWidth = Extract<WidthRole, 'standard' | 'wide'>;
 export type BuilderSectionSpacing = 'none' | SectionSpacingRole;
 
 export type BuilderDisplayFont = 'noto-sans' | 'inter' | 'playfair-display';
 export type BuilderBodyFont = 'inter' | 'noto-sans';
+export type BuilderThaiDisplayFont =
+  | 'noto-sans-thai-looped'
+  | 'noto-sans-thai'
+  | 'sarabun'
+  | 'bai-jamjuree'
+  | 'maitree';
+export type BuilderThaiBodyFont =
+  | 'noto-sans-thai-looped'
+  | 'noto-sans-thai'
+  | 'sarabun'
+  | 'bai-jamjuree';
+export type BuilderChineseDisplayFont = 'noto-sans-sc' | 'noto-serif-sc';
+export type BuilderChineseBodyFont = 'noto-sans-sc' | 'noto-serif-sc';
 
 export interface BuilderHomepageBranding {
   logoScale: number;
   typography: {
     displayFont: BuilderDisplayFont;
     bodyFont: BuilderBodyFont;
-    thaiFont: 'noto-sans-thai-looped';
-    chineseFont: 'noto-sans-sc';
+    thaiDisplayFont: BuilderThaiDisplayFont;
+    thaiBodyFont: BuilderThaiBodyFont;
+    chineseDisplayFont: BuilderChineseDisplayFont;
+    chineseBodyFont: BuilderChineseBodyFont;
+    /** @deprecated Read-only compatibility with Homepage Editor v2 documents. */
+    thaiFont?: 'noto-sans-thai-looped';
+    /** @deprecated Read-only compatibility with Homepage Editor v2 documents. */
+    chineseFont?: 'noto-sans-sc';
     heroSize: number;
     sectionHeadingSize: number;
     bodySize: number;
@@ -51,6 +86,8 @@ export interface HomeHeroProps {
   /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
   logoUrl?: string;
   title: LocalizedText;
+  /** Controlled rich text for the Hero title. Plain title remains the fallback/source for legacy revisions. */
+  titleRichText?: LocalizedRichText;
   subtitle: LocalizedText;
   primaryActionLabel: LocalizedText;
   primaryAction: BuilderAction;
