@@ -150,7 +150,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                   if (event.currentTarget.src.endsWith(DEFAULT_JOKO_LOGO_URL)) return;
                   event.currentTarget.src = DEFAULT_JOKO_LOGO_URL;
                 }}
-                className="h-14 w-auto max-w-[12rem] object-contain mix-blend-multiply sm:h-16 sm:max-w-[15rem]"
+                className="h-[4.2rem] w-auto max-w-[14.4rem] object-contain mix-blend-multiply sm:h-[4.8rem] sm:max-w-[18rem]"
               />
             </button>
 
