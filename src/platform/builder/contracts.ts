@@ -9,6 +9,30 @@ export type LocalizedText = Readonly<Record<LocaleCode, string>>;
 export type BuilderSectionWidth = Extract<WidthRole, 'standard' | 'wide'>;
 export type BuilderSectionSpacing = 'none' | SectionSpacingRole;
 
+export type BuilderDisplayFont = 'noto-sans' | 'inter' | 'playfair-display';
+export type BuilderBodyFont = 'inter' | 'noto-sans';
+
+export interface BuilderHomepageBranding {
+  logoScale: number;
+  typography: {
+    displayFont: BuilderDisplayFont;
+    bodyFont: BuilderBodyFont;
+    thaiFont: 'noto-sans-thai-looped';
+    chineseFont: 'noto-sans-sc';
+    heroSize: number;
+    sectionHeadingSize: number;
+    bodySize: number;
+    navSize: number;
+    buttonSize: number;
+    labelSize: number;
+  };
+  colors: {
+    text: string;
+    accent: string;
+    turquoise: string;
+  };
+}
+
 export type BuilderAction =
   | { type: 'commerce.openProducts' }
   | { type: 'site.openHowItWorks' }
@@ -114,6 +138,7 @@ export interface BuilderDocument {
   schemaVersion: typeof BUILDER_SCHEMA_VERSION;
   registryVersion: typeof BUILDER_REGISTRY_VERSION;
   pageKey: 'home';
+  branding?: BuilderHomepageBranding;
   sections: BuilderSection[];
 }
 
