@@ -10,6 +10,7 @@ interface ProductMediaUploaderProps {
   productSlug: string;
   value: string;
   onChange: (url: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 interface ImageInfo {
@@ -36,7 +37,12 @@ function inspectImage(file: File): Promise<ImageInfo> {
   });
 }
 
-export function ProductMediaUploader({ productSlug, value, onChange }: ProductMediaUploaderProps) {
+export function ProductMediaUploader({
+  productSlug,
+  value,
+  onChange,
+  onUploadingChange,
+}: ProductMediaUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [localPreview, setLocalPreview] = useState('');
@@ -104,6 +110,7 @@ export function ProductMediaUploader({ productSlug, value, onChange }: ProductMe
     }
 
     setUploading(true);
+    onUploadingChange?.(true);
     setProgress(0);
     setError('');
     setNotice('');
@@ -120,6 +127,7 @@ export function ProductMediaUploader({ productSlug, value, onChange }: ProductMe
       setError(err instanceof Error ? err.message : 'Image upload failed.');
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   };
 
