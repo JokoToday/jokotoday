@@ -27,7 +27,7 @@ export const homepageComponentRegistry = {
   'home.hero.v1': {
     type: 'home.hero.v1',
     version: 1,
-    label: 'Hero',
+    label: 'Bakery Hero',
     maxInstances: 1,
     capabilities: {
       reorder: true,
@@ -40,7 +40,7 @@ export const homepageComponentRegistry = {
   'home.top-liked.v1': {
     type: 'home.top-liked.v1',
     version: 1,
-    label: 'Most Loved',
+    label: 'Bakery Showcase',
     maxInstances: 1,
     capabilities: {
       reorder: true,
@@ -53,7 +53,7 @@ export const homepageComponentRegistry = {
   'home.category-grid.v1': {
     type: 'home.category-grid.v1',
     version: 1,
-    label: 'Category Grid',
+    label: 'Bakery Categories (optional)',
     maxInstances: 1,
     capabilities: {
       reorder: true,
@@ -66,7 +66,7 @@ export const homepageComponentRegistry = {
   'home.cta.v1': {
     type: 'home.cta.v1',
     version: 1,
-    label: 'Call to Action',
+    label: 'Closing CTA',
     maxInstances: 1,
     capabilities: {
       reorder: true,

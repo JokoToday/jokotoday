@@ -24,6 +24,8 @@ interface BuilderSectionBase<TType extends string, TProps, TDesign> {
 }
 
 export interface HomeHeroProps {
+  /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
+  logoUrl?: string;
   title: LocalizedText;
   subtitle: LocalizedText;
   primaryActionLabel: LocalizedText;
