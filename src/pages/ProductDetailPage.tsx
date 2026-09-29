@@ -29,6 +29,7 @@ import {
 } from '../lib/pickupAvailabilityV2';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
 import { Container } from '../platform/design-system';
+import { getProductCanonicalUrl } from '../lib/publicProductUrls';
 
 type SupportedLanguage = 'en' | 'th' | 'zh';
 
@@ -282,7 +283,7 @@ export default function ProductDetailPage({
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
   const canOrder = product.is_active && !product.is_sold_out && maxQuantity > 0;
-  const canonicalUrl = `${window.location.origin}/products/${encodeURIComponent(product.slug)}`;
+  const canonicalUrl = getProductCanonicalUrl(product.slug);
 
   const toggleLike = async () => {
     if (!user) {
