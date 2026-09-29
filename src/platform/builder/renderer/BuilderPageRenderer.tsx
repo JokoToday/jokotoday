@@ -95,7 +95,7 @@ export function BuilderPageRenderer({
   return (
     <PageCanvas
       className="bg-[#F4EFE5]"
-      style={jokoBrandingCssVariables(branding)}
+      style={jokoBrandingCssVariables(branding, locale)}
     >
       {validation.value.sections
         .filter((section) => section.visible)
