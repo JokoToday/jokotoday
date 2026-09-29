@@ -72,7 +72,7 @@ export function HomeHeroSectionRenderer({
     >
       <Container width={section.design.width}>
         <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
-          <img src={logoUrl} alt={site.name} className="h-12 w-auto object-contain mix-blend-multiply" />
+          <img src={logoUrl} alt={site.name} className="h-[3.6rem] w-auto object-contain mix-blend-multiply" />
           <div className="ml-auto hidden gap-7 text-xs font-medium text-[#303532]/72 sm:flex">
             {chrome.nav.map((label) => <span key={label}>{label}</span>)}
           </div>
