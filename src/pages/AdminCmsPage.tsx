@@ -31,6 +31,7 @@ import {
   getPickupLocations,
 } from '../lib/cmsService';
 import { getAllCutoffRules, getAllPickupOverrides, CutoffRule, PickupOverride } from '../lib/availabilityService';
+import { getPublicImageUrl } from '../lib/storage';
 
 type TabType = 'categories' | 'products' | 'pages' | 'labels' | 'settings' | 'locations' | 'cutoffs' | 'overrides' | 'socials' | 'cancellation';
 type DeleteHandler = (table: string, id: string) => Promise<void>;
@@ -436,9 +437,13 @@ function ProductThumbnail({ product }: { product: CMSProduct }) {
     );
   }
 
+  const src = product.image.startsWith('http')
+    ? product.image
+    : getPublicImageUrl(`products/${product.image}`);
+
   return (
     <img
-      src={product.image}
+      src={src}
       alt=""
       loading="lazy"
       className="h-12 w-12 shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover"
