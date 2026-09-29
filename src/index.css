@@ -65,6 +65,8 @@
 
 @layer components {
   .joko-home-shell {
+    --joko-font-display: var(--joko-font-display-en, 'Playfair Display', serif);
+    --joko-font-shell: var(--joko-font-body-en, 'Inter', system-ui, sans-serif);
     --joko-shell-mineral: 207 227 223;
     --joko-shell-mineral-light: 220 233 236;
     --joko-shell-paper: 244 239 229;
@@ -79,8 +81,15 @@
     background: rgb(var(--joko-shell-mineral));
   }
 
-  :lang(th) .joko-home-shell { font-family: var(--joko-font-shell-th); }
-  :lang(zh) .joko-home-shell { font-family: var(--joko-font-cjk); }
+  :lang(th) .joko-home-shell {
+    --joko-font-display: var(--joko-font-shell-th);
+    font-family: var(--joko-font-shell-th);
+  }
+
+  :lang(zh) .joko-home-shell {
+    --joko-font-display: var(--joko-font-cjk);
+    font-family: var(--joko-font-cjk);
+  }
 
   .joko-home-shell .font-header { font-family: inherit; }
 
