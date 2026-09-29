@@ -109,8 +109,8 @@ export function builderSiteStyleToCssVariables(
   const normalized = normalizeBuilderSiteStyle(style);
   return {
     '--joko-logo-scale': String(normalized.logoScale / 100),
-    '--joko-font-display': FONT_STACKS[normalized.typography.englishDisplayFont],
-    '--joko-font-shell': FONT_STACKS[normalized.typography.englishBodyFont],
+    '--joko-font-display-en': FONT_STACKS[normalized.typography.englishDisplayFont],
+    '--joko-font-body-en': FONT_STACKS[normalized.typography.englishBodyFont],
     '--joko-font-shell-th': FONT_STACKS[normalized.typography.thaiFont],
     '--joko-font-cjk': FONT_STACKS[normalized.typography.chineseFont],
     '--joko-size-hero': `${normalized.typography.heroSize}px`,
