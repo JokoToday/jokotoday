@@ -16,6 +16,7 @@ export interface HomepagePuckSectionProps {
 }
 
 export interface HomepagePuckHeroProps extends HomepagePuckSectionProps {
+  logoUrl: string;
   title: string;
   subtitle: string;
   primaryActionLabel: string;

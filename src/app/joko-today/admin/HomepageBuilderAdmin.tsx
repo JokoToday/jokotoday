@@ -17,6 +17,8 @@ import {
   type BuilderDocument,
 } from '../../../platform/builder';
 import { HomepagePuckEditorProof } from '../../../platform/builder/editor';
+import { HomepageLogoUploader } from './HomepageLogoUploader';
+import './jokoAdmin.css';
 import {
   BuilderPersistenceConflictError,
   createJokoTodayHomepageBuilderProviders,
@@ -29,11 +31,38 @@ import {
   type HomepageBuilderRevisionSummary,
   type HomepageBuilderState,
 } from '../builder';
+import { invalidatePublishedJokoLogoCache } from '../builder/usePublishedJokoLogo';
 
 type HomepageBuilderMode = 'edit' | 'preview';
 
+const DEFAULT_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
+
 function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
+}
+
+function isLegacyHomepageBuilderDocument(document: BuilderDocument): boolean {
+  const hero = document.sections.find((section) => section.type === 'home.hero.v1');
+  const bakery = document.sections.find((section) => section.type === 'home.top-liked.v1');
+  return hero?.type === 'home.hero.v1'
+    && bakery?.type === 'home.top-liked.v1'
+    && hero.props.title.en === 'Artisan Bakery in Chiang Mai'
+    && bakery.props.title.en === 'Most Loved Right Now';
+}
+
+function currentHomepageSeedFrom(document: BuilderDocument): BuilderDocument {
+  const seed = cloneSeedDocument();
+  const previousHero = document.sections.find((section) => section.type === 'home.hero.v1');
+  if (previousHero?.type !== 'home.hero.v1' || !previousHero.props.logoUrl) return seed;
+
+  return {
+    ...seed,
+    sections: seed.sections.map((section) =>
+      section.type === 'home.hero.v1'
+        ? { ...section, props: { ...section.props, logoUrl: previousHero.props.logoUrl } }
+        : section,
+    ),
+  };
 }
 
 function modeFromLocation(): HomepageBuilderMode {
@@ -69,6 +98,7 @@ export function HomepageBuilderAdmin() {
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [notice, setNotice] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
 
@@ -77,6 +107,29 @@ export function HomepageBuilderAdmin() {
     setDraftDocument(state.draft.document);
     setDirty(false);
     if (remountEditor) setEditorRevision((value) => value + 1);
+  };
+
+  const heroSection = useMemo(
+    () => draftDocument.sections.find((section) => section.type === 'home.hero.v1'),
+    [draftDocument],
+  );
+  const logoUrl = heroSection?.type === 'home.hero.v1'
+    ? heroSection.props.logoUrl || DEFAULT_LOGO_URL
+    : DEFAULT_LOGO_URL;
+
+  const updateLogoUrl = (nextLogoUrl: string) => {
+    setDraftDocument((current) => ({
+      ...current,
+      sections: current.sections.map((section) =>
+        section.type === 'home.hero.v1'
+          ? { ...section, props: { ...section.props, logoUrl: nextLogoUrl || DEFAULT_LOGO_URL } }
+          : section,
+      ),
+    }));
+    setDirty(true);
+    setIssues([]);
+    setNotice('Logo changed in the local Homepage Draft. Save Draft to persist it.');
+    setEditorRevision((value) => value + 1);
   };
 
   const refreshRevisions = async () => {
@@ -90,9 +143,17 @@ export function HomepageBuilderAdmin() {
     setIssues([]);
     try {
       const state = await loadOrInitializeHomepageBuilderState(cloneSeedDocument());
-      applyServerState(state, true);
+      if (isLegacyHomepageBuilderDocument(state.draft.document)) {
+        setPageState(state);
+        setDraftDocument(currentHomepageSeedFrom(state.draft.document));
+        setDirty(true);
+        setEditorRevision((value) => value + 1);
+        setNotice('Legacy Builder content detected. The current JOKO Homepage design has been loaded locally; choose Save Draft to adopt it.');
+      } else {
+        applyServerState(state, true);
+        setNotice('Persistent Homepage draft loaded.');
+      }
       await refreshRevisions();
-      setNotice('Persistent Homepage draft loaded.');
     } catch (error) {
       setIssues([
         error instanceof Error
@@ -145,7 +206,7 @@ export function HomepageBuilderAdmin() {
   };
 
   const persistDraft = async (document: BuilderDocument): Promise<HomepageBuilderState | null> => {
-    if (!pageState || busy) return null;
+    if (!pageState || busy || mediaUploading) return null;
 
     setBusy('saving');
     setIssues([]);
@@ -163,7 +224,7 @@ export function HomepageBuilderAdmin() {
   };
 
   const handlePreview = async () => {
-    if (!pageState || busy) return;
+    if (!pageState || busy || mediaUploading) return;
     if (dirty) {
       const saved = await persistDraft(draftDocument);
       if (!saved) return;
@@ -173,14 +234,14 @@ export function HomepageBuilderAdmin() {
   };
 
   const handlePublish = async () => {
-    if (!pageState || busy) return;
+    if (!pageState || busy || mediaUploading) return;
     if (dirty) {
       setIssues(['Save the current Draft before publishing.']);
       return;
     }
 
     const confirmed = window.confirm(
-      'Publish the current Homepage Draft as a new immutable revision? The public Homepage will remain on the legacy renderer until the later cutover phase.',
+      'Publish the current Homepage Draft as a new immutable revision? The public Homepage currently uses the source-controlled Experience layout; publishing updates Builder content/branding but does not switch the public layout renderer.',
     );
     if (!confirmed) return;
 
@@ -189,9 +250,10 @@ export function HomepageBuilderAdmin() {
     try {
       const state = await publishHomepageBuilderDraft(pageState.lockVersion);
       applyServerState(state);
+      invalidatePublishedJokoLogoCache();
       await refreshRevisions();
       setNotice(
-        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The production Homepage renderer has not been cut over yet.`,
+        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The public Homepage remains on the source-controlled Experience layout; published branding is now live for the JOKO shell.`,
       );
     } catch (error) {
       handlePersistenceError(error);
@@ -201,7 +263,7 @@ export function HomepageBuilderAdmin() {
   };
 
   const handleRestore = async (revision: HomepageBuilderRevisionSummary) => {
-    if (!pageState || busy) return;
+    if (!pageState || busy || mediaUploading) return;
 
     const warning = dirty
       ? 'You have unsaved local edits. Restoring will replace them with this published revision. Continue?'
@@ -230,11 +292,11 @@ export function HomepageBuilderAdmin() {
   };
 
   const handleResetToSeed = () => {
-    if (busy) return;
+    if (busy || mediaUploading) return;
     setDraftDocument(cloneSeedDocument());
     setDirty(true);
     setIssues([]);
-    setNotice('Source-controlled Homepage seed loaded locally. Choose Save Draft to persist it.');
+    setNotice('Current JOKO Homepage design loaded locally. Choose Save Draft to persist it.');
     setEditorRevision((value) => value + 1);
     setMode('edit');
   };
@@ -251,17 +313,17 @@ export function HomepageBuilderAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-transparent">
+      <div className="border-b border-[#55766F]/16 bg-[#F4EFE5]/78 px-4 py-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary-700">
-              <ShieldCheck className="w-4 h-4" />
-              Admin-only persistent Draft
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-[#55766F]" />
+              <span className="joko-admin-eyebrow">Admin-only persistent draft</span>
             </div>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">Website / Homepage Builder</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Draft changes persist in Supabase. Publish creates immutable revisions; Restore only copies a revision back into Draft.
+            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Builder</h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#303532]/62">
+              The Builder now mirrors the current bakery-first JOKO visual language. Draft and Publish control editable Builder content and branding; the public Homepage layout remains the source-controlled Experience composition.
             </p>
             {pageState && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -287,7 +349,7 @@ export function HomepageBuilderAdmin() {
                   type="button"
                   onClick={() => setLanguage(locale)}
                   aria-pressed={language === locale}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || mediaUploading}
                   className={`px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 ${
                     language === locale
                       ? 'bg-white text-gray-900 shadow-sm'
@@ -302,7 +364,7 @@ export function HomepageBuilderAdmin() {
             <button
               type="button"
               onClick={() => void loadPersistentState()}
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || mediaUploading}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <RefreshCw className="w-4 h-4" />
@@ -312,18 +374,18 @@ export function HomepageBuilderAdmin() {
             <button
               type="button"
               onClick={handleResetToSeed}
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || mediaUploading}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <RotateCcw className="w-4 h-4" />
-              Reset to seed
+              Load current design
             </button>
 
             {mode === 'edit' ? (
               <button
                 type="button"
                 onClick={() => void handlePreview()}
-                disabled={Boolean(busy) || !pageState}
+                disabled={Boolean(busy) || mediaUploading || !pageState}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
               >
                 {busy === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
@@ -334,7 +396,7 @@ export function HomepageBuilderAdmin() {
                 <button
                   type="button"
                   onClick={() => setMode('edit')}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || mediaUploading}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 disabled:opacity-50"
                 >
                   <Pencil className="w-4 h-4" />
@@ -343,7 +405,7 @@ export function HomepageBuilderAdmin() {
                 <button
                   type="button"
                   onClick={() => void handlePublish()}
-                  disabled={Boolean(busy) || dirty || !pageState}
+                  disabled={Boolean(busy) || mediaUploading || dirty || !pageState}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {busy === 'publishing' ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
@@ -352,6 +414,17 @@ export function HomepageBuilderAdmin() {
               </>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+        <HomepageLogoUploader
+          value={logoUrl}
+          onChange={updateLogoUrl}
+          onUploadingChange={setMediaUploading}
+        />
+        <div className="mt-3 rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
+          Homepage structure such as live Pickup, How It Works and About remains driven by the dedicated JOKO Experience/CMS systems. The Builder controls its editable brand/content layer without duplicating operational data.
         </div>
       </div>
 
@@ -374,7 +447,7 @@ export function HomepageBuilderAdmin() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 pt-4 sm:px-6 lg:px-8">
-        <details className="rounded-lg border border-gray-200 bg-white" open={mode === 'preview'}>
+        <details className="joko-admin-paper-card overflow-hidden" open={mode === 'preview'}>
           <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-800">
             <History className="w-4 h-4 text-primary-600" />
             Revision history ({revisions.length})
@@ -406,7 +479,7 @@ export function HomepageBuilderAdmin() {
                     <button
                       type="button"
                       onClick={() => void handleRestore(revision)}
-                      disabled={Boolean(busy) || !pageState}
+                      disabled={Boolean(busy) || mediaUploading || !pageState}
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                       {busy === `restore-${revision.revisionId}` ? (
@@ -425,7 +498,7 @@ export function HomepageBuilderAdmin() {
       </div>
 
       {mode === 'edit' ? (
-        <div className="mt-4 border-y border-gray-200 bg-white">
+        <div className="mt-4 border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
           <HomepagePuckEditorProof
             key={editorRevision}
             document={draftDocument}
@@ -451,10 +524,10 @@ export function HomepageBuilderAdmin() {
         <div className="mt-4">
           <div className="max-w-7xl mx-auto px-4 pb-3 sm:px-6 lg:px-8">
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Persisted Draft preview — this is not the public Homepage. Publish stores an immutable Builder revision, but production `/` remains on the legacy Homepage until the later cutover phase.
+              Persisted Draft preview — this is not the public Homepage. Publish stores an immutable Builder revision; production / continues to use the source-controlled Experience layout.
             </div>
           </div>
-          <div className="border-y border-gray-200 bg-white">
+          <div className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
             <BuilderPageRenderer
               document={draftDocument}
               locale={language}

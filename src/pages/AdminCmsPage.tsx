@@ -180,12 +180,13 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-transparent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">CMS Admin</h1>
-            <p className="text-gray-600 mt-2">Manage products, content, pickup schedules and customer-facing configuration.</p>
+            <p className="joko-admin-eyebrow">Content & commerce</p>
+            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Bakery Control Room</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62">Manage products, content, pickup schedules and customer-facing configuration.</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -205,8 +206,8 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="border-b border-gray-200">
+        <div className="joko-admin-paper-card overflow-hidden">
+          <div className="border-b border-[#55766F]/16 bg-[#FFF9EE]/68">
             <div className="flex overflow-x-auto">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -216,8 +217,8 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
                     onClick={() => setActiveTab(tab.id)}
                     className={`px-6 py-4 font-medium text-sm whitespace-nowrap flex items-center gap-2 border-b-2 transition-colors ${
                       activeTab === tab.id
-                        ? 'border-primary-600 text-primary-600'
-                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                        ? 'border-[#C76624] text-[#A44F1D] bg-[#D9ECE9]/35'
+                        : 'border-transparent text-[#303532]/62 hover:text-[#303532] hover:bg-[#D9ECE9]/25'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -272,7 +273,7 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
         <div className="flex gap-2">
           <button
             onClick={() => setShowQuickAdd(true)}
-            className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all font-medium flex items-center gap-2 shadow-sm"
+            className="joko-admin-primary-button px-4 py-2 font-medium flex items-center gap-2"
           >
             <Zap className="w-4 h-4" />
             Quick Add
@@ -282,7 +283,7 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
               setEditing(null);
               setShowForm(true);
             }}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            className="joko-admin-secondary-button px-4 py-2 font-medium"
           >
             + Add Product
           </button>
@@ -337,8 +338,22 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
             ) : products.map((product) => (
               <tr key={product.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-gray-900 text-sm">{product.name_en}</p>
-                  <p className="text-xs text-gray-600">{product.name_th}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(product);
+                      setShowForm(true);
+                    }}
+                    className="group text-left"
+                    title="Edit product"
+                  >
+                    <span className="block text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-[#A44F1D] group-hover:underline">
+                      {product.name_en}
+                    </span>
+                    <span className="block text-xs text-gray-600 group-hover:text-[#55766F]">
+                      {product.name_th}
+                    </span>
+                  </button>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">{getCategoryName(product.category_id)}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-primary-600">฿{Number(product.price).toFixed(2)}</td>

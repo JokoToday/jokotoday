@@ -8,17 +8,17 @@ export function AdminPasswordProtection({ onAuthenticated }: AdminPasswordProtec
   void onAuthenticated;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center px-4">
+    <div className="flex min-h-[55vh] items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+        <div className="joko-admin-paper-card p-8 text-center">
           <div className="flex justify-center mb-6">
-            <div className="bg-primary-100 p-4 rounded-full">
-              <ShieldCheck className="w-8 h-8 text-primary-600" />
+            <div className="rounded-full bg-[#D9ECE9] p-4">
+              <ShieldCheck className="h-8 w-8 text-[#55766F]" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Session</h1>
           <p className="text-sm text-gray-600 mb-5">Verifying your authorized admin session…</p>
-          <Loader2 className="w-6 h-6 animate-spin text-primary-600 mx-auto" />
+          <Loader2 className="w-6 h-6 animate-spin text-[#55766F] mx-auto" />
         </div>
       </div>
     </div>
