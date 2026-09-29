@@ -134,7 +134,10 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
 
   return (
     <>
-      <header className="relative z-40 border-b border-[#55766F]/15 bg-[#CFE3DF]">
+      <header
+        className="relative z-40 border-b border-[#55766F]/15"
+        style={{ backgroundColor: 'rgb(var(--joko-shell-mineral))' }}
+      >
         <Container width="wide">
           <div className="flex min-h-20 items-center justify-between gap-5 py-3 lg:min-h-24">
             <button
@@ -150,7 +153,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                   if (event.currentTarget.src.endsWith(DEFAULT_JOKO_LOGO_URL)) return;
                   event.currentTarget.src = DEFAULT_JOKO_LOGO_URL;
                 }}
-                className="h-[4.2rem] w-auto max-w-[14.4rem] object-contain mix-blend-multiply sm:h-[4.8rem] sm:max-w-[18rem]"
+                className="joko-shell-logo w-auto object-contain mix-blend-multiply"
               />
             </button>
 
@@ -165,11 +168,12 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                         onClick={() => handleNav(item)}
                         aria-current={isActive ? 'page' : undefined}
                         className={[
-                          'border-b pb-1 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#CFE3DF] xl:text-base',
+                          'border-b pb-1 font-medium transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#CFE3DF]',
                           isActive
                             ? 'border-[#C76624] text-[#303532]'
                             : 'border-transparent text-[#303532]/85 hover:border-[#C76624]/65 hover:text-[#303532]',
                         ].join(' ')}
+                        style={{ fontSize: 'var(--joko-size-nav)' }}
                       >
                         {item.label}
                       </button>
