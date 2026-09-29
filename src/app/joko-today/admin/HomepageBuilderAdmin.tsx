@@ -31,6 +31,7 @@ import {
   type HomepageBuilderRevisionSummary,
   type HomepageBuilderState,
 } from '../builder';
+import { invalidatePublishedJokoLogoCache } from '../builder/usePublishedJokoLogo';
 
 type HomepageBuilderMode = 'edit' | 'preview';
 
@@ -217,9 +218,10 @@ export function HomepageBuilderAdmin() {
     try {
       const state = await publishHomepageBuilderDraft(pageState.lockVersion);
       applyServerState(state);
+      invalidatePublishedJokoLogoCache();
       await refreshRevisions();
       setNotice(
-        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The public Homepage remains on the source-controlled Experience layout.`,
+        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The public Homepage remains on the source-controlled Experience layout; published branding is now live for the JOKO shell.`,
       );
     } catch (error) {
       handlePersistenceError(error);
