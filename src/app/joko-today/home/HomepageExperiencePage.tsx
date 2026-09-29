@@ -10,6 +10,8 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { Container } from '../../../platform/design-system';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
+import { localizeRichText, type BuilderRichTextColor } from '../../../platform/builder';
+import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
 
 interface HomepageExperiencePageProps {
@@ -73,8 +75,18 @@ const copy = {
 
 export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
   const { language } = useLanguage();
+  const { document: publishedHomepage } = usePublishedJokoBranding();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
+  const publishedHero = publishedHomepage?.sections.find((section) => section.type === 'home.hero.v1');
+  const publishedTitleRichText = publishedHero?.type === 'home.hero.v1' && publishedHero.props.titleRichText
+    ? localizeRichText(
+        publishedHero.props.titleRichText,
+        lang,
+        'en',
+        publishedHero.props.title[lang] ?? publishedHero.props.title.en ?? '',
+      )
+    : null;
   const showHowItWorks = () => {
     const section = window.document.getElementById('how-it-works');
     if (section) {
@@ -123,15 +135,40 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 </p>
 
                 <h1
-                  className="mt-4 font-bold leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
+                  className="mt-4 whitespace-pre-line font-bold leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
                   style={heroSerif}
                 >
-                  <span className="block">{labels.headline1}</span>
-                  <span className="block">
-                    {labels.headline2}{' '}
-                    <span className="text-[var(--joko-brand-accent,#C85F22)]">{labels.headlineAccent}</span>
-                  </span>
-                  {labels.headline3 && <span className="block">{labels.headline3}</span>}
+                  {publishedTitleRichText ? publishedTitleRichText.map((run, index) => {
+                    const color = run.marks?.color as BuilderRichTextColor | undefined;
+                    const semanticColor = color === 'accent'
+                      ? 'var(--joko-brand-accent, #C85F22)'
+                      : color === 'turquoise'
+                        ? 'var(--joko-brand-turquoise, #DAEBE8)'
+                        : color === 'text'
+                          ? 'var(--joko-brand-text, #292D2B)'
+                          : undefined;
+                    return (
+                      <span
+                        key={`${index}-${run.text}`}
+                        style={{
+                          color: semanticColor,
+                          fontWeight: run.marks?.bold ? 700 : undefined,
+                          fontStyle: run.marks?.italic ? 'italic' : undefined,
+                        }}
+                      >
+                        {run.text}
+                      </span>
+                    );
+                  }) : (
+                    <>
+                      <span className="block">{labels.headline1}</span>
+                      <span className="block">
+                        {labels.headline2}{' '}
+                        <span className="text-[var(--joko-brand-accent,#C85F22)]">{labels.headlineAccent}</span>
+                      </span>
+                      {labels.headline3 && <span className="block">{labels.headline3}</span>}
+                    </>
+                  )}
                 </h1>
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
