@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { resetAdminAuthentication, setAdminAuthenticated } from '../lib/adminConfig';
 import { AdminWorkspace } from '../components/AdminWorkspace';
+import '../app/joko-today/admin/jokoAdmin.css';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
@@ -183,7 +184,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
         <button
           type="button"
           onClick={() => void handleUseAnotherAccount()}
-          className="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="joko-admin-primary-button w-full py-3 flex items-center justify-center gap-2"
         >
           <LogOut className="w-4 h-4" />
           {copy.useAnother}
@@ -195,8 +196,8 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
   return (
     <AdminGateShell language={adminLanguage} onLanguageChange={setLanguage}>
       <div className="flex justify-center mb-6">
-        <div className="bg-primary-100 p-4 rounded-full">
-          <ShieldCheck className="w-8 h-8 text-primary-600" />
+        <div className="bg-[#D9ECE9] p-4 rounded-full">
+          <ShieldCheck className="w-8 h-8 text-[#55766F]" />
         </div>
       </div>
 
@@ -220,7 +221,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
                 autoComplete="email"
                 required
                 disabled={submitting}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="joko-admin-login-field w-full pl-10 pr-4 py-3 focus:ring-2 focus:ring-[#55766F] focus:border-transparent outline-none"
               />
             </div>
           </label>
@@ -228,7 +229,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
           <button
             type="submit"
             disabled={submitting || !email.trim()}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="joko-admin-primary-button w-full py-3 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
             {submitting ? copy.sending : copy.sendCode}
@@ -256,7 +257,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
                 maxLength={6}
                 required
                 disabled={submitting}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-center tracking-[0.35em] font-semibold focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="joko-admin-login-field w-full pl-10 pr-4 py-3 text-center tracking-[0.35em] font-semibold focus:ring-2 focus:ring-[#55766F] focus:border-transparent outline-none"
               />
             </div>
           </label>
@@ -264,7 +265,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
           <button
             type="submit"
             disabled={submitting || otp.length !== 6}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="joko-admin-primary-button w-full py-3 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             {submitting ? copy.verifying : copy.verify}
@@ -274,7 +275,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
               type="button"
               onClick={() => void handleResend()}
               disabled={submitting}
-              className="font-medium text-primary-700 hover:text-primary-800 disabled:text-gray-400"
+              className="font-medium text-[#55766F] hover:text-[#304B45] disabled:text-gray-400"
             >
               {copy.resend}
             </button>
@@ -308,10 +309,16 @@ function AdminGateShell({
   onLanguageChange: (language: 'en' | 'th') => void;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center px-4 py-10">
+    <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <div className="flex justify-end mb-4" aria-label="Admin language">
+        <div className="joko-admin-paper-card p-7 sm:p-8">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <img
+              src="/assets/brand/joko-today-logo-v0.4.webp"
+              alt="JOKO TODAY"
+              className="joko-admin-brand-logo"
+            />
+            <div className="flex justify-end" aria-label="Admin language">
             <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-sm font-medium">
               <button
                 type="button"
@@ -335,6 +342,10 @@ function AdminGateShell({
               </button>
             </div>
           </div>
+          </div>
+          <div className="mb-5 border-t border-[#55766F]/14 pt-4">
+            <p className="joko-admin-eyebrow">Private workspace</p>
+          </div>
           {children}
         </div>
       </div>
@@ -345,7 +356,7 @@ function AdminGateShell({
 function AdminGateStatus({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4 text-slate-700">
-      <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
+      <Loader2 className="w-7 h-7 animate-spin text-[#55766F]" />
       <p className="font-medium">{message}</p>
     </div>
   );

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSocialLinks } from '../hooks/useSocialLinks';
+import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 
 const getSocialIcon = (iconKey: string) => {
   const iconClass = 'w-5 h-5';
@@ -30,6 +31,22 @@ const getSocialIcon = (iconKey: string) => {
     default: return <Globe className={iconClass} />;
   }
 };
+
+function MineralFooterLogo() {
+  const logoUrl = usePublishedJokoLogo();
+
+  return (
+    <img
+      src={logoUrl}
+      alt="JOKO TODAY"
+      onError={(event) => {
+        if (event.currentTarget.src.endsWith(DEFAULT_JOKO_LOGO_URL)) return;
+        event.currentTarget.src = DEFAULT_JOKO_LOGO_URL;
+      }}
+      className="mb-4 h-12 w-auto max-w-[14rem] object-contain mix-blend-multiply"
+    />
+  );
+}
 
 type FooterProps = {
   onNavigate?: (page: string) => void;
@@ -68,11 +85,7 @@ export default function Footer({ onNavigate, variant = 'default' }: FooterProps)
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div>
             {mineral ? (
-              <img
-                src="/assets/brand/joko-today-logo-v0.4.webp"
-                alt="JOKO TODAY"
-                className="mb-4 h-12 w-auto object-contain mix-blend-multiply"
-              />
+              <MineralFooterLogo />
             ) : (
               <h3 className="mb-4 text-xl font-header font-bold">JOKO TODAY</h3>
             )}

@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 
 export const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+export const BRAND_LOGO_MAX_BYTES = 1024 * 1024;
 export const PRODUCT_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
+export const BRAND_LOGO_ACCEPTED_TYPES = PRODUCT_IMAGE_ACCEPTED_TYPES;
 
 const PRODUCT_IMAGE_OUTPUT_QUALITY: Partial<Record<(typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number], number>> = {
   'image/jpeg': 0.92,
@@ -14,7 +16,7 @@ const PRODUCT_IMAGE_EXTENSIONS: Record<(typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[num
   'image/png': 'png',
 };
 
-interface ProductImageUploadTicket {
+export interface MediaUploadTicket {
   uploadUrl: string;
   publicUrl: string;
   objectKey: string;
@@ -44,11 +46,8 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 }
 
 /**
- * Re-encodes an image in the browser before upload.
- *
- * Drawing the decoded pixels onto a fresh canvas and exporting a new blob
- * intentionally discards EXIF/GPS, XMP, IPTC and other source-file metadata.
- * The pixel dimensions and supported source format are preserved.
+ * Re-encodes product imagery before upload so EXIF/GPS and other source
+ * metadata never leave the browser. Brand logos keep their original pixels.
  */
 async function stripImageMetadata(file: File): Promise<File> {
   const image = await loadImage(file);
@@ -65,12 +64,10 @@ async function stripImageMetadata(file: File): Promise<File> {
 
   const requestedType = file.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number];
   const quality = PRODUCT_IMAGE_OUTPUT_QUALITY[requestedType];
-
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, requestedType, quality);
   });
 
-  // Release the backing store as soon as the re-encode is complete.
   canvas.width = 0;
   canvas.height = 0;
 
@@ -96,7 +93,10 @@ async function stripImageMetadata(file: File): Promise<File> {
   });
 }
 
-async function requestUploadTicket(file: File, productSlug: string): Promise<ProductImageUploadTicket> {
+async function requestUploadTicket(
+  file: File,
+  payload: Record<string, unknown>,
+): Promise<MediaUploadTicket> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Your admin session has expired. Please sign in again.');
@@ -111,39 +111,43 @@ async function requestUploadTicket(file: File, productSlug: string): Promise<Pro
   const response = await fetch(`${supabaseUrl}/functions/v1/joko-media-upload-url`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey': supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: supabaseAnonKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       fileName: file.name,
       contentType: file.type,
       sizeBytes: file.size,
-      productSlug,
+      ...payload,
     }),
   });
 
-  const payload = await response.json().catch(() => null) as
-    | (Partial<ProductImageUploadTicket> & { error?: string })
+  const responsePayload = await response.json().catch(() => null) as
+    | (Partial<MediaUploadTicket> & { error?: string })
     | null;
 
   if (!response.ok) {
-    throw new Error(payload?.error || 'Could not prepare the media upload.');
+    throw new Error(responsePayload?.error || 'Could not prepare the media upload.');
   }
 
-  if (!payload?.uploadUrl || !payload.publicUrl || !payload.objectKey) {
+  if (!responsePayload?.uploadUrl || !responsePayload.publicUrl || !responsePayload.objectKey) {
     throw new Error('The media upload service returned an invalid response.');
   }
 
   return {
-    uploadUrl: payload.uploadUrl,
-    publicUrl: payload.publicUrl,
-    objectKey: payload.objectKey,
-    expiresIn: payload.expiresIn || 300,
+    uploadUrl: responsePayload.uploadUrl,
+    publicUrl: responsePayload.publicUrl,
+    objectKey: responsePayload.objectKey,
+    expiresIn: responsePayload.expiresIn || 300,
   };
 }
 
-function putFile(uploadUrl: string, file: File, onProgress?: (percent: number) => void): Promise<void> {
+function putFile(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('PUT', uploadUrl);
@@ -169,10 +173,10 @@ function putFile(uploadUrl: string, file: File, onProgress?: (percent: number) =
   });
 }
 
-export async function uploadProductImage({
-  file,
-  productSlug,
-}: UploadProductImageInput, onProgress?: (percent: number) => void): Promise<ProductImageUploadTicket> {
+export async function uploadProductImage(
+  { file, productSlug }: UploadProductImageInput,
+  onProgress?: (percent: number) => void,
+): Promise<MediaUploadTicket> {
   if (!PRODUCT_IMAGE_ACCEPTED_TYPES.includes(file.type as typeof PRODUCT_IMAGE_ACCEPTED_TYPES[number])) {
     throw new Error('Use a JPG, WebP or PNG image.');
   }
@@ -185,11 +189,31 @@ export async function uploadProductImage({
     throw new Error('Enter a valid product URL slug before uploading an image.');
   }
 
-  // Privacy first: source metadata never leaves the browser. Only the freshly
-  // re-encoded pixel data is sent to R2.
   const sanitizedFile = await stripImageMetadata(file);
 
-  const ticket = await requestUploadTicket(sanitizedFile, slug);
+  const ticket = await requestUploadTicket(sanitizedFile, {
+    assetKind: 'product',
+    productSlug: slug,
+  });
   await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
+  return ticket;
+}
+
+export async function uploadBrandLogo(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<MediaUploadTicket> {
+  if (!BRAND_LOGO_ACCEPTED_TYPES.includes(file.type as typeof BRAND_LOGO_ACCEPTED_TYPES[number])) {
+    throw new Error('Use a JPG, WebP or PNG logo.');
+  }
+  if (file.size <= 0 || file.size > BRAND_LOGO_MAX_BYTES) {
+    throw new Error('Logo files must be 1 MB or smaller.');
+  }
+
+  const ticket = await requestUploadTicket(file, {
+    assetKind: 'brand',
+    brandSlot: 'site-logo',
+  });
+  await putFile(ticket.uploadUrl, file, onProgress);
   return ticket;
 }
