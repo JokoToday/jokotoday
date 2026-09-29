@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, useRef, useState } from 'react';
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Image as ImageIcon, Loader2, UploadCloud } from 'lucide-react';
 import {
   BRAND_LOGO_ACCEPTED_TYPES,
@@ -27,6 +27,10 @@ export function HomepageLogoUploader({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
 
   const clearPreview = () => {
     if (preview) URL.revokeObjectURL(preview);
