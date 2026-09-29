@@ -17,8 +17,12 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
     typography: {
       displayFont: 'noto-sans',
       bodyFont: 'inter',
-      thaiFont: 'noto-sans-thai-looped',
-      chineseFont: 'noto-sans-sc',
+      displayWeight: 700,
+      bodyWeight: 400,
+      thaiDisplayFont: 'maitree',
+      thaiBodyFont: 'noto-sans-thai-looped',
+      chineseDisplayFont: 'noto-serif-sc',
+      chineseBodyFont: 'noto-sans-sc',
       heroSize: 65,
       sectionHeadingSize: 36,
       bodySize: 16,
@@ -44,6 +48,22 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
           en: 'Good bread\nfor a brighter\ntomorrow.',
           th: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\nที่สดใสกว่า',
           zh: '好面包\n为了一个更明亮的\n明天。',
+        },
+        titleRichText: {
+          en: [
+            { text: 'Good bread\nfor a ' },
+            { text: 'brighter', marks: { color: 'accent' } },
+            { text: '\ntomorrow.' },
+          ],
+          th: [
+            { text: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\n' },
+            { text: 'ที่สดใสกว่า', marks: { color: 'accent' } },
+          ],
+          zh: [
+            { text: '好面包\n为了一个' },
+            { text: '更明亮的', marks: { color: 'accent' } },
+            { text: '\n明天。' },
+          ],
         },
         subtitle: {
           en: 'Thoughtfully baked in small batches. Pre-order online and pick up fresh at our JOKO locations.',

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Itim&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Itim&family=Maitree:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Playfair+Display:wght@700&family=Sarabun:wght@400;500;600;700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
 @tailwind base;
@@ -75,7 +75,7 @@
     --joko-shell-ink: 48 53 50;
     font-family: var(--joko-font-shell);
     font-size: var(--joko-size-body, 16px);
-    font-weight: 400;
+    font-weight: var(--joko-font-body-weight, 400);
     color: var(--joko-brand-text, rgb(var(--joko-shell-ink)));
     background: var(--joko-brand-turquoise, rgb(var(--joko-shell-mineral)));
   }
@@ -91,8 +91,8 @@
   .joko-home-shell h4,
   .joko-home-shell h5,
   .joko-home-shell h6 {
-    font-family: inherit;
-    font-weight: 600;
+    font-family: var(--joko-font-display);
+    font-weight: var(--joko-font-display-weight, 700);
   }
 
   .joko-home-shell button,
