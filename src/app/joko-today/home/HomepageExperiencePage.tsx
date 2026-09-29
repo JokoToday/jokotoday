@@ -135,8 +135,8 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 </p>
 
                 <h1
-                  className="mt-4 whitespace-pre-line font-bold leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
-                  style={heroSerif}
+                  className="mt-4 whitespace-pre-line leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
+                  style={{ ...heroSerif, fontWeight: 'var(--joko-font-display-weight, 700)' }}
                 >
                   {publishedTitleRichText ? publishedTitleRichText.map((run, index) => {
                     const color = run.marks?.color as BuilderRichTextColor | undefined;
