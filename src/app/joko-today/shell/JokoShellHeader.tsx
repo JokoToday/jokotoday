@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { Container } from '../../../platform/design-system';
+import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../builder/usePublishedJokoLogo';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
@@ -68,6 +69,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const labels = copy[language];
+  const logoUrl = usePublishedJokoLogo();
 
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
@@ -142,9 +144,13 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               aria-label="JOKO TODAY home"
             >
               <img
-                src="/assets/brand/joko-today-logo-v0.4.webp"
+                src={logoUrl}
                 alt="JOKO TODAY"
-                className="h-14 w-auto object-contain mix-blend-multiply sm:h-16"
+                onError={(event) => {
+                  if (event.currentTarget.src.endsWith(DEFAULT_JOKO_LOGO_URL)) return;
+                  event.currentTarget.src = DEFAULT_JOKO_LOGO_URL;
+                }}
+                className="h-14 w-auto max-w-[12rem] object-contain mix-blend-multiply sm:h-16 sm:max-w-[15rem]"
               />
             </button>
 

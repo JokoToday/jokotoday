@@ -1,6 +1,5 @@
-import { getCategories, getImageUrl } from '../../../lib/cmsService';
+import { getCategories, getImageUrl, getProducts } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
-import { supabase } from '../../../lib/supabase';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type {
   BuilderCategory,
@@ -11,17 +10,6 @@ import type {
 const DEFAULT_HERO_IMAGE = JOKO_BAKERY_HERO_ASSET;
 const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400';
 
-type TopLikedRow = {
-  id: string;
-  slug: string;
-  name_en: string;
-  name_th: string;
-  name_zh?: string | null;
-  image?: string | null;
-  price: number | string;
-  like_count?: number | null;
-};
-
 function resolveProductImage(image?: string | null): string {
   if (!image) return DEFAULT_PRODUCT_IMAGE;
   if (image.startsWith('http')) return image;
@@ -29,27 +17,26 @@ function resolveProductImage(image?: string | null): string {
 }
 
 async function getLiveTopLikedProducts(): Promise<BuilderTopLikedProduct[]> {
-  const { data, error } = await supabase
-    .from('top_liked_products')
-    .select('*');
+  const products = await getProducts();
 
-  if (error) throw error;
-
-  return ((data || []) as TopLikedRow[]).map((product) => ({
-    id: product.id,
-    slug: product.slug,
-    name: {
-      en: product.name_en,
-      th: product.name_th || product.name_en,
-      zh: product.name_zh || product.name_en,
-    },
-    imageSrc: resolveProductImage(product.image),
-    price: {
-      amount: Number(product.price) || 0,
-      currency: 'THB',
-    },
-    likeCount: product.like_count ?? 0,
-  }));
+  return products
+    .filter((product) => Boolean(product.image))
+    .slice(0, 5)
+    .map((product) => ({
+      id: product.id,
+      slug: product.slug,
+      name: {
+        en: product.name_en,
+        th: product.name_th || product.name_en,
+        zh: product.name_zh || product.name_en,
+      },
+      imageSrc: resolveProductImage(product.image),
+      price: {
+        amount: Number(product.price) || 0,
+        currency: 'THB',
+      },
+      likeCount: 0,
+    }));
 }
 
 async function getLiveCategories(): Promise<BuilderCategory[]> {

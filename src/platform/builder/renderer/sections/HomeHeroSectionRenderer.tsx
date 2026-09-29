@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Container, Section } from '../../../design-system';
+import { ArrowRight, Leaf, MapPin, PlayCircle } from 'lucide-react';
+import { Container } from '../../../design-system';
 import type {
   BuilderAction,
   BuilderSiteIdentity,
@@ -28,68 +28,90 @@ export function HomeHeroSectionRenderer({
 
   useEffect(() => {
     let active = true;
-    provider
-      .getHeroMedia()
-      .then((value) => {
-        if (active) setMedia(value);
-      })
-      .catch(() => {
-        if (active) setMedia(null);
-      });
-
-    return () => {
-      active = false;
-    };
+    provider.getHeroMedia()
+      .then((value) => { if (active) setMedia(value); })
+      .catch(() => { if (active) setMedia(null); });
+    return () => { active = false; };
   }, [provider]);
 
   const fallbackLocale = site.defaultLocale;
+  const title = localize(section.props.title, locale, fallbackLocale);
+  const subtitle = localize(section.props.subtitle, locale, fallbackLocale);
+  const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
 
   return (
-    <Section spacing={section.design.spacing} className="relative overflow-hidden">
-      <Container width={section.design.width} className="py-12 md:py-20">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <h1 className="text-5xl md:text-6xl font-header font-bold text-primary-900 leading-tight">
-              {site.name}
+    <section
+      className="relative overflow-hidden bg-[#DAEBE8] py-3 sm:py-5"
+      style={{
+        backgroundImage:
+          "radial-gradient(ellipse at 12% 8%, rgba(249,246,237,.25) 0 13%, transparent 33%), radial-gradient(ellipse at 86% 9%, rgba(235,244,245,.24) 0 20%, transparent 42%), url('/assets/backgrounds/joko-shell-connections-v0.21-strong.svg')",
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'auto, auto, max(112%, 1780px) auto',
+        backgroundPosition: 'center, center, 50% -40px',
+      }}
+    >
+      <Container width={section.design.width}>
+        <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
+          <img src={logoUrl} alt={site.name} className="h-12 w-auto object-contain mix-blend-multiply" />
+          <div className="ml-auto hidden gap-7 text-xs font-medium text-[#303532]/72 sm:flex">
+            <span>Home</span><span>Bakery</span><span>How It Works</span><span>Pickup</span><span>About</span>
+          </div>
+        </div>
+
+        <div className="relative grid min-h-[34rem] gap-7 py-8 lg:grid-cols-[minmax(19rem,.72fr)_minmax(33rem,1.35fr)] lg:items-start">
+          <div className="relative z-20 max-w-[31rem] lg:pt-7">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+              Artisan bakery · Chiang Mai · Small batches
+            </p>
+            <h1
+              className="mt-4 whitespace-pre-line text-[2.7rem] font-bold leading-[.93] tracking-[-0.042em] text-[#292D2B] sm:text-[3.5rem] lg:text-[4rem]"
+              style={{ fontFamily: 'var(--joko-font-display)' }}
+            >
+              {title}
             </h1>
-            <p className="text-2xl md:text-3xl text-primary-700 font-medium">
-              {localize(section.props.title, locale, fallbackLocale)}
-            </p>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {localize(section.props.subtitle, locale, fallbackLocale)}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
+            <p className="mt-5 text-[15px] leading-7 text-[#303532]/78 sm:text-base">{subtitle}</p>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => onAction?.(section.props.primaryAction)}
-                className="bg-primary-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-primary-700 transition-colors flex items-center justify-center group"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#C76624] px-6 py-3.5 text-base font-semibold text-white shadow-[0_8px_20px_rgba(164,79,29,.14)] transition hover:bg-[#A95122]"
               >
                 {localize(section.props.primaryActionLabel, locale, fallbackLocale)}
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 h-5 w-5" />
               </button>
               <button
                 type="button"
                 onClick={() => onAction?.(section.props.secondaryAction)}
-                className="bg-background text-primary-900 px-8 py-4 rounded-lg font-semibold border-2 border-primary-600 hover:bg-primary-50 transition-colors"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/45 bg-[#F4EFE5]/80 px-6 py-3 text-base font-semibold text-[#303532] transition hover:bg-[#F4EFE5]"
               >
+                <PlayCircle className="mr-2 h-5 w-5" strokeWidth={1.6} />
                 {localize(section.props.secondaryActionLabel, locale, fallbackLocale)}
               </button>
             </div>
+
+            <div className="mt-7 grid grid-cols-2 gap-3 border-t border-[#55766F]/15 pt-5 text-xs text-[#304B45]/78">
+              <div className="flex items-center gap-2"><Leaf className="h-5 w-5 text-[#6E9A4F]" />Small-batch baking</div>
+              <div className="flex items-center gap-2"><MapPin className="h-5 w-5 text-[#668C4E]" />Pickup in Chiang Mai</div>
+            </div>
           </div>
 
-          <div className="relative">
-            <div className="rounded-full overflow-hidden shadow-2xl bg-primary-50 aspect-square flex items-center justify-center">
-              {media && (
-                <img
-                  src={media.src}
-                  alt={localize(section.props.mediaAlt, locale, fallbackLocale)}
-                  className="w-full h-full object-contain"
-                />
-              )}
-            </div>
+          <div className="relative min-h-[29rem] overflow-hidden lg:min-h-[34rem]">
+            {media && (
+              <img
+                src={media.src}
+                alt={localize(section.props.mediaAlt, locale, fallbackLocale)}
+                className="absolute inset-0 h-full w-full object-contain"
+                style={{
+                  WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.38) 11%, #000 25%, #000 92%, transparent 100%)',
+                  maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.38) 11%, #000 25%, #000 92%, transparent 100%)',
+                }}
+              />
+            )}
           </div>
         </div>
       </Container>
-    </Section>
+    </section>
   );
 }

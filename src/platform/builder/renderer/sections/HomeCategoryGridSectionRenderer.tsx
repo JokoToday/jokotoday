@@ -18,14 +18,14 @@ interface HomeCategoryGridSectionRendererProps {
 }
 
 function getCategoryIcon(iconKey?: string): ReactNode {
+  const className = 'h-7 w-7 text-[#55766F]';
   const iconMap: Record<string, ReactNode> = {
-    croissants: <Croissant className="h-8 w-8 text-primary-700" />,
-    breads: <Wheat className="h-8 w-8 text-primary-700" />,
-    cakes: <Cookie className="h-8 w-8 text-primary-700" />,
-    quiche: <Pizza className="h-8 w-8 text-primary-700" />,
+    croissants: <Croissant className={className} />,
+    breads: <Wheat className={className} />,
+    cakes: <Cookie className={className} />,
+    quiche: <Pizza className={className} />,
   };
-
-  return iconMap[iconKey ?? ''] ?? <Croissant className="h-8 w-8 text-primary-700" />;
+  return iconMap[iconKey ?? ''] ?? <Croissant className={className} />;
 }
 
 export function HomeCategoryGridSectionRenderer({
@@ -39,53 +39,32 @@ export function HomeCategoryGridSectionRenderer({
 
   useEffect(() => {
     let active = true;
-    provider
-      .getCategories()
-      .then((value) => {
-        if (active) setCategories(value);
-      })
-      .catch(() => {
-        if (active) setCategories([]);
-      });
-
-    return () => {
-      active = false;
-    };
+    provider.getCategories()
+      .then((value) => { if (active) setCategories(value); })
+      .catch(() => { if (active) setCategories([]); });
+    return () => { active = false; };
   }, [provider]);
 
   if (categories?.length === 0) return null;
-
   const fallbackLocale = site.defaultLocale;
 
   return (
-    <Section spacing={section.design.spacing} className="bg-background">
+    <Section spacing={section.design.spacing} className="bg-[#DAEBE8]">
       <Container width={section.design.width}>
-        <h2 className="text-3xl md:text-4xl font-header font-bold text-center text-primary-900 mb-12">
+        <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
           {localize(section.props.title, locale, fallbackLocale)}
         </h2>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {(categories ?? []).map((category) => (
+        <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(categories ?? []).map((item, index) => (
             <button
+              key={item.id}
               type="button"
-              key={category.id}
-              onClick={() =>
-                onAction?.({
-                  type: 'commerce.browseCategory',
-                  categoryId: category.id,
-                })
-              }
-              className="text-center space-y-4 p-6 rounded-lg hover:bg-primary-100 transition-all duration-200 cursor-pointer group"
+              onClick={() => onAction?.({ type: 'commerce.browseCategory', categoryId: item.id })}
+              className="border border-[#55766F]/14 bg-[#FFF9EE]/88 p-5 text-left shadow-[0_10px_24px_rgba(48,75,69,.06)] transition hover:-translate-y-0.5"
+              style={{ borderRadius: index % 2 === 0 ? '1.45rem 1.75rem 1.5rem 1.8rem' : '1.75rem 1.45rem 1.85rem 1.4rem' }}
             >
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary-200 transition-colors duration-200">
-                {getCategoryIcon(category.iconKey)}
-              </div>
-              <h3 className="text-lg font-semibold text-primary-900 group-hover:text-primary-700 transition-colors">
-                {localize(category.name, locale, fallbackLocale)}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {localize(category.description, locale, fallbackLocale)}
-              </p>
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#D9ECE9]">{getCategoryIcon(item.iconKey)}</span>
+              <h3 className="mt-4 font-semibold text-[#303532]">{localize(item.name, locale, fallbackLocale)}</h3>
             </button>
           ))}
         </div>
