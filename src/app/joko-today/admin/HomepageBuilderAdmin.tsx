@@ -13,6 +13,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import {
   BuilderPageRenderer,
   jokoTodayHomepageFixture,
+  resolveJokoHomepageBranding,
   type BuilderAction,
   type BuilderDocument,
 } from '../../../platform/builder';
@@ -102,9 +103,14 @@ export function HomepageBuilderAdmin() {
   const previewRef = useRef<HTMLDivElement | null>(null);
 
   const applyServerState = (state: HomepageBuilderState, remountEditor = false) => {
+    const hadBranding = Boolean(state.draft.document.branding);
+    const normalizedDocument: BuilderDocument = hadBranding
+      ? state.draft.document
+      : { ...state.draft.document, branding: resolveJokoHomepageBranding(undefined) };
+
     setPageState(state);
-    setDraftDocument(state.draft.document);
-    setDirty(false);
+    setDraftDocument(normalizedDocument);
+    setDirty(!hadBranding);
     if (remountEditor) setEditorRevision((value) => value + 1);
   };
 
@@ -127,7 +133,9 @@ export function HomepageBuilderAdmin() {
         setNotice('Legacy Builder content detected. The current JOKO Homepage design has been loaded locally; choose Save Draft to adopt it.');
       } else {
         applyServerState(state, true);
-        setNotice('Persistent Homepage draft loaded.');
+        setNotice(state.draft.document.branding
+          ? 'Persistent Homepage draft loaded.'
+          : 'Homepage draft loaded with the new Site Identity defaults. Choose Save Draft to make those branding settings explicit.');
       }
       await refreshRevisions();
     } catch (error) {
