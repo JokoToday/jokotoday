@@ -77,7 +77,10 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const { document: publishedDocument } = usePublishedJokoBranding();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
-  const publishedHero = publishedDocument?.sections.find(
+  const publishedExperienceDocument = publishedDocument?.siteStyle
+    ? publishedDocument
+    : null;
+  const publishedHero = publishedExperienceDocument?.sections.find(
     (section) => section.type === 'home.hero.v1',
   );
   const localizedValue = (value: Record<string, string>): string =>
@@ -256,7 +259,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
       <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}
-        publishedDocument={publishedDocument}
+        publishedDocument={publishedExperienceDocument}
       />
     </>
   );
