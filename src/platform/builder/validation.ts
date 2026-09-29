@@ -159,6 +159,14 @@ function validateSection(
 
   switch (type) {
     case 'home.hero.v1':
+      if (value.props.logoUrl !== undefined) {
+        if (
+          !isNonEmptyString(value.props.logoUrl) ||
+          (!value.props.logoUrl.startsWith('/') && !/^https:\/\//i.test(value.props.logoUrl))
+        ) {
+          pushIssue(issues, `${path}.props.logoUrl`, 'Logo must be a bundled path or HTTPS URL.');
+        }
+      }
       validateLocalizedText(value.props.title, `${path}.props.title`, issues, locales);
       validateLocalizedText(value.props.subtitle, `${path}.props.subtitle`, issues, locales);
       validateLocalizedText(value.props.primaryActionLabel, `${path}.props.primaryActionLabel`, issues, locales);
