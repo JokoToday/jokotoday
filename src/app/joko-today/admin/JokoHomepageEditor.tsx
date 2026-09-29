@@ -203,6 +203,7 @@ export function JokoHomepageEditor({
   const [previewContentHeight, setPreviewContentHeight] = useState(900);
   const [previewFrameDocument, setPreviewFrameDocument] = useState<Document | null>(null);
   const previewHostRef = useRef<HTMLDivElement | null>(null);
+  const previewTopScrollRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const branding = useMemo(() => resolveJokoHomepageBranding(document.branding), [document.branding]);
   const previewWidth = PREVIEW_WIDTHS[previewViewport];
@@ -336,6 +337,20 @@ export function JokoHomepageEditor({
       ? 'border-[#C76624]/40 bg-[#FFF1E5] text-[#9E4E1D]'
       : 'border-[#55766F]/16 bg-white/72 text-[#304B45]/72 hover:bg-white',
   ].join(' ');
+
+  const syncPreviewScrollFromTop = () => {
+    const top = previewTopScrollRef.current;
+    const preview = previewHostRef.current;
+    if (!top || !preview) return;
+    if (Math.abs(preview.scrollLeft - top.scrollLeft) > 1) preview.scrollLeft = top.scrollLeft;
+  };
+
+  const syncPreviewScrollFromBottom = () => {
+    const top = previewTopScrollRef.current;
+    const preview = previewHostRef.current;
+    if (!top || !preview) return;
+    if (Math.abs(top.scrollLeft - preview.scrollLeft) > 1) top.scrollLeft = preview.scrollLeft;
+  };
 
   return (
     <div className={editorGridClass}>
@@ -557,7 +572,23 @@ export function JokoHomepageEditor({
         </div>
 
         <div
+          ref={previewTopScrollRef}
+          onScroll={syncPreviewScrollFromTop}
+          className="mb-1 overflow-x-auto overflow-y-hidden rounded-lg bg-white/35"
+          aria-label="Live draft horizontal scroll"
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              width: `${previewWidth * previewScale}px`,
+              height: '1px',
+            }}
+          />
+        </div>
+
+        <div
           ref={previewHostRef}
+          onScroll={syncPreviewScrollFromBottom}
           className="overflow-auto rounded-[1.5rem] border border-[#55766F]/18 bg-[#DCE7E4] p-2 shadow-[0_18px_46px_rgba(48,75,69,.08)]"
         >
           <div
