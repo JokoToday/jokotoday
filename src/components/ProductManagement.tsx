@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, QrCode } from 'lucide-react';
+import { X, AlertCircle, Loader2, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../lib/cmsService';
 import { getPickupDays, PickupDay } from '../lib/availabilityService';
 import { ProductMediaUploader } from './ProductMediaUploader';
+import { suggestProductPublicCode } from '../lib/productPublicCode';
 
 interface ProductFormProps {
   product: CMSProduct | null;
@@ -110,6 +111,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
+  const [generatingPublicCode, setGeneratingPublicCode] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
 
   useEffect(() => {
@@ -163,6 +165,32 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     const value = e.target.value;
     setFormData({ ...formData, [field]: value });
     if (field === 'name_en' && !product?.id) setFormData(prev => ({ ...prev, slug: generateSlug(value) }));
+  };
+
+  const generatePublicCode = async () => {
+    if (product?.public_code) return;
+    if (!formData.name_en.trim()) {
+      setErrors((current) => ({
+        ...current,
+        public_code: 'Enter the English product name before creating a QR code.',
+      }));
+      return;
+    }
+
+    setGeneratingPublicCode(true);
+    setErrors((current) => ({ ...current, public_code: '' }));
+    try {
+      const code = await suggestProductPublicCode(formData.name_en);
+      setFormData((current) => ({ ...current, public_code: code }));
+    } catch (error) {
+      console.error('Error suggesting product QR code:', error);
+      setErrors((current) => ({
+        ...current,
+        public_code: 'Could not create a product QR code. Please try again.',
+      }));
+    } finally {
+      setGeneratingPublicCode(false);
+    }
   };
 
   const canonicalAvailableDays = (): string[] => {
@@ -412,19 +440,37 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               <label className="block text-sm font-medium text-gray-800 mb-1">
                 <span className="flex items-center gap-2"><QrCode className="w-4 h-4" />Permanent Product QR Code</span>
               </label>
-              <input
-                type="text"
-                value={formData.public_code}
-                disabled={Boolean(product?.public_code)}
-                onChange={(e) => setFormData({ ...formData, public_code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })}
-                className={`w-full px-3 py-2 border rounded-lg text-sm font-mono uppercase ${errors.public_code ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${product?.public_code ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500 focus:border-transparent'}`}
-                placeholder="e.g. AC101"
-              />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={formData.public_code}
+                  disabled={Boolean(product?.public_code)}
+                  onChange={(e) => {
+                    setFormData({ ...formData, public_code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') });
+                    setErrors((current) => ({ ...current, public_code: '' }));
+                  }}
+                  className={`min-w-0 flex-1 px-3 py-2 border rounded-lg text-sm font-mono uppercase ${errors.public_code ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${product?.public_code ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500 focus:border-transparent'}`}
+                  placeholder="e.g. AC101"
+                />
+                {!product?.public_code && !formData.public_code && (
+                  <button
+                    type="button"
+                    disabled={generatingPublicCode}
+                    onClick={() => void generatePublicCode()}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {generatingPublicCode ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+                    {generatingPublicCode ? 'Creating…' : 'Create Product QR'}
+                  </button>
+                )}
+              </div>
               {errors.public_code && <p className="text-red-600 text-xs mt-1">{errors.public_code}</p>}
               <p className="text-xs text-gray-600 mt-2">
                 {product?.public_code
                   ? 'Permanent once assigned. Use the Products table → QR action to preview, download and print the generated code.'
-                  : 'Optional. Assign only to real products that need a permanent /p/CODE printed identity.'}
+                  : formData.public_code
+                    ? `${formData.public_code} is ready. Save the product to make this permanent; until then you can still edit or clear it.`
+                    : 'Optional. Create one only for real products that need a permanent printed /p/CODE identity. Sample products can stay without a QR.'}
               </p>
             </div>
           </div>
