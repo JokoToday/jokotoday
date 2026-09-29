@@ -5,6 +5,7 @@ import type {
   BuilderSiteIdentity,
 } from '../contracts';
 import type { HomepageBuilderProviders } from '../providers';
+import { jokoBrandingCssVariables, resolveJokoHomepageBranding } from '../branding';
 import { validateBuilderDocument, type BuilderValidationIssue } from '../validation';
 import { BuilderSectionErrorBoundary } from './BuilderSectionErrorBoundary';
 import {
@@ -22,6 +23,8 @@ export interface BuilderPageRendererProps {
   onAction?: (action: BuilderAction) => void;
   onValidationError?: (issues: BuilderValidationIssue[]) => void;
   onSectionError?: (sectionId: string, error: Error) => void;
+  selectedSectionId?: string | null;
+  onSectionSelect?: (sectionId: string) => void;
 }
 
 function renderSection(
@@ -75,6 +78,8 @@ export function BuilderPageRenderer({
   onAction,
   onValidationError,
   onSectionError,
+  selectedSectionId = null,
+  onSectionSelect,
 }: BuilderPageRendererProps) {
   const validation = validateBuilderDocument(document, {
     supportedLocales: site.supportedLocales,
@@ -85,23 +90,43 @@ export function BuilderPageRenderer({
     return null;
   }
 
+  const branding = resolveJokoHomepageBranding(validation.value.branding);
+
   return (
-    <PageCanvas className="bg-[#F4EFE5]">
+    <PageCanvas
+      className="bg-[#F4EFE5]"
+      style={jokoBrandingCssVariables(branding)}
+    >
       {validation.value.sections
         .filter((section) => section.visible)
         .map((section) => (
-          <BuilderSectionErrorBoundary
+          <div
             key={section.id}
-            onError={(error) => onSectionError?.(section.id, error)}
+            data-builder-section={section.id}
+            className={[
+              'relative outline-none transition',
+              onSectionSelect ? 'cursor-pointer' : '',
+              selectedSectionId === section.id
+                ? 'ring-2 ring-inset ring-[#C76624]/80'
+                : '',
+            ].join(' ')}
+            onClick={onSectionSelect ? (event) => {
+              event.stopPropagation();
+              onSectionSelect(section.id);
+            } : undefined}
           >
-            {renderSection(section, {
-              locale,
-              site,
-              providers,
-              onAction,
-              onSectionError,
-            })}
-          </BuilderSectionErrorBoundary>
+            <BuilderSectionErrorBoundary
+              onError={(error) => onSectionError?.(section.id, error)}
+            >
+              {renderSection(section, {
+                locale,
+                site,
+                providers,
+                onAction,
+                onSectionError,
+              })}
+            </BuilderSectionErrorBoundary>
+          </div>
         ))}
     </PageCanvas>
   );
