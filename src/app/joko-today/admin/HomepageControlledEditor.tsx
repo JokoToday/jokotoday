@@ -143,6 +143,8 @@ export function HomepageControlledEditor({
             site={site}
             providers={providers}
             onAction={onAction}
+            selectedSectionId={selected?.id}
+            onSectionSelect={setSelectedId}
           />
         </div>
       </main>
