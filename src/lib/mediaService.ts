@@ -5,6 +5,17 @@ export const BRAND_LOGO_MAX_BYTES = 1024 * 1024;
 export const PRODUCT_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
 export const BRAND_LOGO_ACCEPTED_TYPES = PRODUCT_IMAGE_ACCEPTED_TYPES;
 
+const PRODUCT_IMAGE_OUTPUT_QUALITY: Partial<Record<(typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number], number>> = {
+  'image/jpeg': 0.92,
+  'image/webp': 0.9,
+};
+
+const PRODUCT_IMAGE_EXTENSIONS: Record<(typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number], string> = {
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/png': 'png',
+};
+
 export interface MediaUploadTicket {
   uploadUrl: string;
   publicUrl: string;
@@ -15,6 +26,71 @@ export interface MediaUploadTicket {
 interface UploadProductImageInput {
   file: File;
   productSlug: string;
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not decode this image.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+/**
+ * Re-encodes product imagery before upload so EXIF/GPS and other source
+ * metadata never leave the browser. Brand logos keep their original pixels.
+ */
+async function stripImageMetadata(file: File): Promise<File> {
+  const image = await loadImage(file);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('This browser could not prepare the image for upload.');
+  }
+
+  context.drawImage(image, 0, 0);
+
+  const requestedType = file.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number];
+  const quality = PRODUCT_IMAGE_OUTPUT_QUALITY[requestedType];
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, requestedType, quality);
+  });
+
+  canvas.width = 0;
+  canvas.height = 0;
+
+  if (!blob || blob.size <= 0) {
+    throw new Error('Could not prepare a metadata-free image.');
+  }
+
+  if (!PRODUCT_IMAGE_ACCEPTED_TYPES.includes(blob.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number])) {
+    throw new Error('This browser could not safely re-encode the selected image format.');
+  }
+
+  if (blob.size > PRODUCT_IMAGE_MAX_BYTES) {
+    throw new Error('The metadata-free image is larger than 8 MB. Please use JPG or WebP.');
+  }
+
+  const outputType = blob.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number];
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'product-image';
+  const fileName = `${baseName}.${PRODUCT_IMAGE_EXTENSIONS[outputType]}`;
+
+  return new File([blob], fileName, {
+    type: outputType,
+    lastModified: Date.now(),
+  });
 }
 
 async function requestUploadTicket(
@@ -113,11 +189,13 @@ export async function uploadProductImage(
     throw new Error('Enter a valid product URL slug before uploading an image.');
   }
 
-  const ticket = await requestUploadTicket(file, {
+  const sanitizedFile = await stripImageMetadata(file);
+
+  const ticket = await requestUploadTicket(sanitizedFile, {
     assetKind: 'product',
     productSlug: slug,
   });
-  await putFile(ticket.uploadUrl, file, onProgress);
+  await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
   return ticket;
 }
 
