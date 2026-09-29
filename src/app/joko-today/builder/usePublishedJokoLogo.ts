@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   normalizeBuilderSiteStyle,
+  type BuilderDocument,
   type BuilderSiteStyle,
 } from '../../../platform/builder';
 import { loadPublishedHomepageBuilderDocument } from './publishedHomepageProvider';
@@ -10,11 +11,13 @@ export const DEFAULT_JOKO_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 export interface PublishedJokoBranding {
   logoUrl: string;
   siteStyle: BuilderSiteStyle;
+  document: BuilderDocument | null;
 }
 
 const DEFAULT_BRANDING: PublishedJokoBranding = {
   logoUrl: DEFAULT_JOKO_LOGO_URL,
   siteStyle: normalizeBuilderSiteStyle(),
+  document: null,
 };
 
 let cachedBranding: PublishedJokoBranding | null = null;
@@ -42,6 +45,7 @@ async function resolvePublishedBranding(): Promise<PublishedJokoBranding> {
           ? hero.props.logoUrl || DEFAULT_JOKO_LOGO_URL
           : DEFAULT_JOKO_LOGO_URL,
         siteStyle: normalizeBuilderSiteStyle(published?.document.siteStyle),
+        document: published?.document ?? null,
       };
 
       if (generation === cacheGeneration) {
