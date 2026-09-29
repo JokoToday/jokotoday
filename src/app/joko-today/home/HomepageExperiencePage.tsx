@@ -89,7 +89,9 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
     onNavigate('how-it-works');
   };
 
-  const heroSerif = lang === 'en' ? { fontFamily: 'var(--joko-font-display)' } : undefined;
+  const heroSerif = lang === 'en'
+    ? { fontFamily: 'var(--joko-font-display)', fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))' }
+    : { fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))' };
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -116,24 +118,24 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
             <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(21rem,.72fr)_minmax(39rem,1.48fr)] xl:items-start xl:gap-4">
               <div className="relative max-w-[31rem] xl:pt-10 2xl:pt-12">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+                <p className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>
                   {labels.kicker}
                 </p>
 
                 <h1
-                  className="mt-4 text-[2.9rem] font-bold leading-[.92] tracking-[-0.042em] text-[#292D2B] sm:text-[3.6rem] lg:text-[4rem] xl:text-[4.05rem] 2xl:text-[4.45rem]"
+                  className="mt-4 font-bold leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
                   style={heroSerif}
                 >
                   <span className="block">{labels.headline1}</span>
                   <span className="block">
                     {labels.headline2}{' '}
-                    <span className="text-[#C85F22]">{labels.headlineAccent}</span>
+                    <span className="text-[var(--joko-brand-accent,#C85F22)]">{labels.headlineAccent}</span>
                   </span>
                   {labels.headline3 && <span className="block">{labels.headline3}</span>}
                 </h1>
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
-                <p className="mt-5 max-w-[29rem] text-[15px] leading-7 text-[#303532]/78 sm:text-base">
+                <p className="mt-5 max-w-[29rem] leading-7 text-[var(--joko-brand-text,#303532)]/80" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
                   {labels.intro}
                 </p>
 
@@ -141,7 +143,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                   <button
                     type="button"
                     onClick={() => onNavigate('products')}
-                    className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 text-base font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]"
+                    className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                   >
                     <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
                     {labels.products}
@@ -150,7 +152,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                   <button
                     type="button"
                     onClick={showHowItWorks}
-                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 text-base font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                   >
                     <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
                     {labels.howItWorks}

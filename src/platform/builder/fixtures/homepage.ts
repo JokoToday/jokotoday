@@ -12,6 +12,26 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
   schemaVersion: 1,
   registryVersion: 1,
   pageKey: 'home',
+  branding: {
+    logoScale: 120,
+    typography: {
+      displayFont: 'noto-sans',
+      bodyFont: 'inter',
+      thaiFont: 'noto-sans-thai-looped',
+      chineseFont: 'noto-sans-sc',
+      heroSize: 65,
+      sectionHeadingSize: 36,
+      bodySize: 16,
+      navSize: 16,
+      buttonSize: 16,
+      labelSize: 11,
+    },
+    colors: {
+      text: '#303532',
+      accent: '#C76624',
+      turquoise: '#DAEBE8',
+    },
+  },
   sections: [
     {
       id: 'home-hero',

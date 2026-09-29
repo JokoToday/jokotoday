@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import Footer from '../../../components/Footer';
 import { PageCanvas } from '../../../platform/design-system';
 import JokoShellHeader, { type JokoShellSection } from './JokoShellHeader';
+import { jokoBrandingCssVariables } from '../../../platform/builder/branding';
+import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import './jokoShellBackground.css';
 
 interface JokoShellProps {
@@ -11,8 +13,14 @@ interface JokoShellProps {
 }
 
 export function JokoShell({ onNavigate, activeSection = null, children }: JokoShellProps) {
+  const { branding } = usePublishedJokoBranding();
+
   return (
-    <PageCanvas surface="soft" className="joko-home-shell min-h-screen">
+    <PageCanvas
+      surface="soft"
+      className="joko-home-shell min-h-screen"
+      style={jokoBrandingCssVariables(branding)}
+    >
       <div className="flex min-h-screen flex-col">
         <JokoShellHeader onNavigate={onNavigate} activeSection={activeSection} />
         <main className="flex-1">{children}</main>

@@ -73,6 +73,55 @@ function validateLocalizedText(
   return valid;
 }
 
+function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    pushIssue(issues, 'branding', 'Branding must be an object.');
+    return;
+  }
+
+  if (typeof value.logoScale !== 'number' || value.logoScale < 70 || value.logoScale > 150) {
+    pushIssue(issues, 'branding.logoScale', 'Logo scale must be between 70 and 150.');
+  }
+
+  if (!isRecord(value.typography)) {
+    pushIssue(issues, 'branding.typography', 'Typography must be an object.');
+  } else {
+    const typography = value.typography;
+    if (!['noto-sans', 'inter', 'playfair-display'].includes(String(typography.displayFont))) {
+      pushIssue(issues, 'branding.typography.displayFont', 'Unsupported display font.');
+    }
+    if (!['inter', 'noto-sans'].includes(String(typography.bodyFont))) {
+      pushIssue(issues, 'branding.typography.bodyFont', 'Unsupported body font.');
+    }
+
+    const ranges: Array<[string, unknown, number, number]> = [
+      ['heroSize', typography.heroSize, 42, 88],
+      ['sectionHeadingSize', typography.sectionHeadingSize, 24, 56],
+      ['bodySize', typography.bodySize, 14, 20],
+      ['navSize', typography.navSize, 12, 20],
+      ['buttonSize', typography.buttonSize, 13, 20],
+      ['labelSize', typography.labelSize, 9, 15],
+    ];
+    for (const [field, fieldValue, min, max] of ranges) {
+      if (typeof fieldValue !== 'number' || fieldValue < min || fieldValue > max) {
+        pushIssue(issues, `branding.typography.${field}`, `${field} must be between ${min} and ${max}.`);
+      }
+    }
+  }
+
+  if (!isRecord(value.colors)) {
+    pushIssue(issues, 'branding.colors', 'Brand colors must be an object.');
+  } else {
+    for (const key of ['text', 'accent', 'turquoise'] as const) {
+      const color = value.colors[key];
+      if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) {
+        pushIssue(issues, `branding.colors.${key}`, 'Expected a 6-digit hex color.');
+      }
+    }
+  }
+}
+
 function validateAction(
   value: unknown,
   path: string,
@@ -234,6 +283,8 @@ export function validateBuilderDocument(
   if (input.pageKey !== 'home') {
     pushIssue(issues, 'pageKey', 'Homepage Builder v1 only supports pageKey "home".');
   }
+
+  validateBranding(input.branding, issues);
 
   if (!Array.isArray(input.sections)) {
     pushIssue(issues, 'sections', 'Builder document sections must be an array.');

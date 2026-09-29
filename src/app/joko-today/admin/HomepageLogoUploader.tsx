@@ -10,6 +10,7 @@ interface HomepageLogoUploaderProps {
   value: string;
   onChange: (url: string) => void;
   onUploadingChange?: (uploading: boolean) => void;
+  compact?: boolean;
 }
 
 const MAX_MB = BRAND_LOGO_MAX_BYTES / 1024 / 1024;
@@ -41,6 +42,7 @@ export function HomepageLogoUploader({
   value,
   onChange,
   onUploadingChange,
+  compact = false,
 }: HomepageLogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selected, setSelected] = useState<File | null>(null);
@@ -131,6 +133,38 @@ export function HomepageLogoUploader({
       onUploadingChange?.(false);
     }
   };
+
+  if (compact) {
+    return (
+      <div className="rounded-2xl border border-[#55766F]/16 bg-[#F8F3E9] p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-xl bg-[#D9ECE9] p-2">
+            <img src={preview || value} alt="JOKO TODAY logo preview" className="max-h-12 max-w-full object-contain mix-blend-multiply" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">Logo</p>
+            <p className="mt-1 truncate text-xs text-[#303532]/50">{selected?.name || value}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {selected ? (
+                <>
+                  <button type="button" onClick={() => void handleUpload()} disabled={uploading} className="joko-admin-primary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
+                    {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+                    {uploading ? `${progress}%` : 'Upload'}
+                  </button>
+                  <button type="button" onClick={clearPreview} disabled={uploading} className="joko-admin-secondary-button px-3 py-2 text-xs">Cancel</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => inputRef.current?.click()} className="joko-admin-secondary-button px-3 py-2 text-xs">Replace logo</button>
+              )}
+            </div>
+          </div>
+        </div>
+        <input ref={inputRef} type="file" accept={BRAND_LOGO_ACCEPTED_TYPES.join(',')} onChange={handleInput} className="hidden" />
+        {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+        {notice && <p className="mt-2 text-xs text-emerald-800">{notice}</p>}
+      </div>
+    );
+  }
 
   return (
     <section className="joko-admin-paper-card p-5 sm:p-6">
