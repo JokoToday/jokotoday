@@ -14,6 +14,7 @@ import {
   JOKO_CHINESE_BODY_FONT_OPTIONS,
   JOKO_CHINESE_DISPLAY_FONT_OPTIONS,
   JOKO_DISPLAY_FONT_OPTIONS,
+  JOKO_FONT_WEIGHT_OPTIONS,
   JOKO_THAI_BODY_FONT_OPTIONS,
   JOKO_THAI_DISPLAY_FONT_OPTIONS,
   getBuilderComponentDefinition,
@@ -419,6 +420,18 @@ export function JokoHomepageEditor({
                   {JOKO_DISPLAY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </div>
+              {branding.typography.displayFont === 'noto-sans' && (
+                <div>
+                  <FieldLabel>Noto Sans display weight</FieldLabel>
+                  <select
+                    value={branding.typography.displayWeight}
+                    onChange={(event) => updateTypography({ displayWeight: Number(event.target.value) as BuilderHomepageBranding['typography']['displayWeight'] })}
+                    className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                  >
+                    {JOKO_FONT_WEIGHT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.value})</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <FieldLabel>English body font</FieldLabel>
                 <select
@@ -429,6 +442,18 @@ export function JokoHomepageEditor({
                   {JOKO_BODY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </div>
+              {branding.typography.bodyFont === 'noto-sans' && (
+                <div>
+                  <FieldLabel>Noto Sans body weight</FieldLabel>
+                  <select
+                    value={branding.typography.bodyWeight}
+                    onChange={(event) => updateTypography({ bodyWeight: Number(event.target.value) as BuilderHomepageBranding['typography']['bodyWeight'] })}
+                    className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                  >
+                    {JOKO_FONT_WEIGHT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({option.value})</option>)}
+                  </select>
+                </div>
+              )}
               <div className="border-t border-[#55766F]/12 pt-4">
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#55766F]">Thai</p>
                 <div className="space-y-3">
