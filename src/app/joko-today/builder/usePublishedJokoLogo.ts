@@ -1,61 +1,80 @@
 import { useEffect, useState } from 'react';
+import {
+  normalizeBuilderSiteStyle,
+  type BuilderSiteStyle,
+} from '../../../platform/builder';
 import { loadPublishedHomepageBuilderDocument } from './publishedHomepageProvider';
 
 export const DEFAULT_JOKO_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 
-let cachedLogoUrl: string | null = null;
-let pendingLogoUrl: Promise<string> | null = null;
+export interface PublishedJokoBranding {
+  logoUrl: string;
+  siteStyle: BuilderSiteStyle;
+}
+
+const DEFAULT_BRANDING: PublishedJokoBranding = {
+  logoUrl: DEFAULT_JOKO_LOGO_URL,
+  siteStyle: normalizeBuilderSiteStyle(),
+};
+
+let cachedBranding: PublishedJokoBranding | null = null;
+let pendingBranding: Promise<PublishedJokoBranding> | null = null;
 let cacheGeneration = 0;
 const listeners = new Set<() => void>();
 
 export function invalidatePublishedJokoLogoCache() {
   cacheGeneration += 1;
-  cachedLogoUrl = null;
-  pendingLogoUrl = null;
+  cachedBranding = null;
+  pendingBranding = null;
   listeners.forEach((listener) => listener());
 }
 
-async function resolvePublishedLogoUrl(): Promise<string> {
-  if (cachedLogoUrl) return cachedLogoUrl;
-  if (pendingLogoUrl) return pendingLogoUrl;
+async function resolvePublishedBranding(): Promise<PublishedJokoBranding> {
+  if (cachedBranding) return cachedBranding;
+  if (pendingBranding) return pendingBranding;
 
   const generation = cacheGeneration;
   const request = loadPublishedHomepageBuilderDocument()
     .then((published) => {
       const hero = published?.document.sections.find((section) => section.type === 'home.hero.v1');
-      const logoUrl = hero?.type === 'home.hero.v1'
-        ? hero.props.logoUrl || DEFAULT_JOKO_LOGO_URL
-        : DEFAULT_JOKO_LOGO_URL;
+      const branding: PublishedJokoBranding = {
+        logoUrl: hero?.type === 'home.hero.v1'
+          ? hero.props.logoUrl || DEFAULT_JOKO_LOGO_URL
+          : DEFAULT_JOKO_LOGO_URL,
+        siteStyle: normalizeBuilderSiteStyle(published?.document.siteStyle),
+      };
 
       if (generation === cacheGeneration) {
-        cachedLogoUrl = logoUrl;
+        cachedBranding = branding;
       }
 
-      return logoUrl;
+      return branding;
     })
     .catch((error) => {
-      console.error('[JOKO Branding] Could not load published logo; using bundled fallback.', error);
-      return DEFAULT_JOKO_LOGO_URL;
+      console.error('[JOKO Branding] Could not load published branding; using bundled defaults.', error);
+      return DEFAULT_BRANDING;
     })
     .finally(() => {
-      if (pendingLogoUrl === request) {
-        pendingLogoUrl = null;
+      if (pendingBranding === request) {
+        pendingBranding = null;
       }
     });
 
-  pendingLogoUrl = request;
+  pendingBranding = request;
   return request;
 }
 
-export function usePublishedJokoLogo(): string {
-  const [logoUrl, setLogoUrl] = useState(cachedLogoUrl || DEFAULT_JOKO_LOGO_URL);
+export function usePublishedJokoBranding(): PublishedJokoBranding {
+  const [branding, setBranding] = useState<PublishedJokoBranding>(
+    cachedBranding || DEFAULT_BRANDING,
+  );
 
   useEffect(() => {
     let active = true;
 
     const refresh = () => {
-      void resolvePublishedLogoUrl().then((resolved) => {
-        if (active) setLogoUrl(resolved);
+      void resolvePublishedBranding().then((resolved) => {
+        if (active) setBranding(resolved);
       });
     };
 
@@ -68,5 +87,9 @@ export function usePublishedJokoLogo(): string {
     };
   }, []);
 
-  return logoUrl;
+  return branding;
+}
+
+export function usePublishedJokoLogo(): string {
+  return usePublishedJokoBranding().logoUrl;
 }
