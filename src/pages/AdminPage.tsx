@@ -148,7 +148,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
     setNotice('');
   };
 
-  if (loading || (user && profileLoading)) {
+  if (loading || (user && profileLoading && userRole !== 'admin')) {
     resetAdminAuthentication();
     return (
       <AdminGateShell language={adminLanguage} onLanguageChange={setLanguage}>
@@ -157,6 +157,9 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
     );
   }
 
+  // Keep an already-authorized Admin workspace mounted while Supabase silently
+  // refreshes the profile/session in the background. Unmounting here would
+  // discard open editors and unsaved form state whenever a browser tab resumes.
   if (user && userRole === 'admin') {
     setAdminAuthenticated();
     return <AdminWorkspace onNavigate={onNavigate} />;
