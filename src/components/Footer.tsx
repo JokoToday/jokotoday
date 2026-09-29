@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSocialLinks } from '../hooks/useSocialLinks';
+import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 
 const getSocialIcon = (iconKey: string) => {
   const iconClass = 'w-5 h-5';
@@ -39,6 +40,7 @@ type FooterProps = {
 export default function Footer({ onNavigate, variant = 'default' }: FooterProps) {
   const { language, t } = useLanguage();
   const { socialLinks } = useSocialLinks();
+  const logoUrl = usePublishedJokoLogo();
   const mineral = variant === 'mineral';
 
   const getLocationName = (id: string) => id === 'mae-rim' ? t.location.maeRimName : t.location.inTownName;
@@ -69,7 +71,7 @@ export default function Footer({ onNavigate, variant = 'default' }: FooterProps)
           <div>
             {mineral ? (
               <img
-                src="/assets/brand/joko-today-logo-v0.4.webp"
+                src={logoUrl}
                 alt="JOKO TODAY"
                 className="mb-4 h-12 w-auto object-contain mix-blend-multiply"
               />
