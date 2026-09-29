@@ -136,6 +136,14 @@ export function HomepageBuilderAdmin() {
     : DEFAULT_LOGO_URL;
 
   const siteStyle = normalizeBuilderSiteStyle(draftDocument.siteStyle);
+  const livePreviewDocument = useMemo<BuilderDocument>(() => ({
+    ...draftDocument,
+    sections: draftDocument.sections.filter(
+      (section) =>
+        section.type === 'home.hero.v1' ||
+        section.type === 'home.top-liked.v1',
+    ),
+  }), [draftDocument]);
 
   const updateSiteStyle = (nextSiteStyle: BuilderSiteStyle) => {
     setDraftDocument((current) => ({
@@ -588,8 +596,8 @@ export function HomepageBuilderAdmin() {
         <div ref={previewRef} className="scroll-mt-4 pt-4">
           <div className="max-w-7xl mx-auto px-4 pb-3 sm:px-6 lg:px-8">
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <span className="font-semibold">Draft preview.</span>{' '}
-              This is the persisted Builder draft, not the public Homepage. Use “Back to editor” to make changes or “Publish” when the draft is ready.
+              <span className="font-semibold">Editable layer preview.</span>{' '}
+              This shows the persisted Hero and Bakery Showcase that publish into the protected Homepage Experience. Operational sections such as Pickup, How It Works and About continue to come from their dedicated systems.
             </div>
           </div>
           <div
@@ -597,7 +605,7 @@ export function HomepageBuilderAdmin() {
             style={builderSiteStyleToCssVariables(siteStyle)}
           >
             <BuilderPageRenderer
-              document={draftDocument}
+              document={livePreviewDocument}
               locale={language}
               site={jokoTodayBuilderSite}
               providers={providers}
