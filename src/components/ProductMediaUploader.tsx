@@ -154,7 +154,7 @@ export function ProductMediaUploader({
         <div>
           <h4 className="text-sm font-semibold text-gray-900">Product image</h4>
           <p className="mt-1 text-xs text-gray-600">
-            JOKO standard: 1800 × 1350 px · 4:3 · JPG/WebP preferred · max {MAX_MB} MB
+            JOKO standard: 1800 × 1350 px · 4:3 · JPG/WebP preferred · max {MAX_MB} MB · metadata removed automatically
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full border border-[#55766F]/20 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#55766F]">
@@ -257,7 +257,11 @@ export function ProductMediaUploader({
                   className="inline-flex items-center gap-2 rounded-lg bg-[#55766F] px-4 py-2 text-sm font-semibold text-white hover:bg-[#45625D] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
-                  {uploading ? `Uploading ${progress}%` : 'Upload to JOKO Media'}
+                  {uploading
+                    ? progress === 0
+                      ? 'Preparing image…'
+                      : `Uploading ${progress}%`
+                    : 'Upload to JOKO Media'}
                 </button>
                 <button
                   type="button"
