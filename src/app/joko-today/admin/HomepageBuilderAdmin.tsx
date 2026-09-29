@@ -570,7 +570,7 @@ export function HomepageBuilderAdmin() {
             </div>
           </div>
           <div
-            className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86"
+            className="joko-home-shell border-y border-[#55766F]/16 bg-[#FFF9EE]/86"
             style={builderSiteStyleToCssVariables(siteStyle)}
           >
             <BuilderPageRenderer
