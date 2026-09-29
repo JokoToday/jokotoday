@@ -11,6 +11,7 @@ import { Container } from '../../../platform/design-system';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
 import HomepageLowerSections from './HomepageLowerSections';
+import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
@@ -73,8 +74,53 @@ const copy = {
 
 export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
   const { language } = useLanguage();
+  const { document: publishedDocument } = usePublishedJokoBranding();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
+  const publishedHero = publishedDocument?.sections.find(
+    (section) => section.type === 'home.hero.v1',
+  );
+  const localizedValue = (value: Record<string, string>): string =>
+    value[lang] ?? value.en ?? Object.values(value)[0] ?? '';
+
+  const defaultHeroTitle = lang === 'th'
+    ? [labels.headline1, labels.headline2, labels.headlineAccent].filter(Boolean).join('\n')
+    : [labels.headline1, `${labels.headline2} ${labels.headlineAccent}`.trim(), labels.headline3]
+        .filter(Boolean)
+        .join('\n');
+
+  const heroTitle = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.title)
+    : defaultHeroTitle;
+  const heroIntro = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.subtitle)
+    : labels.intro;
+  const productsLabel = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.primaryActionLabel)
+    : labels.products;
+  const howItWorksLabel = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.secondaryActionLabel)
+    : labels.howItWorks;
+  const bakeryAlt = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.mediaAlt)
+    : labels.bakeryAlt;
+  const heroVisible = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.visible
+    : true;
+
+  const renderHeadlineLine = (line: string, index: number) => {
+    const accent = labels.headlineAccent;
+    const accentIndex = accent ? line.indexOf(accent) : -1;
+    if (accentIndex < 0) return <span key={`${index}-${line}`} className="block">{line}</span>;
+
+    return (
+      <span key={`${index}-${line}`} className="block">
+        {line.slice(0, accentIndex)}
+        <span style={{ color: 'rgb(var(--joko-shell-orange))' }}>{accent}</span>
+        {line.slice(accentIndex + accent.length)}
+      </span>
+    );
+  };
   const showHowItWorks = () => {
     const section = window.document.getElementById('how-it-works');
     if (section) {
@@ -100,6 +146,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
   return (
     <>
+      {heroVisible && (
       <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
@@ -109,7 +156,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
             >
               <img
                 src={BAKERY_HERO}
-                alt={labels.bakeryAlt}
+                alt={bakeryAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 style={desktopHeroMask}
                 decoding="async"
@@ -133,12 +180,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     color: 'rgb(var(--joko-shell-ink))',
                   }}
                 >
-                  <span className="block">{labels.headline1}</span>
-                  <span className="block">
-                    {labels.headline2}{' '}
-                    <span style={{ color: 'rgb(var(--joko-shell-orange))' }}>{labels.headlineAccent}</span>
-                  </span>
-                  {labels.headline3 && <span className="block">{labels.headline3}</span>}
+                  {heroTitle.split('\n').map(renderHeadlineLine)}
                 </h1>
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
@@ -149,7 +191,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     color: 'rgb(var(--joko-shell-ink) / 0.78)',
                   }}
                 >
-                  {labels.intro}
+                  {heroIntro}
                 </p>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -160,7 +202,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     style={{ fontSize: 'var(--joko-size-button)' }}
                   >
                     <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
-                    {labels.products}
+                    {productsLabel}
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </button>
                   <button
@@ -170,7 +212,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     style={{ fontSize: 'var(--joko-size-button)' }}
                   >
                     <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
-                    {labels.howItWorks}
+                    {howItWorksLabel}
                   </button>
                 </div>
 
@@ -198,7 +240,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
                   <img
                     src={BAKERY_HERO}
-                    alt={labels.bakeryAlt}
+                    alt={bakeryAlt}
                     className="joko-bakery-hero-image-mobile mx-auto w-full object-contain"
                     decoding="async"
                     loading="eager"
@@ -210,9 +252,11 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
           </div>
         </Container>
       </section>
+      )}
       <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}
+        publishedDocument={publishedDocument}
       />
     </>
   );
