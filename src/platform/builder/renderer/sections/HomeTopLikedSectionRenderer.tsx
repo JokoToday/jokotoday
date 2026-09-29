@@ -58,18 +58,37 @@ export function HomeTopLikedSectionRenderer({
       <Container width={section.design.width}>
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#55766F]">From the bakery</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+            <p
+              className="font-semibold uppercase tracking-[0.2em] text-[#55766F]"
+              style={{ fontSize: 'var(--joko-size-label)' }}
+            >
+              From the bakery
+            </p>
+            <h2
+              className="mt-2 font-semibold tracking-[-0.03em]"
+              style={{
+                fontFamily: 'var(--joko-font-display)',
+                fontSize: 'var(--joko-size-section-heading)',
+                color: 'rgb(var(--joko-shell-ink))',
+              }}
+            >
               {localize(section.props.title, locale, fallbackLocale)}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62 sm:text-base">
+            <p
+              className="mt-2 max-w-2xl leading-6"
+              style={{
+                fontSize: 'var(--joko-size-body)',
+                color: 'rgb(var(--joko-shell-ink) / 0.62)',
+              }}
+            >
               {localize(section.props.subtitle, locale, fallbackLocale)}
             </p>
           </div>
           <button
             type="button"
             onClick={() => onAction?.(section.props.browseAction)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#A44F1D] hover:text-[#7E3C18]"
+            className="inline-flex items-center gap-2 font-semibold text-[#A44F1D] hover:text-[#7E3C18]"
+            style={{ fontSize: 'var(--joko-size-button)' }}
           >
             {localize(section.props.browseLabel, locale, fallbackLocale)}
             <ArrowRight className="h-4 w-4" />
