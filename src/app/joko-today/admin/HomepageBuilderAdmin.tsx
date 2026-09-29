@@ -16,8 +16,7 @@ import {
   type BuilderAction,
   type BuilderDocument,
 } from '../../../platform/builder';
-import { HomepagePuckEditorProof } from '../../../platform/builder/editor';
-import { HomepageLogoUploader } from './HomepageLogoUploader';
+import { JokoHomepageEditor } from './JokoHomepageEditor';
 import './jokoAdmin.css';
 import {
   BuilderPersistenceConflictError,
@@ -108,29 +107,6 @@ export function HomepageBuilderAdmin() {
     setDraftDocument(state.draft.document);
     setDirty(false);
     if (remountEditor) setEditorRevision((value) => value + 1);
-  };
-
-  const heroSection = useMemo(
-    () => draftDocument.sections.find((section) => section.type === 'home.hero.v1'),
-    [draftDocument],
-  );
-  const logoUrl = heroSection?.type === 'home.hero.v1'
-    ? heroSection.props.logoUrl || DEFAULT_LOGO_URL
-    : DEFAULT_LOGO_URL;
-
-  const updateLogoUrl = (nextLogoUrl: string) => {
-    setDraftDocument((current) => ({
-      ...current,
-      sections: current.sections.map((section) =>
-        section.type === 'home.hero.v1'
-          ? { ...section, props: { ...section.props, logoUrl: nextLogoUrl || DEFAULT_LOGO_URL } }
-          : section,
-      ),
-    }));
-    setDirty(true);
-    setIssues([]);
-    setNotice('Logo changed in the local Homepage Draft. Save Draft to persist it.');
-    setEditorRevision((value) => value + 1);
   };
 
   const refreshRevisions = async () => {
@@ -327,7 +303,7 @@ export function HomepageBuilderAdmin() {
             </div>
             <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Builder</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#303532]/62">
-              The Builder now mirrors the current bakery-first JOKO visual language. Draft and Publish control editable Builder content and branding; the public Homepage layout remains the source-controlled Experience composition.
+              Edit JOKO branding and Homepage content in one controlled workspace. Structure stays protected; content, typography, colors and logo presentation are Admin-editable.
             </p>
             {pageState && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -386,15 +362,26 @@ export function HomepageBuilderAdmin() {
             </button>
 
             {mode === 'edit' ? (
-              <button
-                type="button"
-                onClick={() => void handlePreview()}
-                disabled={Boolean(busy) || mediaUploading || !pageState}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
-              >
-                {busy === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                Preview draft
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => void persistDraft(draftDocument)}
+                  disabled={Boolean(busy) || mediaUploading || !pageState || !dirty}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#55766F]/25 bg-white text-sm font-semibold text-[#304B45] hover:bg-[#EEF5F2] disabled:opacity-45"
+                >
+                  {busy === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                  Save draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePreview()}
+                  disabled={Boolean(busy) || mediaUploading || !pageState}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview draft
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -420,19 +407,6 @@ export function HomepageBuilderAdmin() {
           </div>
         </div>
       </div>
-
-      {mode === 'edit' && (
-        <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-          <HomepageLogoUploader
-            value={logoUrl}
-            onChange={updateLogoUrl}
-            onUploadingChange={setMediaUploading}
-          />
-          <div className="mt-3 rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
-            Homepage structure such as live Pickup, How It Works and About remains driven by the dedicated JOKO Experience/CMS systems. The Builder controls its editable brand/content layer without duplicating operational data.
-          </div>
-        </div>
-      )}
 
       {(notice || issues.length > 0) && (
         <div className="max-w-7xl mx-auto px-4 pt-4 sm:px-6 lg:px-8">
@@ -506,26 +480,21 @@ export function HomepageBuilderAdmin() {
       )}
 
       {mode === 'edit' ? (
-        <div className="mt-4 border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
-          <HomepagePuckEditorProof
+        <div className="mt-4">
+          <JokoHomepageEditor
             key={editorRevision}
             document={draftDocument}
             locale={language}
             site={jokoTodayBuilderSite}
             providers={providers}
             onAction={handlePreviewAction}
+            onUploadingChange={setMediaUploading}
             onDocumentChange={(document) => {
               setDraftDocument(document);
               setDirty(true);
               setIssues([]);
             }}
-            onApplyDraft={async (document) => {
-              setDraftDocument(document);
-              await persistDraft(document);
-            }}
-            onAdapterError={(nextIssues) => setIssues(nextIssues)}
-            applyDraftLabel="Save Draft"
-            height="calc(100vh - 11rem)"
+            onValidationError={setIssues}
           />
         </div>
       ) : (
