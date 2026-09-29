@@ -1,9 +1,11 @@
 import { supabase } from './supabase';
 
 export const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+export const BRAND_LOGO_MAX_BYTES = 1024 * 1024;
 export const PRODUCT_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
+export const BRAND_LOGO_ACCEPTED_TYPES = PRODUCT_IMAGE_ACCEPTED_TYPES;
 
-interface ProductImageUploadTicket {
+export interface MediaUploadTicket {
   uploadUrl: string;
   publicUrl: string;
   objectKey: string;
@@ -15,7 +17,10 @@ interface UploadProductImageInput {
   productSlug: string;
 }
 
-async function requestUploadTicket(file: File, productSlug: string): Promise<ProductImageUploadTicket> {
+async function requestUploadTicket(
+  file: File,
+  payload: Record<string, unknown>,
+): Promise<MediaUploadTicket> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Your admin session has expired. Please sign in again.');
@@ -30,39 +35,43 @@ async function requestUploadTicket(file: File, productSlug: string): Promise<Pro
   const response = await fetch(`${supabaseUrl}/functions/v1/joko-media-upload-url`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey': supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: supabaseAnonKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       fileName: file.name,
       contentType: file.type,
       sizeBytes: file.size,
-      productSlug,
+      ...payload,
     }),
   });
 
-  const payload = await response.json().catch(() => null) as
-    | (Partial<ProductImageUploadTicket> & { error?: string })
+  const responsePayload = await response.json().catch(() => null) as
+    | (Partial<MediaUploadTicket> & { error?: string })
     | null;
 
   if (!response.ok) {
-    throw new Error(payload?.error || 'Could not prepare the media upload.');
+    throw new Error(responsePayload?.error || 'Could not prepare the media upload.');
   }
 
-  if (!payload?.uploadUrl || !payload.publicUrl || !payload.objectKey) {
+  if (!responsePayload?.uploadUrl || !responsePayload.publicUrl || !responsePayload.objectKey) {
     throw new Error('The media upload service returned an invalid response.');
   }
 
   return {
-    uploadUrl: payload.uploadUrl,
-    publicUrl: payload.publicUrl,
-    objectKey: payload.objectKey,
-    expiresIn: payload.expiresIn || 300,
+    uploadUrl: responsePayload.uploadUrl,
+    publicUrl: responsePayload.publicUrl,
+    objectKey: responsePayload.objectKey,
+    expiresIn: responsePayload.expiresIn || 300,
   };
 }
 
-function putFile(uploadUrl: string, file: File, onProgress?: (percent: number) => void): Promise<void> {
+function putFile(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('PUT', uploadUrl);
@@ -88,10 +97,10 @@ function putFile(uploadUrl: string, file: File, onProgress?: (percent: number) =
   });
 }
 
-export async function uploadProductImage({
-  file,
-  productSlug,
-}: UploadProductImageInput, onProgress?: (percent: number) => void): Promise<ProductImageUploadTicket> {
+export async function uploadProductImage(
+  { file, productSlug }: UploadProductImageInput,
+  onProgress?: (percent: number) => void,
+): Promise<MediaUploadTicket> {
   if (!PRODUCT_IMAGE_ACCEPTED_TYPES.includes(file.type as typeof PRODUCT_IMAGE_ACCEPTED_TYPES[number])) {
     throw new Error('Use a JPG, WebP or PNG image.');
   }
@@ -104,7 +113,29 @@ export async function uploadProductImage({
     throw new Error('Enter a valid product URL slug before uploading an image.');
   }
 
-  const ticket = await requestUploadTicket(file, slug);
+  const ticket = await requestUploadTicket(file, {
+    assetKind: 'product',
+    productSlug: slug,
+  });
+  await putFile(ticket.uploadUrl, file, onProgress);
+  return ticket;
+}
+
+export async function uploadBrandLogo(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<MediaUploadTicket> {
+  if (!BRAND_LOGO_ACCEPTED_TYPES.includes(file.type as typeof BRAND_LOGO_ACCEPTED_TYPES[number])) {
+    throw new Error('Use a JPG, WebP or PNG logo.');
+  }
+  if (file.size <= 0 || file.size > BRAND_LOGO_MAX_BYTES) {
+    throw new Error('Logo files must be 1 MB or smaller.');
+  }
+
+  const ticket = await requestUploadTicket(file, {
+    assetKind: 'brand',
+    brandSlot: 'site-logo',
+  });
   await putFile(ticket.uploadUrl, file, onProgress);
   return ticket;
 }
