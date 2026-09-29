@@ -14,6 +14,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import {
   BuilderPageRenderer,
   builderSiteStyleToCssVariables,
+  DEFAULT_BUILDER_SITE_STYLE,
   jokoTodayHomepageFixture,
   normalizeBuilderSiteStyle,
   type BuilderAction,
@@ -41,6 +42,17 @@ import { invalidatePublishedJokoLogoCache } from '../builder/usePublishedJokoLog
 type HomepageBuilderMode = 'edit' | 'preview';
 
 const DEFAULT_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
+
+const INITIAL_ADMIN_SITE_STYLE: BuilderSiteStyle = {
+  ...DEFAULT_BUILDER_SITE_STYLE,
+  typography: {
+    ...DEFAULT_BUILDER_SITE_STYLE.typography,
+    // Requested JOKO direction: move English display typography away from
+    // Playfair while keeping the published legacy fallback unchanged until
+    // this Draft is explicitly saved and published.
+    englishDisplayFont: 'noto-sans',
+  },
+};
 
 function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
@@ -167,6 +179,17 @@ export function HomepageBuilderAdmin() {
         setDirty(true);
         setEditorRevision((value) => value + 1);
         setNotice('Legacy Builder content detected. The current JOKO Homepage design has been loaded locally; choose Save Draft to adopt it.');
+      } else if (!state.draft.document.siteStyle) {
+        setPageState(state);
+        setDraftDocument({
+          ...state.draft.document,
+          siteStyle: INITIAL_ADMIN_SITE_STYLE,
+        });
+        setDirty(true);
+        setEditorRevision((value) => value + 1);
+        setNotice(
+          'Homepage presentation controls initialized in Draft. English display typography is set to Noto Sans as requested; Save Draft to keep it.',
+        );
       } else {
         applyServerState(state, true);
         setNotice('Persistent Homepage draft loaded.');
