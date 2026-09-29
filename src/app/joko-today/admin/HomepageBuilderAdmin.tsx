@@ -34,7 +34,6 @@ import { invalidatePublishedJokoLogoCache } from '../builder/usePublishedJokoLog
 
 type HomepageBuilderMode = 'edit' | 'preview';
 
-const DEFAULT_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 
 function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
