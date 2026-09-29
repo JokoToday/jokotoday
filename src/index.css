@@ -126,7 +126,7 @@
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background-color: rgb(var(--joko-shell-mineral));
+    background-color: var(--joko-brand-turquoise, rgb(var(--joko-shell-mineral)));
     background-image:
       radial-gradient(circle at 18% 8%, rgba(255,255,255,.42), transparent 25%),
       radial-gradient(circle at 78% 12%, rgba(220,233,236,.72), transparent 31%),
