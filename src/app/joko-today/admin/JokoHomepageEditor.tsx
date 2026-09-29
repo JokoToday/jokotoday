@@ -151,6 +151,10 @@ function ColorField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
@@ -162,14 +166,15 @@ function ColorField({
           className="h-10 w-12 rounded-lg border border-[#55766F]/20 bg-white p-1"
         />
         <input
-          value={value}
+          value={draft}
           aria-label={`${label} hex value`}
           onChange={(event) => {
             const next = event.target.value.toUpperCase();
+            setDraft(next);
             if (/^#[0-9A-F]{6}$/.test(next)) onChange(next);
           }}
-          onBlur={(event) => {
-            if (!/^#[0-9A-F]{6}$/i.test(event.target.value)) event.currentTarget.value = value;
+          onBlur={() => {
+            if (!/^#[0-9A-F]{6}$/i.test(draft)) setDraft(value);
           }}
           className="min-w-0 flex-1 rounded-xl border border-[#55766F]/20 bg-white px-3 py-2 font-mono text-xs text-[#303532]/70"
         />
