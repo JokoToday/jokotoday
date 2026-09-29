@@ -64,6 +64,7 @@ const STANDALONE_PAGE_PATHS: Record<string, string> = {
   admin: '/admin',
   creative: '/creative',
   staff: '/staff',
+  'customer-desk': '/customer-desk',
   pickup: '/pickup',
   'walk-in': '/walk-in',
 };
@@ -389,8 +390,9 @@ function AppContent() {
         return <CreativeLabPage onNavigate={handleNavigate} />;
       case 'staff':
         return <StaffLoginPage onNavigate={handleNavigate} />;
+      case 'customer-desk':
       case 'staff-scanner':
-        return <StaffScannerPage />;
+        return <StaffScannerPage onNavigate={handleNavigate} />;
       case 'pickup':
         return <PickupDeskPage onNavigate={handleNavigate} />;
       case 'walk-in':
@@ -435,6 +437,7 @@ function AppContent() {
     currentPage === 'creative' ||
     currentPage === 'staff' ||
     currentPage === 'staff-scanner' ||
+    currentPage === 'customer-desk' ||
     currentPage === 'pickup' ||
     currentPage === 'walk-in' ||
     currentPage === 'scan' ||

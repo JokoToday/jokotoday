@@ -62,6 +62,8 @@ type Props = {
   customerName?: string | null;
   language: StaffLanguage;
   refreshKey?: number;
+  defaultExpanded?: boolean;
+  readOnly?: boolean;
 };
 
 const ACTIVE_STATUSES = new Set(['pending', 'confirmed', 'ready']);
@@ -71,12 +73,19 @@ const money = (value: unknown) => {
   return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
 };
 
-export function CustomerPurchaseHistory({ customerId, customerName, language, refreshKey = 0 }: Props) {
+export function CustomerPurchaseHistory({
+  customerId,
+  customerName,
+  language,
+  refreshKey = 0,
+  defaultExpanded = false,
+  readOnly = false,
+}: Props) {
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(defaultExpanded);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
@@ -481,7 +490,7 @@ export function CustomerPurchaseHistory({ customerId, customerName, language, re
                               </Detail>
                             )}
 
-                            {!isCancelled && order.payment_status === 'paid' && !paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
+                            {!readOnly && !isCancelled && order.payment_status === 'paid' && !paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
                               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                                 <p className="text-sm font-bold text-amber-900">
                                   {language === 'en' ? 'Complete payment record' : 'บันทึกการชำระเงินให้สมบูรณ์'}
