@@ -3,6 +3,7 @@ import { X, AlertCircle, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../lib/cmsService';
 import { getPickupDays, PickupDay } from '../lib/availabilityService';
+import { ProductMediaUploader } from './ProductMediaUploader';
 
 interface ProductFormProps {
   product: CMSProduct | null;
@@ -108,6 +109,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
 
   useEffect(() => {
@@ -125,6 +127,19 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
     if (!formData.slug.trim()) newErrors.slug = 'Slug is required';
+    if (formData.image.trim()) {
+      try {
+        const imageUrl = new URL(formData.image.trim());
+        if (
+          imageUrl.hostname === 'media.joko.today' &&
+          (imageUrl.pathname === '/' || imageUrl.pathname.endsWith('/'))
+        ) {
+          newErrors.image = 'JOKO Media requires a full image URL with a filename, not a folder URL.';
+        }
+      } catch {
+        newErrors.image = 'Image URL must be a valid URL.';
+      }
+    }
     if (formData.public_code && !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(formData.public_code)) {
       newErrors.public_code = 'Use 3–32 uppercase letters, numbers, hyphens or underscores';
     }
@@ -382,15 +397,16 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               ))}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Image URL</label>
-              <input type="url" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="https://example.com/image.jpg" />
-              {formData.image && (
-                <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                  <img src={formData.image} alt="Preview" className="h-32 w-32 object-cover rounded" onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="12" text-anchor="middle" dy=".3em" fill="%239ca3af"%3EImage Error%3C/text%3E%3C/svg%3E'; }} />
-                </div>
-              )}
-            </div>
+            <ProductMediaUploader
+              productSlug={formData.slug}
+              value={formData.image}
+              onChange={(image) => {
+                setFormData((current) => ({ ...current, image }));
+                setErrors((current) => ({ ...current, image: '' }));
+              }}
+              onUploadingChange={setMediaUploading}
+            />
+            {errors.image && <p className="mt-2 text-xs font-medium text-red-600">{errors.image}</p>}
 
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
               <label className="block text-sm font-medium text-gray-800 mb-1">
@@ -507,7 +523,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}</button>
+            <button type="submit" disabled={loading || mediaUploading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{mediaUploading ? 'Finish image upload first' : loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}</button>
           </div>
         </form>
       </div>
