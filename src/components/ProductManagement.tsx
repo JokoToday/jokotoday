@@ -3,6 +3,7 @@ import { X, AlertCircle, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../lib/cmsService';
 import { getPickupDays, PickupDay } from '../lib/availabilityService';
+import { ProductMediaUploader } from './ProductMediaUploader';
 
 interface ProductFormProps {
   product: CMSProduct | null;
@@ -382,15 +383,11 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               ))}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Image URL</label>
-              <input type="url" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="https://example.com/image.jpg" />
-              {formData.image && (
-                <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                  <img src={formData.image} alt="Preview" className="h-32 w-32 object-cover rounded" onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23f3f4f6" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="12" text-anchor="middle" dy=".3em" fill="%239ca3af"%3EImage Error%3C/text%3E%3C/svg%3E'; }} />
-                </div>
-              )}
-            </div>
+            <ProductMediaUploader
+              productSlug={formData.slug}
+              value={formData.image}
+              onChange={(image) => setFormData((current) => ({ ...current, image }))}
+            />
 
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
               <label className="block text-sm font-medium text-gray-800 mb-1">
