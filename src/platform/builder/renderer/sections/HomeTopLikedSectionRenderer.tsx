@@ -58,11 +58,11 @@ export function HomeTopLikedSectionRenderer({
       <Container width={section.design.width}>
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#55766F]">From the bakery</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+            <p className="font-semibold uppercase tracking-[0.2em] text-[#55766F]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>From the bakery</p>
+            <h2 className="mt-2 font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
               {localize(section.props.title, locale, fallbackLocale)}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62 sm:text-base">
+            <p className="mt-2 max-w-2xl leading-6 text-[#303532]/62" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
               {localize(section.props.subtitle, locale, fallbackLocale)}
             </p>
           </div>
