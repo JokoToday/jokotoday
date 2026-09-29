@@ -14,7 +14,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import {
   BuilderPageRenderer,
   builderSiteStyleToCssVariables,
-  DEFAULT_BUILDER_SITE_STYLE,
+  EDITOR_DEFAULT_BUILDER_SITE_STYLE,
   jokoTodayHomepageFixture,
   normalizeBuilderSiteStyle,
   type BuilderAction,
@@ -43,16 +43,7 @@ type HomepageBuilderMode = 'edit' | 'preview';
 
 const DEFAULT_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 
-const INITIAL_ADMIN_SITE_STYLE: BuilderSiteStyle = {
-  ...DEFAULT_BUILDER_SITE_STYLE,
-  typography: {
-    ...DEFAULT_BUILDER_SITE_STYLE.typography,
-    // Requested JOKO direction: move English display typography away from
-    // Playfair while keeping the published legacy fallback unchanged until
-    // this Draft is explicitly saved and published.
-    englishDisplayFont: 'noto-sans',
-  },
-};
+const INITIAL_ADMIN_SITE_STYLE: BuilderSiteStyle = EDITOR_DEFAULT_BUILDER_SITE_STYLE;
 
 function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
