@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Eye,
   EyeOff,
@@ -49,7 +49,7 @@ function withLocale(value: LocalizedText, locale: string, next: string): Localiz
   return { ...value, [locale]: next };
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children }: { children: ReactNode }) {
   return <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">{children}</label>;
 }
 
@@ -131,11 +131,9 @@ function ColorField({
         />
         <input
           value={value}
-          onChange={(event) => {
-            const next = event.target.value.toUpperCase();
-            if (/^#[0-9A-F]{0,6}$/.test(next)) onChange(next);
-          }}
-          className="min-w-0 flex-1 rounded-xl border border-[#55766F]/20 bg-white px-3 py-2 font-mono text-xs"
+          readOnly
+          aria-label={`${label} hex value`}
+          className="min-w-0 flex-1 rounded-xl border border-[#55766F]/20 bg-white px-3 py-2 font-mono text-xs text-[#303532]/70"
         />
       </div>
     </div>
