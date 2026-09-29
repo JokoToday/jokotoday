@@ -168,7 +168,6 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
   };
 
   const generatePublicCode = async () => {
-    if (product?.public_code) return;
     if (!formData.name_en.trim()) {
       setErrors((current) => ({
         ...current,
@@ -192,6 +191,13 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
       setGeneratingPublicCode(false);
     }
   };
+
+  const originalPublicCode = String(product?.public_code || '').trim().toUpperCase();
+  const isQrRotationPending = Boolean(
+    originalPublicCode &&
+    formData.public_code &&
+    formData.public_code !== originalPublicCode,
+  );
 
   const canonicalAvailableDays = (): string[] => {
     return Array.from(new Set(formData.available_days.map((storedValue) => {
@@ -452,6 +458,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
                   className={`min-w-0 flex-1 px-3 py-2 border rounded-lg text-sm font-mono uppercase ${errors.public_code ? 'border-red-300 bg-red-50' : 'border-gray-300'} ${product?.public_code ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : 'focus:ring-2 focus:ring-emerald-500 focus:border-transparent'}`}
                   placeholder="e.g. AC101"
                 />
+
                 {!product?.public_code && !formData.public_code && (
                   <button
                     type="button"
@@ -463,15 +470,47 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
                     {generatingPublicCode ? 'Creating…' : 'Create Product QR'}
                   </button>
                 )}
+
+                {product?.public_code && !isQrRotationPending && (
+                  <button
+                    type="button"
+                    disabled={generatingPublicCode}
+                    onClick={() => void generatePublicCode()}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {generatingPublicCode ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+                    {generatingPublicCode ? 'Creating…' : 'Rotate QR'}
+                  </button>
+                )}
+
+                {isQrRotationPending && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((current) => ({ ...current, public_code: originalPublicCode }))}
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel rotation
+                  </button>
+                )}
               </div>
               {errors.public_code && <p className="text-red-600 text-xs mt-1">{errors.public_code}</p>}
-              <p className="text-xs text-gray-600 mt-2">
-                {product?.public_code
-                  ? 'Permanent once assigned. Use the Products table → QR action to preview, download and print the generated code.'
-                  : formData.public_code
-                    ? `${formData.public_code} is ready. Save the product to make this permanent; until then you can still edit or clear it.`
-                    : 'Optional. Create one only for real products that need a permanent printed /p/CODE identity. Sample products can stay without a QR.'}
-              </p>
+
+              {isQrRotationPending ? (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <p className="font-semibold">New QR ready: {formData.public_code}</p>
+                  <p className="mt-1">
+                    Save the product to activate it. The old code {originalPublicCode} will remain valid as a historical alias, so existing printed labels will still open this product.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-600 mt-2">
+                  {product?.public_code
+                    ? `${originalPublicCode} is the current QR. Rotate only when you need a new printed identity; old codes remain valid and are never recycled.`
+                    : formData.public_code
+                      ? `${formData.public_code} is ready. Save the product to make this permanent; until then you can still edit or clear it.`
+                      : 'Optional. Create one only for real products that need a permanent printed /p/CODE identity. Sample products can stay without a QR.'}
+                </p>
+              )}
             </div>
           </div>
 
