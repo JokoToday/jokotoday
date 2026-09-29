@@ -41,6 +41,30 @@ function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
 }
 
+function isLegacyHomepageBuilderDocument(document: BuilderDocument): boolean {
+  const hero = document.sections.find((section) => section.type === 'home.hero.v1');
+  const bakery = document.sections.find((section) => section.type === 'home.top-liked.v1');
+  return hero?.type === 'home.hero.v1'
+    && bakery?.type === 'home.top-liked.v1'
+    && hero.props.title.en === 'Artisan Bakery in Chiang Mai'
+    && bakery.props.title.en === 'Most Loved Right Now';
+}
+
+function currentHomepageSeedFrom(document: BuilderDocument): BuilderDocument {
+  const seed = cloneSeedDocument();
+  const previousHero = document.sections.find((section) => section.type === 'home.hero.v1');
+  if (previousHero?.type !== 'home.hero.v1' || !previousHero.props.logoUrl) return seed;
+
+  return {
+    ...seed,
+    sections: seed.sections.map((section) =>
+      section.type === 'home.hero.v1'
+        ? { ...section, props: { ...section.props, logoUrl: previousHero.props.logoUrl } }
+        : section,
+    ),
+  };
+}
+
 function modeFromLocation(): HomepageBuilderMode {
   return window.location.pathname === '/admin/homepage/preview' ? 'preview' : 'edit';
 }
@@ -119,9 +143,17 @@ export function HomepageBuilderAdmin() {
     setIssues([]);
     try {
       const state = await loadOrInitializeHomepageBuilderState(cloneSeedDocument());
-      applyServerState(state, true);
+      if (isLegacyHomepageBuilderDocument(state.draft.document)) {
+        setPageState(state);
+        setDraftDocument(currentHomepageSeedFrom(state.draft.document));
+        setDirty(true);
+        setEditorRevision((value) => value + 1);
+        setNotice('Legacy Builder content detected. The current JOKO Homepage design has been loaded locally; choose Save Draft to adopt it.');
+      } else {
+        applyServerState(state, true);
+        setNotice('Persistent Homepage draft loaded.');
+      }
       await refreshRevisions();
-      setNotice('Persistent Homepage draft loaded.');
     } catch (error) {
       setIssues([
         error instanceof Error
@@ -264,7 +296,7 @@ export function HomepageBuilderAdmin() {
     setDraftDocument(cloneSeedDocument());
     setDirty(true);
     setIssues([]);
-    setNotice('Source-controlled Homepage seed loaded locally. Choose Save Draft to persist it.');
+    setNotice('Current JOKO Homepage design loaded locally. Choose Save Draft to persist it.');
     setEditorRevision((value) => value + 1);
     setMode('edit');
   };
@@ -346,7 +378,7 @@ export function HomepageBuilderAdmin() {
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <RotateCcw className="w-4 h-4" />
-              Reset to seed
+              Load current design
             </button>
 
             {mode === 'edit' ? (
