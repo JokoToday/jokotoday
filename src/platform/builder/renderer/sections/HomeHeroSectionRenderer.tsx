@@ -61,8 +61,9 @@ export function HomeHeroSectionRenderer({
 
   return (
     <section
-      className="relative overflow-hidden bg-[#DAEBE8] py-3 sm:py-5"
+      className="relative overflow-hidden py-3 sm:py-5"
       style={{
+        backgroundColor: 'var(--joko-brand-turquoise, #DAEBE8)',
         backgroundImage:
           "radial-gradient(ellipse at 12% 8%, rgba(249,246,237,.25) 0 13%, transparent 33%), radial-gradient(ellipse at 86% 9%, rgba(235,244,245,.24) 0 20%, transparent 42%), url('/assets/backgrounds/joko-shell-connections-v0.21-strong.svg')",
         backgroundRepeat: 'no-repeat',
@@ -72,31 +73,31 @@ export function HomeHeroSectionRenderer({
     >
       <Container width={section.design.width}>
         <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
-          <img src={logoUrl} alt={site.name} className="h-[3.6rem] w-auto object-contain mix-blend-multiply" />
-          <div className="ml-auto hidden gap-7 text-xs font-medium text-[#303532]/72 sm:flex">
+          <img src={logoUrl} alt={site.name} className="w-auto object-contain mix-blend-multiply" style={{ height: 'calc(3rem * var(--joko-logo-scale, 1.2))' }} />
+          <div className="ml-auto hidden gap-7 font-medium text-[#303532]/72 sm:flex" style={{ fontSize: 'var(--joko-size-nav, 16px)' }}>
             {chrome.nav.map((label) => <span key={label}>{label}</span>)}
           </div>
         </div>
 
         <div className="relative grid min-h-[34rem] gap-7 py-8 lg:grid-cols-[minmax(19rem,.72fr)_minmax(33rem,1.35fr)] lg:items-start">
           <div className="relative z-20 max-w-[31rem] lg:pt-7">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+            <p className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>
               {chrome.eyebrow}
             </p>
             <h1
-              className="mt-4 whitespace-pre-line text-[2.7rem] font-bold leading-[.93] tracking-[-0.042em] text-[#292D2B] sm:text-[3.5rem] lg:text-[4rem]"
-              style={{ fontFamily: 'var(--joko-font-display)' }}
+              className="mt-4 whitespace-pre-line font-bold leading-[.93] tracking-[-0.042em]"
+              style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'clamp(2.7rem, 5vw, var(--joko-size-hero, 65px))', color: 'var(--joko-brand-text, #292D2B)' }}
             >
               {title}
             </h1>
             <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
-            <p className="mt-5 text-[15px] leading-7 text-[#303532]/78 sm:text-base">{subtitle}</p>
+            <p className="mt-5 leading-7 text-[#303532]/78" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>{subtitle}</p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => onAction?.(section.props.primaryAction)}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#C76624] px-6 py-3.5 text-base font-semibold text-white shadow-[0_8px_20px_rgba(164,79,29,.14)] transition hover:bg-[#A95122]"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold text-white shadow-[0_8px_20px_rgba(164,79,29,.14)] transition hover:brightness-95" style={{ background: 'var(--joko-brand-accent, #C76624)', fontSize: 'var(--joko-size-button, 16px)' }}
               >
                 {localize(section.props.primaryActionLabel, locale, fallbackLocale)}
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -104,7 +105,7 @@ export function HomeHeroSectionRenderer({
               <button
                 type="button"
                 onClick={() => onAction?.(section.props.secondaryAction)}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/45 bg-[#F4EFE5]/80 px-6 py-3 text-base font-semibold text-[#303532] transition hover:bg-[#F4EFE5]"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/45 bg-[#F4EFE5]/80 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
               >
                 <PlayCircle className="mr-2 h-5 w-5" strokeWidth={1.6} />
                 {localize(section.props.secondaryActionLabel, locale, fallbackLocale)}
