@@ -86,7 +86,7 @@ export function BuilderPageRenderer({
   }
 
   return (
-    <PageCanvas className="bg-gradient-to-b from-primary-50 to-background">
+    <PageCanvas className="bg-[#F4EFE5]">
       {validation.value.sections
         .filter((section) => section.visible)
         .map((section) => (
