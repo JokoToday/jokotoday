@@ -14,18 +14,22 @@ export function jokoEmailLogoAttachment() {
 }
 
 export const JOKO_EMAIL_THEME = {
-  paper: "#F7EAD7",
-  surface: "#FFF9EF",
-  sage: "#C7C79A",
-  sageDark: "#52603B",
-  charcoal: "#24231F",
-  muted: "#5A554A",
-  subtle: "#8C8477",
-  border: "#E0CBAA",
-  ochre: "#C45A00",
-  ochreSoft: "#F0DBBB",
-  note: "#F0DBBB",
-  successSoft: "#EEF0D9",
+  paper: "#F4EFE5",
+  surface: "#FFF9EE",
+  sage: "#DAEBE8",
+  sageDark: "#304B45",
+  charcoal: "#303532",
+  muted: "#59615D",
+  subtle: "#7B837F",
+  border: "#B9D1CC",
+  ochre: "#C76624",
+  ochreSoft: "#F3D8C4",
+  note: "#D9ECE9",
+  successSoft: "#E8F1DF",
+  mineral: "#55766F",
+  mineralDark: "#304B45",
+  turquoise: "#DAEBE8",
+  turquoiseSoft: "#EEF5F2",
 } as const;
 
 export function escapeHtml(value: unknown): string {
@@ -61,15 +65,15 @@ export function renderPrimaryButton(href: string, label: string): string {
   return `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
       <tr>
-        <td bgcolor="${JOKO_EMAIL_THEME.ochre}" style="border-radius:7px;text-align:center;">
-          <a href="${escapeHtml(href)}" style="display:inline-block;padding:13px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.2;">${escapeHtml(label)}</a>
+        <td bgcolor="${JOKO_EMAIL_THEME.ochre}" style="border-radius:14px;text-align:center;">
+          <a href="${escapeHtml(href)}" style="display:inline-block;padding:14px 25px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;line-height:1.2;">${escapeHtml(label)}</a>
         </td>
       </tr>
     </table>`;
 }
 
 export function renderSecondaryLink(href: string, label: string): string {
-  return `<a href="${escapeHtml(href)}" style="color:${JOKO_EMAIL_THEME.ochre};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="color:${JOKO_EMAIL_THEME.mineral};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">${escapeHtml(label)}</a>`;
 }
 
 interface TransactionalEmailShellOptions {
@@ -118,19 +122,28 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
   <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:${theme.paper};">
     <tr>
       <td align="center" style="padding:28px 16px;">
-        <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${maxWidth}px;background:${theme.surface};border:1px solid ${theme.border};border-radius:14px;overflow:hidden;">
+        <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${maxWidth}px;background:${theme.surface};border:1px solid ${theme.border};border-radius:24px;overflow:hidden;">
           <tr>
-            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:22px 30px 14px;text-align:center;">
+            <td bgcolor="${theme.turquoise}" style="background:${theme.turquoise};padding:24px 30px 15px;text-align:center;">
               <div style="font-size:25px;line-height:1.12;font-weight:800;letter-spacing:3.2px;color:${theme.charcoal};font-family:${displayFontFamily};">${escapeHtml(brandText)}</div>
               <div style="margin:9px auto 0;line-height:0;font-size:0;text-align:center;">
                 <img src="${escapeHtml(logoUrl)}" width="86" alt="${escapeHtml(logoAlt)}" role="presentation" aria-hidden="true" style="display:block;width:86px;max-width:24%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;color:transparent;font-size:0;line-height:0;" />
               </div>
-              <div style="margin-top:7px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.ochre};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
+              <div style="margin-top:7px;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:1.2px;color:${theme.mineral};font-family:${displayFontFamily};">${escapeHtml(eyebrow)}</div>
             </td>
           </tr>
           <tr>
-            <td bgcolor="${theme.sage}" style="background:${theme.sage};padding:0;line-height:0;font-size:0;">
-              <div style="height:30px;background:${theme.surface};border-radius:50% 50% 0 0 / 100% 100% 0 0;line-height:30px;font-size:0;">&nbsp;</div>
+            <td bgcolor="${theme.turquoise}" style="background:${theme.turquoise};padding:0 24px 2px;line-height:0;font-size:0;">
+              <table width="100%" role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="13%" style="height:9px;border-bottom:2px solid ${theme.mineral};font-size:0;line-height:0;">&nbsp;</td>
+                  <td width="21%" style="height:13px;border-bottom:1px solid ${theme.mineral};font-size:0;line-height:0;">&nbsp;</td>
+                  <td width="18%" style="height:7px;border-bottom:2px solid ${theme.mineral};font-size:0;line-height:0;">&nbsp;</td>
+                  <td width="27%" style="height:12px;border-bottom:1px solid ${theme.mineral};font-size:0;line-height:0;">&nbsp;</td>
+                  <td width="21%" style="height:8px;border-bottom:2px solid ${theme.mineral};font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+              <div style="height:26px;background:${theme.surface};border-radius:52% 48% 0 0 / 100% 100% 0 0;line-height:26px;font-size:0;">&nbsp;</div>
             </td>
           </tr>
           <tr>
@@ -143,7 +156,7 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
             <td style="padding:20px 32px;text-align:center;background:${theme.paper};border-top:1px solid ${theme.border};">
               <div style="font-size:12px;line-height:1.6;color:${theme.subtle};">${escapeHtml(footerText)}</div>
               <div style="margin-top:3px;font-size:12px;line-height:1.6;">
-                <a href="${escapeHtml(JOKO_SITE_URL)}" style="color:${theme.ochre};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">joko.today</a>
+                <a href="${escapeHtml(JOKO_SITE_URL)}" style="color:${theme.mineral};font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;">joko.today</a>
               </div>
             </td>
           </tr>
