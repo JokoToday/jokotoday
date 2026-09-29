@@ -262,7 +262,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
           <button
             type="submit"
             disabled={submitting || otp.length !== 6}
-            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="joko-admin-primary-button w-full py-3 flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             {submitting ? copy.verifying : copy.verify}
@@ -338,6 +338,7 @@ function AdminGateShell({
                 ไทย
               </button>
             </div>
+          </div>
           </div>
           <div className="mb-5 border-t border-[#55766F]/14 pt-4">
             <p className="joko-admin-eyebrow">Private workspace</p>
