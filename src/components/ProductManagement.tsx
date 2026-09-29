@@ -109,6 +109,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
 
   useEffect(() => {
@@ -387,6 +388,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
               productSlug={formData.slug}
               value={formData.image}
               onChange={(image) => setFormData((current) => ({ ...current, image }))}
+              onUploadingChange={setMediaUploading}
             />
 
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
@@ -504,7 +506,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
 
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={loading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}</button>
+            <button type="submit" disabled={loading || mediaUploading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{mediaUploading ? 'Finish image upload first' : loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}</button>
           </div>
         </form>
       </div>
