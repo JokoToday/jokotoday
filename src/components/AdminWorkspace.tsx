@@ -1,5 +1,18 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { BookOpen, CalendarDays, Gift, LayoutDashboard, Monitor, PackageCheck, Palette, QrCode, Rocket, Sparkles, Users } from 'lucide-react';
+import {
+  BookOpen,
+  CalendarDays,
+  ExternalLink,
+  Gift,
+  LayoutDashboard,
+  Monitor,
+  PackageCheck,
+  Palette,
+  QrCode,
+  Rocket,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
 import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CuriosityManagement } from './CuriosityManagement';
@@ -10,6 +23,7 @@ import { ProductPickupAvailabilityManagement } from './ProductPickupAvailability
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
 import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
+import '../app/joko-today/admin/jokoAdmin.css';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
@@ -31,11 +45,36 @@ type WorkspaceTab =
   | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
-  if (window.location.pathname.startsWith('/admin/curiosities')) return 'curiosities';
-  if (window.location.pathname.startsWith('/admin/qr-pass')) return 'qr-pass';
-  if (window.location.pathname.startsWith('/admin/notebook')) return 'notebook-content';
-  if (window.location.pathname.startsWith('/admin/homepage')) return 'homepage';
+  const path = window.location.pathname;
+  if (path.startsWith('/admin/homepage')) return 'homepage';
+  if (path.startsWith('/admin/curiosities')) return 'curiosities';
+  if (path.startsWith('/admin/notebook')) return 'notebook-content';
+  if (path.startsWith('/admin/customer-experience')) return 'customer-experience';
+  if (path.startsWith('/admin/qr-pass')) return 'qr-pass';
+  if (path.startsWith('/admin/pickup-products')) return 'pickup-products';
+  if (path.startsWith('/admin/pickup-dates')) return 'pickup-dates';
+  if (path.startsWith('/admin/pickup-rollout')) return 'pickup-rollout';
+  if (path.startsWith('/admin/commerce-intelligence')) return 'commerce-intelligence';
+  if (path.startsWith('/admin/loyalty')) return 'loyalty';
   return 'cms';
+}
+
+function workspacePath(tab: WorkspaceTab): string {
+  switch (tab) {
+    case 'homepage': return '/admin/homepage';
+    case 'curiosities': return '/admin/curiosities';
+    case 'notebook-content': return '/admin/notebook';
+    case 'customer-experience': return '/admin/customer-experience';
+    case 'qr-pass': return '/admin/qr-pass';
+    case 'pickup-products': return '/admin/pickup-products';
+    case 'pickup-dates': return '/admin/pickup-dates';
+    case 'pickup-rollout': return '/admin/pickup-rollout';
+    case 'commerce-intelligence': return '/admin/commerce-intelligence';
+    case 'loyalty': return '/admin/loyalty';
+    case 'cms':
+    default:
+      return '/admin';
+  }
 }
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
@@ -49,166 +88,210 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
 
   const selectWorkspaceTab = (tab: WorkspaceTab) => {
     setActiveTab(tab);
-    const targetPath = tab === 'homepage'
-      ? '/admin/homepage'
-      : tab === 'curiosities'
-      ? '/admin/curiosities'
-      : tab === 'notebook-content'
-      ? '/admin/notebook'
-      : tab === 'qr-pass'
-      ? '/admin/qr-pass'
-      : '/admin';
+    const targetPath = workspacePath(tab);
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }
   };
 
-  const tabClass = (tab: WorkspaceTab) => `inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-    activeTab === tab
-      ? 'bg-primary-50 text-primary-700'
-      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-  }`;
+  const tabClass = (tab: WorkspaceTab) =>
+    `joko-admin-nav-chip ${activeTab === tab ? 'joko-admin-nav-chip--active' : ''}`;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-2 py-2 overflow-x-auto">
-            <button type="button" onClick={() => selectWorkspaceTab('cms')} className={tabClass('cms')}>
-              <LayoutDashboard className="w-4 h-4" />
-              CMS & Recurring Setup
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('homepage')} className={tabClass('homepage')}>
-              <Monitor className="w-4 h-4" />
-              Website / Homepage
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('curiosities')} className={tabClass('curiosities')}>
-              <Sparkles className="w-4 h-4" />
-              Curiosities
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('notebook-content')} className={tabClass('notebook-content')}>
-              <BookOpen className="w-4 h-4" />
-              Legacy Notebook Content
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('creative')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap border border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-100 hover:text-stone-900 transition-colors"
-            >
-              <Palette className="w-4 h-4" />
-              Open Creative Lab
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('customer-experience')} className={tabClass('customer-experience')}>
-              <Users className="w-4 h-4" />
-              Customer Experience
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('qr-pass')} className={tabClass('qr-pass')}>
-              <QrCode className="w-4 h-4" />
-              QR Pass Designer
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('pickup-products')} className={tabClass('pickup-products')}>
-              <PackageCheck className="w-4 h-4" />
-              Product Pickup Capacity
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('pickup-dates')} className={tabClass('pickup-dates')}>
-              <CalendarDays className="w-4 h-4" />
-              Concrete Pickup Dates
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('pickup-rollout')} className={tabClass('pickup-rollout')}>
-              <Rocket className="w-4 h-4" />
-              Pickup v2 Rollout
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('commerce-intelligence')} className={tabClass('commerce-intelligence')}>
-              <Sparkles className="w-4 h-4" />
-              Commerce Intelligence
-            </button>
-            <button type="button" onClick={() => selectWorkspaceTab('loyalty')} className={tabClass('loyalty')}>
-              <Gift className="w-4 h-4" />
-              Loyalty & Rewards
-            </button>
+    <div className="joko-admin-shell">
+      <header className="joko-admin-topbar sticky top-0 z-40">
+        <div className="mx-auto max-w-[92rem] px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+            <div className="flex shrink-0 items-center gap-4">
+              <button
+                type="button"
+                onClick={() => onNavigate('home')}
+                className="rounded-xl focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#CFE3DF]"
+                aria-label="Open JOKO TODAY"
+              >
+                <img
+                  src="/assets/brand/joko-today-logo-v0.4.webp"
+                  alt="JOKO TODAY"
+                  className="joko-admin-brand-logo"
+                />
+              </button>
+              <div className="border-l border-[#55766F]/20 pl-4">
+                <p className="joko-admin-eyebrow">Workspace</p>
+                <p className="joko-admin-title text-xl font-semibold">Admin</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate('home')}
+                className="joko-admin-secondary-button ml-1 hidden items-center gap-2 px-3 py-2 text-xs sm:inline-flex"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open site
+              </button>
+            </div>
+
+            <nav className="min-w-0 flex-1 overflow-x-auto xl:ml-5" aria-label="JOKO Admin">
+              <div className="flex min-w-max gap-1.5 py-1">
+                <button type="button" onClick={() => selectWorkspaceTab('cms')} className={tabClass('cms')}>
+                  <LayoutDashboard className="h-4 w-4" />
+                  Content & Commerce
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('homepage')} className={tabClass('homepage')}>
+                  <Monitor className="h-4 w-4" />
+                  Website / Homepage
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('customer-experience')} className={tabClass('customer-experience')}>
+                  <Users className="h-4 w-4" />
+                  Customer Experience
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('qr-pass')} className={tabClass('qr-pass')}>
+                  <QrCode className="h-4 w-4" />
+                  QR Pass
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('pickup-products')} className={tabClass('pickup-products')}>
+                  <PackageCheck className="h-4 w-4" />
+                  Pickup Capacity
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('pickup-dates')} className={tabClass('pickup-dates')}>
+                  <CalendarDays className="h-4 w-4" />
+                  Pickup Dates
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('pickup-rollout')} className={tabClass('pickup-rollout')}>
+                  <Rocket className="h-4 w-4" />
+                  Pickup Rollout
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('commerce-intelligence')} className={tabClass('commerce-intelligence')}>
+                  <Sparkles className="h-4 w-4" />
+                  Commerce Intelligence
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('loyalty')} className={tabClass('loyalty')}>
+                  <Gift className="h-4 w-4" />
+                  Loyalty & Rewards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('creative')}
+                  className="joko-admin-nav-chip border border-[#55766F]/18 bg-[#F4EFE5]/55"
+                >
+                  <Palette className="h-4 w-4" />
+                  Creative Lab
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('curiosities')} className={tabClass('curiosities')}>
+                  <Sparkles className="h-4 w-4" />
+                  Curiosities
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('notebook-content')} className={tabClass('notebook-content')}>
+                  <BookOpen className="h-4 w-4" />
+                  Legacy Notebook
+                </button>
+              </div>
+            </nav>
           </div>
         </div>
+      </header>
+
+      <main className="joko-admin-content pb-14">
+        {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
+
+        {activeTab === 'homepage' && (
+          <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
+            <HomepageBuilderAdmin />
+          </Suspense>
+        )}
+
+        {activeTab === 'curiosities' && (
+          <AdminSection
+            eyebrow="Editorial system"
+            title="Curiosity Publishing"
+            description="Create, review and publish canonical Curiosity Episodes. This capability remains available even though Curiosity is not part of the current public bakery homepage."
+          >
+            <CuriosityManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'notebook-content' && (
+          <AdminSection
+            eyebrow="Compatibility"
+            title="Legacy Notebook / Homepage Content"
+            description="The Notebook system is retained. This editor remains available for compatibility and future editorial work; it is not part of the current public bakery homepage."
+          >
+            <NotebookContentManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'customer-experience' && <CustomerExperienceManagement />}
+        {activeTab === 'qr-pass' && <QrPassDesignerManagement />}
+
+        {activeTab === 'pickup-products' && (
+          <AdminSection
+            eyebrow="Pickup"
+            title="Product Pickup Capacity"
+            description="Manage product availability, recurring shared capacity and date-specific exceptions."
+          >
+            <ProductPickupAvailabilityManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'pickup-dates' && (
+          <AdminSection
+            eyebrow="Pickup"
+            title="Concrete Pickup Dates"
+            description="Manage materialized pickup dates and date-specific exceptions."
+          >
+            <div className="joko-admin-paper-card p-5 sm:p-6">
+              <ConcretePickupDateManagement />
+            </div>
+          </AdminSection>
+        )}
+
+        {activeTab === 'pickup-rollout' && (
+          <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <PickupV2RolloutManagement />
+          </div>
+        )}
+
+        {activeTab === 'commerce-intelligence' && (
+          <AdminSection
+            eyebrow="Merchandising"
+            title="Commerce Intelligence"
+            description="Configure pickup-aware recommendations and merchandising priorities without hard-coding commercial rules."
+          >
+            <CommerceIntelligenceManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'loyalty' && (
+          <AdminSection
+            eyebrow="Customer value"
+            title="Loyalty & Rewards"
+            description="Configure how customers earn points and what those points can be exchanged for."
+          >
+            <LoyaltyRewardsManagement />
+          </AdminSection>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function AdminSection({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-7">
+        <p className="joko-admin-eyebrow">{eyebrow}</p>
+        <h1 className="joko-admin-title mt-1 text-3xl font-semibold">{title}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#303532]/62">{description}</p>
       </div>
-
-      {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
-
-      {activeTab === 'homepage' && (
-        <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
-          <HomepageBuilderAdmin />
-        </Suspense>
-      )}
-
-      {activeTab === 'curiosities' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Curiosity Publishing</h1>
-            <p className="text-gray-600 mt-2">Create, review and publish canonical Curiosity Episodes. Public pages only consume published revisions.</p>
-          </div>
-          <CuriosityManagement />
-        </div>
-      )}
-
-      {activeTab === 'notebook-content' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Legacy Notebook / Homepage Content</h1>
-            <p className="text-gray-600 mt-2">Temporary compatibility editor for the older shared Today story. Curiosity publishing now lives in its own workspace.</p>
-          </div>
-          <NotebookContentManagement />
-        </div>
-      )}
-
-      {activeTab === 'customer-experience' && <CustomerExperienceManagement />}
-
-      {activeTab === 'qr-pass' && <QrPassDesignerManagement />}
-
-      {activeTab === 'pickup-products' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Product Pickup Capacity</h1>
-            <p className="text-gray-600 mt-2">Manage Pickup v2 product availability, recurring shared capacity and date-specific exceptions.</p>
-          </div>
-          <ProductPickupAvailabilityManagement />
-        </div>
-      )}
-
-      {activeTab === 'pickup-dates' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">JOKO TODAY Admin</h1>
-            <p className="text-gray-600 mt-2">Manage materialized pickup dates and date-specific exceptions.</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <ConcretePickupDateManagement />
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'pickup-rollout' && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <PickupV2RolloutManagement />
-        </div>
-      )}
-
-      {activeTab === 'commerce-intelligence' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Commerce Intelligence</h1>
-            <p className="text-gray-600 mt-2">Configure Pickup-aware recommendations and merchandising priorities without hard-coding commercial rules.</p>
-          </div>
-          <CommerceIntelligenceManagement />
-        </div>
-      )}
-
-      {activeTab === 'loyalty' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Loyalty & Rewards</h1>
-            <p className="text-gray-600 mt-2">Configure how customers earn points and what those points can be exchanged for.</p>
-          </div>
-          <LoyaltyRewardsManagement />
-        </div>
-      )}
+      {children}
     </div>
   );
 }
