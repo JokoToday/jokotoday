@@ -49,7 +49,10 @@ export function HomeCategoryGridSectionRenderer({
   const fallbackLocale = site.defaultLocale;
 
   return (
-    <Section spacing={section.design.spacing} className="bg-[var(--joko-brand-turquoise,#DAEBE8)]">
+    <Section
+      spacing={section.design.spacing}
+      style={{ background: 'var(--joko-brand-turquoise, #DAEBE8)' }}
+    >
       <Container width={section.design.width}>
         <h2 className="font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
           {localize(section.props.title, locale, fallbackLocale)}
