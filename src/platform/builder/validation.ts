@@ -140,6 +140,12 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     if (!['inter', 'noto-sans'].includes(String(typography.bodyFont))) {
       pushIssue(issues, 'branding.typography.bodyFont', 'Unsupported body font.');
     }
+    for (const field of ['displayWeight', 'bodyWeight'] as const) {
+      const value = typography[field];
+      if (value !== undefined && ![300, 400, 500, 600, 700, 800, 900].includes(Number(value))) {
+        pushIssue(issues, `branding.typography.${field}`, 'Unsupported font weight.');
+      }
+    }
     const optionalFontChecks: Array<[string, unknown, readonly string[]]> = [
       ['thaiDisplayFont', typography.thaiDisplayFont, ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree', 'maitree']],
       ['thaiBodyFont', typography.thaiBodyFont, ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree']],
