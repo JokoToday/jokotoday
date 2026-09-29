@@ -189,11 +189,11 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => onNavigate('staff-scanner')}
+              onClick={() => onNavigate('customer-desk')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg hover:from-amber-700 hover:to-orange-700 transition-colors shadow-sm"
             >
               <ScanLine className="w-4 h-4" />
-              Staff Scanner
+              Customer Desk
             </button>
             <button
               onClick={handleLogout}
