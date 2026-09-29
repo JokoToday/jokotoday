@@ -337,8 +337,13 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
             ) : products.map((product) => (
               <tr key={product.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-gray-900 text-sm">{product.name_en}</p>
-                  <p className="text-xs text-gray-600">{product.name_th}</p>
+                  <div className="flex min-w-[220px] items-center gap-3">
+                    <ProductThumbnail product={product} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-900 text-sm">{product.name_en}</p>
+                      <p className="truncate text-xs text-gray-600">{product.name_th}</p>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">{getCategoryName(product.category_id)}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-primary-600">฿{Number(product.price).toFixed(2)}</td>
@@ -376,7 +381,18 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
                       {product.public_code}
                     </button>
                   ) : (
-                    <span className="text-xs text-gray-400">Not assigned</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(product);
+                        setShowForm(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-dashed border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+                      title="Open the product editor to create a permanent QR code"
+                    >
+                      <ScanLine className="h-3.5 w-3.5" />
+                      Create QR
+                    </button>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right space-x-3">
@@ -406,6 +422,28 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
         <ProductQRPanel product={qrProduct} onClose={() => setQrProduct(null)} />
       )}
     </div>
+  );
+}
+
+function ProductThumbnail({ product }: { product: CMSProduct }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!product.image || failed) {
+    return (
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-400">
+        <Package className="h-5 w-5" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={product.image}
+      alt=""
+      loading="lazy"
+      className="h-12 w-12 shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
