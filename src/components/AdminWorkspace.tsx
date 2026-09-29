@@ -24,6 +24,7 @@ import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
 import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 import '../app/joko-today/admin/jokoAdmin.css';
+import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
@@ -79,6 +80,7 @@ function workspacePath(tab: WorkspaceTab): string {
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(workspaceTabFromLocation);
+  const logoUrl = usePublishedJokoLogo();
 
   useEffect(() => {
     const handlePopState = () => setActiveTab(workspaceTabFromLocation());
@@ -110,7 +112,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 aria-label="Open JOKO TODAY"
               >
                 <img
-                  src="/assets/brand/joko-today-logo-v0.4.webp"
+                  src={logoUrl}
                   alt="JOKO TODAY"
                   className="joko-admin-brand-logo"
                 />
