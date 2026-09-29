@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Itim&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Itim&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
 @tailwind base;
@@ -74,9 +74,10 @@
     --joko-shell-orange: 199 102 36;
     --joko-shell-ink: 48 53 50;
     font-family: var(--joko-font-shell);
+    font-size: var(--joko-size-body, 16px);
     font-weight: 400;
-    color: rgb(var(--joko-shell-ink));
-    background: rgb(var(--joko-shell-mineral));
+    color: var(--joko-brand-text, rgb(var(--joko-shell-ink)));
+    background: var(--joko-brand-turquoise, rgb(var(--joko-shell-mineral)));
   }
 
   :lang(th) .joko-home-shell { font-family: var(--joko-font-shell-th); }
@@ -99,6 +100,26 @@
   .joko-home-shell nav a {
     font-family: inherit;
     font-weight: 500;
+  }
+
+  .joko-home-shell header nav button {
+    font-size: var(--joko-size-nav, 16px);
+  }
+
+  .joko-home-shell button {
+    font-size: var(--joko-size-button, 16px);
+  }
+
+  .joko-home-shell .joko-shell-logo {
+    height: calc(3.5rem * var(--joko-logo-scale, 1.2));
+    max-width: calc(12rem * var(--joko-logo-scale, 1.2));
+  }
+
+  @media (min-width: 640px) {
+    .joko-home-shell .joko-shell-logo {
+      height: calc(4rem * var(--joko-logo-scale, 1.2));
+      max-width: calc(15rem * var(--joko-logo-scale, 1.2));
+    }
   }
 
   .joko-mineral-field {
@@ -150,7 +171,7 @@
   .joko-shell-muted { color: rgba(48, 53, 50, .72); }
 
   .joko-shell-primary-button {
-    background: rgb(var(--joko-shell-orange));
+    background: var(--joko-brand-accent, rgb(var(--joko-shell-orange)));
     color: white;
     box-shadow: 0 9px 22px rgba(121, 67, 28, .14);
   }
