@@ -6,6 +6,10 @@ export const DEFAULT_JOKO_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 let cachedLogoUrl: string | null = null;
 let pendingLogoUrl: Promise<string> | null = null;
 
+export function invalidatePublishedJokoLogoCache() {
+  cachedLogoUrl = null;
+}
+
 async function resolvePublishedLogoUrl(): Promise<string> {
   if (cachedLogoUrl) return cachedLogoUrl;
   if (pendingLogoUrl) return pendingLogoUrl;
