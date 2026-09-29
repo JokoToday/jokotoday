@@ -4,6 +4,7 @@ import {
   resolveJokoHomepageBranding,
   type JokoHomepageBranding,
 } from '../../../platform/builder/branding';
+import type { BuilderDocument } from '../../../platform/builder/contracts';
 import { loadPublishedHomepageBuilderDocument } from './publishedHomepageProvider';
 
 export const DEFAULT_JOKO_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
@@ -11,6 +12,7 @@ export const DEFAULT_JOKO_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
 export interface PublishedJokoBranding {
   logoUrl: string;
   branding: JokoHomepageBranding;
+  document: BuilderDocument | null;
 }
 
 let cachedBranding: PublishedJokoBranding | null = null;
@@ -21,6 +23,7 @@ const listeners = new Set<() => void>();
 const DEFAULT_BRANDING: PublishedJokoBranding = {
   logoUrl: DEFAULT_JOKO_LOGO_URL,
   branding: DEFAULT_JOKO_HOMEPAGE_BRANDING,
+  document: null,
 };
 
 export function invalidatePublishedJokoLogoCache() {
@@ -43,6 +46,7 @@ async function resolvePublishedBranding(): Promise<PublishedJokoBranding> {
           ? hero.props.logoUrl || DEFAULT_JOKO_LOGO_URL
           : DEFAULT_JOKO_LOGO_URL,
         branding: resolveJokoHomepageBranding(published?.document.branding),
+        document: published?.document ?? null,
       };
 
       if (generation === cacheGeneration) cachedBranding = next;
