@@ -272,7 +272,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
               type="button"
               onClick={() => void handleResend()}
               disabled={submitting}
-              className="font-medium text-primary-700 hover:text-primary-800 disabled:text-gray-400"
+              className="font-medium text-[#55766F] hover:text-[#304B45] disabled:text-gray-400"
             >
               {copy.resend}
             </button>
@@ -353,7 +353,7 @@ function AdminGateShell({
 function AdminGateStatus({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4 text-slate-700">
-      <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
+      <Loader2 className="w-7 h-7 animate-spin text-[#55766F]" />
       <p className="font-medium">{message}</p>
     </div>
   );
