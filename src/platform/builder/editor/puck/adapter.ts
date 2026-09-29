@@ -81,6 +81,7 @@ export function builderDocumentToPuckData(
           type: builderTypeToPuckType[section.type],
           props: {
             ...common,
+            logoUrl: section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp',
             title: localizedValue(section.props.title, locale, fallbackLocale),
             subtitle: localizedValue(section.props.subtitle, locale, fallbackLocale),
             primaryActionLabel: localizedValue(
@@ -168,12 +169,14 @@ export function applyPuckComponentToSection(
 
   switch (common.type) {
     case 'home.hero.v1': {
+      const logoUrl = readString(props, 'logoUrl');
       const title = readString(props, 'title');
       const subtitle = readString(props, 'subtitle');
       const primaryActionLabel = readString(props, 'primaryActionLabel');
       const secondaryActionLabel = readString(props, 'secondaryActionLabel');
       const mediaAlt = readString(props, 'mediaAlt');
       if (
+        logoUrl === null ||
         title === null ||
         subtitle === null ||
         primaryActionLabel === null ||
@@ -186,6 +189,7 @@ export function applyPuckComponentToSection(
         ...common,
         props: {
           ...common.props,
+          logoUrl,
           title: withLocale(common.props.title, locale, title),
           subtitle: withLocale(common.props.subtitle, locale, subtitle),
           primaryActionLabel: withLocale(
