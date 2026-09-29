@@ -38,6 +38,26 @@ export function HomeHeroSectionRenderer({
   const title = localize(section.props.title, locale, fallbackLocale);
   const subtitle = localize(section.props.subtitle, locale, fallbackLocale);
   const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
+  const chrome = locale === 'th'
+    ? {
+        nav: ['หน้าแรก', 'เบเกอรี่', 'วิธีสั่งซื้อ', 'รับสินค้า', 'เกี่ยวกับเรา'],
+        eyebrow: 'เบเกอรี่อาร์ติซาน · เชียงใหม่ · อบทีละน้อย',
+        smallBatch: 'อบทีละน้อย',
+        pickup: 'รับสินค้าในเชียงใหม่',
+      }
+    : locale === 'zh'
+    ? {
+        nav: ['首页', '烘焙', '如何订购', '取货', '关于我们'],
+        eyebrow: '手作烘焙 · 清迈 · 小批量制作',
+        smallBatch: '小批量烘焙',
+        pickup: '清迈取货',
+      }
+    : {
+        nav: ['Home', 'Bakery', 'How It Works', 'Pickup', 'About'],
+        eyebrow: 'Artisan bakery · Chiang Mai · Small batches',
+        smallBatch: 'Small-batch baking',
+        pickup: 'Pickup in Chiang Mai',
+      };
 
   return (
     <section
@@ -54,14 +74,14 @@ export function HomeHeroSectionRenderer({
         <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
           <img src={logoUrl} alt={site.name} className="h-12 w-auto object-contain mix-blend-multiply" />
           <div className="ml-auto hidden gap-7 text-xs font-medium text-[#303532]/72 sm:flex">
-            <span>Home</span><span>Bakery</span><span>How It Works</span><span>Pickup</span><span>About</span>
+            {chrome.nav.map((label) => <span key={label}>{label}</span>)}
           </div>
         </div>
 
         <div className="relative grid min-h-[34rem] gap-7 py-8 lg:grid-cols-[minmax(19rem,.72fr)_minmax(33rem,1.35fr)] lg:items-start">
           <div className="relative z-20 max-w-[31rem] lg:pt-7">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
-              Artisan bakery · Chiang Mai · Small batches
+              {chrome.eyebrow}
             </p>
             <h1
               className="mt-4 whitespace-pre-line text-[2.7rem] font-bold leading-[.93] tracking-[-0.042em] text-[#292D2B] sm:text-[3.5rem] lg:text-[4rem]"
@@ -92,8 +112,8 @@ export function HomeHeroSectionRenderer({
             </div>
 
             <div className="mt-7 grid grid-cols-2 gap-3 border-t border-[#55766F]/15 pt-5 text-xs text-[#304B45]/78">
-              <div className="flex items-center gap-2"><Leaf className="h-5 w-5 text-[#6E9A4F]" />Small-batch baking</div>
-              <div className="flex items-center gap-2"><MapPin className="h-5 w-5 text-[#668C4E]" />Pickup in Chiang Mai</div>
+              <div className="flex items-center gap-2"><Leaf className="h-5 w-5 text-[#6E9A4F]" />{chrome.smallBatch}</div>
+              <div className="flex items-center gap-2"><MapPin className="h-5 w-5 text-[#668C4E]" />{chrome.pickup}</div>
             </div>
           </div>
 
