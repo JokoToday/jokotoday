@@ -11,18 +11,26 @@ import {
 import {
   BuilderPageRenderer,
   JOKO_BODY_FONT_OPTIONS,
+  JOKO_CHINESE_BODY_FONT_OPTIONS,
+  JOKO_CHINESE_DISPLAY_FONT_OPTIONS,
   JOKO_DISPLAY_FONT_OPTIONS,
+  JOKO_THAI_BODY_FONT_OPTIONS,
+  JOKO_THAI_DISPLAY_FONT_OPTIONS,
   getBuilderComponentDefinition,
+  localizeRichText,
   resolveJokoHomepageBranding,
+  richTextToPlainText,
   type BuilderAction,
   type BuilderDocument,
   type BuilderHomepageBranding,
+  type BuilderRichText,
   type BuilderSection,
   type BuilderSiteIdentity,
   type HomepageBuilderProviders,
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
+import { ControlledRichTextEditor } from './ControlledRichTextEditor';
 
 interface JokoHomepageEditorProps {
   document: BuilderDocument;
@@ -63,6 +71,14 @@ function localized(value: LocalizedText, locale: string, fallback: string): stri
 
 function withLocale(value: LocalizedText, locale: string, next: string): LocalizedText {
   return { ...value, [locale]: next };
+}
+
+function withLocaleRichText(
+  value: Readonly<Record<string, BuilderRichText>> | undefined,
+  locale: string,
+  next: BuilderRichText,
+): Readonly<Record<string, BuilderRichText>> {
+  return { ...(value ?? {}), [locale]: next };
 }
 
 function FieldLabel({ children }: { children: ReactNode }) {
@@ -147,8 +163,14 @@ function ColorField({
         />
         <input
           value={value}
-          readOnly
           aria-label={`${label} hex value`}
+          onChange={(event) => {
+            const next = event.target.value.toUpperCase();
+            if (/^#[0-9A-F]{6}$/.test(next)) onChange(next);
+          }}
+          onBlur={(event) => {
+            if (!/^#[0-9A-F]{6}$/i.test(event.target.value)) event.currentTarget.value = value;
+          }}
           className="min-w-0 flex-1 rounded-xl border border-[#55766F]/20 bg-white px-3 py-2 font-mono text-xs text-[#303532]/70"
         />
       </div>
@@ -387,9 +409,56 @@ export function JokoHomepageEditor({
                   {JOKO_BODY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </div>
-              <p className="rounded-xl bg-[#EEF5F2] px-3 py-2 text-[11px] leading-5 text-[#304B45]/70">
-                Thai uses Noto Sans Thai Looped. Chinese uses Noto Sans SC. These stay protected until additional tested font families are added.
-              </p>
+              <div className="border-t border-[#55766F]/12 pt-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#55766F]">Thai</p>
+                <div className="space-y-3">
+                  <div>
+                    <FieldLabel>Thai display font</FieldLabel>
+                    <select
+                      value={branding.typography.thaiDisplayFont}
+                      onChange={(event) => updateTypography({ thaiDisplayFont: event.target.value as BuilderHomepageBranding['typography']['thaiDisplayFont'] })}
+                      className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                    >
+                      {JOKO_THAI_DISPLAY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Thai body font</FieldLabel>
+                    <select
+                      value={branding.typography.thaiBodyFont}
+                      onChange={(event) => updateTypography({ thaiBodyFont: event.target.value as BuilderHomepageBranding['typography']['thaiBodyFont'] })}
+                      className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                    >
+                      {JOKO_THAI_BODY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-[#55766F]/12 pt-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#55766F]">Chinese</p>
+                <div className="space-y-3">
+                  <div>
+                    <FieldLabel>Chinese display font</FieldLabel>
+                    <select
+                      value={branding.typography.chineseDisplayFont}
+                      onChange={(event) => updateTypography({ chineseDisplayFont: event.target.value as BuilderHomepageBranding['typography']['chineseDisplayFont'] })}
+                      className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                    >
+                      {JOKO_CHINESE_DISPLAY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <FieldLabel>Chinese body font</FieldLabel>
+                    <select
+                      value={branding.typography.chineseBodyFont}
+                      onChange={(event) => updateTypography({ chineseBodyFont: event.target.value as BuilderHomepageBranding['typography']['chineseBodyFont'] })}
+                      className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm"
+                    >
+                      {JOKO_CHINESE_BODY_FONT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
               <RangeField label="Hero headline" value={branding.typography.heroSize} min={42} max={88} onChange={(heroSize) => updateTypography({ heroSize })} />
               <RangeField label="Section headings" value={branding.typography.sectionHeadingSize} min={24} max={56} onChange={(sectionHeadingSize) => updateTypography({ sectionHeadingSize })} />
               <RangeField label="Body text" value={branding.typography.bodySize} min={14} max={20} onChange={(bodySize) => updateTypography({ bodySize })} />
@@ -558,6 +627,7 @@ export function JokoHomepageEditor({
               section={selectedSection}
               locale={locale}
               fallbackLocale={site.defaultLocale}
+              branding={branding}
               onChange={(next) => updateSection(selectedSection.id, () => next)}
             />
           ) : (
@@ -574,11 +644,13 @@ function SectionEditor({
   section,
   locale,
   fallbackLocale,
+  branding,
   onChange,
 }: {
   section: BuilderSection;
   locale: string;
   fallbackLocale: string;
+  branding: BuilderHomepageBranding;
   onChange: (section: BuilderSection) => void;
 }) {
   const definition = getBuilderComponentDefinition(section.type);
@@ -637,7 +709,22 @@ function SectionEditor({
       <div>
         {editorHeader}
         <div className="space-y-4">
-          <TextField label="Headline" multiline value={localized(props.title, locale, fallbackLocale)} onChange={(value) => patch({ title: withLocale(props.title, locale, value) })} />
+          <div>
+            <FieldLabel>Headline</FieldLabel>
+            <ControlledRichTextEditor
+              value={localizeRichText(
+                props.titleRichText,
+                locale,
+                fallbackLocale,
+                localized(props.title, locale, fallbackLocale),
+              )}
+              colors={branding.colors}
+              onChange={(value) => patch({
+                title: withLocale(props.title, locale, richTextToPlainText(value)),
+                titleRichText: withLocaleRichText(props.titleRichText, locale, value),
+              })}
+            />
+          </div>
           <TextField label="Subtitle" multiline value={localized(props.subtitle, locale, fallbackLocale)} onChange={(value) => patch({ subtitle: withLocale(props.subtitle, locale, value) })} />
           <TextField label="Primary button" value={localized(props.primaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ primaryActionLabel: withLocale(props.primaryActionLabel, locale, value) })} />
           <TextField label="Secondary button" value={localized(props.secondaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ secondaryActionLabel: withLocale(props.secondaryActionLabel, locale, value) })} />
