@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Eye,
   EyeOff,
@@ -39,6 +40,21 @@ const sectionLabels: Record<BuilderSection['type'], string> = {
   'home.top-liked.v1': 'Bakery Showcase',
   'home.category-grid.v1': 'Bakery Categories',
   'home.cta.v1': 'Closing CTA',
+};
+
+type PreviewViewport = 'desktop' | 'tablet' | 'mobile';
+type PreviewZoom = 'fit' | 'actual';
+
+const PREVIEW_WIDTHS: Record<PreviewViewport, number> = {
+  desktop: 1440,
+  tablet: 768,
+  mobile: 390,
+};
+
+const previewViewportLabels: Record<PreviewViewport, string> = {
+  desktop: 'Desktop 1440',
+  tablet: 'Tablet',
+  mobile: 'Mobile',
 };
 
 function localized(value: LocalizedText, locale: string, fallback: string): string {
@@ -152,13 +168,65 @@ export function JokoHomepageEditor({
 }: JokoHomepageEditorProps) {
   const firstSectionId = document.sections[0]?.id ?? '';
   const [selectedSectionId, setSelectedSectionId] = useState(firstSectionId);
+  const [previewViewport, setPreviewViewport] = useState<PreviewViewport>('desktop');
+  const [previewZoom, setPreviewZoom] = useState<PreviewZoom>('fit');
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [previewHostWidth, setPreviewHostWidth] = useState(0);
+  const [previewContentHeight, setPreviewContentHeight] = useState(900);
+  const [previewFrameDocument, setPreviewFrameDocument] = useState<Document | null>(null);
+  const previewHostRef = useRef<HTMLDivElement | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const branding = useMemo(() => resolveJokoHomepageBranding(document.branding), [document.branding]);
+  const previewWidth = PREVIEW_WIDTHS[previewViewport];
+  const previewScale = previewZoom === 'actual' || previewHostWidth === 0
+    ? 1
+    : Math.min(1, Math.max(0.2, (previewHostWidth - 2) / previewWidth));
 
   useEffect(() => {
     if (!document.sections.some((section) => section.id === selectedSectionId)) {
       setSelectedSectionId(document.sections[0]?.id ?? '');
     }
   }, [document.sections, selectedSectionId]);
+
+  useEffect(() => {
+    const host = previewHostRef.current;
+    if (!host) return undefined;
+
+    const measure = () => setPreviewHostWidth(host.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!previewFrameDocument) return undefined;
+
+    previewFrameDocument.documentElement.lang = locale;
+    previewFrameDocument.body.style.margin = '0';
+    previewFrameDocument.body.style.background = '#ffffff';
+    previewFrameDocument.body.style.minWidth = '0';
+
+    const measure = () => {
+      const root = previewFrameDocument.getElementById('joko-builder-preview-root');
+      const nextHeight = Math.max(
+        root?.scrollHeight ?? 0,
+        previewFrameDocument.body.scrollHeight,
+        previewFrameDocument.documentElement.scrollHeight,
+        640,
+      );
+      setPreviewContentHeight(nextHeight);
+    };
+
+    const observer = new ResizeObserver(measure);
+    const root = previewFrameDocument.getElementById('joko-builder-preview-root');
+    if (root) observer.observe(root);
+    observer.observe(previewFrameDocument.body);
+    measure();
+
+    return () => observer.disconnect();
+  }, [previewFrameDocument, locale, document]);
 
   const selectedSection = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const hero = document.sections.find((section) => section.type === 'home.hero.v1');
@@ -203,15 +271,76 @@ export function JokoHomepageEditor({
   };
 
   const documentRef = (id: string) =>
-    window.document.querySelector(`[data-builder-section="${CSS.escape(id)}"]`);
+    previewFrameRef.current?.contentDocument?.querySelector(`[data-builder-section="${CSS.escape(id)}"]`)
+    ?? window.document.querySelector(`[data-builder-section="${CSS.escape(id)}"]`);
+
+  const handlePreviewFrameLoad = () => {
+    const frameDocument = previewFrameRef.current?.contentDocument ?? null;
+    if (!frameDocument) return;
+
+    const head = frameDocument.head;
+    head.replaceChildren();
+
+    const base = frameDocument.createElement('base');
+    base.href = `${window.location.origin}/`;
+    head.appendChild(base);
+
+    window.document.head
+      .querySelectorAll('link[rel="stylesheet"], style')
+      .forEach((node) => head.appendChild(node.cloneNode(true)));
+
+    setPreviewFrameDocument(frameDocument);
+  };
+
+  const editorGridClass = [
+    'grid min-h-[44rem] border-y border-[#55766F]/16 bg-[#F7F3EA]',
+    leftPanelCollapsed && rightPanelCollapsed
+      ? 'xl:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem]'
+      : leftPanelCollapsed
+        ? 'xl:grid-cols-[3.25rem_minmax(0,1fr)_21rem]'
+        : rightPanelCollapsed
+          ? 'xl:grid-cols-[19rem_minmax(0,1fr)_3.25rem]'
+          : 'xl:grid-cols-[19rem_minmax(0,1fr)_21rem]',
+  ].join(' ');
+
+  const toolbarButtonClass = (active: boolean) => [
+    'rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition',
+    active
+      ? 'border-[#C76624]/40 bg-[#FFF1E5] text-[#9E4E1D]'
+      : 'border-[#55766F]/16 bg-white/72 text-[#304B45]/72 hover:bg-white',
+  ].join(' ');
 
   return (
-    <div className="grid min-h-[44rem] border-y border-[#55766F]/16 bg-[#F7F3EA] xl:grid-cols-[19rem_minmax(0,1fr)_21rem]">
+    <div className={editorGridClass}>
       <aside className="border-b border-[#55766F]/14 bg-[#FFF9EE]/92 p-4 xl:border-b-0 xl:border-r">
+        {leftPanelCollapsed ? (
+          <div className="sticky top-0 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setLeftPanelCollapsed(false)}
+              className="rounded-xl border border-[#55766F]/16 bg-white px-3 py-2 text-lg text-[#304B45]"
+              aria-label="Expand Site Identity panel"
+              title="Expand Site Identity"
+            >
+              ›
+            </button>
+          </div>
+        ) : (
         <div className="sticky top-0 space-y-5">
-          <div>
-            <p className="joko-admin-eyebrow">Site identity</p>
-            <h2 className="mt-1 text-lg font-semibold text-[#303532]">Brand & typography</h2>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="joko-admin-eyebrow">Site identity</p>
+              <h2 className="mt-1 text-lg font-semibold text-[#303532]">Brand & typography</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLeftPanelCollapsed(true)}
+              className="rounded-lg border border-[#55766F]/14 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[#304B45]/70 hover:bg-white"
+              aria-label="Collapse Site Identity panel"
+              title="Collapse Site Identity"
+            >
+              ‹
+            </button>
           </div>
 
           {hero?.type === 'home.hero.v1' && (
@@ -307,35 +436,122 @@ export function JokoHomepageEditor({
             </div>
           </div>
         </div>
+        )}
       </aside>
 
       <main className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#55766F]">Live draft</p>
             <p className="mt-1 text-sm text-[#303532]/60">Click a section in the preview to edit it.</p>
           </div>
           <span className="rounded-full border border-[#55766F]/16 bg-white/70 px-3 py-1 text-xs text-[#304B45]">{locale.toUpperCase()}</span>
         </div>
-        <div className="overflow-hidden rounded-[1.5rem] border border-[#55766F]/18 bg-white shadow-[0_18px_46px_rgba(48,75,69,.08)]">
-          <BuilderPageRenderer
-            document={document}
-            locale={locale}
-            site={site}
-            providers={providers}
-            onAction={onAction}
-            selectedSectionId={selectedSection?.id}
-            onSectionSelect={setSelectedSectionId}
-            onValidationError={(validationIssues) => onValidationError?.(validationIssues.map((issue) => `${issue.path}: ${issue.message}`))}
-          />
+
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#55766F]/12 bg-white/48 p-1">
+            {(['desktop', 'tablet', 'mobile'] as PreviewViewport[]).map((viewport) => (
+              <button
+                key={viewport}
+                type="button"
+                onClick={() => setPreviewViewport(viewport)}
+                className={toolbarButtonClass(previewViewport === viewport)}
+              >
+                {previewViewportLabels[viewport]}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl border border-[#55766F]/12 bg-white/48 p-1">
+            <button
+              type="button"
+              onClick={() => setPreviewZoom('fit')}
+              className={toolbarButtonClass(previewZoom === 'fit')}
+            >
+              Fit
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewZoom('actual')}
+              className={toolbarButtonClass(previewZoom === 'actual')}
+            >
+              100%
+            </button>
+          </div>
+          <span className="text-[11px] font-medium text-[#304B45]/55">
+            {previewWidth}px · {Math.round(previewScale * 100)}%
+          </span>
+        </div>
+
+        <div
+          ref={previewHostRef}
+          className="overflow-auto rounded-[1.5rem] border border-[#55766F]/18 bg-[#DCE7E4] p-2 shadow-[0_18px_46px_rgba(48,75,69,.08)]"
+        >
+          <div
+            className="relative mx-auto"
+            style={{
+              width: `${previewWidth * previewScale}px`,
+              height: `${previewContentHeight * previewScale}px`,
+            }}
+          >
+            <iframe
+              ref={previewFrameRef}
+              title="JOKO Homepage live draft"
+              srcDoc="<!doctype html><html><head></head><body><div id='joko-builder-preview-root'></div></body></html>"
+              onLoad={handlePreviewFrameLoad}
+              className="absolute left-0 top-0 border-0 bg-white"
+              style={{
+                width: `${previewWidth}px`,
+                height: `${previewContentHeight}px`,
+                transform: `scale(${previewScale})`,
+                transformOrigin: 'top left',
+              }}
+            />
+            {previewFrameDocument?.getElementById('joko-builder-preview-root') && createPortal(
+              <BuilderPageRenderer
+                document={document}
+                locale={locale}
+                site={site}
+                providers={providers}
+                onAction={onAction}
+                selectedSectionId={selectedSection?.id}
+                onSectionSelect={setSelectedSectionId}
+                onValidationError={(validationIssues) => onValidationError?.(validationIssues.map((issue) => `${issue.path}: ${issue.message}`))}
+              />,
+              previewFrameDocument.getElementById('joko-builder-preview-root')!,
+            )}
+          </div>
         </div>
       </main>
 
       <aside className="border-t border-[#55766F]/14 bg-[#FFF9EE]/94 p-4 xl:border-l xl:border-t-0">
+        {rightPanelCollapsed ? (
+          <div className="sticky top-0 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setRightPanelCollapsed(false)}
+              className="rounded-xl border border-[#55766F]/16 bg-white px-3 py-2 text-lg text-[#304B45]"
+              aria-label="Expand Edit Section panel"
+              title="Expand Edit Section"
+            >
+              ‹
+            </button>
+          </div>
+        ) : (
         <div className="sticky top-0">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-[#55766F]" />
-            <p className="joko-admin-eyebrow">Edit section</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-[#55766F]" />
+              <p className="joko-admin-eyebrow">Edit section</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRightPanelCollapsed(true)}
+              className="rounded-lg border border-[#55766F]/14 bg-white/70 px-2.5 py-1.5 text-xs font-semibold text-[#304B45]/70 hover:bg-white"
+              aria-label="Collapse Edit Section panel"
+              title="Collapse Edit Section"
+            >
+              ›
+            </button>
           </div>
           {selectedSection ? (
             <SectionEditor
@@ -348,6 +564,7 @@ export function JokoHomepageEditor({
             <p className="mt-4 text-sm text-[#303532]/55">Choose a homepage section.</p>
           )}
         </div>
+        )}
       </aside>
     </div>
   );
