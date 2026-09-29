@@ -1,0 +1,208 @@
+.joko-admin-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: #303532;
+  background-color: #d9ece9;
+  background-image:
+    radial-gradient(ellipse at 9% 3%, rgba(249, 246, 237, .42) 0 10%, transparent 28%),
+    radial-gradient(ellipse at 91% 14%, rgba(235, 244, 245, .42) 0 14%, transparent 34%);
+}
+
+.joko-admin-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/assets/backgrounds/joko-shell-connections-v0.21-strong.svg');
+  background-repeat: no-repeat;
+  background-size: max(110%, 1700px) auto;
+  background-position: 50% -48px;
+  opacity: .48;
+}
+
+.joko-admin-topbar {
+  border-bottom: 1px solid rgba(85, 118, 111, .18);
+  background:
+    radial-gradient(ellipse at 10% -20%, rgba(244, 239, 229, .32), transparent 42%),
+    rgba(207, 227, 223, .94);
+  box-shadow: 0 8px 28px rgba(48, 75, 69, .055);
+  backdrop-filter: blur(12px);
+}
+
+.joko-admin-brand-logo {
+  height: 3.2rem;
+  width: auto;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.joko-admin-eyebrow {
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #55766f;
+}
+
+.joko-admin-title {
+  color: #303532;
+  font-family: var(--joko-font-display, Georgia, serif);
+  letter-spacing: -.025em;
+}
+
+.joko-admin-nav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: .55rem .9rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: rgba(48, 53, 50, .72);
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.joko-admin-nav-chip:hover {
+  border-color: rgba(85, 118, 111, .18);
+  background: rgba(244, 239, 229, .52);
+  color: #303532;
+}
+
+.joko-admin-nav-chip--active {
+  border-color: rgba(199, 102, 36, .22);
+  background: #fff9ee;
+  color: #a44f1d;
+  box-shadow: 0 5px 16px rgba(48, 75, 69, .07);
+}
+
+.joko-admin-paper-card {
+  border: 1px solid rgba(85, 118, 111, .16);
+  border-radius: 1.55rem 1.85rem 1.65rem 1.95rem;
+  background:
+    radial-gradient(circle at 13% 9%, rgba(255, 255, 255, .64), transparent 24%),
+    rgba(255, 249, 238, .92);
+  box-shadow: 0 15px 36px rgba(48, 75, 69, .075);
+}
+
+.joko-admin-paper-card:nth-of-type(even) {
+  border-radius: 1.85rem 1.55rem 1.95rem 1.6rem;
+}
+
+.joko-admin-primary-button {
+  border-radius: .95rem;
+  background: #c76624;
+  color: #fff;
+  font-weight: 650;
+  box-shadow: 0 7px 18px rgba(164, 79, 29, .14);
+  transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.joko-admin-primary-button:hover:not(:disabled) {
+  background: #a95122;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(164, 79, 29, .18);
+}
+
+.joko-admin-secondary-button {
+  border: 1px solid rgba(85, 118, 111, .24);
+  border-radius: .95rem;
+  background: rgba(255, 249, 238, .9);
+  color: #304b45;
+  font-weight: 600;
+  transition: background-color .18s ease, border-color .18s ease;
+}
+
+.joko-admin-secondary-button:hover:not(:disabled) {
+  border-color: rgba(85, 118, 111, .4);
+  background: #fff9ee;
+}
+
+.joko-admin-content {
+  position: relative;
+  z-index: 1;
+}
+
+.joko-admin-content > .min-h-screen,
+.joko-admin-content .min-h-screen.bg-gray-50 {
+  background: transparent !important;
+}
+
+.joko-admin-content .bg-gray-50 {
+  background-color: rgba(238, 245, 242, .58);
+}
+
+.joko-admin-content .bg-white {
+  background-color: rgba(255, 249, 238, .94);
+}
+
+.joko-admin-content .border-gray-200,
+.joko-admin-content .border-gray-300 {
+  border-color: rgba(85, 118, 111, .18);
+}
+
+.joko-admin-content .text-gray-900 {
+  color: #303532;
+}
+
+.joko-admin-content .text-gray-800,
+.joko-admin-content .text-gray-700 {
+  color: rgba(48, 53, 50, .86);
+}
+
+.joko-admin-content .text-gray-600,
+.joko-admin-content .text-gray-500 {
+  color: rgba(48, 53, 50, .62);
+}
+
+.joko-admin-content input:not([type='checkbox']):not([type='radio']):not([type='color']),
+.joko-admin-content select,
+.joko-admin-content textarea {
+  border-color: rgba(85, 118, 111, .22);
+  background-color: rgba(255, 253, 247, .96);
+  color: #303532;
+}
+
+.joko-admin-content table {
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.joko-admin-content table thead .bg-gray-50,
+.joko-admin-content table thead tr {
+  background-color: rgba(217, 236, 233, .55);
+}
+
+.joko-admin-content table tbody tr:hover {
+  background-color: rgba(238, 245, 242, .55);
+}
+
+.joko-admin-login-field {
+  border: 1px solid rgba(85, 118, 111, .2);
+  border-radius: 1rem;
+  background: rgba(255, 253, 247, .96);
+}
+
+@media (max-width: 767px) {
+  .joko-admin-shell::before {
+    background-size: 1180px auto;
+    background-position: 42% -18px;
+    opacity: .36;
+  }
+
+  .joko-admin-brand-logo {
+    height: 2.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .joko-admin-nav-chip,
+  .joko-admin-primary-button,
+  .joko-admin-secondary-button {
+    transition: none;
+  }
+}
