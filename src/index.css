@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Itim&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Itim&family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai+Looped:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
 @tailwind base;
@@ -209,3 +209,21 @@
 }
 
 .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+
+@layer components {
+  .joko-shell-logo {
+    height: calc(3.5rem * var(--joko-logo-scale, 1.2));
+    max-width: calc(12rem * var(--joko-logo-scale, 1.2));
+  }
+
+  @media (min-width: 640px) {
+    .joko-shell-logo {
+      height: calc(4rem * var(--joko-logo-scale, 1.2));
+      max-width: calc(15rem * var(--joko-logo-scale, 1.2));
+    }
+  }
+
+  .joko-builder-logo {
+    height: calc(3rem * var(--joko-logo-scale, 1.2));
+  }
+}
