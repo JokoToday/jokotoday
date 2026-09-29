@@ -1,6 +1,6 @@
 import {
   CHINESE_FONT_OPTIONS,
-  DEFAULT_BUILDER_SITE_STYLE,
+  EDITOR_DEFAULT_BUILDER_SITE_STYLE,
   ENGLISH_BODY_FONT_OPTIONS,
   ENGLISH_DISPLAY_FONT_OPTIONS,
   THAI_FONT_OPTIONS,
@@ -175,7 +175,7 @@ export function HomepageBrandStyleEditor({
 
       <button
         type="button"
-        onClick={() => onChange(DEFAULT_BUILDER_SITE_STYLE)}
+        onClick={() => onChange(EDITOR_DEFAULT_BUILDER_SITE_STYLE)}
         className="text-xs font-semibold text-[#55766F] underline decoration-[#55766F]/30 underline-offset-4 hover:text-[#304B45]"
       >
         Reset site identity to JOKO defaults
