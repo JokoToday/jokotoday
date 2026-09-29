@@ -338,8 +338,22 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
             ) : products.map((product) => (
               <tr key={product.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-gray-900 text-sm">{product.name_en}</p>
-                  <p className="text-xs text-gray-600">{product.name_th}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(product);
+                      setShowForm(true);
+                    }}
+                    className="group text-left"
+                    title="Edit product"
+                  >
+                    <span className="block text-sm font-medium text-gray-900 underline-offset-2 group-hover:text-[#A44F1D] group-hover:underline">
+                      {product.name_en}
+                    </span>
+                    <span className="block text-xs text-gray-600 group-hover:text-[#55766F]">
+                      {product.name_th}
+                    </span>
+                  </button>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-600">{getCategoryName(product.category_id)}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-primary-600">฿{Number(product.price).toFixed(2)}</td>
