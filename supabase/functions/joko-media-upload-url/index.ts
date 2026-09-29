@@ -100,6 +100,10 @@ Deno.serve(async (req: Request) => {
       Bucket: bucket,
       Key: objectKey,
       ContentType: contentType,
+      // Bind the admin-declared size into the signed PUT. Browsers set
+      // Content-Length automatically from the File body; a different length
+      // no longer matches the signed request.
+      ContentLength: sizeBytes,
     });
 
     const expiresIn = 300;
