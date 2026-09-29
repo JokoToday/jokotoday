@@ -79,6 +79,10 @@ export function HomepageControlledEditor({
   };
 
   const siteStyle = normalizeBuilderSiteStyle(document.siteStyle);
+  const previewDocument: BuilderDocument = {
+    ...document,
+    sections: editableSections,
+  };
 
   return (
     <div className="grid min-h-[760px] grid-cols-1 overflow-hidden border-y border-[#55766F]/16 bg-[#F8F4EB] xl:grid-cols-[14rem_minmax(0,1fr)_20rem]">
@@ -129,7 +133,7 @@ export function HomepageControlledEditor({
       <main className="min-w-0 bg-[#E8EFEC] p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">Live draft canvas</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">Editable live draft canvas</p>
             <p className="mt-1 text-sm text-[#303532]/60">
               Changes update here immediately. Editing {localeNames[locale] ?? locale}.
             </p>
@@ -146,7 +150,7 @@ export function HomepageControlledEditor({
           style={builderSiteStyleToCssVariables(siteStyle)}
         >
           <BuilderPageRenderer
-            document={document}
+            document={previewDocument}
             locale={locale}
             site={site}
             providers={providers}
