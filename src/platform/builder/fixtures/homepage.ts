@@ -17,6 +17,8 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
     typography: {
       displayFont: 'noto-sans',
       bodyFont: 'inter',
+      displayWeight: 700,
+      bodyWeight: 400,
       thaiDisplayFont: 'maitree',
       thaiBodyFont: 'noto-sans-thai-looped',
       chineseDisplayFont: 'noto-serif-sc',
