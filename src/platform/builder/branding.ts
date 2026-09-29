@@ -4,6 +4,7 @@ import type {
   BuilderChineseBodyFont,
   BuilderChineseDisplayFont,
   BuilderDisplayFont,
+  BuilderFontWeight,
   BuilderHomepageBranding,
   BuilderThaiBodyFont,
   BuilderThaiDisplayFont,
@@ -16,6 +17,8 @@ export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   typography: {
     displayFont: 'noto-sans',
     bodyFont: 'inter',
+    displayWeight: 700,
+    bodyWeight: 400,
     thaiDisplayFont: 'maitree',
     thaiBodyFont: 'noto-sans-thai-looped',
     chineseDisplayFont: 'noto-serif-sc',
@@ -96,6 +99,13 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
   const bodyFont = ['inter', 'noto-sans'].includes(String(typography.bodyFont))
     ? typography.bodyFont as BuilderBodyFont
     : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.bodyFont;
+  const allowedWeights: BuilderFontWeight[] = [300, 400, 500, 600, 700, 800, 900];
+  const displayWeight = allowedWeights.includes(Number(typography.displayWeight) as BuilderFontWeight)
+    ? Number(typography.displayWeight) as BuilderFontWeight
+    : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.displayWeight;
+  const bodyWeight = allowedWeights.includes(Number(typography.bodyWeight) as BuilderFontWeight)
+    ? Number(typography.bodyWeight) as BuilderFontWeight
+    : DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.bodyWeight;
   const legacyThaiFont = typography.thaiFont === 'noto-sans-thai-looped' ? typography.thaiFont : undefined;
   const legacyChineseFont = typography.chineseFont === 'noto-sans-sc' ? typography.chineseFont : undefined;
   const thaiDisplayFont = ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree', 'maitree'].includes(String(typography.thaiDisplayFont))
@@ -116,6 +126,8 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
     typography: {
       displayFont,
       bodyFont,
+      displayWeight,
+      bodyWeight,
       thaiDisplayFont,
       thaiBodyFont,
       chineseDisplayFont,
@@ -152,6 +164,8 @@ export function jokoBrandingCssVariables(branding: JokoHomepageBranding, locale 
     '--joko-font-display': displayStack,
     '--joko-font-shell': bodyStack,
     '--joko-font-body': bodyStack,
+    '--joko-font-display-weight': String(branding.typography.displayWeight),
+    '--joko-font-body-weight': String(branding.typography.bodyWeight),
     '--joko-brand-text': branding.colors.text,
     '--joko-brand-accent': branding.colors.accent,
     '--joko-brand-turquoise': branding.colors.turquoise,
@@ -199,4 +213,15 @@ export const JOKO_CHINESE_DISPLAY_FONT_OPTIONS = [
 export const JOKO_CHINESE_BODY_FONT_OPTIONS = [
   { value: 'noto-sans-sc', label: 'Noto Sans SC' },
   { value: 'noto-serif-sc', label: 'Noto Serif SC' },
+] as const;
+
+
+export const JOKO_FONT_WEIGHT_OPTIONS = [
+  { value: 300, label: 'Light' },
+  { value: 400, label: 'Regular' },
+  { value: 500, label: 'Medium' },
+  { value: 600, label: 'SemiBold' },
+  { value: 700, label: 'Bold' },
+  { value: 800, label: 'ExtraBold' },
+  { value: 900, label: 'Black' },
 ] as const;
