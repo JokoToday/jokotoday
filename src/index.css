@@ -106,9 +106,6 @@
     font-size: var(--joko-size-nav, 16px);
   }
 
-  .joko-home-shell button {
-    font-size: var(--joko-size-button, 16px);
-  }
 
   .joko-home-shell .joko-shell-logo {
     height: calc(3.5rem * var(--joko-logo-scale, 1.2));
