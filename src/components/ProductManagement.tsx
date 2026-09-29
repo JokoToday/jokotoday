@@ -127,6 +127,19 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
     if (!formData.slug.trim()) newErrors.slug = 'Slug is required';
+    if (formData.image.trim()) {
+      try {
+        const imageUrl = new URL(formData.image.trim());
+        if (
+          imageUrl.hostname === 'media.joko.today' &&
+          (imageUrl.pathname === '/' || imageUrl.pathname.endsWith('/'))
+        ) {
+          newErrors.image = 'JOKO Media requires a full image URL with a filename, not a folder URL.';
+        }
+      } catch {
+        newErrors.image = 'Image URL must be a valid URL.';
+      }
+    }
     if (formData.public_code && !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(formData.public_code)) {
       newErrors.public_code = 'Use 3–32 uppercase letters, numbers, hyphens or underscores';
     }
@@ -387,9 +400,13 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
             <ProductMediaUploader
               productSlug={formData.slug}
               value={formData.image}
-              onChange={(image) => setFormData((current) => ({ ...current, image }))}
+              onChange={(image) => {
+                setFormData((current) => ({ ...current, image }));
+                setErrors((current) => ({ ...current, image: '' }));
+              }}
               onUploadingChange={setMediaUploading}
             />
+            {errors.image && <p className="mt-2 text-xs font-medium text-red-600">{errors.image}</p>}
 
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
               <label className="block text-sm font-medium text-gray-800 mb-1">
