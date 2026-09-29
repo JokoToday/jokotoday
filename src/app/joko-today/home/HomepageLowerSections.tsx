@@ -20,10 +20,12 @@ import {
 } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
 import { Container } from '../../../platform/design-system';
+import type { BuilderDocument } from '../../../platform/builder';
 
 interface HomepageLowerSectionsProps {
   locale: string;
   onNavigate: (page: string) => void;
+  publishedDocument?: BuilderDocument | null;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -148,10 +150,27 @@ function SectionTitle({
   return (
     <div className="mb-7 flex flex-col gap-3 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+        <h2
+          className="font-semibold tracking-[-0.03em]"
+          style={{
+            fontFamily: 'var(--joko-font-display)',
+            fontSize: 'var(--joko-size-section-heading)',
+            color: 'rgb(var(--joko-shell-ink))',
+          }}
+        >
           {title}
         </h2>
-        {intro && <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/66 sm:text-base">{intro}</p>}
+        {intro && (
+          <p
+            className="mt-2 max-w-2xl leading-6"
+            style={{
+              fontSize: 'var(--joko-size-body)',
+              color: 'rgb(var(--joko-shell-ink) / 0.66)',
+            }}
+          >
+            {intro}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {action}
@@ -168,10 +187,31 @@ function SectionTitle({
   );
 }
 
-export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSectionsProps) {
+export function HomepageLowerSections({
+  locale,
+  onNavigate,
+  publishedDocument,
+}: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
   const { t } = useLanguage();
+  const publishedShowcase = publishedDocument?.sections.find(
+    (section) => section.type === 'home.top-liked.v1',
+  );
+  const localizedValue = (value: Record<string, string>): string =>
+    value[language] ?? value.en ?? Object.values(value)[0] ?? '';
+  const bakingTitle = publishedShowcase?.type === 'home.top-liked.v1'
+    ? localizedValue(publishedShowcase.props.title)
+    : labels.bakingTitle;
+  const bakingIntro = publishedShowcase?.type === 'home.top-liked.v1'
+    ? localizedValue(publishedShowcase.props.subtitle)
+    : labels.bakingIntro;
+  const bakingBrowseLabel = publishedShowcase?.type === 'home.top-liked.v1'
+    ? localizedValue(publishedShowcase.props.browseLabel)
+    : labels.seeAll;
+  const showcaseVisible = publishedShowcase?.type === 'home.top-liked.v1'
+    ? publishedShowcase.visible
+    : true;
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
@@ -227,14 +267,15 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
   return (
     <div>
+      {showcaseVisible && (
       <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
         <Container width="wide">
           <SectionTitle
-            title={labels.bakingTitle}
-            intro={labels.bakingIntro}
+            title={bakingTitle}
+            intro={bakingIntro}
             action={(
               <button type="button" onClick={() => onNavigate('products')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
-                {labels.seeAll}<ArrowRight className="h-4 w-4" />
+                {bakingBrowseLabel}<ArrowRight className="h-4 w-4" />
               </button>
             )}
             backToTopLabel={labels.backToTop}
@@ -273,6 +314,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
           ) : <p className="rounded-2xl border border-[#8B765E]/12 bg-white/20 p-6 text-sm text-[#303532]/60">{labels.noProducts}</p>}
         </Container>
       </section>
+      )}
 
       <section id="how-it-works" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">

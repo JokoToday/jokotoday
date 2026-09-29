@@ -11,6 +11,7 @@ import { Container } from '../../../platform/design-system';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
 import HomepageLowerSections from './HomepageLowerSections';
+import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
@@ -73,8 +74,56 @@ const copy = {
 
 export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
   const { language } = useLanguage();
+  const { document: publishedDocument } = usePublishedJokoBranding();
   const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
   const labels = copy[lang];
+  const publishedExperienceDocument = publishedDocument?.siteStyle
+    ? publishedDocument
+    : null;
+  const publishedHero = publishedExperienceDocument?.sections.find(
+    (section) => section.type === 'home.hero.v1',
+  );
+  const localizedValue = (value: Record<string, string>): string =>
+    value[lang] ?? value.en ?? Object.values(value)[0] ?? '';
+
+  const defaultHeroTitle = lang === 'th'
+    ? [labels.headline1, labels.headline2, labels.headlineAccent].filter(Boolean).join('\n')
+    : [labels.headline1, `${labels.headline2} ${labels.headlineAccent}`.trim(), labels.headline3]
+        .filter(Boolean)
+        .join('\n');
+
+  const heroTitle = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.title)
+    : defaultHeroTitle;
+  const heroIntro = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.subtitle)
+    : labels.intro;
+  const productsLabel = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.primaryActionLabel)
+    : labels.products;
+  const howItWorksLabel = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.secondaryActionLabel)
+    : labels.howItWorks;
+  const bakeryAlt = publishedHero?.type === 'home.hero.v1'
+    ? localizedValue(publishedHero.props.mediaAlt)
+    : labels.bakeryAlt;
+  const heroVisible = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.visible
+    : true;
+
+  const renderHeadlineLine = (line: string, index: number) => {
+    const accent = labels.headlineAccent;
+    const accentIndex = accent ? line.indexOf(accent) : -1;
+    if (accentIndex < 0) return <span key={`${index}-${line}`} className="block">{line}</span>;
+
+    return (
+      <span key={`${index}-${line}`} className="block">
+        {line.slice(0, accentIndex)}
+        <span style={{ color: 'rgb(var(--joko-shell-orange))' }}>{accent}</span>
+        {line.slice(accentIndex + accent.length)}
+      </span>
+    );
+  };
   const showHowItWorks = () => {
     const section = window.document.getElementById('how-it-works');
     if (section) {
@@ -89,7 +138,10 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
     onNavigate('how-it-works');
   };
 
-  const heroSerif = lang === 'en' ? { fontFamily: 'var(--joko-font-display)' } : undefined;
+  const heroTitleStyle = {
+    fontFamily: lang === 'en' ? 'var(--joko-font-display)' : undefined,
+    fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero))',
+  };
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -97,6 +149,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
   return (
     <>
+      {heroVisible && (
       <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
@@ -106,7 +159,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
             >
               <img
                 src={BAKERY_HERO}
-                alt={labels.bakeryAlt}
+                alt={bakeryAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 style={desktopHeroMask}
                 decoding="async"
@@ -116,48 +169,60 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
             <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(21rem,.72fr)_minmax(39rem,1.48fr)] xl:items-start xl:gap-4">
               <div className="relative max-w-[31rem] xl:pt-10 2xl:pt-12">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+                <p
+                  className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]"
+                  style={{ fontSize: 'var(--joko-size-label)' }}
+                >
                   {labels.kicker}
                 </p>
 
                 <h1
-                  className="mt-4 text-[2.9rem] font-bold leading-[.92] tracking-[-0.042em] text-[#292D2B] sm:text-[3.6rem] lg:text-[4rem] xl:text-[4.05rem] 2xl:text-[4.45rem]"
-                  style={heroSerif}
+                  className="mt-4 font-bold leading-[.92] tracking-[-0.042em]"
+                  style={{
+                    ...heroTitleStyle,
+                    color: 'rgb(var(--joko-shell-ink))',
+                  }}
                 >
-                  <span className="block">{labels.headline1}</span>
-                  <span className="block">
-                    {labels.headline2}{' '}
-                    <span className="text-[#C85F22]">{labels.headlineAccent}</span>
-                  </span>
-                  {labels.headline3 && <span className="block">{labels.headline3}</span>}
+                  {heroTitle.split('\n').map(renderHeadlineLine)}
                 </h1>
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
-                <p className="mt-5 max-w-[29rem] text-[15px] leading-7 text-[#303532]/78 sm:text-base">
-                  {labels.intro}
+                <p
+                  className="mt-5 max-w-[29rem] leading-7"
+                  style={{
+                    fontSize: 'var(--joko-size-body)',
+                    color: 'rgb(var(--joko-shell-ink) / 0.78)',
+                  }}
+                >
+                  {heroIntro}
                 </p>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => onNavigate('products')}
-                    className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 text-base font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]"
+                    className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]"
+                    style={{ fontSize: 'var(--joko-size-button)' }}
                   >
                     <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
-                    {labels.products}
+                    {productsLabel}
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
                     onClick={showHowItWorks}
-                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 text-base font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                    style={{ fontSize: 'var(--joko-size-button)' }}
                   >
                     <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
-                    {labels.howItWorks}
+                    {howItWorksLabel}
                   </button>
                 </div>
 
-                <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
+                <div
+                  className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left leading-4 text-[#304B45]/82"
+                  style={{ fontSize: 'var(--joko-size-label)' }}
+                >
                   <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
                     <Leaf className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
                     <span>{labels.realIngredients}</span>
@@ -178,7 +243,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
                   <img
                     src={BAKERY_HERO}
-                    alt={labels.bakeryAlt}
+                    alt={bakeryAlt}
                     className="joko-bakery-hero-image-mobile mx-auto w-full object-contain"
                     decoding="async"
                     loading="eager"
@@ -190,9 +255,11 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
           </div>
         </Container>
       </section>
+      )}
       <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}
+        publishedDocument={publishedExperienceDocument}
       />
     </>
   );

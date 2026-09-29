@@ -4,6 +4,7 @@ import {
   History,
   Loader2,
   Pencil,
+  Save,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
@@ -12,11 +13,16 @@ import {
 import { useLanguage } from '../../../context/LanguageContext';
 import {
   BuilderPageRenderer,
+  builderSiteStyleToCssVariables,
+  EDITOR_DEFAULT_BUILDER_SITE_STYLE,
   jokoTodayHomepageFixture,
+  normalizeBuilderSiteStyle,
   type BuilderAction,
   type BuilderDocument,
+  type BuilderSiteStyle,
 } from '../../../platform/builder';
-import { HomepagePuckEditorProof } from '../../../platform/builder/editor';
+import { HomepageBrandStyleEditor } from './HomepageBrandStyleEditor';
+import { HomepageControlledEditor } from './HomepageControlledEditor';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
 import './jokoAdmin.css';
 import {
@@ -36,6 +42,8 @@ import { invalidatePublishedJokoLogoCache } from '../builder/usePublishedJokoLog
 type HomepageBuilderMode = 'edit' | 'preview';
 
 const DEFAULT_LOGO_URL = '/assets/brand/joko-today-logo-v0.4.webp';
+
+const INITIAL_ADMIN_SITE_STYLE: BuilderSiteStyle = EDITOR_DEFAULT_BUILDER_SITE_STYLE;
 
 function cloneSeedDocument(): BuilderDocument {
   return JSON.parse(JSON.stringify(jokoTodayHomepageFixture)) as BuilderDocument;
@@ -118,6 +126,26 @@ export function HomepageBuilderAdmin() {
     ? heroSection.props.logoUrl || DEFAULT_LOGO_URL
     : DEFAULT_LOGO_URL;
 
+  const siteStyle = normalizeBuilderSiteStyle(draftDocument.siteStyle);
+  const livePreviewDocument = useMemo<BuilderDocument>(() => ({
+    ...draftDocument,
+    sections: draftDocument.sections.filter(
+      (section) =>
+        section.type === 'home.hero.v1' ||
+        section.type === 'home.top-liked.v1',
+    ),
+  }), [draftDocument]);
+
+  const updateSiteStyle = (nextSiteStyle: BuilderSiteStyle) => {
+    setDraftDocument((current) => ({
+      ...current,
+      siteStyle: nextSiteStyle,
+    }));
+    setDirty(true);
+    setIssues([]);
+    setNotice('Site identity changed in the local Homepage Draft. Save Draft to persist it.');
+  };
+
   const updateLogoUrl = (nextLogoUrl: string) => {
     setDraftDocument((current) => ({
       ...current,
@@ -150,6 +178,17 @@ export function HomepageBuilderAdmin() {
         setDirty(true);
         setEditorRevision((value) => value + 1);
         setNotice('Legacy Builder content detected. The current JOKO Homepage design has been loaded locally; choose Save Draft to adopt it.');
+      } else if (!state.draft.document.siteStyle) {
+        setPageState(state);
+        setDraftDocument({
+          ...state.draft.document,
+          siteStyle: INITIAL_ADMIN_SITE_STYLE,
+        });
+        setDirty(true);
+        setEditorRevision((value) => value + 1);
+        setNotice(
+          'Homepage presentation controls initialized in Draft. English display typography is set to Noto Sans as requested; Save Draft to keep it.',
+        );
       } else {
         applyServerState(state, true);
         setNotice('Persistent Homepage draft loaded.');
@@ -245,7 +284,7 @@ export function HomepageBuilderAdmin() {
     }
 
     const confirmed = window.confirm(
-      'Publish the current Homepage Draft as a new immutable revision? The public Homepage currently uses the source-controlled Experience layout; publishing updates Builder content/branding but does not switch the public layout renderer.',
+      'Publish the current Homepage Draft as a new immutable revision? Published branding, typography and live-wired section content will become visible on the public Homepage. The protected Experience layout itself will not be replaced.',
     );
     if (!confirmed) return;
 
@@ -257,7 +296,7 @@ export function HomepageBuilderAdmin() {
       invalidatePublishedJokoLogoCache();
       await refreshRevisions();
       setNotice(
-        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The public Homepage remains on the source-controlled Experience layout; published branding is now live for the JOKO shell.`,
+        `Published Homepage revision ${state.published?.revisionNumber ?? ''}. Branding, typography and live-wired section content are now live; the protected Experience layout remains source-controlled.`,
       );
     } catch (error) {
       handlePersistenceError(error);
@@ -325,9 +364,9 @@ export function HomepageBuilderAdmin() {
               <ShieldCheck className="h-4 w-4 text-[#55766F]" />
               <span className="joko-admin-eyebrow">Admin-only persistent draft</span>
             </div>
-            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Builder</h1>
+            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Editor</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#303532]/62">
-              The Builder now mirrors the current bakery-first JOKO visual language. Draft and Publish control editable Builder content and branding; the public Homepage layout remains the source-controlled Experience composition.
+              Edit JOKO branding, typography and protected Homepage sections in one place. Structure remains controlled; content and presentation are Admin-managed through Draft and Publish.
             </p>
             {pageState && (
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -386,15 +425,26 @@ export function HomepageBuilderAdmin() {
             </button>
 
             {mode === 'edit' ? (
-              <button
-                type="button"
-                onClick={() => void handlePreview()}
-                disabled={Boolean(busy) || mediaUploading || !pageState}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
-              >
-                {busy === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                Preview draft
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => void persistDraft(draftDocument)}
+                  disabled={Boolean(busy) || mediaUploading || !pageState || !dirty}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#55766F]/25 bg-white px-4 py-2 text-sm font-semibold text-[#304B45] hover:bg-[#F7F1E7] disabled:opacity-45"
+                >
+                  {busy === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePreview()}
+                  disabled={Boolean(busy) || mediaUploading || !pageState}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview draft
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -422,14 +472,26 @@ export function HomepageBuilderAdmin() {
       </div>
 
       {mode === 'edit' && (
-        <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-          <HomepageLogoUploader
-            value={logoUrl}
-            onChange={updateLogoUrl}
-            onUploadingChange={setMediaUploading}
-          />
-          <div className="mt-3 rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
-            Homepage structure such as live Pickup, How It Works and About remains driven by the dedicated JOKO Experience/CMS systems. The Builder controls its editable brand/content layer without duplicating operational data.
+        <div className="mx-auto max-w-7xl space-y-4 px-4 pt-5 sm:px-6 lg:px-8">
+          <section className="joko-admin-paper-card overflow-hidden">
+            <div className="border-b border-[#55766F]/12 px-5 py-4 sm:px-6">
+              <p className="joko-admin-eyebrow">Site identity</p>
+              <h2 className="mt-1 text-2xl font-semibold text-[#303532]">Branding & typography</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#303532]/58">
+                Logo, logo scale, semantic font roles, font sizes and core JOKO colours. Changes preview immediately and become public only after Publish.
+              </p>
+            </div>
+            <div className="space-y-6 p-5 sm:p-6">
+              <HomepageLogoUploader
+                value={logoUrl}
+                onChange={updateLogoUrl}
+                onUploadingChange={setMediaUploading}
+              />
+              <HomepageBrandStyleEditor value={siteStyle} onChange={updateSiteStyle} />
+            </div>
+          </section>
+          <div className="rounded-2xl border border-[#55766F]/14 bg-[#D9ECE9]/70 px-4 py-3 text-xs leading-5 text-[#304B45]/78">
+            Homepage structure such as live Pickup, How It Works and About remains driven by dedicated JOKO Experience/CMS systems. This editor intentionally protects the page structure while allowing Admin control over presentation and editorial content.
           </div>
         </div>
       )}
@@ -506,8 +568,8 @@ export function HomepageBuilderAdmin() {
       )}
 
       {mode === 'edit' ? (
-        <div className="mt-4 border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
-          <HomepagePuckEditorProof
+        <div className="mt-4">
+          <HomepageControlledEditor
             key={editorRevision}
             document={draftDocument}
             locale={language}
@@ -519,26 +581,22 @@ export function HomepageBuilderAdmin() {
               setDirty(true);
               setIssues([]);
             }}
-            onApplyDraft={async (document) => {
-              setDraftDocument(document);
-              await persistDraft(document);
-            }}
-            onAdapterError={(nextIssues) => setIssues(nextIssues)}
-            applyDraftLabel="Save Draft"
-            height="calc(100vh - 11rem)"
           />
         </div>
       ) : (
         <div ref={previewRef} className="scroll-mt-4 pt-4">
           <div className="max-w-7xl mx-auto px-4 pb-3 sm:px-6 lg:px-8">
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <span className="font-semibold">Draft preview.</span>{' '}
-              This is the persisted Builder draft, not the public Homepage. Use “Back to editor” to make changes or “Publish” when the draft is ready.
+              <span className="font-semibold">Editable layer preview.</span>{' '}
+              This shows the persisted Hero and Bakery Showcase that publish into the protected Homepage Experience. Operational sections such as Pickup, How It Works and About continue to come from their dedicated systems.
             </div>
           </div>
-          <div className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
+          <div
+            className="joko-home-shell border-y border-[#55766F]/16 bg-[#FFF9EE]/86"
+            style={builderSiteStyleToCssVariables(siteStyle)}
+          >
             <BuilderPageRenderer
-              document={draftDocument}
+              document={livePreviewDocument}
               locale={language}
               site={jokoTodayBuilderSite}
               providers={providers}

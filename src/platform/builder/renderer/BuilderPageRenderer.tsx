@@ -22,6 +22,8 @@ export interface BuilderPageRendererProps {
   onAction?: (action: BuilderAction) => void;
   onValidationError?: (issues: BuilderValidationIssue[]) => void;
   onSectionError?: (sectionId: string, error: Error) => void;
+  selectedSectionId?: string;
+  onSectionSelect?: (sectionId: string) => void;
 }
 
 function renderSection(
@@ -75,6 +77,8 @@ export function BuilderPageRenderer({
   onAction,
   onValidationError,
   onSectionError,
+  selectedSectionId,
+  onSectionSelect,
 }: BuilderPageRendererProps) {
   const validation = validateBuilderDocument(document, {
     supportedLocales: site.supportedLocales,
@@ -89,20 +93,39 @@ export function BuilderPageRenderer({
     <PageCanvas className="bg-[#F4EFE5]">
       {validation.value.sections
         .filter((section) => section.visible)
-        .map((section) => (
-          <BuilderSectionErrorBoundary
-            key={section.id}
-            onError={(error) => onSectionError?.(section.id, error)}
-          >
-            {renderSection(section, {
-              locale,
-              site,
-              providers,
-              onAction,
-              onSectionError,
-            })}
-          </BuilderSectionErrorBoundary>
-        ))}
+        .map((section) => {
+          const rendered = (
+            <BuilderSectionErrorBoundary
+              key={section.id}
+              onError={(error) => onSectionError?.(section.id, error)}
+            >
+              {renderSection(section, {
+                locale,
+                site,
+                providers,
+                onAction,
+                onSectionError,
+              })}
+            </BuilderSectionErrorBoundary>
+          );
+
+          if (!onSectionSelect) return rendered;
+
+          return (
+            <div
+              key={section.id}
+              onClickCapture={() => onSectionSelect(section.id)}
+              className={[
+                'relative cursor-pointer transition',
+                selectedSectionId === section.id
+                  ? 'ring-2 ring-inset ring-[#C76624]/70'
+                  : 'hover:ring-2 hover:ring-inset hover:ring-[#55766F]/25',
+              ].join(' ')}
+            >
+              {rendered}
+            </div>
+          );
+        })}
     </PageCanvas>
   );
 }

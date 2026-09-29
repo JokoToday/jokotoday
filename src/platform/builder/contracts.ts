@@ -1,4 +1,5 @@
 import type { SectionSpacingRole, WidthRole } from '../design-system';
+import type { BuilderSiteStyle } from './siteStyle';
 
 export const BUILDER_SCHEMA_VERSION = 1 as const;
 export const BUILDER_REGISTRY_VERSION = 1 as const;
@@ -114,6 +115,7 @@ export interface BuilderDocument {
   schemaVersion: typeof BUILDER_SCHEMA_VERSION;
   registryVersion: typeof BUILDER_REGISTRY_VERSION;
   pageKey: 'home';
+  siteStyle?: BuilderSiteStyle;
   sections: BuilderSection[];
 }
 

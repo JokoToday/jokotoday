@@ -4,3 +4,4 @@ export * from './providers';
 export * from './registry';
 export * from './renderer';
 export * from './validation';
+export * from './siteStyle';
