@@ -51,10 +51,18 @@ export function HomepageControlledEditor({
   onAction,
   onDocumentChange,
 }: HomepageControlledEditorProps) {
-  const [selectedId, setSelectedId] = useState(document.sections[0]?.id ?? '');
+  const editableSections = useMemo(
+    () => document.sections.filter(
+      (section) =>
+        section.type === 'home.hero.v1' ||
+        section.type === 'home.top-liked.v1',
+    ),
+    [document.sections],
+  );
+  const [selectedId, setSelectedId] = useState(editableSections[0]?.id ?? '');
   const selected = useMemo(
-    () => document.sections.find((section) => section.id === selectedId) ?? document.sections[0],
-    [document.sections, selectedId],
+    () => editableSections.find((section) => section.id === selectedId) ?? editableSections[0],
+    [editableSections, selectedId],
   );
 
   useEffect(() => {
@@ -81,7 +89,7 @@ export function HomepageControlledEditor({
         </p>
 
         <div className="mt-4 space-y-2">
-          {document.sections.map((section) => {
+          {editableSections.map((section) => {
             const active = section.id === selected?.id;
             return (
               <button
@@ -114,7 +122,7 @@ export function HomepageControlledEditor({
         </div>
 
         <div className="mt-5 rounded-xl border border-[#55766F]/12 bg-white/45 p-3 text-xs leading-5 text-[#303532]/55">
-          Sections cannot be added, deleted, duplicated or reordered here. Operational homepage content such as Pickup remains connected to its dedicated CMS/data source.
+          Only sections already wired to the live Experience are editable here. Pickup, How It Works, About and other operational sections remain connected to their dedicated CMS/data sources. Nothing in this panel is preview-only.
         </div>
       </aside>
 
