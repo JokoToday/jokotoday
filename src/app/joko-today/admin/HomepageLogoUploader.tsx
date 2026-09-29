@@ -13,6 +13,29 @@ interface HomepageLogoUploaderProps {
 }
 
 const MAX_MB = BRAND_LOGO_MAX_BYTES / 1024 / 1024;
+const MIN_LOGO_WIDTH = 120;
+const MIN_LOGO_HEIGHT = 40;
+const MAX_LOGO_WIDTH = 2400;
+const MAX_LOGO_HEIGHT = 1200;
+const MIN_LOGO_ASPECT = 0.8;
+const MAX_LOGO_ASPECT = 5;
+
+function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const dimensions = { width: image.naturalWidth, height: image.naturalHeight };
+      URL.revokeObjectURL(objectUrl);
+      resolve(dimensions);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read the logo image.'));
+    };
+    image.src = objectUrl;
+  });
+}
 
 export function HomepageLogoUploader({
   value,
@@ -40,7 +63,8 @@ export function HomepageLogoUploader({
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const chooseFile = (file: File | null) => {
+  const chooseFile = async (file: File | null) => {
+    clearPreview();
     setError('');
     setNotice('');
     if (!file) return;
@@ -52,19 +76,40 @@ export function HomepageLogoUploader({
       setError(`Logo files must be ${MAX_MB} MB or smaller.`);
       return;
     }
-    clearPreview();
+
+    try {
+      const { width, height } = await readImageDimensions(file);
+      const aspect = width / Math.max(1, height);
+      if (
+        width < MIN_LOGO_WIDTH
+        || height < MIN_LOGO_HEIGHT
+        || width > MAX_LOGO_WIDTH
+        || height > MAX_LOGO_HEIGHT
+        || aspect < MIN_LOGO_ASPECT
+        || aspect > MAX_LOGO_ASPECT
+      ) {
+        setError(
+          `Use a logo between ${MIN_LOGO_WIDTH}×${MIN_LOGO_HEIGHT} and ${MAX_LOGO_WIDTH}×${MAX_LOGO_HEIGHT} px, with a normal logo aspect ratio.`,
+        );
+        return;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read the logo image.');
+      return;
+    }
+
     setSelected(file);
     setPreview(URL.createObjectURL(file));
   };
 
   const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
-    chooseFile(event.target.files?.[0] || null);
+    void chooseFile(event.target.files?.[0] || null);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragActive(false);
-    chooseFile(event.dataTransfer.files?.[0] || null);
+    void chooseFile(event.dataTransfer.files?.[0] || null);
   };
 
   const handleUpload = async () => {
@@ -157,7 +202,7 @@ export function HomepageLogoUploader({
                 <ImageIcon className="h-5 w-5" />
               </span>
               <span className="mt-3 text-sm font-semibold">Drop a logo here or choose a file</span>
-              <span className="mt-1 text-xs text-[#303532]/55">JPG · PNG · WebP · max {MAX_MB} MB</span>
+              <span className="mt-1 text-xs text-[#303532]/55">JPG · PNG · WebP · max {MAX_MB} MB · max {MAX_LOGO_WIDTH}×{MAX_LOGO_HEIGHT} px</span>
             </button>
           )}
 
