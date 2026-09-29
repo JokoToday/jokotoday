@@ -285,7 +285,7 @@ export function HomepageBuilderAdmin() {
     }
 
     const confirmed = window.confirm(
-      'Publish the current Homepage Draft as a new immutable revision? The public Homepage currently uses the source-controlled Experience layout; publishing updates Builder content/branding but does not switch the public layout renderer.',
+      'Publish the current Homepage Draft as a new immutable revision? Published branding, typography and live-wired section content will become visible on the public Homepage. The protected Experience layout itself will not be replaced.',
     );
     if (!confirmed) return;
 
@@ -297,7 +297,7 @@ export function HomepageBuilderAdmin() {
       invalidatePublishedJokoLogoCache();
       await refreshRevisions();
       setNotice(
-        `Published Builder revision ${state.published?.revisionNumber ?? ''}. The public Homepage remains on the source-controlled Experience layout; published branding is now live for the JOKO shell.`,
+        `Published Homepage revision ${state.published?.revisionNumber ?? ''}. Branding, typography and live-wired section content are now live; the protected Experience layout remains source-controlled.`,
       );
     } catch (error) {
       handlePersistenceError(error);
@@ -365,7 +365,7 @@ export function HomepageBuilderAdmin() {
               <ShieldCheck className="h-4 w-4 text-[#55766F]" />
               <span className="joko-admin-eyebrow">Admin-only persistent draft</span>
             </div>
-            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Builder</h1>
+            <h1 className="joko-admin-title mt-1 text-3xl font-semibold">Website / Homepage Editor</h1>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#303532]/62">
               Edit JOKO branding, typography and protected Homepage sections in one place. Structure remains controlled; content and presentation are Admin-managed through Draft and Publish.
             </p>
