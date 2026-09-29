@@ -234,7 +234,10 @@ function ColorField({
           type="text"
           value={value}
           maxLength={7}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value.toUpperCase();
+            if (/^#[0-9A-F]{6}$/.test(next)) onChange(next);
+          }}
           className="min-w-0 flex-1 rounded-lg border border-[#55766F]/18 bg-white px-2.5 py-2 font-mono text-xs uppercase text-[#303532]"
         />
       </div>
