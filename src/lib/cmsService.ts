@@ -162,14 +162,32 @@ export async function getProductByPublicCode(publicCode: string): Promise<CMSPro
   const normalized = publicCode.trim().toUpperCase();
   if (!normalized) return null;
 
-  const { data, error } = await supabase
+  const { data: currentProduct, error: currentError } = await supabase
     .from('cms_products')
     .select('*')
     .ilike('public_code', normalized)
     .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (currentError) throw currentError;
+  if (currentProduct) return currentProduct;
+
+  const { data: alias, error: aliasError } = await supabase
+    .from('cms_product_public_code_aliases')
+    .select('product_id')
+    .ilike('public_code', normalized)
+    .maybeSingle();
+
+  if (aliasError) throw aliasError;
+  if (!alias?.product_id) return null;
+
+  const { data: historicalProduct, error: historicalError } = await supabase
+    .from('cms_products')
+    .select('*')
+    .eq('id', alias.product_id)
+    .maybeSingle();
+
+  if (historicalError) throw historicalError;
+  return historicalProduct;
 }
 
 // Pages
