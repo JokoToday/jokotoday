@@ -148,10 +148,27 @@ function SectionTitle({
   return (
     <div className="mb-7 flex flex-col gap-3 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#303532] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+        <h2
+          className="font-semibold tracking-[-0.03em]"
+          style={{
+            fontFamily: 'var(--joko-font-display)',
+            fontSize: 'var(--joko-size-section-heading)',
+            color: 'rgb(var(--joko-shell-ink))',
+          }}
+        >
           {title}
         </h2>
-        {intro && <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/66 sm:text-base">{intro}</p>}
+        {intro && (
+          <p
+            className="mt-2 max-w-2xl leading-6"
+            style={{
+              fontSize: 'var(--joko-size-body)',
+              color: 'rgb(var(--joko-shell-ink) / 0.66)',
+            }}
+          >
+            {intro}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {action}
