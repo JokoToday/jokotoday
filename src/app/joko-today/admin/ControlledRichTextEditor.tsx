@@ -114,30 +114,30 @@ function serializeEditor(
 
 export function ControlledRichTextEditor({ value, onChange, colors }: ControlledRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement | null>(null);
-  const lastEmittedRef = useRef<BuilderRichText>(value);
+  const lastEmittedRef = useRef<BuilderRichText>([]);
+  const lastColorsRef = useRef('');
   const normalizedValue = useMemo(() => normalizeBuilderRichText(value), [value]);
+  const colorsSignature = `${colors.text}|${colors.accent}|${colors.turquoise}`;
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor || signaturesEqual(lastEmittedRef.current, normalizedValue)) return;
+    if (!editor) return;
+    const sameValue = signaturesEqual(lastEmittedRef.current, normalizedValue);
+    const sameColors = lastColorsRef.current === colorsSignature;
+    if (sameValue && sameColors) return;
 
     editor.replaceChildren();
     normalizedValue.forEach((run) => editor.appendChild(createRunNode(run, editor.ownerDocument, colors)));
     lastEmittedRef.current = normalizedValue;
-  }, [normalizedValue, colors]);
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor || editor.childNodes.length > 0 || normalizedValue.length === 0) return;
-    normalizedValue.forEach((run) => editor.appendChild(createRunNode(run, editor.ownerDocument, colors)));
-    lastEmittedRef.current = normalizedValue;
-  }, []);
+    lastColorsRef.current = colorsSignature;
+  }, [normalizedValue, colors, colorsSignature]);
 
   const emit = () => {
     const editor = editorRef.current;
     if (!editor) return;
     const next = serializeEditor(editor, colors);
     lastEmittedRef.current = next;
+    lastColorsRef.current = colorsSignature;
     onChange(next);
   };
 
