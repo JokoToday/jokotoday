@@ -6,6 +6,7 @@ import {
   type BuilderSection,
   type BuilderSectionType,
   type LocalizedText,
+  type LocalizedRichText,
 } from './contracts';
 import {
   getBuilderComponentDefinition,
@@ -73,6 +74,51 @@ function validateLocalizedText(
   return valid;
 }
 
+function validateLocalizedRichText(
+  value: unknown,
+  path: string,
+  issues: BuilderValidationIssue[],
+  supportedLocales?: readonly string[],
+): value is LocalizedRichText {
+  if (!isRecord(value)) {
+    pushIssue(issues, path, 'Expected localized rich text object.');
+    return false;
+  }
+
+  let valid = true;
+  for (const locale of supportedLocales ?? Object.keys(value)) {
+    const runs = value[locale];
+    if (!Array.isArray(runs) || runs.length === 0) {
+      pushIssue(issues, `${path}.${locale}`, 'Rich text must contain at least one text run.');
+      valid = false;
+      continue;
+    }
+    let plain = '';
+    runs.forEach((run, index) => {
+      if (!isRecord(run) || typeof run.text !== 'string') {
+        pushIssue(issues, `${path}.${locale}[${index}]`, 'Rich text run must contain text.');
+        valid = false;
+        return;
+      }
+      plain += run.text;
+      if (run.marks !== undefined) {
+        if (!isRecord(run.marks)) {
+          pushIssue(issues, `${path}.${locale}[${index}].marks`, 'Rich text marks must be an object.');
+          valid = false;
+        } else if (run.marks.color !== undefined && !['text', 'accent', 'turquoise'].includes(String(run.marks.color))) {
+          pushIssue(issues, `${path}.${locale}[${index}].marks.color`, 'Unsupported rich text color.');
+          valid = false;
+        }
+      }
+    });
+    if (!plain.trim()) {
+      pushIssue(issues, `${path}.${locale}`, 'Rich text must contain visible text.');
+      valid = false;
+    }
+  }
+  return valid;
+}
+
 function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   if (value === undefined) return;
   if (!isRecord(value)) {
@@ -93,6 +139,17 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
     if (!['inter', 'noto-sans'].includes(String(typography.bodyFont))) {
       pushIssue(issues, 'branding.typography.bodyFont', 'Unsupported body font.');
+    }
+    const optionalFontChecks: Array<[string, unknown, readonly string[]]> = [
+      ['thaiDisplayFont', typography.thaiDisplayFont, ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree', 'maitree']],
+      ['thaiBodyFont', typography.thaiBodyFont, ['noto-sans-thai-looped', 'noto-sans-thai', 'sarabun', 'bai-jamjuree']],
+      ['chineseDisplayFont', typography.chineseDisplayFont, ['noto-sans-sc', 'noto-serif-sc']],
+      ['chineseBodyFont', typography.chineseBodyFont, ['noto-sans-sc', 'noto-serif-sc']],
+    ];
+    for (const [field, fieldValue, allowed] of optionalFontChecks) {
+      if (fieldValue !== undefined && !allowed.includes(String(fieldValue))) {
+        pushIssue(issues, `branding.typography.${field}`, `Unsupported ${field}.`);
+      }
     }
 
     const ranges: Array<[string, unknown, number, number]> = [
@@ -217,6 +274,9 @@ function validateSection(
         }
       }
       validateLocalizedText(value.props.title, `${path}.props.title`, issues, locales);
+      if (value.props.titleRichText !== undefined) {
+        validateLocalizedRichText(value.props.titleRichText, `${path}.props.titleRichText`, issues, locales);
+      }
       validateLocalizedText(value.props.subtitle, `${path}.props.subtitle`, issues, locales);
       validateLocalizedText(value.props.primaryActionLabel, `${path}.props.primaryActionLabel`, issues, locales);
       validateAction(value.props.primaryAction, `${path}.props.primaryAction`, issues);
