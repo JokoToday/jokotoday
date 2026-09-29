@@ -3,11 +3,13 @@ import { ArrowRight, Leaf, MapPin, PlayCircle } from 'lucide-react';
 import { Container } from '../../../design-system';
 import type {
   BuilderAction,
+  BuilderRichTextColor,
   BuilderSiteIdentity,
   HomeHeroSection,
 } from '../../contracts';
 import type { BuilderHeroMediaProvider, BuilderMedia } from '../../providers';
 import { localize } from '../localize';
+import { localizeRichText, richTextToPlainText } from '../../richText';
 
 interface HomeHeroSectionRendererProps {
   section: HomeHeroSection;
@@ -36,6 +38,7 @@ export function HomeHeroSectionRenderer({
 
   const fallbackLocale = site.defaultLocale;
   const title = localize(section.props.title, locale, fallbackLocale);
+  const titleRichText = localizeRichText(section.props.titleRichText, locale, fallbackLocale, title);
   const subtitle = localize(section.props.subtitle, locale, fallbackLocale);
   const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
   const chrome = locale === 'th'
@@ -87,8 +90,30 @@ export function HomeHeroSectionRenderer({
             <h1
               className="mt-4 whitespace-pre-line font-bold leading-[.93] tracking-[-0.042em]"
               style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'clamp(2.7rem, 5vw, var(--joko-size-hero, 65px))', color: 'var(--joko-brand-text, #292D2B)' }}
+              aria-label={richTextToPlainText(titleRichText)}
             >
-              {title}
+              {titleRichText.map((run, index) => {
+                const color = run.marks?.color as BuilderRichTextColor | undefined;
+                const semanticColor = color === 'accent'
+                  ? 'var(--joko-brand-accent, #C76624)'
+                  : color === 'turquoise'
+                    ? 'var(--joko-brand-turquoise, #DAEBE8)'
+                    : color === 'text'
+                      ? 'var(--joko-brand-text, #292D2B)'
+                      : undefined;
+                return (
+                  <span
+                    key={`${index}-${run.text}`}
+                    style={{
+                      color: semanticColor,
+                      fontWeight: run.marks?.bold ? 700 : undefined,
+                      fontStyle: run.marks?.italic ? 'italic' : undefined,
+                    }}
+                  >
+                    {run.text}
+                  </span>
+                );
+              })}
             </h1>
             <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
             <p className="mt-5 leading-7 text-[#303532]/78" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>{subtitle}</p>
