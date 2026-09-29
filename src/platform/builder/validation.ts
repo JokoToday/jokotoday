@@ -38,6 +38,67 @@ function pushIssue(issues: BuilderValidationIssue[], path: string, message: stri
   issues.push({ path, message });
 }
 
+const FONT_CHOICES = new Set([
+  'playfair-display',
+  'noto-sans',
+  'inter',
+  'noto-sans-thai-looped',
+  'noto-sans-thai',
+  'noto-sans-sc',
+  'lxgw-wenkai-gb',
+]);
+
+function validateSiteStyle(
+  value: unknown,
+  issues: BuilderValidationIssue[],
+) {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    pushIssue(issues, 'siteStyle', 'Site style must be an object.');
+    return;
+  }
+
+  if (typeof value.logoScale !== 'number' || value.logoScale < 70 || value.logoScale > 150) {
+    pushIssue(issues, 'siteStyle.logoScale', 'Logo scale must be between 70 and 150.');
+  }
+
+  if (!isRecord(value.typography)) {
+    pushIssue(issues, 'siteStyle.typography', 'Typography settings are required.');
+  } else {
+    for (const key of ['englishDisplayFont', 'englishBodyFont', 'thaiFont', 'chineseFont']) {
+      if (!FONT_CHOICES.has(String(value.typography[key] ?? ''))) {
+        pushIssue(issues, `siteStyle.typography.${key}`, 'Unsupported font choice.');
+      }
+    }
+
+    const ranges: Record<string, [number, number]> = {
+      heroSize: [44, 88],
+      sectionHeadingSize: [26, 52],
+      bodySize: [13, 21],
+      navSize: [12, 19],
+      buttonSize: [13, 20],
+      labelSize: [9, 15],
+    };
+
+    for (const [key, [min, max]] of Object.entries(ranges)) {
+      const numeric = value.typography[key];
+      if (typeof numeric !== 'number' || numeric < min || numeric > max) {
+        pushIssue(issues, `siteStyle.typography.${key}`, `Value must be between ${min} and ${max}.`);
+      }
+    }
+  }
+
+  if (!isRecord(value.colors)) {
+    pushIssue(issues, 'siteStyle.colors', 'Brand colors are required.');
+  } else {
+    for (const key of ['ink', 'accent', 'mineral']) {
+      if (typeof value.colors[key] !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(value.colors[key] as string)) {
+        pushIssue(issues, `siteStyle.colors.${key}`, 'Expected a six-digit hex color.');
+      }
+    }
+  }
+}
+
 function validateLocalizedText(
   value: unknown,
   path: string,
@@ -234,6 +295,8 @@ export function validateBuilderDocument(
   if (input.pageKey !== 'home') {
     pushIssue(issues, 'pageKey', 'Homepage Builder v1 only supports pageKey "home".');
   }
+
+  validateSiteStyle(input.siteStyle, issues);
 
   if (!Array.isArray(input.sections)) {
     pushIssue(issues, 'sections', 'Builder document sections must be an array.');
