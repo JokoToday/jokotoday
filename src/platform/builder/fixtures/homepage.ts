@@ -1,5 +1,5 @@
 import type { BuilderDocument, BuilderSiteIdentity } from '../contracts';
-import { DEFAULT_BUILDER_SITE_STYLE } from '../siteStyle';
+import { EDITOR_DEFAULT_BUILDER_SITE_STYLE } from '../siteStyle';
 
 export const jokoTodayFixtureSite: BuilderSiteIdentity = {
   siteId: 'fixture-joko-today',
@@ -13,13 +13,7 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
   schemaVersion: 1,
   registryVersion: 1,
   pageKey: 'home',
-  siteStyle: {
-    ...DEFAULT_BUILDER_SITE_STYLE,
-    typography: {
-      ...DEFAULT_BUILDER_SITE_STYLE.typography,
-      englishDisplayFont: 'noto-sans',
-    },
-  },
+  siteStyle: EDITOR_DEFAULT_BUILDER_SITE_STYLE,
   sections: [
     {
       id: 'home-hero',
