@@ -51,6 +51,14 @@ export const DEFAULT_BUILDER_SITE_STYLE: BuilderSiteStyle = {
   },
 };
 
+export const EDITOR_DEFAULT_BUILDER_SITE_STYLE: BuilderSiteStyle = {
+  ...DEFAULT_BUILDER_SITE_STYLE,
+  typography: {
+    ...DEFAULT_BUILDER_SITE_STYLE.typography,
+    englishDisplayFont: 'noto-sans',
+  },
+};
+
 export const ENGLISH_DISPLAY_FONT_OPTIONS = [
   { value: 'noto-sans', label: 'Noto Sans' },
   { value: 'playfair-display', label: 'Playfair Display' },
