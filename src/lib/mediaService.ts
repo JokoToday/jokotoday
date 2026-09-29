@@ -1,0 +1,110 @@
+import { supabase } from './supabase';
+
+export const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+export const PRODUCT_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
+
+interface ProductImageUploadTicket {
+  uploadUrl: string;
+  publicUrl: string;
+  objectKey: string;
+  expiresIn: number;
+}
+
+interface UploadProductImageInput {
+  file: File;
+  productSlug: string;
+}
+
+async function requestUploadTicket(file: File, productSlug: string): Promise<ProductImageUploadTicket> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Your admin session has expired. Please sign in again.');
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('JOKO Media is not configured for this environment.');
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/joko-media-upload-url`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': supabaseAnonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType: file.type,
+      sizeBytes: file.size,
+      productSlug,
+    }),
+  });
+
+  const payload = await response.json().catch(() => null) as
+    | (Partial<ProductImageUploadTicket> & { error?: string })
+    | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Could not prepare the media upload.');
+  }
+
+  if (!payload?.uploadUrl || !payload.publicUrl || !payload.objectKey) {
+    throw new Error('The media upload service returned an invalid response.');
+  }
+
+  return {
+    uploadUrl: payload.uploadUrl,
+    publicUrl: payload.publicUrl,
+    objectKey: payload.objectKey,
+    expiresIn: payload.expiresIn || 300,
+  };
+}
+
+function putFile(uploadUrl: string, file: File, onProgress?: (percent: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('PUT', uploadUrl);
+    request.setRequestHeader('Content-Type', file.type);
+
+    request.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !onProgress) return;
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress?.(100);
+        resolve();
+        return;
+      }
+      reject(new Error(`R2 upload failed with status ${request.status}.`));
+    };
+
+    request.onerror = () => reject(new Error('Could not upload the image to JOKO Media.'));
+    request.onabort = () => reject(new Error('Image upload was cancelled.'));
+    request.send(file);
+  });
+}
+
+export async function uploadProductImage({
+  file,
+  productSlug,
+}: UploadProductImageInput, onProgress?: (percent: number) => void): Promise<ProductImageUploadTicket> {
+  if (!PRODUCT_IMAGE_ACCEPTED_TYPES.includes(file.type as typeof PRODUCT_IMAGE_ACCEPTED_TYPES[number])) {
+    throw new Error('Use a JPG, WebP or PNG image.');
+  }
+  if (file.size <= 0 || file.size > PRODUCT_IMAGE_MAX_BYTES) {
+    throw new Error('Product images must be 8 MB or smaller.');
+  }
+
+  const slug = productSlug.trim().toLowerCase();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    throw new Error('Enter a valid product URL slug before uploading an image.');
+  }
+
+  const ticket = await requestUploadTicket(file, slug);
+  await putFile(ticket.uploadUrl, file, onProgress);
+  return ticket;
+}
