@@ -13,7 +13,13 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
   schemaVersion: 1,
   registryVersion: 1,
   pageKey: 'home',
-  siteStyle: DEFAULT_BUILDER_SITE_STYLE,
+  siteStyle: {
+    ...DEFAULT_BUILDER_SITE_STYLE,
+    typography: {
+      ...DEFAULT_BUILDER_SITE_STYLE.typography,
+      englishDisplayFont: 'noto-sans',
+    },
+  },
   sections: [
     {
       id: 'home-hero',
