@@ -2,18 +2,73 @@
 
 ## Purpose
 
-QR Pass Admin Designer v1 lets an authenticated JOKO TODAY Admin change the branding and visible sections of the customer QR Pass without editing application code.
+QR Pass Admin Designer v1 lets an authenticated JOKO TODAY Admin control the appearance of the customer QR Pass without editing application code.
 
-The design is stored as one versioned JSON document in the existing `cms_settings` table under:
+The design is stored as one validated JSON document in the existing `cms_settings` table under:
 
 `qr_pass_config_v1`
 
-No new database table or migration is required.
+No new database table, migration, RLS policy, or auth change is required.
 
-## Editable fields
+## Canonical renderer
 
-- bundled same-origin logo asset path
-- logo scale (60–140%)
+The customer QR Pass, Admin live preview, PNG export, and PDF export all use the same `BrandedQRCard` component/config path.
+
+The staff operational desks do not maintain a separate printable membership-pass renderer; they scan or look up the customer QR and print order receipts. The legacy `QRCodeDisplay` remains an onboarding/QR-only component and is not the QR Pass renderer.
+
+This keeps the Admin preview aligned with actual customer exports.
+
+## Physical format
+
+The QR Pass is locked to landscape wallet-card proportions:
+
+**85 × 55 mm**
+
+PDF export uses that exact page size and landscape orientation.
+
+## Editable controls
+
+### Logo
+
+- upload/replace via the existing JOKO Media brand upload workflow
+- bundled same-origin logos remain valid
+- `media.joko.today` brand assets are accepted
+- logo scale: 60–140%
+
+### Typography
+
+Font selection is script-aware so card text does not depend on accidental browser fallback.
+
+English:
+
+- Noto Sans
+- Inter
+- Playfair Display
+
+Thai:
+
+- Maitree
+- Noto Sans Thai Looped
+- Noto Sans Thai
+- Sarabun
+- Bai Jamjuree
+
+Chinese:
+
+- Noto Sans SC
+- Noto Serif SC
+
+Semantic text roles:
+
+- card title / brand
+- customer name
+- short code
+- small labels / helper text
+
+Each text role has constrained font weight and size controls. Noto Sans includes Light 300, Regular 400, Medium 500, SemiBold 600, Bold 700, ExtraBold 800, and Black 900. The editor reuses the Homepage Editor font option/weight definitions rather than maintaining a second font list.
+
+### Text / visibility
+
 - title
 - subtitle
 - footer text
@@ -23,45 +78,47 @@ No new database table or migration is required.
 - show/hide VIP short code
 - show/hide two-dot footer mark
 - show/hide footer text
+
+### Colors
+
 - outer background
 - card surface
 - card border
-- QR frame color
-- heading color
-- accent/VIP color
-- customer-name color
-- secondary-text color
-
-The Admin workspace includes a live preview using dummy member data and a harmless QR target (`https://joko.today/`).
+- QR frame
+- title / brand
+- accent / VIP code
+- customer name
+- helper text
 
 ## Locked QR safety zone
 
-The following are deliberately not editable in v1:
+The following are deliberately not editable:
 
 - QR foreground/background colors
 - QR error-correction level
 - QR quiet zone
-- QR physical area
-- card physical PDF size
+- QR minimum physical area
+- QR/logo overlap
+- card physical PDF dimensions
 
-The QR remains black-on-white with error correction `H`, the existing quiet zone, and the existing scan-safe physical area. PDF output remains 55 × 85 mm.
+The QR remains black-on-white with error correction `H`, a white quiet zone, and a fixed scan-safe area.
 
-## Logo handling
+## Logo export safety
 
-v1 accepts only a bundled same-origin asset path beginning with a single `/`, for example:
+JOKO Media logo images are loaded with anonymous CORS for canvas export. The production JOKO Media domain is the only external origin accepted by the saved QR Pass config.
 
-`/JOKO.TODAY_logo.v0.4.webp`
-
-External image URLs are deliberately not accepted in v1 because a remotely hosted image may render in the browser but still fail canvas export when its server does not allow cross-origin image access. Restricting v1 to same-origin assets keeps PNG/PDF generation deterministic.
-
-Direct Admin file upload is intentionally deferred until the Storage write policy and desired asset-management lifecycle are explicitly validated. A later Storage-backed upload flow can extend the existing config format without weakening export reliability.
+Arbitrary remote image URLs are rejected by the config parser.
 
 ## Runtime behavior
 
-Customer QR Passes load the saved configuration when rendered. If the setting is missing, malformed, cannot be read, or contains an unsupported logo path, the component falls back to the checked-in QR Pass v2 defaults.
+Customer QR Passes load the saved configuration when rendered. Missing, malformed, or unsupported fields fall back independently to checked-in defaults, so older `qr_pass_config_v1` JSON remains compatible.
 
-Saving occurs only when an authenticated Admin explicitly clicks **Save QR Pass design**. The QR Pass download controls are explicitly non-submit buttons, so previewing a PNG or PDF cannot publish an unsaved Admin draft. Merely viewing the designer, opening a customer QR Pass, CI, or building the frontend performs no production write.
+Saving occurs only when an authenticated Admin explicitly clicks **Save QR Pass design**. Uploading a logo adds it to the local QR Pass draft; the design is not published until Save is clicked.
 
-## Deployment dependency
+Preview/download buttons are non-submit controls, so previewing or exporting cannot publish an unsaved Admin draft.
 
-QR Pass v2 (PR #123) was merged first. QR Pass Admin Designer v1 is the follow-up layer that configures that card.
+## Architecture
+
+Persistence remains the existing `cms_settings` record. This is intentionally narrower than creating a dedicated design table because v1 is one global QR Pass design document.
+
+If future work introduces multiple named layouts, version history, front/back designs, or per-segment designs, a dedicated model can be considered then.

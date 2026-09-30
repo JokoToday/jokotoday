@@ -11,6 +11,7 @@ interface HomepageLogoUploaderProps {
   onChange: (url: string) => void;
   onUploadingChange?: (uploading: boolean) => void;
   compact?: boolean;
+  successMessage?: string;
 }
 
 const MAX_MB = BRAND_LOGO_MAX_BYTES / 1024 / 1024;
@@ -43,6 +44,7 @@ export function HomepageLogoUploader({
   onChange,
   onUploadingChange,
   compact = false,
+  successMessage = 'Logo uploaded. Save the Homepage Draft to keep it, then Publish when ready.',
 }: HomepageLogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selected, setSelected] = useState<File | null>(null);
@@ -124,7 +126,7 @@ export function HomepageLogoUploader({
     try {
       const result = await uploadBrandLogo(selected, setProgress);
       onChange(result.publicUrl);
-      setNotice('Logo uploaded. Save the Homepage Draft to keep it, then Publish when ready.');
+      setNotice(successMessage);
       clearPreview();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Logo upload failed.');
