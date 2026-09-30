@@ -59,7 +59,7 @@ function QrPassPreview() {
         <div className="mt-6 rounded-2xl border border-[#d7d1c5] bg-white/80 p-5 text-sm leading-6 text-stone-600">
           <p className="font-semibold text-stone-800">What to test</p>
           <p className="mt-1">
-            Review the logo and layout, download both PDF and PNG, confirm the PDF page is 85 × 55 mm,
+            Review the logo and layout, download both PDF and PNG, confirm the PDF page is 55 × 85 mm,
             and scan both files with a phone. A successful scan should open the JOKO TODAY homepage.
           </p>
           <p className="mt-3 text-xs text-stone-500">

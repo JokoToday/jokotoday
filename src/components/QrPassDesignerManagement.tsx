@@ -197,7 +197,7 @@ export function QrPassDesignerManagement() {
           <p className="font-semibold">Protected QR zone</p>
           <p className="mt-0.5 leading-6">
             The QR stays black on white, uses high error correction, keeps its quiet zone and has a fixed minimum physical area.
-            Logo and decorative controls can never overlap the QR. Export size is locked to 85 × 55 mm.
+            Logo and decorative controls can never overlap the QR. Export size is locked to 55 × 85 mm.
           </p>
         </div>
       </div>
@@ -456,7 +456,7 @@ export function QrPassDesignerManagement() {
           <div className="joko-admin-paper-card p-5 sm:p-6">
             <div className="mb-1 flex items-center justify-between gap-3">
               <div>
-                <p className="joko-admin-eyebrow">85 × 55 mm</p>
+                <p className="joko-admin-eyebrow">55 × 85 mm</p>
                 <h2 className="mt-1 text-lg font-semibold text-[#303532]">Live QR Pass preview</h2>
               </div>
               {dirty && (

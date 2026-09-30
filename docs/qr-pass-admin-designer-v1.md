@@ -20,11 +20,11 @@ This keeps the Admin preview aligned with actual customer exports.
 
 ## Physical format
 
-The QR Pass is locked to landscape wallet-card proportions:
+The QR Pass is locked to portrait wallet-card proportions:
 
-**85 × 55 mm**
+**55 × 85 mm**
 
-PDF export uses that exact page size and landscape orientation.
+PDF export uses that exact page size and portrait orientation.
 
 ## Editable controls
 
