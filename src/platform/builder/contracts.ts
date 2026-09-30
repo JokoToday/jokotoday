@@ -113,7 +113,11 @@ export type HomeHeroSection = BuilderSectionBase<
 
 export interface HomeTopLikedProps {
   title: LocalizedText;
+  /** Controlled rich text for the Bakery Showcase heading. Plain title remains the fallback/source for legacy revisions. */
+  titleRichText?: LocalizedRichText;
   subtitle: LocalizedText;
+  /** Controlled rich text for the Bakery Showcase intro. Plain subtitle remains the fallback/source for legacy revisions. */
+  subtitleRichText?: LocalizedRichText;
   browseLabel: LocalizedText;
   browseAction: BuilderAction;
 }

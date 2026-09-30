@@ -10,7 +10,12 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { Container } from '../../../platform/design-system';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
-import { localizeRichText, type BuilderRichTextColor } from '../../../platform/builder';
+import {
+  localize,
+  localizeRichText,
+  type BuilderRichTextColor,
+  type HomeTopLikedSection,
+} from '../../../platform/builder';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
 
@@ -87,6 +92,21 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
         publishedHero.props.title[lang] ?? publishedHero.props.title.en ?? '',
       )
     : null;
+  const heroIntro = publishedHero?.type === 'home.hero.v1'
+    ? localize(publishedHero.props.subtitle, lang, 'en')
+    : labels.intro;
+  const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
+    ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
+    : labels.products;
+  const heroSecondaryLabel = publishedHero?.type === 'home.hero.v1'
+    ? localize(publishedHero.props.secondaryActionLabel, lang, 'en')
+    : labels.howItWorks;
+  const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
+    ? localize(publishedHero.props.mediaAlt, lang, 'en')
+    : labels.bakeryAlt;
+  const publishedTopLiked = publishedHomepage?.sections.find(
+    (section): section is HomeTopLikedSection => section.type === 'home.top-liked.v1',
+  );
   const showHowItWorks = () => {
     const section = window.document.getElementById('how-it-works');
     if (section) {
@@ -121,7 +141,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
             >
               <img
                 src={BAKERY_HERO}
-                alt={labels.bakeryAlt}
+                alt={heroMediaAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 style={desktopHeroMask}
                 decoding="async"
@@ -174,7 +194,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
                 <p className="mt-5 max-w-[29rem] leading-7 text-[var(--joko-brand-text,#303532)]/80" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
-                  {labels.intro}
+                  {heroIntro}
                 </p>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -184,7 +204,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                   >
                     <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
-                    {labels.products}
+                    {heroPrimaryLabel}
                     <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
                   </button>
                   <button
@@ -193,7 +213,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                   >
                     <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
-                    {labels.howItWorks}
+                    {heroSecondaryLabel}
                   </button>
                 </div>
 
@@ -218,7 +238,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
                   <img
                     src={BAKERY_HERO}
-                    alt={labels.bakeryAlt}
+                    alt={heroMediaAlt}
                     className="joko-bakery-hero-image-mobile mx-auto w-full object-contain"
                     decoding="async"
                     loading="eager"
@@ -233,6 +253,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
       <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}
+        publishedTopLiked={publishedTopLiked}
       />
     </>
   );
