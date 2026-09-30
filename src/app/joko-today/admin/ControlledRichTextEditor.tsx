@@ -10,6 +10,7 @@ import { normalizeBuilderRichText } from '../../../platform/builder';
 interface ControlledRichTextEditorProps {
   value: BuilderRichText;
   onChange: (value: BuilderRichText) => void;
+  ariaLabel: string;
   colors: {
     text: string;
     accent: string;
@@ -112,7 +113,7 @@ function serializeEditor(
   return normalized;
 }
 
-export function ControlledRichTextEditor({ value, onChange, colors }: ControlledRichTextEditorProps) {
+export function ControlledRichTextEditor({ value, onChange, ariaLabel, colors }: ControlledRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedRef = useRef<BuilderRichText>([]);
   const lastColorsRef = useRef('');
@@ -179,7 +180,7 @@ export function ControlledRichTextEditor({ value, onChange, colors }: Controlled
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
-        aria-label="Hero headline rich text"
+        aria-label={ariaLabel}
         onInput={emit}
         onBlur={emit}
         className="min-h-28 whitespace-pre-wrap rounded-xl border border-[#55766F]/20 bg-white px-3 py-3 text-sm leading-6 text-[#303532] outline-none transition focus:border-[#55766F]/55 focus:ring-2 focus:ring-[#55766F]/12"
