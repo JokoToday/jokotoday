@@ -1,7 +1,28 @@
 import { supabase } from './supabase';
 import { getSetting } from './cmsService';
+import type {
+  BuilderChineseDisplayFont,
+  BuilderDisplayFont,
+  BuilderFontWeight,
+  BuilderThaiDisplayFont,
+} from '../platform/builder/contracts';
 
 export const QR_PASS_CONFIG_KEY = 'qr_pass_config_v1';
+
+export interface QrPassTextRoleStyle {
+  weight: BuilderFontWeight;
+  size: number;
+}
+
+export interface QrPassTypographyConfig {
+  englishFont: BuilderDisplayFont;
+  thaiFont: BuilderThaiDisplayFont;
+  chineseFont: BuilderChineseDisplayFont;
+  title: QrPassTextRoleStyle;
+  customerName: QrPassTextRoleStyle;
+  shortCode: QrPassTextRoleStyle;
+  helper: QrPassTextRoleStyle;
+}
 
 export interface QrPassConfig {
   version: 1;
@@ -24,13 +45,14 @@ export interface QrPassConfig {
   accentColor: string;
   textColor: string;
   mutedColor: string;
+  typography: QrPassTypographyConfig;
 }
 
 export const DEFAULT_QR_PASS_CONFIG: QrPassConfig = {
   version: 1,
   logoUrl: '/JOKO.TODAY_logo.v0.4.webp',
   logoScale: 100,
-  title: 'JOKO PASS',
+  title: 'JOKO TODAY',
   subtitle: 'YOUR PERSONAL JOKO TODAY ID',
   footerText: 'joko.today',
   showTitle: true,
@@ -47,9 +69,20 @@ export const DEFAULT_QR_PASS_CONFIG: QrPassConfig = {
   accentColor: '#C45A00',
   textColor: '#24231F',
   mutedColor: '#8C8477',
+  typography: {
+    englishFont: 'noto-sans',
+    thaiFont: 'noto-sans-thai',
+    chineseFont: 'noto-sans-sc',
+    title: { weight: 700, size: 22 },
+    customerName: { weight: 600, size: 30 },
+    shortCode: { weight: 700, size: 20 },
+    helper: { weight: 500, size: 14 },
+  },
 };
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/i;
+const MEDIA_LOGO_URL = /^https:\/\/media\.joko\.today\/[A-Za-z0-9/_-]+\.(?:png|jpe?g|webp)(?:\?[^\s]*)?$/i;
+const FONT_WEIGHTS: BuilderFontWeight[] = [300, 400, 500, 600, 700, 800, 900];
 
 function cleanText(value: unknown, fallback: string, maxLength: number): string {
   if (typeof value !== 'string') return fallback;
@@ -64,9 +97,11 @@ function cleanLogoUrl(value: unknown): string {
 
   const isSameOriginAsset = normalized.startsWith('/')
     && !normalized.startsWith('//')
-    && !normalized.includes('\\');
+    && !normalized.includes('\\')
+    && !normalized.endsWith('/');
+  const isJokoMediaAsset = MEDIA_LOGO_URL.test(normalized);
 
-  return isSameOriginAsset ? normalized : DEFAULT_QR_PASS_CONFIG.logoUrl;
+  return isSameOriginAsset || isJokoMediaAsset ? normalized : DEFAULT_QR_PASS_CONFIG.logoUrl;
 }
 
 function cleanColor(value: unknown, fallback: string): string {
@@ -79,14 +114,78 @@ function cleanBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
 }
 
-function cleanScale(value: unknown): number {
+function cleanNumber(value: unknown, fallback: number, min: number, max: number): number {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return DEFAULT_QR_PASS_CONFIG.logoScale;
-  return Math.min(140, Math.max(60, Math.round(parsed)));
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
+function cleanScale(value: unknown): number {
+  return cleanNumber(value, DEFAULT_QR_PASS_CONFIG.logoScale, 60, 140);
+}
+
+function cleanWeight(value: unknown, fallback: BuilderFontWeight): BuilderFontWeight {
+  const numeric = Number(value) as BuilderFontWeight;
+  return FONT_WEIGHTS.includes(numeric) ? numeric : fallback;
+}
+
+function cleanEnglishFont(value: unknown): BuilderDisplayFont {
+  return value === 'noto-sans' || value === 'inter' || value === 'playfair-display'
+    ? value
+    : DEFAULT_QR_PASS_CONFIG.typography.englishFont;
+}
+
+function cleanThaiFont(value: unknown): BuilderThaiDisplayFont {
+  return value === 'maitree'
+    || value === 'noto-sans-thai-looped'
+    || value === 'noto-sans-thai'
+    || value === 'sarabun'
+    || value === 'bai-jamjuree'
+    ? value
+    : DEFAULT_QR_PASS_CONFIG.typography.thaiFont;
+}
+
+function cleanChineseFont(value: unknown): BuilderChineseDisplayFont {
+  return value === 'noto-sans-sc' || value === 'noto-serif-sc'
+    ? value
+    : DEFAULT_QR_PASS_CONFIG.typography.chineseFont;
+}
+
+function cleanRoleStyle(
+  value: unknown,
+  fallback: QrPassTextRoleStyle,
+  minSize: number,
+  maxSize: number,
+): QrPassTextRoleStyle {
+  const input = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+
+  return {
+    weight: cleanWeight(input.weight, fallback.weight),
+    size: cleanNumber(input.size, fallback.size, minSize, maxSize),
+  };
+}
+
+function cleanTypography(value: unknown): QrPassTypographyConfig {
+  const input = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  const fallback = DEFAULT_QR_PASS_CONFIG.typography;
+
+  return {
+    englishFont: cleanEnglishFont(input.englishFont),
+    thaiFont: cleanThaiFont(input.thaiFont),
+    chineseFont: cleanChineseFont(input.chineseFont),
+    title: cleanRoleStyle(input.title, fallback.title, 14, 34),
+    customerName: cleanRoleStyle(input.customerName, fallback.customerName, 18, 42),
+    shortCode: cleanRoleStyle(input.shortCode, fallback.shortCode, 12, 28),
+    helper: cleanRoleStyle(input.helper, fallback.helper, 9, 20),
+  };
 }
 
 export function parseQrPassConfig(value: string | null | undefined): QrPassConfig {
-  if (!value) return { ...DEFAULT_QR_PASS_CONFIG };
+  if (!value) return structuredClone(DEFAULT_QR_PASS_CONFIG);
 
   try {
     const parsed = JSON.parse(value) as Partial<QrPassConfig>;
@@ -111,9 +210,10 @@ export function parseQrPassConfig(value: string | null | undefined): QrPassConfi
       accentColor: cleanColor(parsed.accentColor, DEFAULT_QR_PASS_CONFIG.accentColor),
       textColor: cleanColor(parsed.textColor, DEFAULT_QR_PASS_CONFIG.textColor),
       mutedColor: cleanColor(parsed.mutedColor, DEFAULT_QR_PASS_CONFIG.mutedColor),
+      typography: cleanTypography(parsed.typography),
     };
   } catch {
-    return { ...DEFAULT_QR_PASS_CONFIG };
+    return structuredClone(DEFAULT_QR_PASS_CONFIG);
   }
 }
 
@@ -123,7 +223,7 @@ export async function getQrPassConfig(): Promise<QrPassConfig> {
     return parseQrPassConfig(setting?.value);
   } catch (error) {
     console.error('Could not load QR Pass configuration:', error);
-    return { ...DEFAULT_QR_PASS_CONFIG };
+    return structuredClone(DEFAULT_QR_PASS_CONFIG);
   }
 }
 
