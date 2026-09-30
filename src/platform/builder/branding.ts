@@ -37,7 +37,7 @@ export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   },
 };
 
-const DISPLAY_FONT_STACKS: Record<BuilderDisplayFont, string> = {
+export const DISPLAY_FONT_STACKS: Record<BuilderDisplayFont, string> = {
   'noto-sans': "'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   inter: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   'playfair-display': "'Playfair Display', Georgia, serif",
@@ -48,7 +48,7 @@ const BODY_FONT_STACKS: Record<BuilderBodyFont, string> = {
   'noto-sans': "'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
-const THAI_DISPLAY_FONT_STACKS: Record<BuilderThaiDisplayFont, string> = {
+export const THAI_DISPLAY_FONT_STACKS: Record<BuilderThaiDisplayFont, string> = {
   'noto-sans-thai-looped': "'Noto Sans Thai Looped', Tahoma, sans-serif",
   'noto-sans-thai': "'Noto Sans Thai', Tahoma, sans-serif",
   sarabun: "'Sarabun', Tahoma, sans-serif",
@@ -63,7 +63,7 @@ const THAI_BODY_FONT_STACKS: Record<BuilderThaiBodyFont, string> = {
   'bai-jamjuree': "'Bai Jamjuree', Tahoma, sans-serif",
 };
 
-const CHINESE_DISPLAY_FONT_STACKS: Record<BuilderChineseDisplayFont, string> = {
+export const CHINESE_DISPLAY_FONT_STACKS: Record<BuilderChineseDisplayFont, string> = {
   'noto-sans-sc': "'Noto Sans SC', 'PingFang SC', system-ui, sans-serif",
   'noto-serif-sc': "'Noto Serif SC', 'Songti SC', serif",
 };
@@ -145,6 +145,18 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
       turquoise: safeHex(colors.turquoise, DEFAULT_JOKO_HOMEPAGE_BRANDING.colors.turquoise),
     },
   };
+}
+
+export function jokoDisplayFontStack(font: BuilderDisplayFont): string {
+  return DISPLAY_FONT_STACKS[font];
+}
+
+export function jokoThaiDisplayFontStack(font: BuilderThaiDisplayFont): string {
+  return THAI_DISPLAY_FONT_STACKS[font];
+}
+
+export function jokoChineseDisplayFontStack(font: BuilderChineseDisplayFont): string {
+  return CHINESE_DISPLAY_FONT_STACKS[font];
 }
 
 export function jokoBrandingCssVariables(branding: JokoHomepageBranding, locale = 'en'): CSSProperties {
