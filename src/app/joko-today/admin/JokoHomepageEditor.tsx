@@ -773,6 +773,7 @@ function SectionEditor({
           <div>
             <FieldLabel>Headline</FieldLabel>
             <ControlledRichTextEditor
+              ariaLabel="Hero headline rich text"
               value={localizeRichText(
                 props.titleRichText,
                 locale,
@@ -809,6 +810,7 @@ function SectionEditor({
           <div>
             <FieldLabel>Section title</FieldLabel>
             <ControlledRichTextEditor
+              ariaLabel="Bakery Showcase section title rich text"
               value={localizeRichText(
                 props.titleRichText,
                 locale,
@@ -825,6 +827,7 @@ function SectionEditor({
           <div>
             <FieldLabel>Intro</FieldLabel>
             <ControlledRichTextEditor
+              ariaLabel="Bakery Showcase intro rich text"
               value={localizeRichText(
                 props.subtitleRichText,
                 locale,
