@@ -25,12 +25,12 @@ interface BrandedQRCardProps {
   config?: QrPassConfig;
 }
 
-const CARD_WIDTH_MM = 85;
-const CARD_HEIGHT_MM = 55;
-const CARD_CANVAS_WIDTH = 1020;
-const CARD_CANVAS_HEIGHT = 660;
-const QR_FRAME_SIZE = 390;
-const QR_MAX_SIZE = 348;
+const CARD_WIDTH_MM = 55;
+const CARD_HEIGHT_MM = 85;
+const CARD_CANVAS_WIDTH = 660;
+const CARD_CANVAS_HEIGHT = 1020;
+const QR_FRAME_SIZE = 500;
+const QR_MAX_SIZE = 420;
 
 const QR_DOWNLOAD_BUTTON_CLASS =
   'w-full border border-amber-500 bg-white text-amber-700 font-semibold py-3 rounded-lg hover:border-amber-600 hover:bg-amber-600 hover:text-white hover:shadow-md focus-visible:border-amber-600 focus-visible:bg-amber-600 focus-visible:text-white focus-visible:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 transition-colors transition-shadow duration-200 flex items-center justify-center gap-2';
@@ -98,6 +98,9 @@ export function BrandedQRCard({
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const image = new Image();
+      // Canvas export needs CORS-safe pixels. The visible DOM preview deliberately
+      // does not set crossOrigin; keeping these paths separate avoids a broken
+      // preview while preserving export safety.
       image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
       image.onerror = () => reject(new Error(`Failed to load image: ${src}`));
@@ -152,7 +155,7 @@ export function BrandedQRCard({
     try {
       await document.fonts?.load(font, text);
     } catch {
-      // Canvas still has the explicit fallback stack if a remote font is unavailable.
+      // The explicit stack still provides a deterministic fallback for canvas.
     }
     ctx.font = font;
   };
@@ -187,7 +190,25 @@ export function BrandedQRCard({
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    roundedRect(ctx, 48, 132, QR_FRAME_SIZE, QR_FRAME_SIZE, 28);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const logoScale = activeConfig.logoScale / 100;
+    drawContainedImage(ctx, logoImage, CARD_CANVAS_WIDTH / 2, 112, 390 * logoScale, 128 * logoScale);
+
+    if (activeConfig.showTitle) {
+      ctx.fillStyle = activeConfig.headingColor;
+      await setCanvasFont(ctx, activeConfig.title, activeConfig.typography.title);
+      ctx.fillText(activeConfig.title, CARD_CANVAS_WIDTH / 2, 198, 500);
+    }
+
+    if (activeConfig.showSubtitle) {
+      ctx.fillStyle = activeConfig.mutedColor;
+      await setCanvasFont(ctx, activeConfig.subtitle, activeConfig.typography.helper);
+      ctx.fillText(activeConfig.subtitle, CARD_CANVAS_WIDTH / 2, 230, 540);
+    }
+
+    roundedRect(ctx, 80, 272, QR_FRAME_SIZE, QR_FRAME_SIZE, 28);
     ctx.fillStyle = '#FFFFFF';
     ctx.fill();
     ctx.strokeStyle = activeConfig.qrBorderColor;
@@ -195,65 +216,46 @@ export function BrandedQRCard({
     ctx.stroke();
 
     ctx.imageSmoothingEnabled = false;
-    const qrX = Math.round(48 + (QR_FRAME_SIZE - qrSize) / 2);
-    const qrY = Math.round(132 + (QR_FRAME_SIZE - qrSize) / 2);
+    const qrX = Math.round((CARD_CANVAS_WIDTH - qrSize) / 2);
+    const qrY = Math.round(272 + (QR_FRAME_SIZE - qrSize) / 2);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
     ctx.imageSmoothingEnabled = true;
-
-    const infoCenterX = 730;
-    const logoScale = activeConfig.logoScale / 100;
-    drawContainedImage(ctx, logoImage, infoCenterX, 92, 360 * logoScale, 104 * logoScale);
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    if (activeConfig.showTitle) {
-      ctx.fillStyle = activeConfig.headingColor;
-      await setCanvasFont(ctx, activeConfig.title, activeConfig.typography.title);
-      ctx.fillText(activeConfig.title, infoCenterX, 170, 500);
-    }
-
-    if (activeConfig.showSubtitle) {
-      ctx.fillStyle = activeConfig.mutedColor;
-      await setCanvasFont(ctx, activeConfig.subtitle, activeConfig.typography.helper);
-      ctx.fillText(activeConfig.subtitle, infoCenterX, 208, 500);
-    }
 
     const cleanName = String(customerName || 'JOKO Member').trim().slice(0, 40);
     if (activeConfig.showCustomerName) {
       ctx.fillStyle = activeConfig.textColor;
       await setCanvasFont(ctx, cleanName, activeConfig.typography.customerName);
-      ctx.fillText(cleanName, infoCenterX, 334, 500);
+      ctx.fillText(cleanName, CARD_CANVAS_WIDTH / 2, 828, 540);
     }
 
     const cleanShortCode = String(shortCode || '').trim().slice(0, 32);
     if (activeConfig.showShortCode && cleanShortCode) {
       ctx.fillStyle = activeConfig.accentColor;
       await setCanvasFont(ctx, cleanShortCode, activeConfig.typography.shortCode);
-      ctx.fillText(cleanShortCode, infoCenterX, activeConfig.showCustomerName ? 386 : 346, 500);
+      ctx.fillText(cleanShortCode, CARD_CANVAS_WIDTH / 2, activeConfig.showCustomerName ? 868 : 842, 520);
     }
 
     if (activeConfig.showFooterMark) {
       ctx.strokeStyle = activeConfig.borderColor;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(602, 516);
-      ctx.lineTo(690, 516);
-      ctx.moveTo(770, 516);
-      ctx.lineTo(858, 516);
+      ctx.moveTo(228, 916);
+      ctx.lineTo(308, 916);
+      ctx.moveTo(352, 916);
+      ctx.lineTo(432, 916);
       ctx.stroke();
 
       ctx.fillStyle = activeConfig.accentColor;
       ctx.beginPath();
-      ctx.arc(721, 516, 5, 0, Math.PI * 2);
-      ctx.arc(739, 516, 4, 0, Math.PI * 2);
+      ctx.arc(322, 916, 5, 0, Math.PI * 2);
+      ctx.arc(339, 916, 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (activeConfig.showFooterText) {
       ctx.fillStyle = activeConfig.mutedColor;
       await setCanvasFont(ctx, activeConfig.footerText, activeConfig.typography.helper);
-      ctx.fillText(activeConfig.footerText, infoCenterX, 560, 500);
+      ctx.fillText(activeConfig.footerText, CARD_CANVAS_WIDTH / 2, 958, 520);
     }
 
     return canvas;
@@ -278,7 +280,7 @@ export function BrandedQRCard({
       const canvas = await renderMemberCardCanvas();
       const cardImageData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: 'portrait',
         unit: 'mm',
         format: [CARD_WIDTH_MM, CARD_HEIGHT_MM],
         compress: true,
@@ -314,81 +316,78 @@ export function BrandedQRCard({
     }
   };
 
-  const logoWidth = `${Math.round(260 * activeConfig.logoScale / 100)}px`;
+  const logoWidth = `${Math.round(220 * activeConfig.logoScale / 100)}px`;
   const nameText = String(customerName || 'JOKO Member').trim();
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center justify-center py-4">
+      <div className="flex flex-col items-center justify-center py-6">
         <div
-          className="relative w-full max-w-[610px] overflow-hidden rounded-[28px] p-3 shadow-2xl"
-          style={{ aspectRatio: '85 / 55', backgroundColor: activeConfig.cardBackground }}
+          className="relative w-full max-w-[360px] overflow-hidden rounded-[28px] p-3 shadow-2xl"
+          style={{ aspectRatio: '55 / 85', backgroundColor: activeConfig.cardBackground }}
         >
           <div
-            className="grid h-full grid-cols-[42%_58%] rounded-[20px] border px-4 py-4 text-center sm:px-5 sm:py-5"
+            className="flex h-full flex-col items-center rounded-[20px] border px-5 py-5 text-center sm:px-7 sm:py-6"
             style={{ backgroundColor: activeConfig.cardSurface, borderColor: activeConfig.borderColor }}
           >
-            <div className="flex min-w-0 items-center justify-center pr-3">
-              <div
-                ref={qrRef}
-                className="flex aspect-square w-full max-w-[230px] items-center justify-center rounded-2xl border bg-white p-2"
-                style={{ borderColor: activeConfig.qrBorderColor }}
+            <img
+              src={activeConfig.logoUrl}
+              alt="JOKO TODAY"
+              className="h-16 w-full object-contain sm:h-[4.5rem]"
+              style={{ maxWidth: logoWidth }}
+            />
+
+            {activeConfig.showTitle && (
+              <p
+                className="mt-2 max-w-full truncate tracking-[0.18em]"
+                style={{
+                  color: activeConfig.headingColor,
+                  ...textStyle(activeConfig.title, activeConfig.typography.title, activeConfig),
+                  fontSize: `clamp(0.72rem, 3vw, ${activeConfig.typography.title.size}px)`,
+                }}
               >
-                <QRCodeSVG
-                  value={String(qrValue).trim()}
-                  size={220}
-                  level="H"
-                  marginSize={4}
-                  fgColor="#000000"
-                  bgColor="#FFFFFF"
-                  className="h-auto w-full"
-                />
-              </div>
+                {activeConfig.title}
+              </p>
+            )}
+
+            {activeConfig.showSubtitle && (
+              <p
+                className="mt-1 max-w-full truncate tracking-[0.12em]"
+                style={{
+                  color: activeConfig.mutedColor,
+                  ...textStyle(activeConfig.subtitle, activeConfig.typography.helper, activeConfig),
+                  fontSize: `clamp(0.52rem, 2vw, ${activeConfig.typography.helper.size}px)`,
+                }}
+              >
+                {activeConfig.subtitle}
+              </p>
+            )}
+
+            <div
+              ref={qrRef}
+              className="mt-4 flex items-center justify-center rounded-2xl border bg-white p-2 sm:mt-5"
+              style={{ borderColor: activeConfig.qrBorderColor }}
+            >
+              <QRCodeSVG
+                value={String(qrValue).trim()}
+                size={220}
+                level="H"
+                marginSize={4}
+                fgColor="#000000"
+                bgColor="#FFFFFF"
+                className="h-auto w-full max-w-[190px] sm:max-w-[220px]"
+              />
             </div>
 
-            <div className="flex min-w-0 flex-col items-center pl-2">
-              <img
-                src={activeConfig.logoUrl}
-                crossOrigin="anonymous"
-                alt="JOKO TODAY"
-                className="h-14 w-full object-contain sm:h-16"
-                style={{ maxWidth: logoWidth }}
-              />
-
-              {activeConfig.showTitle && (
-                <p
-                  className="mt-1 max-w-full truncate tracking-[0.12em]"
-                  style={{
-                    color: activeConfig.headingColor,
-                    ...textStyle(activeConfig.title, activeConfig.typography.title, activeConfig),
-                    fontSize: `clamp(0.78rem, 2.2vw, ${activeConfig.typography.title.size}px)`,
-                  }}
-                >
-                  {activeConfig.title}
-                </p>
-              )}
-
-              {activeConfig.showSubtitle && (
-                <p
-                  className="mt-1 max-w-full truncate tracking-[0.08em]"
-                  style={{
-                    color: activeConfig.mutedColor,
-                    ...textStyle(activeConfig.subtitle, activeConfig.typography.helper, activeConfig),
-                    fontSize: `clamp(0.48rem, 1.45vw, ${activeConfig.typography.helper.size}px)`,
-                  }}
-                >
-                  {activeConfig.subtitle}
-                </p>
-              )}
-
-              <div className="flex flex-1 flex-col items-center justify-center min-w-0">
+            {(activeConfig.showCustomerName || (activeConfig.showShortCode && shortCode)) && (
+              <div className="mt-4 min-w-0">
                 {activeConfig.showCustomerName && (
                   <p
                     className="max-w-full truncate"
                     style={{
                       color: activeConfig.textColor,
                       ...textStyle(nameText, activeConfig.typography.customerName, activeConfig),
-                      fontSize: `clamp(0.9rem, 3vw, ${activeConfig.typography.customerName.size}px)`,
+                      fontSize: `clamp(1rem, 4vw, ${activeConfig.typography.customerName.size}px)`,
                     }}
                   >
                     {nameText}
@@ -396,44 +395,44 @@ export function BrandedQRCard({
                 )}
                 {activeConfig.showShortCode && shortCode && (
                   <p
-                    className="mt-1 max-w-full truncate tracking-wide"
+                    className="mt-0.5 max-w-full truncate tracking-wide"
                     style={{
                       color: activeConfig.accentColor,
                       ...textStyle(shortCode, activeConfig.typography.shortCode, activeConfig),
-                      fontSize: `clamp(0.68rem, 2vw, ${activeConfig.typography.shortCode.size}px)`,
+                      fontSize: `clamp(0.8rem, 3vw, ${activeConfig.typography.shortCode.size}px)`,
                     }}
                   >
                     {shortCode}
                   </p>
                 )}
               </div>
+            )}
 
-              <div className="pb-1">
-                {activeConfig.showFooterMark && (
-                  <div
-                    className="flex items-center justify-center gap-2"
-                    style={{ color: activeConfig.accentColor }}
-                    aria-hidden="true"
-                  >
-                    <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
-                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                    <span className="h-1 w-1 rounded-full bg-current" />
-                    <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
-                  </div>
-                )}
-                {activeConfig.showFooterText && (
-                  <p
-                    className="mt-1 tracking-wide"
-                    style={{
-                      color: activeConfig.mutedColor,
-                      ...textStyle(activeConfig.footerText, activeConfig.typography.helper, activeConfig),
-                      fontSize: `clamp(0.48rem, 1.35vw, ${activeConfig.typography.helper.size}px)`,
-                    }}
-                  >
-                    {activeConfig.footerText}
-                  </p>
-                )}
-              </div>
+            <div className="mt-auto pt-3">
+              {activeConfig.showFooterMark && (
+                <div
+                  className="flex items-center justify-center gap-2"
+                  style={{ color: activeConfig.accentColor }}
+                  aria-hidden="true"
+                >
+                  <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  <span className="h-1 w-1 rounded-full bg-current" />
+                  <span className="h-px w-8" style={{ backgroundColor: activeConfig.borderColor }} />
+                </div>
+              )}
+              {activeConfig.showFooterText && (
+                <p
+                  className="mt-1 tracking-wide"
+                  style={{
+                    color: activeConfig.mutedColor,
+                    ...textStyle(activeConfig.footerText, activeConfig.typography.helper, activeConfig),
+                    fontSize: `clamp(0.56rem, 2vw, ${activeConfig.typography.helper.size}px)`,
+                  }}
+                >
+                  {activeConfig.footerText}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -466,8 +465,8 @@ export function BrandedQRCard({
           'qr_page.card_info',
           language,
           language === 'th'
-            ? 'บันทึกไว้ในโทรศัพท์หรือพิมพ์เป็นบัตรขนาด 85 × 55 มม. สำหรับกระเป๋าสตางค์ของคุณ'
-            : 'Save it to your phone or print the 85 × 55 mm card for your wallet.',
+            ? 'บันทึกไว้ในโทรศัพท์หรือพิมพ์เป็นบัตรขนาด 55 × 85 มม. สำหรับกระเป๋าสตางค์ของคุณ'
+            : 'Save it to your phone or print the 55 × 85 mm card for your wallet.',
         )}
       </p>
     </div>
