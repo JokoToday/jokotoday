@@ -7,6 +7,8 @@ import type {
   HomeTopLikedSection,
 } from '../../contracts';
 import type { BuilderTopLikedProduct, BuilderTopLikedProvider } from '../../providers';
+import { localizeRichText } from '../../richText';
+import { BuilderRichTextContent } from '../BuilderRichTextContent';
 import { localize } from '../localize';
 
 interface HomeTopLikedSectionRendererProps {
@@ -47,6 +49,21 @@ export function HomeTopLikedSectionRenderer({
   }, [provider]);
 
   const fallbackLocale = site.defaultLocale;
+  const plainTitle = localize(section.props.title, locale, fallbackLocale);
+  const plainSubtitle = localize(section.props.subtitle, locale, fallbackLocale);
+  const title = localizeRichText(
+    section.props.titleRichText,
+    locale,
+    fallbackLocale,
+    plainTitle,
+  );
+  const subtitle = localizeRichText(
+    section.props.subtitleRichText,
+    locale,
+    fallbackLocale,
+    plainSubtitle,
+  );
+
   if (products?.length === 0) return null;
 
   return (
@@ -59,11 +76,11 @@ export function HomeTopLikedSectionRenderer({
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-semibold uppercase tracking-[0.2em] text-[#55766F]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>From the bakery</p>
-            <h2 className="mt-2 font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
-              {localize(section.props.title, locale, fallbackLocale)}
+            <h2 className="mt-2 whitespace-pre-line font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
+              <BuilderRichTextContent value={title} />
             </h2>
-            <p className="mt-2 max-w-2xl leading-6 text-[#303532]/62" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
-              {localize(section.props.subtitle, locale, fallbackLocale)}
+            <p className="mt-2 max-w-2xl whitespace-pre-line leading-6 text-[#303532]/62" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
+              <BuilderRichTextContent value={subtitle} />
             </p>
           </div>
           <button

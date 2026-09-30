@@ -306,7 +306,13 @@ function validateSection(
 
     case 'home.top-liked.v1':
       validateLocalizedText(value.props.title, `${path}.props.title`, issues, locales);
+      if (value.props.titleRichText !== undefined) {
+        validateLocalizedRichText(value.props.titleRichText, `${path}.props.titleRichText`, issues, locales);
+      }
       validateLocalizedText(value.props.subtitle, `${path}.props.subtitle`, issues, locales);
+      if (value.props.subtitleRichText !== undefined) {
+        validateLocalizedRichText(value.props.subtitleRichText, `${path}.props.subtitleRichText`, issues, locales);
+      }
       validateLocalizedText(value.props.browseLabel, `${path}.props.browseLabel`, issues, locales);
       validateAction(value.props.browseAction, `${path}.props.browseAction`, issues);
       if (value.design.variant !== 'cards') {

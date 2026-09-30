@@ -773,6 +773,7 @@ function SectionEditor({
           <div>
             <FieldLabel>Headline</FieldLabel>
             <ControlledRichTextEditor
+              ariaLabel="Hero headline rich text"
               value={localizeRichText(
                 props.titleRichText,
                 locale,
@@ -806,8 +807,40 @@ function SectionEditor({
       <div>
         {editorHeader}
         <div className="space-y-4">
-          <TextField label="Section title" value={localized(props.title, locale, fallbackLocale)} onChange={(value) => patch({ title: withLocale(props.title, locale, value) })} />
-          <TextField label="Intro" multiline value={localized(props.subtitle, locale, fallbackLocale)} onChange={(value) => patch({ subtitle: withLocale(props.subtitle, locale, value) })} />
+          <div>
+            <FieldLabel>Section title</FieldLabel>
+            <ControlledRichTextEditor
+              ariaLabel="Bakery Showcase section title rich text"
+              value={localizeRichText(
+                props.titleRichText,
+                locale,
+                fallbackLocale,
+                localized(props.title, locale, fallbackLocale),
+              )}
+              colors={branding.colors}
+              onChange={(value) => patch({
+                title: withLocale(props.title, locale, richTextToPlainText(value)),
+                titleRichText: withLocaleRichText(props.titleRichText, locale, value),
+              })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Intro</FieldLabel>
+            <ControlledRichTextEditor
+              ariaLabel="Bakery Showcase intro rich text"
+              value={localizeRichText(
+                props.subtitleRichText,
+                locale,
+                fallbackLocale,
+                localized(props.subtitle, locale, fallbackLocale),
+              )}
+              colors={branding.colors}
+              onChange={(value) => patch({
+                subtitle: withLocale(props.subtitle, locale, richTextToPlainText(value)),
+                subtitleRichText: withLocaleRichText(props.subtitleRichText, locale, value),
+              })}
+            />
+          </div>
           <TextField label="Browse link" value={localized(props.browseLabel, locale, fallbackLocale)} onChange={(value) => patch({ browseLabel: withLocale(props.browseLabel, locale, value) })} />
         </div>
         {advanced}

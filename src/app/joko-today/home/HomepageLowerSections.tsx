@@ -9,7 +9,7 @@ import {
   ShoppingBasket,
   Sparkles,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getPickupDays, type PickupDay } from '../../../lib/availabilityService';
 import {
@@ -19,11 +19,18 @@ import {
   type CMSProduct,
 } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
+import {
+  BuilderRichTextContent,
+  localize,
+  localizeRichText,
+  type HomeTopLikedSection,
+} from '../../../platform/builder';
 import { Container } from '../../../platform/design-system';
 
 interface HomepageLowerSectionsProps {
   locale: string;
   onNavigate: (page: string) => void;
+  publishedTopLiked?: HomeTopLikedSection | null;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -139,19 +146,19 @@ function SectionTitle({
   backToTopLabel,
   onBackToTop,
 }: {
-  title: string;
-  intro?: string;
-  action?: React.ReactNode;
+  title: ReactNode;
+  intro?: ReactNode;
+  action?: ReactNode;
   backToTopLabel: string;
   onBackToTop: () => void;
 }) {
   return (
     <div className="mb-7 flex flex-col gap-3 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h2 className="font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
+        <h2 className="whitespace-pre-line font-semibold tracking-[-0.03em]" style={{ fontFamily: 'var(--joko-font-display)', fontSize: 'var(--joko-size-section-heading, 36px)', color: 'var(--joko-brand-text, #303532)' }}>
           {title}
         </h2>
-        {intro && <p className="mt-2 max-w-2xl leading-6 text-[#303532]/66" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>{intro}</p>}
+        {intro && <p className="mt-2 max-w-2xl whitespace-pre-line leading-6 text-[#303532]/66" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>{intro}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {action}
@@ -168,9 +175,39 @@ function SectionTitle({
   );
 }
 
-export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSectionsProps) {
+export function HomepageLowerSections({
+  locale,
+  onNavigate,
+  publishedTopLiked,
+}: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
+  const publishedBakingTitle = publishedTopLiked
+    ? localize(publishedTopLiked.props.title, language, 'en')
+    : labels.bakingTitle;
+  const publishedBakingIntro = publishedTopLiked
+    ? localize(publishedTopLiked.props.subtitle, language, 'en')
+    : labels.bakingIntro;
+  const bakingTitle = publishedTopLiked
+    ? localizeRichText(
+        publishedTopLiked.props.titleRichText,
+        language,
+        'en',
+        publishedBakingTitle,
+      )
+    : null;
+  const bakingIntro = publishedTopLiked
+    ? localizeRichText(
+        publishedTopLiked.props.subtitleRichText,
+        language,
+        'en',
+        publishedBakingIntro,
+      )
+    : null;
+  const bakingBrowseLabel = publishedTopLiked
+    ? localize(publishedTopLiked.props.browseLabel, language, 'en')
+    : labels.seeAll;
+  const showBaking = publishedTopLiked?.visible ?? true;
   const { t } = useLanguage();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
@@ -227,14 +264,14 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
 
   return (
     <div>
-      <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
+      {showBaking && <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
         <Container width="wide">
           <SectionTitle
-            title={labels.bakingTitle}
-            intro={labels.bakingIntro}
+            title={bakingTitle ? <BuilderRichTextContent value={bakingTitle} /> : labels.bakingTitle}
+            intro={bakingIntro ? <BuilderRichTextContent value={bakingIntro} /> : labels.bakingIntro}
             action={(
               <button type="button" onClick={() => onNavigate('products')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
-                {labels.seeAll}<ArrowRight className="h-4 w-4" />
+                {bakingBrowseLabel}<ArrowRight className="h-4 w-4" />
               </button>
             )}
             backToTopLabel={labels.backToTop}
@@ -272,7 +309,7 @@ export function HomepageLowerSections({ locale, onNavigate }: HomepageLowerSecti
             </div>
           ) : <p className="rounded-2xl border border-[#8B765E]/12 bg-white/20 p-6 text-sm text-[#303532]/60">{labels.noProducts}</p>}
         </Container>
-      </section>
+      </section>}
 
       <section id="how-it-works" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
