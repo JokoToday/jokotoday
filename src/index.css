@@ -80,9 +80,6 @@
     background: var(--joko-brand-turquoise, rgb(var(--joko-shell-mineral)));
   }
 
-  :lang(th) .joko-home-shell { font-family: var(--joko-font-shell-th); }
-  :lang(zh) .joko-home-shell { font-family: var(--joko-font-cjk); }
-
   .joko-home-shell .font-header { font-family: inherit; }
 
   .joko-home-shell h1,
