@@ -47,6 +47,14 @@ export function localizeRichText(
   fallbackLocale: string,
   plainFallback: string,
 ): BuilderRichText {
-  const localized = value?.[locale] ?? value?.[fallbackLocale] ?? (value ? Object.values(value)[0] : undefined);
-  return localized && localized.length > 0 ? normalizeBuilderRichText(localized) : plainTextToRichText(plainFallback);
+  const localized = value?.[locale];
+  if (localized && localized.length > 0) return normalizeBuilderRichText(localized);
+
+  // Rich-text formatting is locale-specific. When a locale has not been
+  // formatted yet, prefer that locale's plain-title fallback rather than
+  // borrowing rich text from another language.
+  if (plainFallback.length > 0) return plainTextToRichText(plainFallback);
+
+  const fallback = value?.[fallbackLocale] ?? (value ? Object.values(value)[0] : undefined);
+  return fallback && fallback.length > 0 ? normalizeBuilderRichText(fallback) : [];
 }
