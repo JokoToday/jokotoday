@@ -85,9 +85,19 @@ function validateLocalizedRichText(
     return false;
   }
 
+  const entries = Object.entries(value);
+  if (entries.length === 0) {
+    pushIssue(issues, path, 'Localized rich text must contain at least one locale.');
+    return false;
+  }
+
   let valid = true;
-  for (const locale of supportedLocales ?? Object.keys(value)) {
-    const runs = value[locale];
+  for (const [locale, runs] of entries) {
+    if (supportedLocales && !supportedLocales.includes(locale)) {
+      pushIssue(issues, `${path}.${locale}`, 'Unsupported Site locale.');
+      valid = false;
+      continue;
+    }
     if (!Array.isArray(runs) || runs.length === 0) {
       pushIssue(issues, `${path}.${locale}`, 'Rich text must contain at least one text run.');
       valid = false;

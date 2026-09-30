@@ -101,9 +101,10 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
     onNavigate('how-it-works');
   };
 
-  const heroSerif = lang === 'en'
-    ? { fontFamily: 'var(--joko-font-display)', fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))' }
-    : { fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))' };
+  const heroSerif = {
+    fontFamily: 'var(--joko-font-display)',
+    fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))',
+  };
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
