@@ -42,7 +42,7 @@ function QrPassPreview() {
 
           <div className="mt-4 grid gap-2 rounded-xl bg-stone-50 p-4 text-sm text-stone-700 sm:grid-cols-3">
             <div><span className="font-semibold">Name:</span> Joe Example</div>
-            <div><span className="font-semibold">Code:</span> VIP123</div>
+            <div><span className="font-semibold">Code:</span> VIP101</div>
             <div><span className="font-semibold">QR target:</span> joko.today</div>
           </div>
         </div>
@@ -52,14 +52,14 @@ function QrPassPreview() {
             qrToken="preview-only-not-a-real-token"
             qrValue={PREVIEW_QR_VALUE}
             customerName="Joe Example"
-            shortCode="VIP123"
+            shortCode="VIP101"
           />
         </div>
 
         <div className="mt-6 rounded-2xl border border-[#d7d1c5] bg-white/80 p-5 text-sm leading-6 text-stone-600">
           <p className="font-semibold text-stone-800">What to test</p>
           <p className="mt-1">
-            Review the logo and layout, download both PDF and PNG, confirm the PDF page is 55 × 85 mm,
+            Review the logo and layout, download both PDF and PNG, confirm the PDF page is 85 × 55 mm,
             and scan both files with a phone. A successful scan should open the JOKO TODAY homepage.
           </p>
           <p className="mt-3 text-xs text-stone-500">
