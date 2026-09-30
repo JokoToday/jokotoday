@@ -322,7 +322,7 @@ export function JokoHomepageEditor({
   };
 
   const editorGridClass = [
-    'grid min-h-[44rem] border-y border-[#55766F]/16 bg-[#F7F3EA]',
+    'grid min-h-[44rem] border-y border-[#55766F]/16 bg-[#F7F3EA] xl:h-[calc(100dvh-6.5rem)] xl:min-h-[38rem] xl:overflow-hidden',
     leftPanelCollapsed && rightPanelCollapsed
       ? 'xl:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem]'
       : leftPanelCollapsed
@@ -355,7 +355,10 @@ export function JokoHomepageEditor({
 
   return (
     <div className={editorGridClass}>
-      <aside className="border-b border-[#55766F]/14 bg-[#FFF9EE]/92 p-4 xl:border-b-0 xl:border-r">
+      <aside
+        data-builder-pane="identity"
+        className="border-b border-[#55766F]/14 bg-[#FFF9EE]/92 p-4 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:border-b-0 xl:border-r"
+      >
         {leftPanelCollapsed ? (
           <div className="sticky top-0 flex justify-center">
             <button
@@ -369,8 +372,8 @@ export function JokoHomepageEditor({
             </button>
           </div>
         ) : (
-        <div className="sticky top-0 space-y-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-5">
+          <div className="sticky top-0 z-10 -mx-4 -mt-4 flex items-start justify-between gap-3 border-b border-[#55766F]/12 bg-[#FFF9EE]/95 px-4 pb-3 pt-4 backdrop-blur-sm">
             <div>
               <p className="joko-admin-eyebrow">Site identity</p>
               <h2 className="mt-1 text-lg font-semibold text-[#303532]">Brand & typography</h2>
@@ -553,7 +556,10 @@ export function JokoHomepageEditor({
         )}
       </aside>
 
-      <main className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6">
+      <main
+        data-builder-pane="preview"
+        className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
+      >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#55766F]">Live draft</p>
@@ -614,7 +620,7 @@ export function JokoHomepageEditor({
         <div
           ref={previewHostRef}
           onScroll={syncPreviewScrollFromBottom}
-          className="overflow-auto rounded-[1.5rem] border border-[#55766F]/18 bg-[#DCE7E4] p-2 shadow-[0_18px_46px_rgba(48,75,69,.08)]"
+          className="overflow-auto rounded-[1.5rem] border border-[#55766F]/18 bg-[#DCE7E4] p-2 shadow-[0_18px_46px_rgba(48,75,69,.08)] xl:min-h-0 xl:flex-1 xl:overscroll-contain"
         >
           <div
             className="relative mx-auto"
@@ -653,7 +659,10 @@ export function JokoHomepageEditor({
         </div>
       </main>
 
-      <aside className="border-t border-[#55766F]/14 bg-[#FFF9EE]/94 p-4 xl:border-l xl:border-t-0">
+      <aside
+        data-builder-pane="section"
+        className="border-t border-[#55766F]/14 bg-[#FFF9EE]/94 p-4 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain xl:border-l xl:border-t-0"
+      >
         {rightPanelCollapsed ? (
           <div className="sticky top-0 flex justify-center">
             <button
@@ -667,8 +676,8 @@ export function JokoHomepageEditor({
             </button>
           </div>
         ) : (
-        <div className="sticky top-0">
-          <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="sticky top-0 z-10 -mx-4 -mt-4 flex items-center justify-between gap-2 border-b border-[#55766F]/12 bg-[#FFF9EE]/95 px-4 pb-3 pt-4 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-[#55766F]" />
               <p className="joko-admin-eyebrow">Edit section</p>
