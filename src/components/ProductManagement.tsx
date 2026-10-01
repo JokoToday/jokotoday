@@ -272,7 +272,7 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto overscroll-contain">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 p-6 space-y-6 overflow-y-auto overscroll-contain">
           {errors.submit && (
             <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
