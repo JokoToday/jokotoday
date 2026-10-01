@@ -90,3 +90,5 @@ export function usePosCart() {
     quantityFor,
   };
 }
+
+export type PosCartState = ReturnType<typeof usePosCart>;
