@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 export const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 export const BRAND_LOGO_MAX_BYTES = 1024 * 1024;
+export const GALLERY_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 export const PRODUCT_IMAGE_ACCEPTED_TYPES = ['image/jpeg', 'image/webp', 'image/png'] as const;
 export const BRAND_LOGO_ACCEPTED_TYPES = PRODUCT_IMAGE_ACCEPTED_TYPES;
 
@@ -26,6 +27,11 @@ export interface MediaUploadTicket {
 interface UploadProductImageInput {
   file: File;
   productSlug: string;
+}
+
+interface UploadGalleryImageInput {
+  file: File;
+  gallerySlot?: string;
 }
 
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -215,5 +221,31 @@ export async function uploadBrandLogo(
     brandSlot: 'site-logo',
   });
   await putFile(ticket.uploadUrl, file, onProgress);
+  return ticket;
+}
+
+
+export async function uploadGalleryImage(
+  { file, gallerySlot = 'around-joko' }: UploadGalleryImageInput,
+  onProgress?: (percent: number) => void,
+): Promise<MediaUploadTicket> {
+  if (!PRODUCT_IMAGE_ACCEPTED_TYPES.includes(file.type as typeof PRODUCT_IMAGE_ACCEPTED_TYPES[number])) {
+    throw new Error('Use a JPG, WebP or PNG image.');
+  }
+  if (file.size <= 0 || file.size > GALLERY_IMAGE_MAX_BYTES) {
+    throw new Error('Gallery images must be 8 MB or smaller.');
+  }
+
+  const slot = gallerySlot.trim().toLowerCase();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slot)) {
+    throw new Error('Invalid gallery destination.');
+  }
+
+  const sanitizedFile = await stripImageMetadata(file);
+  const ticket = await requestUploadTicket(sanitizedFile, {
+    assetKind: 'gallery',
+    gallerySlot: slot,
+  });
+  await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
   return ticket;
 }
