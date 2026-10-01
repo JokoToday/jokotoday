@@ -28,6 +28,7 @@ type Props = {
   language: StaffLanguage;
   currentBalance: number;
   loyaltyMultiplier: number;
+  isGuestSale: boolean;
   cart: PosCartState;
   saving: boolean;
   retryRequired: boolean;
@@ -60,6 +61,7 @@ export function PosWorkspace({
   language,
   currentBalance,
   loyaltyMultiplier,
+  isGuestSale,
   cart,
   saving,
   retryRequired,
@@ -134,22 +136,30 @@ export function PosWorkspace({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-bold text-emerald-950">
-              {language === 'en' ? 'JOKO POS · Live checkout' : 'JOKO POS · ชำระเงินจริง'}
+              {isGuestSale
+                ? (language === 'en' ? 'JOKO POS · Guest sale' : 'JOKO POS · การขายแบบ Guest')
+                : (language === 'en' ? 'JOKO POS · Live checkout' : 'JOKO POS · ชำระเงินจริง')}
             </p>
             <p className="mt-1 text-sm text-emerald-800">
-              {language === 'en'
-                ? 'Build the basket here. Product prices, rewards, totals and loyalty are verified again by the server when you complete the sale.'
-                : 'สร้างตะกร้าที่นี่ ระบบจะตรวจสอบราคาสินค้า รางวัล ยอดรวม และแต้มสะสมอีกครั้งบนเซิร์ฟเวอร์เมื่อเสร็จสิ้นการขาย'}
+              {isGuestSale
+                ? (language === 'en'
+                    ? 'Build the basket normally. Guest sales have no loyalty rewards, points or customer-history attachment.'
+                    : 'สร้างตะกร้าตามปกติ การขายแบบ Guest จะไม่มีรางวัล แต้มสะสม หรือประวัติลูกค้า')
+                : (language === 'en'
+                    ? 'Build the basket here. Product prices, rewards, totals and loyalty are verified again by the server when you complete the sale.'
+                    : 'สร้างตะกร้าที่นี่ ระบบจะตรวจสอบราคาสินค้า รางวัล ยอดรวม และแต้มสะสมอีกครั้งบนเซิร์ฟเวอร์เมื่อเสร็จสิ้นการขาย')}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => onUseLegacyCheckout(previewSubtotal)}
-            disabled={checkoutLocked}
-            className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
-          </button>
+          {!isGuestSale && (
+            <button
+              type="button"
+              onClick={() => onUseLegacyCheckout(previewSubtotal)}
+              disabled={checkoutLocked}
+              className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -175,7 +185,10 @@ export function PosWorkspace({
             disabled={saving || paymentMethod === ''}
             onClick={() => {
               if (paymentMethod === '') return;
-              void onCompleteSale({ paymentMethod, rewardId: selectedRewardId || null });
+              void onCompleteSale({
+                paymentMethod,
+                rewardId: isGuestSale ? null : (selectedRewardId || null),
+              });
             }}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -436,13 +449,26 @@ export function PosWorkspace({
               </p>
             </div>
 
-            <LoyaltyRewardSelector
-              currentBalance={currentBalance}
-              language={language}
-              contextAmount={previewSubtotal}
-              selectedRewardId={selectedRewardId}
-              onChange={setSelectedRewardId}
-            />
+            {isGuestSale ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="font-bold text-slate-800">
+                  {language === 'en' ? 'Guest sale' : 'การขายแบบ Guest'}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {language === 'en'
+                    ? 'No loyalty reward or points will be applied. This purchase will not be attached to a customer account.'
+                    : 'จะไม่มีการใช้รางวัลหรือแต้มสะสม และรายการซื้อนี้จะไม่ผูกกับบัญชีลูกค้า'}
+                </p>
+              </div>
+            ) : (
+              <LoyaltyRewardSelector
+                currentBalance={currentBalance}
+                language={language}
+                contextAmount={previewSubtotal}
+                selectedRewardId={selectedRewardId}
+                onChange={setSelectedRewardId}
+              />
+            )}
 
             <div>
               <p className="mb-2 text-sm font-bold text-slate-800">
@@ -476,21 +502,23 @@ export function PosWorkspace({
               </div>
             </div>
 
-            <div className="rounded-xl border border-green-200 bg-green-50 p-3">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-slate-600">
-                  {language === 'en' ? 'Loyalty preview' : 'ตัวอย่างแต้มสะสม'}
-                </span>
-                <span className="font-bold text-green-800">
-                  +{projectedPoints} {language === 'en' ? 'points' : 'แต้ม'}
-                </span>
+            {!isGuestSale && (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-slate-600">
+                    {language === 'en' ? 'Loyalty preview' : 'ตัวอย่างแต้มสะสม'}
+                  </span>
+                  <span className="font-bold text-green-800">
+                    +{projectedPoints} {language === 'en' ? 'points' : 'แต้ม'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {language === 'en'
+                    ? `Final points will use the server-authoritative amount paid (${loyaltyMultiplier}×).`
+                    : `แต้มจริงจะใช้ยอดชำระจากเซิร์ฟเวอร์ (${loyaltyMultiplier}×)`}
+                </p>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                {language === 'en'
-                  ? `Final points will use the server-authoritative amount paid (${loyaltyMultiplier}×).`
-                  : `แต้มจริงจะใช้ยอดชำระจากเซิร์ฟเวอร์ (${loyaltyMultiplier}×)`}
-              </p>
-            </div>
+            )}
 
             {checkoutError && (
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
@@ -506,7 +534,7 @@ export function PosWorkspace({
                 if (paymentMethod === '') return;
                 void onCompleteSale({
                   paymentMethod,
-                  rewardId: selectedRewardId || null,
+                  rewardId: isGuestSale ? null : (selectedRewardId || null),
                 });
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
