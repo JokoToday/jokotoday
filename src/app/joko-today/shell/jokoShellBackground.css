@@ -2,7 +2,7 @@
 .joko-home-shell header.relative.z-40 {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
   background-color: var(--joko-brand-turquoise, rgb(218 235 232));
 }
 
