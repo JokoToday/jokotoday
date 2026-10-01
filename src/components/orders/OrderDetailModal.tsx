@@ -97,13 +97,17 @@ export function OrderDetailModal({
   const subtotal = items.reduce((sum, i) => sum + i.price_at_order * i.quantity, 0);
   const grossTotal = Number(isOnline ? order.total_amount : (order.walk_in_amount ?? order.total_amount)) || 0;
   const storedDiscount = Math.max(0, Number(order.loyalty_discount_amount) || 0);
+  const hasStoredAmountPaid = order.amount_paid !== null
+    && order.amount_paid !== undefined;
   const storedPaid = Number(order.amount_paid);
   const discount = isOnline
     ? Math.max(0, subtotal - Number(order.total_amount || 0))
     : storedDiscount;
   const total = isOnline
     ? Number(order.total_amount || 0)
-    : (Number.isFinite(storedPaid) ? storedPaid : Math.max(0, grossTotal - discount));
+    : (hasStoredAmountPaid && Number.isFinite(storedPaid)
+      ? storedPaid
+      : Math.max(0, grossTotal - discount));
   const pastPickup = isOnline && isPickupDatePast(order.pickup_date);
   const unresolvedPastPickup = pastPickup && ['pending', 'confirmed', 'ready'].includes(order.status);
   const isCancellable = (order.status === 'pending' || order.status === 'confirmed') && isOnline && !pastPickup;
