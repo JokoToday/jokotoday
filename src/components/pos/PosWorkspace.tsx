@@ -155,7 +155,7 @@ export function PosWorkspace({
               type="button"
               onClick={() => onUseLegacyCheckout(previewSubtotal)}
               disabled={checkoutLocked}
-              className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 touch-manipulation select-none rounded-lg border border-emerald-700 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
             </button>
@@ -190,7 +190,7 @@ export function PosWorkspace({
                 rewardId: isGuestSale ? null : (selectedRewardId || null),
               });
             }}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-12 shrink-0 touch-manipulation select-none items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             {language === 'en' ? 'Retry Same Sale' : 'ลองรายการเดิมอีกครั้ง'}
@@ -229,15 +229,15 @@ export function PosWorkspace({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={language === 'en' ? 'Search products…' : 'ค้นหาสินค้า…'}
-                className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-green-600 focus:bg-white focus:ring-4 focus:ring-green-100"
+                className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-base outline-none transition focus:border-green-600 focus:bg-white focus:ring-4 focus:ring-green-100"
               />
             </div>
 
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
-                className={`whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold transition-colors ${
+                className={`min-h-11 touch-manipulation select-none whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
                   selectedCategory === 'all'
                     ? 'border-green-700 bg-green-700 text-white'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-green-400'
@@ -250,7 +250,7 @@ export function PosWorkspace({
                   key={category.id}
                   type="button"
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold transition-colors ${
+                  className={`min-h-11 touch-manipulation select-none whitespace-nowrap rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
                     selectedCategory === category.id
                       ? 'border-green-700 bg-green-700 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-green-400'
@@ -275,7 +275,7 @@ export function PosWorkspace({
               <button
                 type="button"
                 onClick={onRetry}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800"
+                className="mt-4 inline-flex min-h-11 touch-manipulation select-none items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800"
               >
                 <RefreshCw className="h-4 w-4" />
                 {language === 'en' ? 'Retry' : 'ลองอีกครั้ง'}
@@ -293,13 +293,13 @@ export function PosWorkspace({
                   setSearchQuery('');
                   setSelectedCategory('all');
                 }}
-                className="mt-3 text-sm font-semibold text-green-700 hover:text-green-900"
+                className="mt-3 min-h-11 touch-manipulation select-none rounded-lg px-3 text-sm font-semibold text-green-700 hover:bg-green-50 hover:text-green-900"
               >
                 {language === 'en' ? 'Reset filters' : 'รีเซ็ตตัวกรอง'}
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => {
                 const quantity = quantityFor(product.id);
                 const imageUrl = productImageUrl(product);
@@ -308,7 +308,7 @@ export function PosWorkspace({
                     key={product.id}
                     type="button"
                     onClick={() => addProduct(product)}
-                    className="group overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-green-400 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-green-100"
+                    className="group touch-manipulation select-none overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition-colors hover:border-green-400 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-green-100"
                     aria-label={`${language === 'en' ? 'Add' : 'เพิ่ม'} ${productName(product)}`}
                   >
                     <div className="relative aspect-square overflow-hidden bg-slate-100">
@@ -317,7 +317,8 @@ export function PosWorkspace({
                           src={imageUrl}
                           alt=""
                           loading="lazy"
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                          draggable={false}
+                          className="pointer-events-none h-full w-full select-none object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
@@ -363,7 +364,7 @@ export function PosWorkspace({
               <button
                 type="button"
                 onClick={clearSale}
-                className="text-xs font-semibold text-red-600 hover:text-red-800"
+                className="min-h-11 touch-manipulation select-none rounded-lg px-3 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-800"
               >
                 {language === 'en' ? 'Clear sale' : 'ล้างรายการ'}
               </button>
@@ -394,7 +395,7 @@ export function PosWorkspace({
                     <button
                       type="button"
                       onClick={() => remove(item.product.id)}
-                      className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      className="flex h-11 w-11 shrink-0 touch-manipulation select-none items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
                       aria-label={language === 'en' ? 'Remove product' : 'ลบสินค้า'}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -405,19 +406,19 @@ export function PosWorkspace({
                       <button
                         type="button"
                         onClick={() => decrement(item.product.id)}
-                        className="flex h-10 w-10 items-center justify-center rounded-l-lg text-slate-700 hover:bg-slate-200"
+                        className="flex h-11 w-11 touch-manipulation select-none items-center justify-center rounded-l-lg text-slate-700 hover:bg-slate-200"
                         aria-label={language === 'en' ? 'Decrease quantity' : 'ลดจำนวน'}
                       >
                         <Minus className="h-4 w-4" />
                       </button>
-                      <span className="min-w-10 px-2 text-center font-bold text-slate-900">
+                      <span className="min-w-11 select-none px-2 text-center font-bold text-slate-900">
                         {item.quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => increment(item.product.id)}
                         disabled={item.quantity >= 99}
-                        className="flex h-10 w-10 items-center justify-center rounded-r-lg text-slate-700 hover:bg-slate-200 disabled:opacity-30"
+                        className="flex h-11 w-11 touch-manipulation select-none items-center justify-center rounded-r-lg text-slate-700 hover:bg-slate-200 disabled:opacity-30"
                         aria-label={language === 'en' ? 'Increase quantity' : 'เพิ่มจำนวน'}
                       >
                         <Plus className="h-4 w-4" />
@@ -474,11 +475,11 @@ export function PosWorkspace({
               <p className="mb-2 text-sm font-bold text-slate-800">
                 {language === 'en' ? 'Payment' : 'การชำระเงิน'}
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('cash')}
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-bold transition-colors ${
+                  className={`flex min-h-12 touch-manipulation select-none items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-bold transition-colors ${
                     paymentMethod === 'cash'
                       ? 'border-green-700 bg-green-700 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-green-400'
@@ -490,7 +491,7 @@ export function PosWorkspace({
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('qr_code')}
-                  className={`flex items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-bold transition-colors ${
+                  className={`flex min-h-12 touch-manipulation select-none items-center justify-center gap-2 rounded-xl border-2 px-3 py-3 text-sm font-bold transition-colors ${
                     paymentMethod === 'qr_code'
                       ? 'border-green-700 bg-green-700 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:border-green-400'
@@ -537,7 +538,7 @@ export function PosWorkspace({
                   rewardId: isGuestSale ? null : (selectedRewardId || null),
                 });
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-14 w-full touch-manipulation select-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg transition-colors hover:from-green-700 hover:to-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingCart className="h-5 w-5" />}
               {saving
