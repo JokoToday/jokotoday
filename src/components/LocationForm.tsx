@@ -174,9 +174,9 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
     <AdminModalPortal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
       <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
-        <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-4 sm:p-6">
-          <h2 className="text-2xl font-bold text-gray-900">{location ? 'Edit Location' : 'New Location'}</h2>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+        <div className="joko-admin-modal-header relative z-10 flex shrink-0 items-center justify-between p-4 sm:p-6">
+          <h2 className="text-2xl font-bold text-white">{location ? 'Edit Location' : 'New Location'}</h2>
+          <button onClick={onCancel} className="text-white hover:text-gray-200"><X className="w-6 h-6" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
