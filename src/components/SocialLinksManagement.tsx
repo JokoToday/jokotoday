@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, GripVertical, ExternalLink, X, Save } from 'lucide-react';
 import { SocialLink, createSocialLink, updateSocialLink, deleteSocialLink } from '../hooks/useSocialLinks';
+import { AdminModalPortal } from './AdminModalPortal';
 
 interface SocialLinksManagementProps {
   socialLinks: SocialLink[];
@@ -234,9 +235,10 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <AdminModalPortal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+          <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+            <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editing ? 'Edit Social Link' : 'Add Social Link'}
               </h3>
@@ -248,7 +250,7 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                   {error}
@@ -361,6 +363,7 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
             </form>
           </div>
         </div>
+        </AdminModalPortal>
       )}
     </div>
   );

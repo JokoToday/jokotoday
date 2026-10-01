@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { AdminModalPortal } from './AdminModalPortal';
 import { CMSCategory } from '../lib/cmsService';
 
 interface CategoryFormProps {
@@ -90,9 +91,10 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
 
   // Keep the category editor constrained to the viewport so every field remains reachable.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-6">
+    <AdminModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+        <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {category ? 'Edit Category' : 'New Category'}
           </h2>
@@ -247,5 +249,6 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
         </form>
       </div>
     </div>
+    </AdminModalPortal>
   );
 }
