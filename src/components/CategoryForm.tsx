@@ -88,6 +88,7 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
     }
   };
 
+  // Keep the category editor constrained to the viewport so every field remains reachable.
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 p-4 sm:items-center">
       <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl">
