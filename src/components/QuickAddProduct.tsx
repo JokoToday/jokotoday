@@ -12,6 +12,7 @@ interface QuickAddProductProps {
 interface QuickFormData {
   name_en: string;
   name_th: string;
+  name_zh: string;
   price: string;
   category_id: string;
   is_active: boolean;
@@ -80,8 +81,10 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
       const dataToSave = {
         name_en: formData.name_en.trim(),
         name_th: formData.name_th.trim(),
+        name_zh: formData.name_zh.trim() || null,
         desc_en: formData.name_en.trim(),
         desc_th: formData.name_th.trim(),
+        desc_zh: formData.name_zh.trim() || null,
         price: parseFloat(formData.price),
         category_id: formData.category_id,
         slug: slug,
@@ -108,8 +111,8 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 rounded-t-lg">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 rounded-t-lg shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-white bg-opacity-20 p-2 rounded-lg">
@@ -127,7 +130,7 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
           <p className="text-primary-100 text-sm mt-2">Add a product quickly with essential details only</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto overscroll-contain">
           {errors.submit && (
             <div className="flex gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -170,6 +173,19 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
               placeholder="เช่น ครัวซองช็อกโกแลต"
             />
             {errors.name_th && <p className="text-red-600 text-xs mt-1">{errors.name_th}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              产品名称 (中文简体)
+            </label>
+            <input
+              type="text"
+              value={formData.name_zh}
+              onChange={(e) => setFormData({ ...formData, name_zh: e.target.value })}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm transition-colors focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="例如：巧克力可颂"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
