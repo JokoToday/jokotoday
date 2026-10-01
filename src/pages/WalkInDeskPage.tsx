@@ -75,6 +75,7 @@ interface PurchaseResult {
 }
 
 type PosSubmission = {
+  customerId: string | null;
   orderNumber: string;
   requestKey: string;
   items: Array<{ product_id: string; quantity: number }>;
@@ -113,6 +114,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [isGuestSale, setIsGuestSale] = useState(false);
+  const [preservePosCartForLookup, setPreservePosCartForLookup] = useState(false);
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr_code' | ''>('');
   const [loading, setLoading] = useState(false);
@@ -141,6 +144,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const calculationAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
   const currentBalance = customer?.loyalty_points ?? 0;
   const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
+  const hasSaleIdentity = Boolean(customer) || isGuestSale;
   const memberReturnCode = new URLSearchParams(window.location.search).get('member');
   const walkInReturnPath = memberReturnCode && /^VIP\d+$/i.test(memberReturnCode)
     ? `/walk-in?member=${encodeURIComponent(memberReturnCode)}`
@@ -150,6 +154,9 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const clearCustomerState = () => {
     setCustomer(null);
+    setIsGuestSale(false);
+    setPreservePosCartForLookup(false);
+    setLoyaltyMultiplier(0);
     setAmount('');
     setPaymentMethod('');
     setShowScanner(false);
@@ -211,18 +218,23 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     return language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาดในการบันทึกรายการซื้อ';
   };
 
-  const findCustomer = async (lookupValue: string, source: 'manual' | 'qr' = 'qr') => {
+  const findCustomer = async (
+    lookupValue: string,
+    source: 'manual' | 'qr' = 'qr',
+    preservePosCart = false,
+  ) => {
     try {
       setLoading(true);
       setError(null);
       setCustomer(null);
+      setIsGuestSale(false);
       setAmount('');
       setPaymentMethod('');
       setPurchaseResult(null);
       setSelectedRewardId('');
       setShowLegacyCheckout(false);
       setPosRetryRequired(false);
-      posCart.clear();
+      if (!preservePosCart) posCart.clear();
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
       pendingPosSubmissionRef.current = null;
@@ -234,6 +246,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       }
 
       setCustomer(customerData);
+      setPreservePosCartForLookup(false);
       setShowManualEntry(false);
       setManualCode('');
 
@@ -250,6 +263,40 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartGuestSale = () => {
+    if (savingRef.current || posRetryRequired) return;
+    setCustomer(null);
+    setIsGuestSale(true);
+    setPreservePosCartForLookup(false);
+    setShowScanner(false);
+    setShowManualEntry(false);
+    setManualCode('');
+    setAmount('');
+    setPaymentMethod('');
+    setError(null);
+    setPurchaseResult(null);
+    setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    setLoyaltyMultiplier(0);
+    purchaseReferenceRef.current = null;
+    purchaseRequestKeyRef.current = null;
+    pendingPosSubmissionRef.current = null;
+  };
+
+  const handleIdentifyCustomerFromGuest = () => {
+    if (savingRef.current || posRetryRequired) return;
+    setIsGuestSale(false);
+    setPreservePosCartForLookup(true);
+    setShowScanner(false);
+    setShowManualEntry(false);
+    setManualCode('');
+    setError(null);
+    setPurchaseResult(null);
+    setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    setLoyaltyMultiplier(0);
   };
 
   useEffect(() => {
@@ -291,13 +338,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
-    await findCustomer(decodedText);
+    await findCustomer(decodedText, 'qr', preservePosCartForLookup);
   };
 
   const handleManualCodeSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!manualCode.trim()) return;
-    await findCustomer(manualCode, 'manual');
+    await findCustomer(manualCode, 'manual', preservePosCartForLookup);
   };
 
   const handleQrUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,7 +378,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
           return;
         }
         if (import.meta.env.DEV) console.debug('[WalkInDesk] Decoded QR content:', decoded.data);
-        await findCustomer(decoded.data);
+        await findCustomer(decoded.data, 'qr', preservePosCartForLookup);
       } catch (err) {
         if (err instanceof InvalidCustomerCodeError) {
           setError(getLookupErrorMessage(err));
@@ -405,7 +452,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     paymentMethod: 'cash' | 'qr_code';
     rewardId: string | null;
   }) => {
-    if (!customer || savingRef.current) return;
+    if ((!customer && !isGuestSale) || savingRef.current) return;
 
     let submission = pendingPosSubmissionRef.current;
     if (!submission) {
@@ -413,13 +460,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       const orderNumber = `WI-${crypto.randomUUID()}`;
       const requestKey = crypto.randomUUID();
       submission = {
+        customerId: customer?.id ?? null,
         orderNumber,
         requestKey,
         items: posCart.items.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
         })),
-        rewardId,
+        rewardId: isGuestSale ? null : rewardId,
         paymentMethod: posPaymentMethod,
       };
       pendingPosSubmissionRef.current = submission;
@@ -433,7 +481,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setError(null);
 
       const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v3', {
-        p_customer_id: customer.id,
+        p_customer_id: submission.customerId,
         p_items: submission.items,
         p_order_number: submission.orderNumber,
         p_reward_id: submission.rewardId,
@@ -462,9 +510,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
       pendingPosSubmissionRef.current = null;
       setPosRetryRequired(false);
-      setCustomer({ ...customer, loyalty_points: data.updated_balance });
+      if (customer) {
+        setCustomer({ ...customer, loyalty_points: data.updated_balance });
+        setHistoryRefreshKey((value) => value + 1);
+      }
       setPurchaseResult(data);
-      setHistoryRefreshKey((value) => value + 1);
     } catch (err) {
       if (pendingPosSubmissionRef.current && !isDefinitePurchaseRejection(err)) {
         setPosRetryRequired(true);
@@ -594,14 +644,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {customer
+                  {hasSaleIdentity
                     ? 'JOKO POS'
                     : (language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In')}
                 </h1>
                 <p className="text-green-100">
-                  {customer
-                    ? (language === 'en' ? 'Create this customer’s in-store basket' : 'สร้างตะกร้าซื้อหน้าร้านสำหรับลูกค้ารายนี้')
-                    : (language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก')}
+                  {isGuestSale
+                    ? (language === 'en'
+                        ? 'Guest sale · no customer account or loyalty'
+                        : 'การขายแบบ Guest · ไม่มีบัญชีลูกค้าหรือแต้มสะสม')
+                    : customer
+                      ? (language === 'en' ? 'Create this customer’s in-store basket' : 'สร้างตะกร้าซื้อหน้าร้านสำหรับลูกค้ารายนี้')
+                      : (language === 'en' ? 'Identify a member or continue as Guest' : 'ระบุสมาชิกหรือดำเนินการต่อแบบ Guest')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -631,7 +685,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
           </div>
 
           <div className="p-8">
-            {!customer ? (
+            {!hasSaleIdentity ? (
               showManualEntry ? (
                 <form onSubmit={handleManualCodeSubmit} className="space-y-4 max-w-md mx-auto">
                   <div className="text-center mb-6">
@@ -706,6 +760,38 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     {language === 'en' ? 'Upload QR Code' : 'อัปโหลด QR Code'}
                   </button>
+
+                  {preservePosCartForLookup && posCart.totalQuantity > 0 && (
+                    <p className="mt-5 text-sm font-medium text-emerald-700">
+                      {language === 'en'
+                        ? `Current POS basket preserved · ${posCart.totalQuantity} item${posCart.totalQuantity === 1 ? '' : 's'}`
+                        : `เก็บตะกร้า POS ปัจจุบันไว้แล้ว · ${posCart.totalQuantity} ชิ้น`}
+                    </p>
+                  )}
+
+                  <div className="mx-auto mt-6 max-w-md border-t border-slate-200 pt-6">
+                    <p className="mb-3 text-sm font-medium text-slate-500">
+                      {language === 'en'
+                        ? (preservePosCartForLookup ? 'Keep this basket as a Guest sale?' : 'Customer is not a member?')
+                        : (preservePosCartForLookup ? 'ใช้ตะกร้านี้ต่อแบบ Guest?' : 'ลูกค้ายังไม่ได้เป็นสมาชิก?')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleStartGuestSale}
+                      disabled={loading}
+                      className="w-full rounded-xl bg-slate-800 px-6 py-4 font-bold text-white shadow-md transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {language === 'en'
+                        ? (preservePosCartForLookup ? 'Return to Guest Sale' : 'Continue as Guest')
+                        : (preservePosCartForLookup ? 'กลับไปขายแบบ Guest' : 'ดำเนินการต่อแบบ Guest')}
+                    </button>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {language === 'en'
+                        ? 'Guest sales are recorded normally, but without loyalty points or customer history.'
+                        : 'การขายแบบ Guest จะบันทึกตามปกติ แต่ไม่มีแต้มสะสมหรือประวัติลูกค้า'}
+                    </p>
+                  </div>
+
                   {error && (
                     <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
                       <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -723,53 +809,67 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         <User className="w-8 h-8 text-green-600" />
                       </div>
                       <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{customer.name}</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Award className="w-4 h-4 text-green-600" />
-                          <span className="text-green-600 font-semibold">
-                            {customer.loyalty_points} {language === 'en' ? 'points' : 'แต้ม'}
-                          </span>
-                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {isGuestSale ? 'Guest' : (customer?.name || 'Customer')}
+                        </h2>
+                        {customer ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Award className="w-4 h-4 text-green-600" />
+                            <span className="text-green-600 font-semibold">
+                              {customer.loyalty_points} {language === 'en' ? 'points' : 'แต้ม'}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm font-medium text-slate-500">
+                            {language === 'en'
+                              ? 'Walk-in customer · no member account'
+                              : 'ลูกค้า Walk-In · ไม่มีบัญชีสมาชิก'}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {!purchaseResult && (
                       <button
                         type="button"
-                        onClick={resetTransaction}
+                        onClick={isGuestSale ? handleIdentifyCustomerFromGuest : resetTransaction}
                         disabled={saving || posRetryRequired}
                         className="inline-flex items-center gap-2 rounded-lg border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-bold text-green-800 shadow-sm transition-colors hover:bg-green-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-green-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <QrCode className="h-4 w-4" />
-                        {language === 'en' ? 'Scan Another Customer' : 'สแกนลูกค้ารายอื่น'}
+                        {isGuestSale
+                          ? (language === 'en' ? 'Identify Customer' : 'ระบุลูกค้า')
+                          : (language === 'en' ? 'Scan Another Customer' : 'สแกนลูกค้ารายอื่น')}
                       </button>
                     )}
                   </div>
 
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
-                      <Phone className="w-5 h-5 text-slate-600" />
-                      <div>
-                        <p className="text-xs text-gray-500">{language === 'en' ? 'Phone' : 'เบอร์โทร'}</p>
-                        <p className="text-sm font-medium text-gray-900">{customer.phone || '—'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
-                      <Mail className="w-5 h-5 text-slate-600" />
-                      <div>
-                        <p className="text-xs text-gray-500">{language === 'en' ? 'Email' : 'อีเมล'}</p>
-                        <p className="text-sm font-medium text-gray-900">{customer.email || '—'}</p>
-                      </div>
-                    </div>
-                    {getContactMethod() && (
+                  {customer && (
+                    <div className="grid md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
-                        <MessageCircle className="w-5 h-5 text-slate-600" />
+                        <Phone className="w-5 h-5 text-slate-600" />
                         <div>
-                          <p className="text-xs text-gray-500">{getContactMethod()?.type}</p>
-                          <p className="text-sm font-medium text-gray-900">{getContactMethod()?.value}</p>
+                          <p className="text-xs text-gray-500">{language === 'en' ? 'Phone' : 'เบอร์โทร'}</p>
+                          <p className="text-sm font-medium text-gray-900">{customer.phone || '—'}</p>
                         </div>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
+                        <Mail className="w-5 h-5 text-slate-600" />
+                        <div>
+                          <p className="text-xs text-gray-500">{language === 'en' ? 'Email' : 'อีเมล'}</p>
+                          <p className="text-sm font-medium text-gray-900">{customer.email || '—'}</p>
+                        </div>
+                      </div>
+                      {getContactMethod() && (
+                        <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
+                          <MessageCircle className="w-5 h-5 text-slate-600" />
+                          <div>
+                            <p className="text-xs text-gray-500">{getContactMethod()?.type}</p>
+                            <p className="text-sm font-medium text-gray-900">{getContactMethod()?.value}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {purchaseResult ? (
@@ -782,32 +882,45 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         {language === 'en' ? 'Purchase saved successfully' : 'บันทึกรายการซื้อสำเร็จ'}
                       </h3>
                     </div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className={`grid gap-3 ${isGuestSale ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
                       <div className="bg-slate-50 rounded-lg p-4 text-center">
                         <p className="text-sm text-gray-600">{language === 'en' ? 'Gross purchase' : 'ยอดซื้อก่อนส่วนลด'}</p>
                         <p className="text-xl font-bold text-gray-900 mt-1">฿{purchaseResult.gross_amount.toFixed(2)}</p>
                       </div>
-                      <div className="bg-amber-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'}</p>
-                        <p className="text-xl font-bold text-amber-700 mt-1">−฿{purchaseResult.discount_amount.toFixed(2)}</p>
-                      </div>
+                      {!isGuestSale && (
+                        <div className="bg-amber-50 rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-600">{language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'}</p>
+                          <p className="text-xl font-bold text-amber-700 mt-1">−฿{purchaseResult.discount_amount.toFixed(2)}</p>
+                        </div>
+                      )}
                       <div className="bg-green-50 rounded-lg p-4 text-center">
                         <p className="text-sm text-gray-600">{language === 'en' ? 'Amount paid' : 'ยอดชำระจริง'}</p>
                         <p className="text-xl font-bold text-green-800 mt-1">฿{purchaseResult.amount_paid.toFixed(2)}</p>
                       </div>
-                      <div className="bg-slate-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Points used' : 'แต้มที่ใช้'}</p>
-                        <p className="text-xl font-bold text-amber-700 mt-1">{purchaseResult.points_redeemed > 0 ? `−${purchaseResult.points_redeemed}` : '0'}</p>
-                      </div>
-                      <div className="bg-slate-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}</p>
-                        <p className="text-xl font-bold text-green-700 mt-1">+{purchaseResult.points_earned}</p>
-                      </div>
-                      <div className="bg-slate-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Updated points balance' : 'ยอดแต้มสะสมล่าสุด'}</p>
-                        <p className="text-xl font-bold text-green-700 mt-1">{purchaseResult.updated_balance}</p>
-                      </div>
+                      {!isGuestSale && (
+                        <>
+                          <div className="bg-slate-50 rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-600">{language === 'en' ? 'Points used' : 'แต้มที่ใช้'}</p>
+                            <p className="text-xl font-bold text-amber-700 mt-1">{purchaseResult.points_redeemed > 0 ? `−${purchaseResult.points_redeemed}` : '0'}</p>
+                          </div>
+                          <div className="bg-slate-50 rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-600">{language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}</p>
+                            <p className="text-xl font-bold text-green-700 mt-1">+{purchaseResult.points_earned}</p>
+                          </div>
+                          <div className="bg-slate-50 rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-600">{language === 'en' ? 'Updated points balance' : 'ยอดแต้มสะสมล่าสุด'}</p>
+                            <p className="text-xl font-bold text-green-700 mt-1">{purchaseResult.updated_balance}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
+                    {isGuestSale && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
+                        {language === 'en'
+                          ? 'Guest sale · no loyalty points, rewards or customer history were attached.'
+                          : 'การขายแบบ Guest · ไม่มีแต้มสะสม รางวัล หรือประวัติลูกค้าผูกกับรายการนี้'}
+                      </div>
+                    )}
                     {purchaseResult.reward_id && (
                       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                         <p className="font-semibold text-amber-900">
@@ -964,6 +1077,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     language={staffLanguage}
                     currentBalance={currentBalance}
                     loyaltyMultiplier={loyaltyMultiplier}
+                    isGuestSale={isGuestSale}
                     cart={posCart}
                     saving={saving}
                     retryRequired={posRetryRequired}
@@ -980,11 +1094,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   />
                 )}
 
-                <CustomerPurchaseHistory
-                  customerId={customer.id}
-                  language={staffLanguage}
-                  refreshKey={historyRefreshKey}
-                />
+                {customer && (
+                  <CustomerPurchaseHistory
+                    customerId={customer.id}
+                    language={staffLanguage}
+                    refreshKey={historyRefreshKey}
+                  />
+                )}
               </>
             )}
           </div>
