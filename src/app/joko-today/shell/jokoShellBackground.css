@@ -93,7 +93,7 @@
     radial-gradient(ellipse at 73% 61%, rgba(234,244,242,.14) 0 16%, transparent 34%);
 }
 
-.joko-home-shell .joko-mineral-field > * {
+.joko-home-shell .joko-mineral-field > :not(.fixed) {
   position: relative;
   z-index: 1;
 }
