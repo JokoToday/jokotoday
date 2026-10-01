@@ -671,8 +671,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </div>
                     </div>
                     {!purchaseResult && (
-                      <button onClick={resetTransaction} className="text-gray-500 hover:text-gray-700 text-sm font-medium">
-                        {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
+                      <button
+                        type="button"
+                        onClick={resetTransaction}
+                        className="inline-flex items-center gap-2 rounded-lg border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-bold text-green-800 shadow-sm transition-colors hover:bg-green-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-green-100"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        {language === 'en' ? 'Scan Another Customer' : 'สแกนลูกค้ารายอื่น'}
                       </button>
                     )}
                   </div>
