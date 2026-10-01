@@ -121,6 +121,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       unavailableAlternative: 'You can still sign in by uploading your QR image or entering your VIP code.',
       uploadQrImage: 'Upload QR Image',
       enterVipCode: 'Enter VIP Code',
+      ipadPermissionHelp: 'On iPad Safari: tap the Page Menu in the address bar → Website Settings → Camera → Allow, then tap Retry. You can also check Settings → Apps → Safari → Camera.',
     },
     th: {
       title: 'สแกน QR Code ลูกค้า',
@@ -164,6 +165,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       unavailableAlternative: 'คุณยังสามารถเข้าสู่ระบบได้โดยอัปโหลดรูป QR หรือกรอกรหัส VIP',
       uploadQrImage: 'อัปโหลดรูป QR',
       enterVipCode: 'กรอกรหัส VIP',
+      ipadPermissionHelp: 'บน iPad Safari: แตะเมนูหน้าเว็บในแถบที่อยู่ → การตั้งค่าเว็บไซต์ → กล้อง → อนุญาต แล้วกด “ลองใหม่” หรือไปที่ การตั้งค่า → แอป → Safari → กล้อง',
     },
     zh: {
       title: '扫描客户二维码',
@@ -207,10 +209,16 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
       unavailableAlternative: '您仍可通过上传二维码图片或输入 VIP 编号登录。',
       uploadQrImage: '上传二维码图片',
       enterVipCode: '输入 VIP 编号',
+      ipadPermissionHelp: '在 iPad Safari 中：点地址栏中的页面菜单 → 网站设置 → 摄像头 → 允许，然后点“重试”。也可检查 设置 → Apps → Safari → 摄像头。',
     },
   };
 
   const msg = messages[language];
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isIpadSafari = typeof navigator !== 'undefined'
+    && (/iPad/i.test(userAgent) || (/Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1))
+    && /Safari/i.test(userAgent)
+    && !/(CriOS|FxiOS|EdgiOS|OPiOS)/i.test(userAgent);
 
   const detectRearCamera = (label: string): { isRear: boolean; score: number } => {
     const lowerLabel = label.toLowerCase();
@@ -607,7 +615,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col h-[100dvh] max-h-[100dvh]">
+    <div className="fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] select-none flex-col overscroll-none bg-black">
       <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Camera className="w-5 h-5 text-white" />
@@ -615,7 +623,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
         </div>
         <button
           onClick={handleClose}
-          className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+          className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-lg text-white transition-colors hover:bg-white/20"
           aria-label={msg.close}
         >
           <X className="w-5 h-5" />
@@ -636,7 +644,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value.toUpperCase())}
                     placeholder="JOKO-XXXX / VIP001"
-                    className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono"
+                    className="w-full select-text rounded-xl border-2 border-gray-300 px-4 py-3 text-lg font-mono focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     autoFocus
                     autoComplete="off"
                     autoCapitalize="characters"
@@ -652,7 +660,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                         handleRetry();
                       }
                     }}
-                    className="flex-1 px-4 py-3 text-gray-700 border-2 border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    className="flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-gray-300 px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50"
                   >
                     <Camera className="w-4 h-4" />
                     {msg.cancel}
@@ -660,7 +668,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                   <button
                     type="submit"
                     disabled={!manualCode.trim()}
-                    className="flex-1 px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="min-h-12 flex-1 touch-manipulation rounded-xl bg-amber-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {msg.submit}
                   </button>
@@ -696,12 +704,17 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                 <p>
                   {msg.unavailableAlternative}
                 </p>
+                {isIpadSafari && (errorType === 'permission_denied' || errorType === 'permission_dismissed') && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                    {msg.ipadPermissionHelp}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
                 <button
                   onClick={handleRetry}
-                  className="w-full px-4 py-3 bg-amber-600 text-white rounded-xl font-semibold hover:bg-amber-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-amber-700"
                 >
                   <RefreshCw className="w-5 h-5" />
                   {msg.retry}
@@ -710,7 +723,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                 {onUpload && (
                   <button
                     onClick={onUpload}
-                    className="w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:border-amber-300 hover:bg-amber-50 transition-colors flex items-center justify-center gap-2"
+                    className="flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-gray-300 px-4 py-3 font-medium text-gray-700 transition-colors hover:border-amber-300 hover:bg-amber-50"
                   >
                     <Upload className="w-5 h-5" />
                     {msg.uploadQrImage}
@@ -719,7 +732,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
 
                 <button
                   onClick={() => setShowManualInput(true)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  className="flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-gray-300 px-4 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   <Keyboard className="w-5 h-5" />
                   {msg.enterVipCode}
@@ -812,7 +825,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                   <button
                     onClick={handleSwitchCamera}
                     disabled={state !== 'scanning'}
-                    className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl bg-gray-800 px-4 py-2 font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
                   >
                     <RotateCcw className="w-4 h-4" />
                     {msg.switchCamera}
@@ -820,7 +833,7 @@ export function QRScanner({ onScan, onClose, onUpload, language = 'en' }: QRScan
                 )}
                 <button
                   onClick={() => setShowManualInput(true)}
-                  className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex min-h-12 flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl bg-gray-800 px-4 py-2 font-medium text-white transition-colors hover:bg-gray-700"
                 >
                   <Keyboard className="w-4 h-4" />
                   {msg.manualEntry}
