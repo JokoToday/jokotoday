@@ -623,6 +623,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   };
 
   const staffLanguage = language === 'th' ? 'th' : 'en';
+  const purchaseSummaryItems = purchaseResult?.order_items ?? [];
+  const purchaseSummaryPaymentLabel = purchaseResult?.payment_method === 'qr_code'
+    ? 'Thai QR'
+    : (language === 'en' ? 'Cash' : 'เงินสด');
+  const getPurchaseSummaryItemName = (item: NonNullable<PurchaseResult['order_items']>[number]) => {
+    if (language === 'th') return item.product_name_th || item.product_name || '—';
+    return item.product_name || item.product_name_th || '—';
+  };
 
   const languageSwitch = (
     <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
@@ -939,45 +947,110 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         {language === 'en' ? 'Purchase saved successfully' : 'บันทึกรายการซื้อสำเร็จ'}
                       </h3>
                     </div>
-                    <div className={`grid gap-3 ${isGuestSale ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
-                      <div className="bg-slate-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Gross purchase' : 'ยอดซื้อก่อนส่วนลด'}</p>
-                        <p className="text-xl font-bold text-gray-900 mt-1">฿{purchaseResult.gross_amount.toFixed(2)}</p>
-                      </div>
-                      {!isGuestSale && (
-                        <div className="bg-amber-50 rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-600">{language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'}</p>
-                          <p className="text-xl font-bold text-amber-700 mt-1">−฿{purchaseResult.discount_amount.toFixed(2)}</p>
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-bold uppercase tracking-[0.14em] text-slate-500">
+                            {language === 'en' ? 'Purchase Summary' : 'สรุปรายการซื้อ'}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            <span className="font-semibold">{language === 'en' ? 'Order' : 'เลขที่รายการ'}:</span>{' '}
+                            {purchaseResult.order_number}
+                          </p>
                         </div>
-                      )}
-                      <div className="bg-green-50 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">{language === 'en' ? 'Amount paid' : 'ยอดชำระจริง'}</p>
-                        <p className="text-xl font-bold text-green-800 mt-1">฿{purchaseResult.amount_paid.toFixed(2)}</p>
+                        <div className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+                          <span className="text-slate-500">{language === 'en' ? 'Payment' : 'ชำระด้วย'}:</span>{' '}
+                          <span className="font-bold text-slate-900">{purchaseSummaryPaymentLabel}</span>
+                        </div>
                       </div>
-                      {!isGuestSale && (
-                        <>
-                          <div className="bg-slate-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">{language === 'en' ? 'Points used' : 'แต้มที่ใช้'}</p>
-                            <p className="text-xl font-bold text-amber-700 mt-1">{purchaseResult.points_redeemed > 0 ? `−${purchaseResult.points_redeemed}` : '0'}</p>
+
+                      <div className="px-5 py-4">
+                        {purchaseSummaryItems.length > 0 ? (
+                          <div className="divide-y divide-slate-100">
+                            {purchaseSummaryItems.map((item) => {
+                              const lineTotal = item.price_at_order * item.quantity;
+                              return (
+                                <div key={item.product_id} className="flex gap-4 py-3 first:pt-0 last:pb-0">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-semibold text-slate-900">{getPurchaseSummaryItemName(item)}</p>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                      {item.quantity} × ฿{item.price_at_order.toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <p className="shrink-0 font-semibold text-slate-900">฿{lineTotal.toFixed(2)}</p>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <div className="bg-slate-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">{language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}</p>
-                            <p className="text-xl font-bold text-green-700 mt-1">+{purchaseResult.points_earned}</p>
+                        ) : (
+                          <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+                            {language === 'en'
+                              ? 'Legacy Walk-In sale · item breakdown was not stored for this transaction.'
+                              : 'รายการ Walk-In แบบเดิม · รายการสินค้าแยกชิ้นไม่ได้ถูกบันทึกไว้สำหรับรายการนี้'}
                           </div>
-                          <div className="bg-slate-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">{language === 'en' ? 'Updated points balance' : 'ยอดแต้มสะสมล่าสุด'}</p>
-                            <p className="text-xl font-bold text-green-700 mt-1">{purchaseResult.updated_balance}</p>
+                        )}
+                      </div>
+
+                      <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-slate-600">{language === 'en' ? 'Gross total' : 'ยอดรวมก่อนส่วนลด'}</span>
+                            <span className="font-semibold text-slate-900">฿{purchaseResult.gross_amount.toFixed(2)}</span>
                           </div>
-                        </>
-                      )}
+                          {purchaseResult.discount_amount > 0 && (
+                            <div className="flex items-center justify-between gap-4 text-amber-700">
+                              <span>{language === 'en' ? 'Loyalty discount' : 'ส่วนลดสะสมแต้ม'}</span>
+                              <span className="font-semibold">−฿{purchaseResult.discount_amount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-2 text-base">
+                            <span className="font-bold text-slate-900">{language === 'en' ? 'Total paid' : 'ยอดชำระจริง'}</span>
+                            <span className="text-lg font-bold text-green-800">฿{purchaseResult.amount_paid.toFixed(2)}</span>
+                          </div>
+                          {!isGuestSale && (
+                            <>
+                              {purchaseResult.points_redeemed > 0 && (
+                                <div className="flex items-center justify-between gap-4 pt-1">
+                                  <span className="text-slate-600">{language === 'en' ? 'Points used' : 'แต้มที่ใช้'}</span>
+                                  <span className="font-semibold text-amber-700">−{purchaseResult.points_redeemed}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-600">{language === 'en' ? 'Points earned' : 'แต้มที่ได้รับ'}</span>
+                                <span className="font-semibold text-green-700">+{purchaseResult.points_earned}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-slate-600">{language === 'en' ? 'Updated points balance' : 'ยอดแต้มสะสมล่าสุด'}</span>
+                                <span className="font-semibold text-green-700">{purchaseResult.updated_balance}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {isGuestSale && (
+                          <p className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-500">
+                            {language === 'en'
+                              ? 'Guest sale · no loyalty points, rewards or customer history were attached.'
+                              : 'การขายแบบ Guest · ไม่มีแต้มสะสม รางวัล หรือประวัติลูกค้าผูกกับรายการนี้'}
+                          </p>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => void handlePrintPurchaseReceipt()}
+                          disabled={receiptPrinting}
+                          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-6 py-3 font-semibold text-white transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {receiptPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                          {receiptPrinting
+                            ? (language === 'en' ? 'Preparing Receipt…' : 'กำลังเตรียมใบเสร็จ…')
+                            : (language === 'en' ? 'Print Receipt' : 'พิมพ์ใบเสร็จ')}
+                        </button>
+                        {receiptPrintError && (
+                          <p className="mt-2 text-center text-sm font-medium text-red-600">{receiptPrintError}</p>
+                        )}
+                      </div>
                     </div>
-                    {isGuestSale && (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
-                        {language === 'en'
-                          ? 'Guest sale · no loyalty points, rewards or customer history were attached.'
-                          : 'การขายแบบ Guest · ไม่มีแต้มสะสม รางวัล หรือประวัติลูกค้าผูกกับรายการนี้'}
-                      </div>
-                    )}
                     {purchaseResult.reward_id && (
                       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
                         <p className="font-semibold text-amber-900">
@@ -992,20 +1065,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     )}
 
                     <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => void handlePrintPurchaseReceipt()}
-                        disabled={receiptPrinting}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-6 py-3 font-semibold text-white transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {receiptPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
-                        {receiptPrinting
-                          ? (language === 'en' ? 'Preparing Receipt…' : 'กำลังเตรียมใบเสร็จ…')
-                          : (language === 'en' ? 'Print Receipt' : 'พิมพ์ใบเสร็จ')}
-                      </button>
-                      {receiptPrintError && (
-                        <p className="text-center text-sm font-medium text-red-600">{receiptPrintError}</p>
-                      )}
                       <button type="button" onClick={handleAnotherPurchase} className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                         {language === 'en' ? 'Make Another Purchase' : 'ทำรายการซื้ออีกครั้ง'}
                       </button>
