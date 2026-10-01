@@ -9,7 +9,7 @@ import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../builder/usePubli
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
-export type JokoShellSection = 'today' | 'curiosities' | 'bakery' | 'about';
+export type JokoShellSection = 'today' | 'curiosities' | 'bakery' | 'about' | 'gallery' | 'what-people-say';
 
 type JokoShellHeaderProps = {
   onNavigate: (page: string) => void;
@@ -17,7 +17,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'how-it-works' | 'pickup' | 'about';
+  key: 'home' | 'products' | 'how-it-works' | 'pickup' | 'about' | 'gallery' | 'what-people-say';
   label: string;
   page?: string;
   targetId?: string;
@@ -31,6 +31,8 @@ const copy = {
     howItWorks: 'How It Works',
     pickup: 'Pickup',
     about: 'About',
+    gallery: 'Gallery',
+    whatPeopleSay: 'What People Say',
     account: 'Account',
     cart: 'Cart',
     menu: 'Menu',
@@ -41,6 +43,8 @@ const copy = {
     howItWorks: 'วิธีสั่งซื้อ',
     pickup: 'จุดรับสินค้า',
     about: 'เกี่ยวกับเรา',
+    gallery: 'แกลเลอรี',
+    whatPeopleSay: 'คนอื่นพูดถึงเรา',
     account: 'บัญชี',
     cart: 'ตะกร้า',
     menu: 'เมนู',
@@ -51,6 +55,8 @@ const copy = {
     howItWorks: '如何订购',
     pickup: '取货',
     about: '关于',
+    gallery: '影像集',
+    whatPeopleSay: '大家怎么说',
     account: '账户',
     cart: '购物车',
     menu: '菜单',
@@ -78,6 +84,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
     { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
     { key: 'about', label: labels.about, targetId: 'about', activeKey: 'about' },
+    { key: 'gallery', label: labels.gallery, page: 'gallery', activeKey: 'gallery' },
+    { key: 'what-people-say', label: labels.whatPeopleSay, page: 'what-people-say', activeKey: 'what-people-say' },
   ];
 
   const handleHomeSection = (targetId: string) => {
@@ -152,7 +160,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             </button>
 
             <nav className="hidden lg:block" aria-label="JOKO TODAY">
-              <ul className="flex items-center gap-8 xl:gap-10">
+              <ul className="flex items-center gap-5 xl:gap-7">
                 {navItems.map((item) => {
                   const isActive = isNavItemActive(item);
                   return (
