@@ -23,6 +23,7 @@ import {
 import jsQR from 'jsqr';
 import { supabase } from '../lib/supabase';
 import { printOrderReceipt } from '../lib/printReceipt';
+import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 import {
   CustomerLookupNetworkError,
   CustomerLookupServiceError,
@@ -89,6 +90,7 @@ const amountDue = (order: Order) => Math.max(
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
+  const publishedLogoUrl = usePublishedJokoLogo();
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -664,7 +666,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     {lastReceiptOrder && (
                       <button
                         type="button"
-                        onClick={() => printOrderReceipt({ order: lastReceiptOrder, customerName: customer.name, language: staffLanguage })}
+                        onClick={() => printOrderReceipt({ order: lastReceiptOrder, customerName: customer.name, language: staffLanguage, logoUrl: publishedLogoUrl })}
                         className="mt-3 flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100"
                       >
                         <Printer className="w-4 h-4" />
