@@ -74,6 +74,20 @@ interface PurchaseResult {
   idempotent_replay: boolean;
 }
 
+type PosSubmission = {
+  orderNumber: string;
+  requestKey: string;
+  items: Array<{ product_id: string; quantity: number }>;
+  rewardId: string | null;
+  paymentMethod: 'cash' | 'qr_code';
+};
+
+function isDefinitePurchaseRejection(error: unknown) {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' && (/^[0-9A-Z]{5}$/.test(code) || code.startsWith('PGRST'));
+}
+
 function isPurchaseResult(value: unknown): value is PurchaseResult {
   if (!value || typeof value !== 'object') return false;
   const result = value as Record<string, unknown>;
@@ -114,17 +128,24 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [posCatalogLoading, setPosCatalogLoading] = useState(false);
   const [posCatalogError, setPosCatalogError] = useState(false);
   const [posCatalogReloadKey, setPosCatalogReloadKey] = useState(0);
+  const [posRetryRequired, setPosRetryRequired] = useState(false);
   const posCart = usePosCart();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
   const purchaseReferenceRef = useRef<string | null>(null);
   const purchaseRequestKeyRef = useRef<string | null>(null);
+  const pendingPosSubmissionRef = useRef<PosSubmission | null>(null);
 
   const parsedAmount = Number.parseFloat(amount);
   const calculationAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
   const currentBalance = customer?.loyalty_points ?? 0;
   const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
+  const memberReturnCode = new URLSearchParams(window.location.search).get('member');
+  const walkInReturnPath = memberReturnCode && /^VIP\d+$/i.test(memberReturnCode)
+    ? `/walk-in?member=${encodeURIComponent(memberReturnCode)}`
+    : '/walk-in';
+  const staffLoginPath = `/staff?return=${encodeURIComponent(walkInReturnPath)}`;
 
   const clearCustomerState = () => {
     setCustomer(null);
@@ -137,9 +158,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setPurchaseResult(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
+    setPosRetryRequired(false);
     posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
+    pendingPosSubmissionRef.current = null;
   };
 
   const handleLogout = async () => {
@@ -197,9 +220,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setPurchaseResult(null);
       setSelectedRewardId('');
       setShowLegacyCheckout(false);
+      setPosRetryRequired(false);
       posCart.clear();
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
+      pendingPosSubmissionRef.current = null;
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -379,41 +404,70 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     paymentMethod: 'cash' | 'qr_code';
     rewardId: string | null;
   }) => {
-    if (!customer || posCart.items.length === 0 || savingRef.current) return;
+    if (!customer || savingRef.current) return;
+
+    let submission = pendingPosSubmissionRef.current;
+    if (!submission) {
+      if (posCart.items.length === 0) return;
+      const orderNumber = `WI-${crypto.randomUUID()}`;
+      const requestKey = crypto.randomUUID();
+      submission = {
+        orderNumber,
+        requestKey,
+        items: posCart.items.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })),
+        rewardId,
+        paymentMethod: posPaymentMethod,
+      };
+      pendingPosSubmissionRef.current = submission;
+      purchaseReferenceRef.current = orderNumber;
+      purchaseRequestKeyRef.current = requestKey;
+    }
 
     try {
       savingRef.current = true;
       setSaving(true);
       setError(null);
 
-      const orderNumber = purchaseReferenceRef.current ?? `WI-${crypto.randomUUID()}`;
-      const requestKey = purchaseRequestKeyRef.current ?? crypto.randomUUID();
-      purchaseReferenceRef.current = orderNumber;
-      purchaseRequestKeyRef.current = requestKey;
-
-      const items = posCart.items.map((item) => ({
-        product_id: item.product.id,
-        quantity: item.quantity,
-      }));
-
       const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v3', {
         p_customer_id: customer.id,
-        p_items: items,
-        p_order_number: orderNumber,
-        p_reward_id: rewardId,
-        p_request_key: requestKey,
-        p_payment_method: posPaymentMethod,
+        p_items: submission.items,
+        p_order_number: submission.orderNumber,
+        p_reward_id: submission.rewardId,
+        p_request_key: submission.requestKey,
+        p_payment_method: submission.paymentMethod,
       });
 
-      if (purchaseError) throw purchaseError;
-      if (!isPurchaseResult(data)) {
-        throw new Error('POS sale was saved but the confirmation response was invalid.');
+      if (purchaseError) {
+        if (isDefinitePurchaseRejection(purchaseError)) {
+          pendingPosSubmissionRef.current = null;
+          purchaseReferenceRef.current = null;
+          purchaseRequestKeyRef.current = null;
+          setPosRetryRequired(false);
+        } else {
+          setPosRetryRequired(true);
+        }
+        throw purchaseError;
       }
 
+      if (!isPurchaseResult(data)) {
+        setPosRetryRequired(true);
+        throw new Error(
+          'POS sale may have completed, but the confirmation response was invalid. Retry the same sale to reconcile it.'
+        );
+      }
+
+      pendingPosSubmissionRef.current = null;
+      setPosRetryRequired(false);
       setCustomer({ ...customer, loyalty_points: data.updated_balance });
       setPurchaseResult(data);
       setHistoryRefreshKey((value) => value + 1);
     } catch (err) {
+      if (pendingPosSubmissionRef.current && !isDefinitePurchaseRejection(err)) {
+        setPosRetryRequired(true);
+      }
       console.error('Error completing POS sale:', err);
       setError(getPurchaseErrorMessage(err));
     } finally {
@@ -429,9 +483,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setPurchaseResult(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
+    setPosRetryRequired(false);
     posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
+    pendingPosSubmissionRef.current = null;
   };
 
   const handleFinishAndGoHome = () => {
@@ -506,7 +562,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </p>
               <button
                 type="button"
-                onClick={() => window.location.assign('/staff?return=/walk-in')}
+                onClick={() => window.location.assign(staffLoginPath)}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-4 py-3 font-bold text-white transition-colors hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-100"
               >
                 <Lock className="h-5 w-5" />
@@ -674,7 +730,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       <button
                         type="button"
                         onClick={resetTransaction}
-                        className="inline-flex items-center gap-2 rounded-lg border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-bold text-green-800 shadow-sm transition-colors hover:bg-green-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-green-100"
+                        disabled={saving || posRetryRequired}
+                        className="inline-flex items-center gap-2 rounded-lg border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-bold text-green-800 shadow-sm transition-colors hover:bg-green-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-green-100 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <QrCode className="h-4 w-4" />
                         {language === 'en' ? 'Scan Another Customer' : 'สแกนลูกค้ารายอื่น'}
@@ -903,6 +960,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     loyaltyMultiplier={loyaltyMultiplier}
                     cart={posCart}
                     saving={saving}
+                    retryRequired={posRetryRequired}
                     checkoutError={error}
                     onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
                     onCompleteSale={handleCompletePosSale}
