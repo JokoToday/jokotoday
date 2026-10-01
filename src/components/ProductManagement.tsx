@@ -269,9 +269,9 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
     <AdminModalPortal>
       <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-        <div className="shrink-0 bg-white border-b border-gray-200 p-4 sm:p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">{product ? 'Edit Product' : 'Add New Product'}</h2>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
+        <div className="joko-admin-modal-header shrink-0 p-4 sm:p-6 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">{product ? 'Edit Product' : 'Add New Product'}</h2>
+          <button onClick={onCancel} className="text-white hover:text-gray-200 transition-colors"><X className="w-6 h-6" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="min-h-0 flex-1 p-6 space-y-6 overflow-y-auto overscroll-contain">

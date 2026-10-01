@@ -238,13 +238,13 @@ export function SocialLinksManagement({ socialLinks, onRefresh }: SocialLinksMan
         <AdminModalPortal>
           <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
           <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
-            <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-4 sm:p-6">
-              <h3 className="text-lg font-semibold text-gray-900">
+            <div className="joko-admin-modal-header relative z-10 flex shrink-0 items-center justify-between p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-white">
                 {editing ? 'Edit Social Link' : 'Add Social Link'}
               </h3>
               <button
                 onClick={closeForm}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-white hover:text-gray-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

@@ -167,6 +167,20 @@
   color: #303532;
 }
 
+.joko-admin-modal-header {
+  background: linear-gradient(90deg, #c76624 0%, #a95122 100%);
+  color: #fff;
+}
+
+.joko-admin-modal-header .text-gray-900,
+.joko-admin-modal-header .text-gray-400 {
+  color: #fff;
+}
+
+.joko-admin-modal-header button:hover {
+  color: rgba(255, 255, 255, .82);
+}
+
 .joko-admin-content table {
   overflow: hidden;
   border-radius: 1rem;
