@@ -11,6 +11,17 @@ import {
 } from '../lib/aboutMediaService';
 import { uploadGalleryImage } from '../lib/mediaService';
 
+type LocalizedGalleryFieldKey =
+  | 'title_en'
+  | 'title_th'
+  | 'title_zh'
+  | 'caption_en'
+  | 'caption_th'
+  | 'caption_zh'
+  | 'alt_en'
+  | 'alt_th'
+  | 'alt_zh';
+
 const emptyDraft = (): GalleryItemDraft => ({
   site_key: JOKO_SITE_KEY,
   media_type: 'image',
@@ -358,8 +369,8 @@ function LocalizedGalleryFields({
 }: {
   label: string;
   values: Array<string | null>;
-  fieldKeys: Array<keyof GalleryItemDraft>;
-  onChange: (key: keyof GalleryItemDraft, value: string | null) => void;
+  fieldKeys: LocalizedGalleryFieldKey[];
+  onChange: (key: LocalizedGalleryFieldKey, value: string | null) => void;
   textarea?: boolean;
 }) {
   const languages = ['English', 'ไทย', '中文'];
