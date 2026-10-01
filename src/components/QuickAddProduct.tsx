@@ -26,6 +26,7 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
   const [formData, setFormData] = useState<QuickFormData>({
     name_en: '',
     name_th: '',
+    name_zh: '',
     price: '',
     category_id: '',
     is_active: true,
@@ -130,7 +131,7 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
           <p className="text-primary-100 text-sm mt-2">Add a product quickly with essential details only</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto overscroll-contain">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 p-6 space-y-4 overflow-y-auto overscroll-contain">
           {errors.submit && (
             <div className="flex gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
