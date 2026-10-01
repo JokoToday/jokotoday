@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
+  AlertCircle,
   Banknote,
+  Loader2,
   Minus,
   Plus,
   QrCode,
@@ -16,6 +18,7 @@ import { LoyaltyRewardSelector } from '../staff/LoyaltyRewardSelector';
 
 type StaffLanguage = 'en' | 'th';
 type PaymentMethod = 'cash' | 'qr_code' | '';
+type CompletedPaymentMethod = Exclude<PaymentMethod, ''>;
 
 type Props = {
   products: CMSProduct[];
@@ -26,7 +29,13 @@ type Props = {
   currentBalance: number;
   loyaltyMultiplier: number;
   cart: PosCartState;
+  saving: boolean;
+  checkoutError: string | null;
   onRetry: () => void;
+  onCompleteSale: (input: {
+    paymentMethod: CompletedPaymentMethod;
+    rewardId: string | null;
+  }) => Promise<void>;
   onUseLegacyCheckout: (previewSubtotal: number) => void;
 };
 
@@ -51,7 +60,10 @@ export function PosWorkspace({
   currentBalance,
   loyaltyMultiplier,
   cart,
+  saving,
+  checkoutError,
   onRetry,
+  onCompleteSale,
   onUseLegacyCheckout,
 }: Props) {
   const {
@@ -98,6 +110,7 @@ export function PosWorkspace({
     language === 'th' ? category.title_th || category.title_en : category.title_en;
 
   const projectedPoints = Math.round(previewSubtotal * loyaltyMultiplier);
+  const canCompleteSale = items.length > 0 && paymentMethod !== '' && !saving;
 
   const clearSale = () => {
     if (items.length === 0) return;
@@ -118,25 +131,26 @@ export function PosWorkspace({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="font-bold text-emerald-950">
-              {language === 'en' ? 'JOKO POS · Phase 1 preview' : 'JOKO POS · ตัวอย่าง Phase 1'}
+              {language === 'en' ? 'JOKO POS · Live checkout' : 'JOKO POS · ชำระเงินจริง'}
             </p>
             <p className="mt-1 text-sm text-emerald-800">
               {language === 'en'
-                ? 'Build the real product basket here. Checkout is intentionally disabled until the v3 backend is added.'
-                : 'สร้างตะกร้าสินค้าจริงที่นี่ การชำระเงินยังถูกปิดไว้จนกว่าจะเพิ่มระบบ v3'}
+                ? 'Build the basket here. Product prices, rewards, totals and loyalty are verified again by the server when you complete the sale.'
+                : 'สร้างตะกร้าที่นี่ ระบบจะตรวจสอบราคาสินค้า รางวัล ยอดรวม และแต้มสะสมอีกครั้งบนเซิร์ฟเวอร์เมื่อเสร็จสิ้นการขาย'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => onUseLegacyCheckout(previewSubtotal)}
-            className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+            disabled={saving}
+            className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] ${saving ? 'pointer-events-none opacity-70' : ''}`}>
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:p-5">
           <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-4 bg-white/95 px-1 pb-3 pt-1 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -371,7 +385,7 @@ export function PosWorkspace({
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold text-slate-600">
-                  {language === 'en' ? 'Preview subtotal' : 'ยอดรวมตัวอย่าง'}
+                  {language === 'en' ? 'Cart subtotal' : 'ยอดรวมตะกร้า'}
                 </span>
                 <span className="text-2xl font-black text-slate-950">
                   ฿{money(previewSubtotal)}
@@ -379,8 +393,8 @@ export function PosWorkspace({
               </div>
               <p className="mt-2 text-xs text-slate-500">
                 {language === 'en'
-                  ? 'Preview only. Phase 2 will recalculate prices on the server.'
-                  : 'เป็นเพียงตัวอย่าง Phase 2 จะคำนวณราคาใหม่บนเซิร์ฟเวอร์'}
+                  ? 'Displayed from the catalogue. The server recalculates the authoritative total when the sale is completed.'
+                  : 'ยอดนี้มาจากแคตตาล็อก เซิร์ฟเวอร์จะคำนวณยอดจริงอีกครั้งเมื่อเสร็จสิ้นการขาย'}
               </p>
             </div>
 
@@ -440,18 +454,37 @@ export function PosWorkspace({
               </p>
             </div>
 
+            {checkoutError && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{checkoutError}</span>
+              </div>
+            )}
+
             <button
               type="button"
-              disabled
-              className="w-full cursor-not-allowed rounded-xl bg-slate-300 px-5 py-4 text-base font-bold text-slate-600"
+              disabled={!canCompleteSale}
+              onClick={() => {
+                if (paymentMethod === '') return;
+                void onCompleteSale({
+                  paymentMethod,
+                  rewardId: selectedRewardId || null,
+                });
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 text-base font-bold text-white shadow-lg transition-all hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {language === 'en' ? 'Complete Sale · Phase 2' : 'เสร็จสิ้นการขาย · Phase 2'}
+              {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingCart className="h-5 w-5" />}
+              {saving
+                ? (language === 'en' ? 'Completing sale…' : 'กำลังบันทึกการขาย…')
+                : (language === 'en' ? 'Complete Sale' : 'เสร็จสิ้นการขาย')}
             </button>
 
             <p className="text-center text-xs text-slate-500">
-              {language === 'en'
-                ? 'No POS transaction is sent from this Phase 1 screen.'
-                : 'หน้าจอ Phase 1 นี้ยังไม่ส่งรายการขาย POS'}
+              {items.length === 0
+                ? (language === 'en' ? 'Add at least one product to continue.' : 'เพิ่มสินค้าอย่างน้อยหนึ่งรายการเพื่อดำเนินการต่อ')
+                : paymentMethod === ''
+                  ? (language === 'en' ? 'Choose Cash or Thai QR to complete the sale.' : 'เลือกเงินสดหรือ Thai QR เพื่อเสร็จสิ้นการขาย')
+                  : (language === 'en' ? 'The final amount and loyalty result come from the server.' : 'ยอดสุดท้ายและแต้มสะสมจะยืนยันจากเซิร์ฟเวอร์')}
             </p>
           </div>
         </aside>

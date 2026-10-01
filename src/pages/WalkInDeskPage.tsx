@@ -51,6 +51,14 @@ interface Customer {
 interface PurchaseResult {
   order_id: string;
   order_number: string;
+  order_items?: Array<{
+    product_id: string;
+    product_name: string;
+    product_name_th?: string | null;
+    product_name_zh?: string | null;
+    quantity: number;
+    price_at_order: number;
+  }>;
   gross_amount: number;
   discount_amount: number;
   amount_paid: number;
@@ -64,6 +72,23 @@ interface PurchaseResult {
   manual_fulfillment_required: boolean;
   payment_method: 'cash' | 'qr_code';
   idempotent_replay: boolean;
+}
+
+function isPurchaseResult(value: unknown): value is PurchaseResult {
+  if (!value || typeof value !== 'object') return false;
+  const result = value as Record<string, unknown>;
+  return (
+    typeof result.order_id === 'string'
+    && result.order_id.length > 0
+    && typeof result.order_number === 'string'
+    && typeof result.gross_amount === 'number'
+    && typeof result.discount_amount === 'number'
+    && typeof result.amount_paid === 'number'
+    && typeof result.points_redeemed === 'number'
+    && typeof result.points_earned === 'number'
+    && typeof result.updated_balance === 'number'
+    && (result.payment_method === 'cash' || result.payment_method === 'qr_code')
+  );
 }
 
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -151,6 +176,15 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     return err instanceof Error
       ? err.message
       : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด');
+  };
+
+  const getPurchaseErrorMessage = (err: unknown) => {
+    if (err instanceof Error && err.message) return err.message;
+    if (err && typeof err === 'object' && 'message' in err) {
+      const message = (err as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+    return language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาดในการบันทึกรายการซื้อ';
   };
 
   const findCustomer = async (lookupValue: string, source: 'manual' | 'qr' = 'qr') => {
@@ -322,27 +356,66 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       });
 
       if (purchaseError) throw purchaseError;
-      if (
-        !data
-        || typeof data.order_id !== 'string'
-        || data.order_id.length === 0
-        || typeof data.gross_amount !== 'number'
-        || typeof data.discount_amount !== 'number'
-        || typeof data.amount_paid !== 'number'
-        || typeof data.points_redeemed !== 'number'
-        || typeof data.points_earned !== 'number'
-        || typeof data.updated_balance !== 'number'
-        || !['cash', 'qr_code'].includes(data.payment_method)
-      ) {
+      if (!isPurchaseResult(data)) {
         throw new Error('Purchase was saved but the confirmation response was invalid.');
       }
 
       setCustomer({ ...customer, loyalty_points: data.updated_balance });
-      setPurchaseResult(data as PurchaseResult);
+      setPurchaseResult(data);
       setHistoryRefreshKey((value) => value + 1);
     } catch (err) {
       console.error('Error saving walk-in purchase:', err);
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาด'));
+      setError(getPurchaseErrorMessage(err));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const handleCompletePosSale = async ({
+    paymentMethod: posPaymentMethod,
+    rewardId,
+  }: {
+    paymentMethod: 'cash' | 'qr_code';
+    rewardId: string | null;
+  }) => {
+    if (!customer || posCart.items.length === 0 || savingRef.current) return;
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setError(null);
+
+      const orderNumber = purchaseReferenceRef.current ?? `WI-${crypto.randomUUID()}`;
+      const requestKey = purchaseRequestKeyRef.current ?? crypto.randomUUID();
+      purchaseReferenceRef.current = orderNumber;
+      purchaseRequestKeyRef.current = requestKey;
+
+      const items = posCart.items.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+      }));
+
+      const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v3', {
+        p_customer_id: customer.id,
+        p_items: items,
+        p_order_number: orderNumber,
+        p_reward_id: rewardId,
+        p_request_key: requestKey,
+        p_payment_method: posPaymentMethod,
+      });
+
+      if (purchaseError) throw purchaseError;
+      if (!isPurchaseResult(data)) {
+        throw new Error('POS sale was saved but the confirmation response was invalid.');
+      }
+
+      setCustomer({ ...customer, loyalty_points: data.updated_balance });
+      setPurchaseResult(data);
+      setHistoryRefreshKey((value) => value + 1);
+    } catch (err) {
+      console.error('Error completing POS sale:', err);
+      setError(getPurchaseErrorMessage(err));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -355,6 +428,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
   };
@@ -822,7 +897,10 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     currentBalance={currentBalance}
                     loyaltyMultiplier={loyaltyMultiplier}
                     cart={posCart}
+                    saving={saving}
+                    checkoutError={error}
                     onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
+                    onCompleteSale={handleCompletePosSale}
                     onUseLegacyCheckout={(previewSubtotal) => {
                       setShowLegacyCheckout(true);
                       setError(null);
