@@ -146,6 +146,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     ? `/walk-in?member=${encodeURIComponent(memberReturnCode)}`
     : '/walk-in';
   const staffLoginPath = `/staff?return=${encodeURIComponent(walkInReturnPath)}`;
+  const transactionNavigationLocked = saving || posRetryRequired;
 
   const clearCustomerState = () => {
     setCustomer(null);
@@ -578,8 +579,10 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <button
+        type="button"
         onClick={() => onNavigate('home')}
-        className="mb-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"
+        disabled={transactionNavigationLocked}
+        className="mb-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Home className="w-4 h-4" />
         {language === 'en' ? 'Back to Home' : 'กลับหน้าแรก'}
@@ -607,14 +610,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   <button
                     type="button"
                     onClick={() => onNavigate('pickup')}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors"
+                    disabled={transactionNavigationLocked}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Package className="w-4 h-4" />
                     {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
                   </button>
                   <button
+                    type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    disabled={transactionNavigationLocked}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <LogOut className="w-4 h-4" />
                     {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
