@@ -3,6 +3,7 @@ import { Menu, ShoppingCart, UserRound, X } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { UserAvatarDropdown } from '../../../components/UserAvatarDropdown';
 import { Container } from '../../../platform/design-system';
 import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../builder/usePublishedJokoLogo';
 
@@ -118,11 +119,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   };
 
   const handleAccount = () => {
-    if (user) {
-      onNavigate('profile');
-      setIsMobileMenuOpen(false);
-      return;
-    }
+    setIsMobileMenuOpen(false);
     setIsAuthModalOpen(true);
   };
 
@@ -199,14 +196,18 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={handleAccount}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F]"
-                aria-label={labels.account}
-              >
-                <UserRound className="h-5 w-5" />
-              </button>
+              {user ? (
+                <UserAvatarDropdown onNavigate={onNavigate} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleAccount}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F]"
+                  aria-label={labels.account}
+                >
+                  <UserRound className="h-5 w-5" />
+                </button>
+              )}
 
               <button
                 type="button"
