@@ -30,6 +30,7 @@ type Props = {
   loyaltyMultiplier: number;
   cart: PosCartState;
   saving: boolean;
+  retryRequired: boolean;
   checkoutError: string | null;
   onRetry: () => void;
   onCompleteSale: (input: {
@@ -61,6 +62,7 @@ export function PosWorkspace({
   loyaltyMultiplier,
   cart,
   saving,
+  retryRequired,
   checkoutError,
   onRetry,
   onCompleteSale,
@@ -110,7 +112,8 @@ export function PosWorkspace({
     language === 'th' ? category.title_th || category.title_en : category.title_en;
 
   const projectedPoints = Math.round(previewSubtotal * loyaltyMultiplier);
-  const canCompleteSale = items.length > 0 && paymentMethod !== '' && !saving;
+  const checkoutLocked = saving || retryRequired;
+  const canCompleteSale = items.length > 0 && paymentMethod !== '' && !checkoutLocked;
 
   const clearSale = () => {
     if (items.length === 0) return;
@@ -142,7 +145,7 @@ export function PosWorkspace({
           <button
             type="button"
             onClick={() => onUseLegacyCheckout(previewSubtotal)}
-            disabled={saving}
+            disabled={checkoutLocked}
             className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
@@ -150,7 +153,39 @@ export function PosWorkspace({
         </div>
       </div>
 
-      <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] ${saving ? 'pointer-events-none opacity-70' : ''}`}>
+      {retryRequired && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+            <div>
+              <p className="font-bold">
+                {language === 'en'
+                  ? 'Confirm this submitted sale before doing anything else'
+                  : 'ยืนยันรายการขายที่ส่งไปแล้วก่อนดำเนินการอื่น'}
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                {language === 'en'
+                  ? 'The connection failed after submission, so this sale may already exist. The basket is locked. Retry the same sale; v3 will safely return the existing transaction if it was committed.'
+                  : 'การเชื่อมต่อขัดข้องหลังส่งรายการขาย รายการนี้อาจถูกบันทึกแล้ว ตะกร้าจึงถูกล็อก กรุณาลองรายการเดิมอีกครั้ง ระบบ v3 จะคืนรายการเดิมอย่างปลอดภัยหากบันทึกสำเร็จแล้ว'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={saving || paymentMethod === ''}
+            onClick={() => {
+              if (paymentMethod === '') return;
+              void onCompleteSale({ paymentMethod, rewardId: selectedRewardId || null });
+            }}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-amber-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {language === 'en' ? 'Retry Same Sale' : 'ลองรายการเดิมอีกครั้ง'}
+          </button>
+        </div>
+      )}
+
+      <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] ${checkoutLocked ? 'pointer-events-none opacity-70' : ''}`}>
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:p-5">
           <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-4 bg-white/95 px-1 pb-3 pt-1 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
