@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
+import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
 interface MyProfilePageProps {
@@ -190,36 +191,40 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-gray-600">Please sign in to view your profile.</p>
-          <button onClick={() => onNavigate('home')} className="mt-4 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">Go to Home</button>
-        </div>
+      <div className="joko-mineral-field min-h-[70vh]">
+        <Container width="wide" className="relative z-10 flex min-h-[70vh] items-center justify-center py-12">
+          <div className="w-full max-w-xl rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-10">
+            <p className="text-[#303532]/68">Please sign in to view your profile.</p>
+            <button onClick={() => onNavigate('home')} className="mt-5 rounded-xl bg-[#C76624] px-6 py-3 font-semibold text-white transition hover:bg-[#A95120]">Go to Home</button>
+          </div>
+        </Container>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <button onClick={() => onNavigate('home')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors">
-          <ArrowLeft className="w-5 h-5" /> Back
-        </button>
+    <div className="joko-mineral-field min-h-screen">
+      <Container width="wide" className="relative z-10 py-8 sm:py-12 lg:py-14">
+        <div className="mx-auto max-w-4xl">
+          <button onClick={() => onNavigate('home')} className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{getLabel('profile_page.header', language, 'My Profile')}</h1>
-          <p className="text-gray-600 mb-8">{getLabel('profile_page.subtitle', language, 'Your details help us prepare your orders and stay in touch.')}</p>
+          <div className="mb-6 rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] md:p-8 lg:p-10">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{getLabel('profile_page.header', language, 'My Profile')}</h1>
+            <p className="mb-8 mt-2 max-w-2xl text-[#303532]/66">{getLabel('profile_page.subtitle', language, 'Your details help us prepare your orders and stay in touch.')}</p>
 
           {success && <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">{success}</div>}
           {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <section className="border-b border-gray-200 pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{getLabel('profile_page.picture_heading', language, 'Profile Picture')}</h3>
+            <section className="border-b border-[#55766F]/14 pb-7">
+              <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.picture_heading', language, 'Profile Picture')}</h3>
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                    {profilePicture ? <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" /> : <Camera className="w-12 h-12 text-gray-400" />}
+                  <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-[#55766F]/14 bg-[#CFE3DF]/65 shadow-inner">
+                    {profilePicture ? <img src={profilePicture} alt="Profile" className="h-full w-full object-cover" /> : <Camera className="h-12 w-12 text-[#55766F]/55" />}
                   </div>
                   {profilePicture && !selectedFile && (
                     <button type="button" onClick={handleRemovePicture} disabled={uploadingPicture} className="absolute -top-2 -right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50">
@@ -233,7 +238,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     <div className="space-y-3">
                       <p className="text-sm text-gray-600">New photo selected: {selectedFile.name}</p>
                       <div className="flex gap-3">
-                        <button type="button" onClick={handleUploadPicture} disabled={uploadingPicture} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 flex items-center gap-2">
+                        <button type="button" onClick={handleUploadPicture} disabled={uploadingPicture} className="flex items-center gap-2 rounded-xl bg-[#C76624] px-4 py-2 font-semibold text-white transition hover:bg-[#A95120] disabled:opacity-50">
                           <Upload className="w-4 h-4" /> {uploadingPicture ? 'Uploading...' : 'Upload Photo'}
                         </button>
                         <button
@@ -244,7 +249,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                             if (fileInputRef.current) fileInputRef.current.value = '';
                           }}
                           disabled={uploadingPicture}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          className="rounded-xl border border-[#55766F]/20 bg-white/65 px-4 py-2 text-[#303532] transition hover:bg-[#CFE3DF]/35"
                         >
                           Cancel
                         </button>
@@ -252,7 +257,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     </div>
                   ) : (
                     <div>
-                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingPicture} className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 flex items-center gap-2 mx-auto sm:mx-0">
+                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingPicture} className="mx-auto flex items-center gap-2 rounded-xl bg-[#303532] px-4 py-2 font-semibold text-white transition hover:bg-[#3F665E] disabled:opacity-50 sm:mx-0">
                         <Camera className="w-4 h-4" />
                         {profilePicture ? getLabel('profile_page.change_photo', language, 'Change Photo') : getLabel('profile_page.upload_photo', language, 'Upload Photo')}
                       </button>
@@ -263,24 +268,24 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               </div>
             </section>
 
-            <section>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{getLabel('profile_page.personal_info', language, 'Personal Information')}</h3>
+            <section className="rounded-[1.5rem] bg-white/48 p-5 sm:p-6">
+              <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.personal_info', language, 'Personal Information')}</h3>
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.name_label', language, 'Name / Nickname')} <span className="text-red-500">*</span>
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500" disabled={loading} required />
+                  <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.phone_label', language, 'Phone Number')} <span className="text-red-500">*</span>
-                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500" disabled={loading} required />
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.email_label', language, 'Email Address')}
-                  <input type="email" value={user.email || ''} className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" disabled />
+                  <input type="email" value={user.email || ''} className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#55766F]/14 bg-[#F4EFE5]/55 px-4 py-3 text-[#303532]/60" disabled />
                   <span className="block text-xs text-gray-500 mt-1">{getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')}</span>
                 </label>
               </div>
             </section>
 
-            <section className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{getLabel('profile_page.contact_methods', language, 'Contact Methods')}</h3>
+            <section className="border-t border-[#55766F]/14 pt-7">
+              <h3 className="mb-2 text-lg font-semibold text-[#303532]">{getLabel('profile_page.contact_methods', language, 'Contact Methods')}</h3>
               <p className="text-sm text-gray-600 mb-4">{getLabel('profile_page.contact_help', language, 'How can we reach you with order updates?')}</p>
               <div className="space-y-3">
                 {[
@@ -289,18 +294,18 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   ['wechat_id', getLabel('profile_page.wechat_label', language, 'WeChat ID')],
                 ].map(([name, label]) => (
                   <label key={name} className="block text-sm text-gray-600">{label}
-                    <input type="text" name={name} value={formData[name as keyof typeof formData]} onChange={handleChange} className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500" disabled={loading} />
+                    <input type="text" name={name} value={formData[name as keyof typeof formData]} onChange={handleChange} className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} />
                   </label>
                 ))}
               </div>
             </section>
 
-            <section className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{getLabel('profile_page.preferences', language, 'Preferences')}</h3>
+            <section className="border-t border-[#55766F]/14 pt-7">
+              <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.preferences', language, 'Preferences')}</h3>
               <label className="block text-sm font-medium text-gray-700 mb-2">{getLabel('profile_page.language_pref', language, 'Language Preference')}</label>
               <div className="flex gap-3">
                 {(['en', 'th', 'zh'] as Language[]).map((option) => (
-                  <button key={option} type="button" onClick={() => void handleLanguageChange(option)} className={`flex-1 py-3 rounded-lg font-medium transition-colors ${language === option ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                  <button key={option} type="button" onClick={() => void handleLanguageChange(option)} className={`flex-1 rounded-xl py-3 font-medium transition-colors ${language === option ? 'bg-[#55766F] text-white shadow-sm' : 'border border-[#55766F]/14 bg-white/58 text-[#303532] hover:bg-[#CFE3DF]/38'}`}>
                     {option === 'en' ? getLabel('profile_page.language_en', language, 'English') : option === 'th' ? getLabel('profile_page.language_th', language, 'ไทย') : '中文'}
                   </button>
                 ))}
@@ -308,16 +313,17 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             </section>
 
             <div className="flex gap-3">
-              <button type="submit" disabled={loading} className="flex-1 bg-amber-600 text-white py-3 rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50">
+              <button type="submit" disabled={loading} className="flex-1 rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120] disabled:opacity-50">
                 {loading ? getLabel('profile_page.saving', language, 'Saving...') : getLabel('profile_page.save_changes', language, 'Save Changes')}
               </button>
-              <button type="button" onClick={() => onNavigate('my-qr')} className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2">
+              <button type="button" onClick={() => onNavigate('my-qr')} className="flex items-center gap-2 rounded-xl border border-[#55766F]/22 bg-[#CFE3DF]/65 px-6 py-3 font-semibold text-[#304B45] transition hover:bg-[#CFE3DF]">
                 <QrCode className="w-5 h-5" /> {getLabel('profile_page.view_qr', language, 'View QR')}
               </button>
             </div>
           </form>
         </div>
-      </div>
+        </div>
+      </Container>
     </div>
   );
 }
