@@ -167,10 +167,10 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
   );
 
   return (
-    <div className={`rounded-xl border p-4 space-y-3 ${isCheckout ? 'border-amber-200 bg-amber-50/60' : 'border-emerald-200 bg-emerald-50/70'}`}>
+    <div className={`space-y-3 rounded-[1.5rem] border p-4 ${isCheckout ? 'border-[#55766F]/14 bg-[#CFE3DF]/34' : 'border-emerald-200 bg-emerald-50/70'}`}>
       <div className="flex items-start gap-2.5">
         {isCheckout
-          ? <Sparkles className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+          ? <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
           : <CheckCircle2 className="w-5 h-5 text-emerald-700 mt-0.5 shrink-0" />}
         <div>
           <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -193,13 +193,13 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
           return (
             <div
               key={product.id}
-              className={`flex items-center gap-3 rounded-lg border bg-white p-2.5 ${isCheckout ? 'border-amber-100' : 'border-emerald-100'}`}
+              className={`flex items-center gap-3 rounded-xl border bg-white/72 p-2.5 ${isCheckout ? 'border-[#55766F]/12' : 'border-emerald-100'}`}
             >
               <button
                 type="button"
                 onClick={() => onProductClick?.(product)}
                 disabled={!onProductClick}
-                className={`min-w-0 flex flex-1 items-center gap-3 rounded-md text-left ${onProductClick ? 'hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400' : 'cursor-default'}`}
+                className={`min-w-0 flex flex-1 items-center gap-3 rounded-md text-left ${onProductClick ? 'hover:bg-[#CFE3DF]/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]/35' : 'cursor-default'}`}
               >
                 <img
                   src={productImage(product)}
@@ -210,7 +210,7 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs font-medium text-primary-800">฿{product.price}</span>
+                    <span className={`text-xs font-medium ${isCheckout ? 'text-[#C76624]' : 'text-primary-800'}`}>฿{product.price}</span>
                     <span className="text-[11px] text-gray-500">
                       {language === 'th'
                         ? `เหลือ ${remaining}`
@@ -219,7 +219,7 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
                           : `${remaining} available`}
                     </span>
                   </div>
-                  {onProductClick && <p className="mt-1 text-[11px] font-semibold text-amber-700">{viewDetailsLabel}</p>}
+                  {onProductClick && <p className="mt-1 text-[11px] font-semibold text-[#3F665E]">{viewDetailsLabel}</p>}
                 </div>
               </button>
               <button
@@ -227,7 +227,7 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
                 onClick={() => addToCart(product, 1, { openCart: !isCheckout })}
                 aria-label={`${addLabel} ${name}`}
                 title={`${addLabel} ${name}`}
-                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-white transition-colors shrink-0 ${isCheckout ? 'bg-amber-700 hover:bg-amber-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+                className={`inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-white transition-colors ${isCheckout ? 'bg-[#C76624] hover:bg-[#A95120]' : 'bg-emerald-700 hover:bg-emerald-800'}`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 {addLabel}

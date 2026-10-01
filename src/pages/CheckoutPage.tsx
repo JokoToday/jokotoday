@@ -275,13 +275,13 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
   if (orderComplete) {
     if (cancelled) {
       return (
-        <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-12 w-12 text-gray-400" />
             </div>
             <p className="text-gray-700 mb-8 text-lg">{t.confirmation.cancelSuccess}</p>
-            <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">
+            <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">
               {t.confirmation.backToHome}
             </button>
           </div>
@@ -290,25 +290,26 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4 py-10">
-        <div className="max-w-lg w-full">
-          <div className="bg-background rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-green-50 px-8 pt-8 pb-6 text-center border-b border-green-100">
+      <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-lg">
+          <div className="overflow-hidden rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/96 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <div className="border-b border-[#55766F]/12 bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-9 w-9 text-green-600" />
               </div>
-              <h2 className="text-2xl font-header font-bold text-primary-900 mb-1">{t.confirmation.title}</h2>
-              <p className="text-gray-600 text-sm">{t.confirmation.thankYou}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.confirmation.title}</h2>
+              <p className="mt-2 text-sm text-[#303532]/65">{t.confirmation.thankYou}</p>
             </div>
 
             <div className="px-8 py-5 border-b border-gray-100">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-0.5">{t.confirmation.orderNumber}</p>
+                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#55766F]">{t.confirmation.orderNumber}</p>
                   <p className="font-mono text-sm font-bold text-gray-900">{orderNumber || orderId}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700 text-xs font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#55766F]/16 bg-[#CFE3DF]/45 px-3 py-1.5 text-xs font-semibold text-[#3F665E]">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#55766F]" />
                   {t.confirmation.pending}
                 </span>
               </div>
@@ -318,11 +319,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupDay}</p>
                 <p className="text-sm font-medium text-gray-800 flex items-start gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <Calendar className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#C76624]" />
                   <span>
                     {completedPickupDay}
                     {completedPickupDate && (
-                      <span className="block text-xs font-semibold text-amber-700 mt-0.5">
+                      <span className="mt-0.5 block text-xs font-semibold text-[#C76624]">
                         {formatStoredPickupDate(completedPickupDate)}
                       </span>
                     )}
@@ -333,12 +334,12 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupLocation}</p>
                   {orderLocationMapsUrl ? (
-                    <a href={orderLocationMapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 flex items-center gap-1.5 hover:text-amber-900 underline underline-offset-2 transition-colors">
+                    <a href={orderLocationMapsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm font-medium text-[#3F665E] underline underline-offset-2 transition-colors hover:text-[#304B45]">
                       <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                       {orderLocationName}
                     </a>
                   ) : (
-                    <p className="text-sm font-medium text-amber-700 flex items-center gap-1.5">
+                    <p className="flex items-center gap-1.5 text-sm font-medium text-[#3F665E]">
                       <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                       {orderLocationName}
                     </p>
@@ -353,12 +354,12 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               )}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.payment}</p>
-                <span className="inline-block text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">{t.confirmation.payAtPickup}</span>
+                <span className="inline-block rounded-full bg-[#CFE3DF]/55 px-2 py-0.5 text-xs font-semibold text-[#304B45]">{t.confirmation.payAtPickup}</span>
               </div>
             </div>
 
             <div className="px-8 py-4 border-b border-gray-100">
-              <button onClick={() => setShowDetails((v) => !v)} className="flex items-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">
+              <button onClick={() => setShowDetails((v) => !v)} className="flex items-center gap-2 text-sm font-semibold text-[#3F665E] transition-colors hover:text-[#304B45]">
                 <ShoppingBag className="w-4 h-4" />
                 {showDetails ? t.confirmation.hideDetails : t.confirmation.details}
                 {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -370,7 +371,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   {completedItems.map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-3 border-t border-gray-100 first:border-t-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0"><ShoppingBag className="w-4 h-4 text-amber-500" /></div>
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#CFE3DF]/55"><ShoppingBag className="h-4 w-4 text-[#C76624]" /></div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{getItemName(item)}</p>
                           <p className="text-xs text-gray-400">{item.qty} × ฿{item.price.toFixed(2)}</p>
@@ -381,7 +382,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   ))}
                   <div className="flex justify-between pt-4 border-t border-gray-200 mt-2">
                     <p className="text-sm font-semibold text-gray-700">{t.confirmation.total}</p>
-                    <p className="text-lg font-bold text-amber-600">฿{completedTotal.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-[#C76624]">฿{completedTotal.toFixed(2)}</p>
                   </div>
                 </div>
               )}
@@ -390,9 +391,9 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             {completedLoyaltyPoints > 0 && (
               <div className="mx-8 mb-0 -mt-px py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold" style={{ background: '#c6a75e', color: '#fff' }}>★</div>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#55766F] text-sm font-bold text-white">★</div>
                   <div className="flex-1">
-                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3F665E]">
                       {language === 'zh' ? '本单获得积分' : language === 'th' ? 'แต้มที่ได้รับจากออเดอร์นี้' : 'Points Earned This Order'}
                     </p>
                   </div>
@@ -409,7 +410,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                 getLabel={getLabel}
                 className="w-full justify-center py-3 text-sm"
               />
-              <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.confirmation.backToHome}</button>
+              <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.confirmation.backToHome}</button>
               <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
             </div>
           </div>
@@ -436,22 +437,21 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center max-w-md w-full">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4"><Sparkles className="w-8 h-8 text-amber-600" /></div>
-            <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.nav.products}</h2>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#CFE3DF]/65"><Sparkles className="h-8 w-8 text-[#C76624]" /></div>
+            <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.nav.products}</h2>
             <p className="text-gray-600 mb-8">{t.checkout.authRequired}</p>
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="w-full font-bold text-sm transition-all"
-                style={{ background: 'linear-gradient(135deg,#c6a75e 0%,#d4b96a 100%)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', cursor: 'pointer', letterSpacing: '0.03em', boxShadow: '0 4px 16px rgba(198,167,94,0.32)' }}
+                className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120]"
               >
                 {t.checkout.logIn}
               </button>
             </div>
-            <button onClick={() => onNavigate('products')} className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors">{t.nav.products}</button>
+            <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/18 bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
           </div>
         </div>
         <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
@@ -461,10 +461,10 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
   if (user && (!userProfile || !userProfile.profile_completed) && !profileLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-primary-900 mb-3">{t.profile.completeProfile}</h2>
-          <p className="text-gray-700 mb-6">{t.profile.completeProfileMessage}</p>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <h2 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
+          <p className="mb-6 text-[#303532]/68">{t.profile.completeProfileMessage}</p>
         </div>
         <ProfileCompletionModal
           isOpen={isProfileModalOpen}
@@ -479,50 +479,53 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.cart.empty}</h2>
-          <button onClick={() => onNavigate('products')} className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.nav.products}</button>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.cart.empty}</h2>
+          <button onClick={() => onNavigate('products')} className="rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.nav.products}</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl md:text-4xl font-header font-bold text-primary-900 mb-8 text-center">{t.checkout.title}</h1>
+    <div className="joko-mineral-field min-h-screen py-8 sm:py-12 lg:py-14">
+      <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-8 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.035em] text-[#292D2B] sm:text-5xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.title}</h1>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <div className="bg-background rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-primary-900 mb-4">{t.checkout.orderSummary}</h2>
+            <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+              <h2 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.orderSummary}</h2>
               <div className="space-y-3">
                 {items.map((item) => {
                   const productName = language === 'th' ? item.product.name_th : item.product.name_en;
                   return (
                     <div key={item.product.id} className="flex justify-between text-sm">
                       <span className="text-gray-700">{productName} × {item.quantity}</span>
-                      <span className="font-semibold text-primary-900">฿{(item.product.price * item.quantity).toFixed(2)}</span>
+                      <span className="font-semibold text-[#303532]">฿{(item.product.price * item.quantity).toFixed(2)}</span>
                     </div>
                   );
                 })}
                 <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold">
                   <span className="text-gray-900">{t.cart.total}</span>
-                  <span className="text-primary-900">฿{totalPrice.toFixed(2)}</span>
+                  <span className="text-[#C76624]">฿{totalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
-              <h3 className="font-semibold text-primary-900 mb-3">{t.checkout.paymentInfo}</h3>
-              <p className="text-sm text-gray-700">{t.checkout.paymentInfoText}</p>
+            <div className="rounded-[1.5rem] border border-[#55766F]/14 bg-[#CFE3DF]/42 p-6">
+              <h3 className="mb-3 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
+              <p className="text-sm leading-6 text-[#303532]/72">{t.checkout.paymentInfoText}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-background rounded-lg shadow-md p-6 space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user?.email || '')}</p>
+          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+            <div className="rounded-xl border border-[#55766F]/14 bg-[#CFE3DF]/45 p-4">
+              <p className="text-sm text-[#304B45]">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user?.email || '')}</p>
             </div>
 
             <div>
@@ -544,10 +547,10 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                       key={day.id}
                       className={`flex items-center p-4 border-2 rounded-lg transition-colors ${
                         isSelected
-                          ? 'border-primary-600 bg-primary-50'
+                          ? 'border-[#55766F] bg-[#CFE3DF]/55'
                           : isSelectable
-                            ? 'border-gray-200 hover:border-primary-300 bg-gray-50 cursor-pointer'
-                            : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
+                            ? 'cursor-pointer border-[#55766F]/16 bg-white/65 hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/30'
+                            : 'cursor-not-allowed border-[#55766F]/10 bg-white/40 opacity-50'
                       }`}
                     >
                       <input
@@ -562,11 +565,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{displayLabel}</div>
                         {concretePickupDate && (
-                          <p className={`text-xs font-semibold mt-0.5 ${isSelectable ? 'text-amber-700' : 'text-gray-500'}`}>
+                          <p className={`mt-0.5 text-xs font-semibold ${isSelectable ? 'text-[#3F665E]' : 'text-[#303532]/50'}`}>
                             {formatPickupDate(concretePickupDate)}
                           </p>
                         )}
-                        {isSelected && isOpen && isCompatible && <p className="text-xs text-primary-600 mt-1">{t.checkout.pickupDayFromCatalog}</p>}
+                        {isSelected && isOpen && isCompatible && <p className="mt-1 text-xs text-[#3F665E]">{t.checkout.pickupDayFromCatalog}</p>}
                         {!isOpen && (
                           <p className="text-xs text-red-600 mt-1">
                             {day.cutoff_day && day.cutoff_time ? `Cutoff passed (${day.cutoff_day} ${day.cutoff_time})` : 'Pickup schedule is not fully configured'}
@@ -584,7 +587,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-primary-600 text-white py-3.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-[#A9ACA9]"
             >
               {isSubmitting ? t.checkout.processing : t.checkout.placeOrder}
             </button>
