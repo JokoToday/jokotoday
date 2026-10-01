@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { CMSCategory, CMSProduct } from '../../lib/cmsService';
 import { getPublicImageUrl } from '../../lib/storage';
-import { usePosCart } from '../../hooks/usePosCart';
+import type { PosCartState } from '../../hooks/usePosCart';
 import { LoyaltyRewardSelector } from '../staff/LoyaltyRewardSelector';
 
 type StaffLanguage = 'en' | 'th';
@@ -25,8 +25,9 @@ type Props = {
   language: StaffLanguage;
   currentBalance: number;
   loyaltyMultiplier: number;
+  cart: PosCartState;
   onRetry: () => void;
-  onUseLegacyCheckout: () => void;
+  onUseLegacyCheckout: (previewSubtotal: number) => void;
 };
 
 const money = (value: number) =>
@@ -49,6 +50,7 @@ export function PosWorkspace({
   language,
   currentBalance,
   loyaltyMultiplier,
+  cart,
   onRetry,
   onUseLegacyCheckout,
 }: Props) {
@@ -62,7 +64,7 @@ export function PosWorkspace({
     totalQuantity,
     previewSubtotal,
     quantityFor,
-  } = usePosCart();
+  } = cart;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
@@ -126,7 +128,7 @@ export function PosWorkspace({
           </div>
           <button
             type="button"
-            onClick={onUseLegacyCheckout}
+            onClick={() => onUseLegacyCheckout(previewSubtotal)}
             className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
           >
             {language === 'en' ? 'Use Legacy Walk-In' : 'ใช้ Walk-In แบบเดิม'}
