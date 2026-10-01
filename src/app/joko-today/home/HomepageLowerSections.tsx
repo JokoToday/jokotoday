@@ -13,7 +13,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useLanguage } from '../../../context/LanguageContext';
 import { getPickupDays, type PickupDay } from '../../../lib/availabilityService';
 import {
   getPickupLocations,
