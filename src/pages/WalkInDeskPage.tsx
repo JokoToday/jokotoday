@@ -37,6 +37,7 @@ import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '.
 import { PosWorkspace } from '../components/pos/PosWorkspace';
 import { usePosCart } from '../hooks/usePosCart';
 import { printOrderReceipt } from '../lib/printReceipt';
+import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 
 interface Customer {
   id: string;
@@ -111,6 +112,7 @@ function isPurchaseResult(value: unknown): value is PurchaseResult {
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
+  const publishedLogoUrl = usePublishedJokoLogo();
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -570,6 +572,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         customerName: order.customer_name ?? null,
         language: staffLanguage,
         targetWindow: receiptWindow,
+        logoUrl: publishedLogoUrl,
       });
     } catch (err) {
       console.error('Could not prepare POS receipt:', err);

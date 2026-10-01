@@ -36,6 +36,7 @@ type PrintReceiptOptions = {
   customerName?: string | null;
   language?: ReceiptLanguage;
   targetWindow?: Window | null;
+  logoUrl?: string | null;
 };
 
 const escapeHtml = (value: unknown) => String(value ?? '')
@@ -155,7 +156,7 @@ const labelsFor = (language: ReceiptLanguage) => {
   };
 };
 
-export function printOrderReceipt({ order, customerName, language = 'en', targetWindow }: PrintReceiptOptions) {
+export function printOrderReceipt({ order, customerName, language = 'en', targetWindow, logoUrl }: PrintReceiptOptions) {
   const printWindow = targetWindow ?? window.open('', '_blank', 'width=500,height=800');
   if (!printWindow) {
     throw new Error('Print window was blocked');
@@ -163,6 +164,10 @@ export function printOrderReceipt({ order, customerName, language = 'en', target
 
   const items = (Array.isArray(order.order_items) ? order.order_items : []) as ReceiptItem[];
   const receiptCustomerName = customerName ?? order.customer_name ?? null;
+  const receiptLogoUrl = new URL(
+    logoUrl?.trim() || '/assets/brand/joko-today-logo-v0.4.webp',
+    window.location.origin,
+  ).href;
   const grossTotal = Number(order.purchase_type === 'walk_in'
     ? order.walk_in_amount ?? order.total_amount
     : order.total_amount) || 0;
@@ -199,6 +204,9 @@ export function printOrderReceipt({ order, customerName, language = 'en', target
     body { font-family: Arial, "Noto Sans Thai", "Noto Sans SC", sans-serif; color: #111; margin: 0; padding: 24px; font-size: 13px; }
     h1 { font-size: 22px; margin: 0; letter-spacing: .04em; }
     h2 { font-size: 16px; margin: 6px 0 18px; }
+    .brand { text-align: center; margin-bottom: 10px; }
+    .brand-logo { display: block; max-width: 170px; max-height: 58px; width: auto; height: auto; margin: 0 auto 8px; object-fit: contain; filter: grayscale(1) contrast(1.75); }
+    .brand-text-fallback { display: none; }
     .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 24px; padding: 12px; background: #f5f5f5; border-radius: 8px; }
     .toolbar-label { font-size: 12px; color: #555; margin-right: 4px; }
     .toolbar button { border: 1px solid #aaa; background: #fff; border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer; }
@@ -214,7 +222,7 @@ export function printOrderReceipt({ order, customerName, language = 'en', target
     .discount { color: #8a4b08; }
     .total { font-size: 16px; font-weight: 700; padding-top: 8px; }
     .footer { margin-top: 28px; text-align: center; }
-    @media print { body { padding: 8mm; } .toolbar { display: none; } }
+    @media print { body { padding: 8mm; } .toolbar { display: none; } .brand-logo { filter: grayscale(1) contrast(1.9); } }
   </style>
 </head>
 <body>
@@ -225,7 +233,15 @@ export function printOrderReceipt({ order, customerName, language = 'en', target
     <button id="receipt-lang-zh" type="button" class="${receiptLanguage === 'zh' ? 'active' : ''}">中文</button>
     <button id="receipt-print" type="button" class="print-button">${escapeHtml(labels.print)}</button>
   </div>
-  <h1>JOKO TODAY</h1>
+  <div class="brand">
+    <img
+      class="brand-logo"
+      src="${escapeHtml(receiptLogoUrl)}"
+      alt="JOKO TODAY"
+      onerror="this.style.display='none';document.getElementById('receipt-brand-text').style.display='block';"
+    />
+    <h1 id="receipt-brand-text" class="brand-text-fallback">JOKO TODAY</h1>
+  </div>
   <h2>${escapeHtml(labels.title)}</h2>
   <div class="muted">${escapeHtml(labels.disclaimer)}</div>
   <div class="meta">

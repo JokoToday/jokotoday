@@ -5,6 +5,7 @@ import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
 import { printOrderReceipt } from '../../lib/printReceipt';
+import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -40,6 +41,7 @@ export function OrderDetailModal({
   onNavigate,
   onCancelRequest,
 }: OrderDetailModalProps) {
+  const publishedLogoUrl = usePublishedJokoLogo();
   const [printError, setPrintError] = React.useState('');
   const items: OrderItem[] = order.order_items || [];
 
@@ -117,6 +119,7 @@ export function OrderDetailModal({
         order,
         customerName: order.customer_name ?? null,
         language,
+        logoUrl: publishedLogoUrl,
       });
     } catch (err) {
       console.error('Could not open customer receipt print window:', err);

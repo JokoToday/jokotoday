@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { printOrderReceipt } from '../../lib/printReceipt';
+import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
 
 type StaffLanguage = 'en' | 'th';
 type OrderTypeFilter = 'all' | 'pickup' | 'walk_in';
@@ -84,6 +85,7 @@ export function CustomerPurchaseHistory({
   defaultExpanded = false,
   readOnly = false,
 }: Props) {
+  const publishedLogoUrl = usePublishedJokoLogo();
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
@@ -289,7 +291,7 @@ export function CustomerPurchaseHistory({
     if (order.status === 'cancelled') return;
 
     try {
-      printOrderReceipt({ order, customerName: order.customer_name ?? customerName, language });
+      printOrderReceipt({ order, customerName: order.customer_name ?? customerName, language, logoUrl: publishedLogoUrl });
     } catch (err) {
       console.error('Could not open receipt print window:', err);
       setPaymentErrorId(order.id);
