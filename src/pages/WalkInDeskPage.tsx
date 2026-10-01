@@ -32,6 +32,9 @@ import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHis
 import { LoyaltyRewardSelector } from '../components/staff/LoyaltyRewardSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
+import { PosWorkspace } from '../components/pos/PosWorkspace';
+import { usePosCart } from '../hooks/usePosCart';
 
 interface Customer {
   id: string;
@@ -48,6 +51,14 @@ interface Customer {
 interface PurchaseResult {
   order_id: string;
   order_number: string;
+  order_items?: Array<{
+    product_id: string;
+    product_name: string;
+    product_name_th?: string | null;
+    product_name_zh?: string | null;
+    quantity: number;
+    price_at_order: number;
+  }>;
   gross_amount: number;
   discount_amount: number;
   amount_paid: number;
@@ -61,6 +72,37 @@ interface PurchaseResult {
   manual_fulfillment_required: boolean;
   payment_method: 'cash' | 'qr_code';
   idempotent_replay: boolean;
+}
+
+type PosSubmission = {
+  orderNumber: string;
+  requestKey: string;
+  items: Array<{ product_id: string; quantity: number }>;
+  rewardId: string | null;
+  paymentMethod: 'cash' | 'qr_code';
+};
+
+function isDefinitePurchaseRejection(error: unknown) {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' && (/^[0-9A-Z]{5}$/.test(code) || code.startsWith('PGRST'));
+}
+
+function isPurchaseResult(value: unknown): value is PurchaseResult {
+  if (!value || typeof value !== 'object') return false;
+  const result = value as Record<string, unknown>;
+  return (
+    typeof result.order_id === 'string'
+    && result.order_id.length > 0
+    && typeof result.order_number === 'string'
+    && typeof result.gross_amount === 'number'
+    && typeof result.discount_amount === 'number'
+    && typeof result.amount_paid === 'number'
+    && typeof result.points_redeemed === 'number'
+    && typeof result.points_earned === 'number'
+    && typeof result.updated_balance === 'number'
+    && (result.payment_method === 'cash' || result.payment_method === 'qr_code')
+  );
 }
 
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -80,16 +122,31 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState('');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [showLegacyCheckout, setShowLegacyCheckout] = useState(false);
+  const [posProducts, setPosProducts] = useState<CMSProduct[]>([]);
+  const [posCategories, setPosCategories] = useState<CMSCategory[]>([]);
+  const [posCatalogLoading, setPosCatalogLoading] = useState(false);
+  const [posCatalogError, setPosCatalogError] = useState(false);
+  const [posCatalogReloadKey, setPosCatalogReloadKey] = useState(0);
+  const [posRetryRequired, setPosRetryRequired] = useState(false);
+  const posCart = usePosCart();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
   const purchaseReferenceRef = useRef<string | null>(null);
   const purchaseRequestKeyRef = useRef<string | null>(null);
+  const pendingPosSubmissionRef = useRef<PosSubmission | null>(null);
 
   const parsedAmount = Number.parseFloat(amount);
   const calculationAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : 0;
   const currentBalance = customer?.loyalty_points ?? 0;
   const projectedPointsEarned = Math.round(calculationAmount * loyaltyMultiplier);
+  const memberReturnCode = new URLSearchParams(window.location.search).get('member');
+  const walkInReturnPath = memberReturnCode && /^VIP\d+$/i.test(memberReturnCode)
+    ? `/walk-in?member=${encodeURIComponent(memberReturnCode)}`
+    : '/walk-in';
+  const staffLoginPath = `/staff?return=${encodeURIComponent(walkInReturnPath)}`;
+  const transactionNavigationLocked = saving || posRetryRequired;
 
   const clearCustomerState = () => {
     setCustomer(null);
@@ -101,8 +158,12 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    setPosRetryRequired(false);
+    posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
+    pendingPosSubmissionRef.current = null;
   };
 
   const handleLogout = async () => {
@@ -141,6 +202,15 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       : (language === 'en' ? 'Failed to load customer data' : 'เกิดข้อผิดพลาด');
   };
 
+  const getPurchaseErrorMessage = (err: unknown) => {
+    if (err instanceof Error && err.message) return err.message;
+    if (err && typeof err === 'object' && 'message' in err) {
+      const message = (err as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+    return language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาดในการบันทึกรายการซื้อ';
+  };
+
   const findCustomer = async (lookupValue: string, source: 'manual' | 'qr' = 'qr') => {
     try {
       setLoading(true);
@@ -150,8 +220,12 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setPaymentMethod('');
       setPurchaseResult(null);
       setSelectedRewardId('');
+      setShowLegacyCheckout(false);
+      setPosRetryRequired(false);
+      posCart.clear();
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
+      pendingPosSubmissionRef.current = null;
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -185,6 +259,35 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     deepLinkHandledRef.current = true;
     void findCustomer(memberCode, 'manual');
   }, [hasStaffAccess]);
+
+  useEffect(() => {
+    if (!hasStaffAccess) return;
+
+    let active = true;
+    const loadPosCatalog = async () => {
+      try {
+        setPosCatalogLoading(true);
+        setPosCatalogError(false);
+        const [categories, products] = await Promise.all([
+          getCategories(),
+          getProducts(),
+        ]);
+        if (!active) return;
+        setPosCategories(categories);
+        setPosProducts(products);
+      } catch (catalogError) {
+        console.error('Could not load POS catalogue:', catalogError);
+        if (active) setPosCatalogError(true);
+      } finally {
+        if (active) setPosCatalogLoading(false);
+      }
+    };
+
+    void loadPosCatalog();
+    return () => {
+      active = false;
+    };
+  }, [hasStaffAccess, posCatalogReloadKey]);
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
@@ -279,27 +382,95 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       });
 
       if (purchaseError) throw purchaseError;
-      if (
-        !data
-        || typeof data.order_id !== 'string'
-        || data.order_id.length === 0
-        || typeof data.gross_amount !== 'number'
-        || typeof data.discount_amount !== 'number'
-        || typeof data.amount_paid !== 'number'
-        || typeof data.points_redeemed !== 'number'
-        || typeof data.points_earned !== 'number'
-        || typeof data.updated_balance !== 'number'
-        || !['cash', 'qr_code'].includes(data.payment_method)
-      ) {
+      if (!isPurchaseResult(data)) {
         throw new Error('Purchase was saved but the confirmation response was invalid.');
       }
 
       setCustomer({ ...customer, loyalty_points: data.updated_balance });
-      setPurchaseResult(data as PurchaseResult);
+      setPurchaseResult(data);
       setHistoryRefreshKey((value) => value + 1);
     } catch (err) {
       console.error('Error saving walk-in purchase:', err);
-      setError(err instanceof Error ? err.message : (language === 'en' ? 'Failed to save purchase' : 'เกิดข้อผิดพลาด'));
+      setError(getPurchaseErrorMessage(err));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const handleCompletePosSale = async ({
+    paymentMethod: posPaymentMethod,
+    rewardId,
+  }: {
+    paymentMethod: 'cash' | 'qr_code';
+    rewardId: string | null;
+  }) => {
+    if (!customer || savingRef.current) return;
+
+    let submission = pendingPosSubmissionRef.current;
+    if (!submission) {
+      if (posCart.items.length === 0) return;
+      const orderNumber = `WI-${crypto.randomUUID()}`;
+      const requestKey = crypto.randomUUID();
+      submission = {
+        orderNumber,
+        requestKey,
+        items: posCart.items.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })),
+        rewardId,
+        paymentMethod: posPaymentMethod,
+      };
+      pendingPosSubmissionRef.current = submission;
+      purchaseReferenceRef.current = orderNumber;
+      purchaseRequestKeyRef.current = requestKey;
+    }
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setError(null);
+
+      const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v3', {
+        p_customer_id: customer.id,
+        p_items: submission.items,
+        p_order_number: submission.orderNumber,
+        p_reward_id: submission.rewardId,
+        p_request_key: submission.requestKey,
+        p_payment_method: submission.paymentMethod,
+      });
+
+      if (purchaseError) {
+        if (isDefinitePurchaseRejection(purchaseError)) {
+          pendingPosSubmissionRef.current = null;
+          purchaseReferenceRef.current = null;
+          purchaseRequestKeyRef.current = null;
+          setPosRetryRequired(false);
+        } else {
+          setPosRetryRequired(true);
+        }
+        throw purchaseError;
+      }
+
+      if (!isPurchaseResult(data)) {
+        setPosRetryRequired(true);
+        throw new Error(
+          'POS sale may have completed, but the confirmation response was invalid. Retry the same sale to reconcile it.'
+        );
+      }
+
+      pendingPosSubmissionRef.current = null;
+      setPosRetryRequired(false);
+      setCustomer({ ...customer, loyalty_points: data.updated_balance });
+      setPurchaseResult(data);
+      setHistoryRefreshKey((value) => value + 1);
+    } catch (err) {
+      if (pendingPosSubmissionRef.current && !isDefinitePurchaseRejection(err)) {
+        setPosRetryRequired(true);
+      }
+      console.error('Error completing POS sale:', err);
+      setError(getPurchaseErrorMessage(err));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -312,8 +483,12 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    setPosRetryRequired(false);
+    posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
+    pendingPosSubmissionRef.current = null;
   };
 
   const handleFinishAndGoHome = () => {
@@ -383,9 +558,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             <div className="p-8">
               <p className="text-center text-sm text-gray-600">
                 {language === 'en'
-                  ? 'Staff account required. Sign in from the main site, then return to this page.'
-                  : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}
+                  ? 'Staff account required to open JOKO POS.'
+                  : 'ต้องใช้บัญชีพนักงานเพื่อเปิด JOKO POS'}
               </p>
+              <button
+                type="button"
+                onClick={() => window.location.assign(staffLoginPath)}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-4 py-3 font-bold text-white transition-colors hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-100"
+              >
+                <Lock className="h-5 w-5" />
+                {language === 'en' ? 'Sign In to Staff' : 'เข้าสู่ระบบพนักงาน'}
+              </button>
             </div>
           </div>
         </div>
@@ -396,23 +579,29 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <button
+        type="button"
         onClick={() => onNavigate('home')}
-        className="mb-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"
+        disabled={transactionNavigationLocked}
+        className="mb-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Home className="w-4 h-4" />
         {language === 'en' ? 'Back to Home' : 'กลับหน้าแรก'}
       </button>
 
-      <div className="max-w-2xl mx-auto py-8">
+      <div className="max-w-7xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
+                  {customer
+                    ? 'JOKO POS'
+                    : (language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In')}
                 </h1>
                 <p className="text-green-100">
-                  {language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก'}
+                  {customer
+                    ? (language === 'en' ? 'Create this customer’s in-store basket' : 'สร้างตะกร้าซื้อหน้าร้านสำหรับลูกค้ารายนี้')
+                    : (language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -421,14 +610,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   <button
                     type="button"
                     onClick={() => onNavigate('pickup')}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors"
+                    disabled={transactionNavigationLocked}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-white/15 hover:bg-white/25 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Package className="w-4 h-4" />
                     {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
                   </button>
                   <button
+                    type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    disabled={transactionNavigationLocked}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <LogOut className="w-4 h-4" />
                     {language === 'en' ? 'Logout' : 'ออกจากระบบ'}
@@ -541,8 +733,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </div>
                     </div>
                     {!purchaseResult && (
-                      <button onClick={resetTransaction} className="text-gray-500 hover:text-gray-700 text-sm font-medium">
-                        {language === 'en' ? 'Scan Another' : 'แสกนต่อ'}
+                      <button
+                        type="button"
+                        onClick={resetTransaction}
+                        disabled={saving || posRetryRequired}
+                        className="inline-flex items-center gap-2 rounded-lg border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-bold text-green-800 shadow-sm transition-colors hover:bg-green-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        {language === 'en' ? 'Scan Another Customer' : 'สแกนลูกค้ารายอื่น'}
                       </button>
                     )}
                   </div>
@@ -638,7 +836,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : showLegacyCheckout ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLegacyCheckout(false);
+                        setError(null);
+                      }}
+                      className="mb-4 inline-flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-50"
+                    >
+                      ← {language === 'en' ? 'Back to POS preview' : 'กลับไปที่ตัวอย่าง POS'}
+                    </button>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
@@ -745,6 +954,30 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </form>
                   </div>
+                  </>
+                ) : (
+                  <PosWorkspace
+                    products={posProducts}
+                    categories={posCategories}
+                    loading={posCatalogLoading}
+                    loadError={posCatalogError}
+                    language={staffLanguage}
+                    currentBalance={currentBalance}
+                    loyaltyMultiplier={loyaltyMultiplier}
+                    cart={posCart}
+                    saving={saving}
+                    retryRequired={posRetryRequired}
+                    checkoutError={error}
+                    onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
+                    onCompleteSale={handleCompletePosSale}
+                    onUseLegacyCheckout={(previewSubtotal) => {
+                      setShowLegacyCheckout(true);
+                      setError(null);
+                      setAmount(previewSubtotal > 0 ? previewSubtotal.toFixed(2) : '');
+                      setPaymentMethod('');
+                      setSelectedRewardId('');
+                    }}
+                  />
                 )}
 
                 <CustomerPurchaseHistory
