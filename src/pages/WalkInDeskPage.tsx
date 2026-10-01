@@ -736,6 +736,25 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   >
                     {language === 'en' ? 'Start Scanning' : 'เริ่มแสกน'}
                   </button>
+
+                  <div className="mx-auto mb-5 max-w-md">
+                    <button
+                      type="button"
+                      onClick={handleStartGuestSale}
+                      disabled={loading}
+                      className="w-full rounded-xl bg-slate-800 px-6 py-4 font-bold text-white shadow-md transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {language === 'en'
+                        ? (preservePosCartForLookup ? 'Return to Guest Sale' : 'Continue as Guest')
+                        : (preservePosCartForLookup ? 'กลับไปขายแบบ Guest' : 'ดำเนินการต่อแบบ Guest')}
+                    </button>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {language === 'en'
+                        ? 'No membership required. Guest sales do not earn loyalty points.'
+                        : 'ไม่ต้องเป็นสมาชิก การขายแบบ Guest จะไม่ได้รับแต้มสะสม'}
+                    </p>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setShowManualEntry(true)}
@@ -768,29 +787,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                         : `เก็บตะกร้า POS ปัจจุบันไว้แล้ว · ${posCart.totalQuantity} ชิ้น`}
                     </p>
                   )}
-
-                  <div className="mx-auto mt-6 max-w-md border-t border-slate-200 pt-6">
-                    <p className="mb-3 text-sm font-medium text-slate-500">
-                      {language === 'en'
-                        ? (preservePosCartForLookup ? 'Keep this basket as a Guest sale?' : 'Customer is not a member?')
-                        : (preservePosCartForLookup ? 'ใช้ตะกร้านี้ต่อแบบ Guest?' : 'ลูกค้ายังไม่ได้เป็นสมาชิก?')}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleStartGuestSale}
-                      disabled={loading}
-                      className="w-full rounded-xl bg-slate-800 px-6 py-4 font-bold text-white shadow-md transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {language === 'en'
-                        ? (preservePosCartForLookup ? 'Return to Guest Sale' : 'Continue as Guest')
-                        : (preservePosCartForLookup ? 'กลับไปขายแบบ Guest' : 'ดำเนินการต่อแบบ Guest')}
-                    </button>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {language === 'en'
-                        ? 'Guest sales are recorded normally, but without loyalty points or customer history.'
-                        : 'การขายแบบ Guest จะบันทึกตามปกติ แต่ไม่มีแต้มสะสมหรือประวัติลูกค้า'}
-                    </p>
-                  </div>
 
                   {error && (
                     <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
