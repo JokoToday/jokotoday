@@ -4,8 +4,10 @@ type ReceiptItem = {
   product_name?: string;
   product_name_en?: string;
   product_name_th?: string;
+  product_name_zh?: string;
   name?: string;
   name_th?: string;
+  name_zh?: string;
   quantity?: number;
   qty?: number;
   price_at_order?: number;
@@ -14,6 +16,7 @@ type ReceiptItem = {
 
 type ReceiptOrder = {
   order_number: string;
+  customer_name?: string | null;
   order_items?: unknown[] | null;
   total_amount?: number | string | null;
   walk_in_amount?: number | string | null;
@@ -24,12 +27,15 @@ type ReceiptOrder = {
   picked_up_at?: string | null;
   payment_method?: string | null;
   payment_status?: string | null;
+  created_at?: string | null;
+  loyalty_points_earned?: number | string | null;
 };
 
 type PrintReceiptOptions = {
   order: ReceiptOrder;
   customerName?: string | null;
-  language?: 'en' | 'th';
+  language?: ReceiptLanguage;
+  targetWindow?: Window | null;
 };
 
 const escapeHtml = (value: unknown) => String(value ?? '')
@@ -48,6 +54,9 @@ const itemName = (item: ReceiptItem, language: ReceiptLanguage) => {
   if (language === 'th') {
     return item.product_name_th || item.name_th || item.product_name || item.product_name_en || item.name || '—';
   }
+  if (language === 'zh') {
+    return item.product_name_zh || item.name_zh || item.product_name || item.product_name_en || item.name || '—';
+  }
   return item.product_name || item.product_name_en || item.name || item.product_name_th || item.name_th || '—';
 };
 
@@ -57,7 +66,7 @@ const paymentLabel = (method: string | null | undefined, language: ReceiptLangua
     if (language === 'zh') return '现金';
     return 'Cash';
   }
-  if (method === 'qr_code' || method === 'qr') return 'QR';
+  if (method === 'qr_code' || method === 'qr') return 'Thai QR';
   if (language === 'th') return 'ไม่ได้บันทึก';
   if (language === 'zh') return '未记录';
   return 'Not recorded';
@@ -89,6 +98,7 @@ const labelsFor = (language: ReceiptLanguage) => {
       title: 'ใบเสร็จรับเงิน',
       disclaimer: 'เอกสารนี้ไม่ใช่ใบกำกับภาษี',
       order: 'เลขที่คำสั่งซื้อ',
+      date: 'วันที่และเวลา',
       customer: 'ลูกค้า',
       scheduled: 'วันที่รับสินค้าที่กำหนด',
       pickedUp: 'รับสินค้าจริง',
@@ -97,6 +107,7 @@ const labelsFor = (language: ReceiptLanguage) => {
       gross: 'ยอดก่อนส่วนลด',
       discount: 'ส่วนลดรางวัลสะสมแต้ม',
       total: 'ยอดชำระจริง',
+      pointsEarned: 'แต้มที่ได้รับ',
       thanks: 'ขอบคุณค่ะ/ครับ',
       print: 'พิมพ์',
       language: 'ภาษาใบเสร็จ',
@@ -108,6 +119,7 @@ const labelsFor = (language: ReceiptLanguage) => {
       title: '订单收据',
       disclaimer: '本文件不是税务发票。',
       order: '订单号',
+      date: '日期和时间',
       customer: '客户',
       scheduled: '计划取货时间',
       pickedUp: '实际取货时间',
@@ -116,6 +128,7 @@ const labelsFor = (language: ReceiptLanguage) => {
       gross: '折扣前金额',
       discount: '积分奖励折扣',
       total: '实付金额',
+      pointsEarned: '获得积分',
       thanks: '谢谢！',
       print: '打印',
       language: '收据语言',
@@ -126,6 +139,7 @@ const labelsFor = (language: ReceiptLanguage) => {
     title: 'Order Receipt',
     disclaimer: 'This document is not a tax invoice.',
     order: 'Order',
+    date: 'Date',
     customer: 'Customer',
     scheduled: 'Scheduled pickup',
     pickedUp: 'Picked up',
@@ -134,19 +148,21 @@ const labelsFor = (language: ReceiptLanguage) => {
     gross: 'Gross total',
     discount: 'Loyalty reward discount',
     total: 'Total paid',
+    pointsEarned: 'Points earned',
     thanks: 'Thank you.',
     print: 'Print',
     language: 'Receipt language',
   };
 };
 
-export function printOrderReceipt({ order, customerName, language = 'en' }: PrintReceiptOptions) {
-  const printWindow = window.open('', '_blank', 'width=500,height=800');
+export function printOrderReceipt({ order, customerName, language = 'en', targetWindow }: PrintReceiptOptions) {
+  const printWindow = targetWindow ?? window.open('', '_blank', 'width=500,height=800');
   if (!printWindow) {
     throw new Error('Print window was blocked');
   }
 
   const items = (Array.isArray(order.order_items) ? order.order_items : []) as ReceiptItem[];
+  const receiptCustomerName = customerName ?? order.customer_name ?? null;
   const grossTotal = Number(order.purchase_type === 'walk_in'
     ? order.walk_in_amount ?? order.total_amount
     : order.total_amount) || 0;
@@ -158,6 +174,8 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
   const netTotal = hasStoredAmountPaid && Number.isFinite(paidValue)
     ? paidValue
     : Math.max(0, grossTotal - discount);
+  const pointsEarned = Math.max(0, Number(order.loyalty_points_earned) || 0);
+  const showGross = order.purchase_type === 'walk_in' || discount > 0;
 
   const renderReceipt = (receiptLanguage: ReceiptLanguage) => {
     const labels = labelsFor(receiptLanguage);
@@ -212,7 +230,8 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
   <div class="muted">${escapeHtml(labels.disclaimer)}</div>
   <div class="meta">
     <div><strong>${escapeHtml(labels.order)}:</strong> ${escapeHtml(order.order_number)}</div>
-    ${customerName ? `<div><strong>${escapeHtml(labels.customer)}:</strong> ${escapeHtml(customerName)}</div>` : ''}
+    ${order.created_at ? `<div><strong>${escapeHtml(labels.date)}:</strong> ${escapeHtml(formatDate(order.created_at, receiptLanguage))}</div>` : ''}
+    ${receiptCustomerName ? `<div><strong>${escapeHtml(labels.customer)}:</strong> ${escapeHtml(receiptCustomerName)}</div>` : ''}
     ${order.pickup_date ? `<div><strong>${escapeHtml(labels.scheduled)}:</strong> ${escapeHtml(formatDate(order.pickup_date, receiptLanguage))}</div>` : ''}
     ${order.picked_up_at ? `<div><strong>${escapeHtml(labels.pickedUp)}:</strong> ${escapeHtml(formatDate(order.picked_up_at, receiptLanguage))}</div>` : ''}
     <div><strong>${escapeHtml(labels.payment)}:</strong> ${escapeHtml(paymentLabel(order.payment_method, receiptLanguage))}</div>
@@ -222,9 +241,10 @@ export function printOrderReceipt({ order, customerName, language = 'en' }: Prin
     <tbody>${rows || `<tr><td colspan="2" class="muted">—</td></tr>`}</tbody>
   </table>
   <div class="summary">
-    ${discount > 0 ? `<div class="summary-row"><span>${escapeHtml(labels.gross)}</span><strong>฿${money(grossTotal)}</strong></div>` : ''}
+    ${showGross ? `<div class="summary-row"><span>${escapeHtml(labels.gross)}</span><strong>฿${money(grossTotal)}</strong></div>` : ''}
     ${discount > 0 ? `<div class="summary-row discount"><span>${escapeHtml(labels.discount)}</span><strong>−฿${money(discount)}</strong></div>` : ''}
     <div class="summary-row total"><span>${escapeHtml(labels.total)}</span><span>฿${money(netTotal)}</span></div>
+    ${pointsEarned > 0 ? `<div class="summary-row"><span>${escapeHtml(labels.pointsEarned)}</span><strong>+${escapeHtml(pointsEarned)}</strong></div>` : ''}
   </div>
   <div class="footer">${escapeHtml(labels.thanks)}</div>
 </body>

@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Package,
   Phone,
+  Printer,
   QrCode,
   ShoppingCart,
   Upload,
@@ -35,6 +36,7 @@ import { useAuth } from '../context/AuthContext';
 import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { PosWorkspace } from '../components/pos/PosWorkspace';
 import { usePosCart } from '../hooks/usePosCart';
+import { printOrderReceipt } from '../lib/printReceipt';
 
 interface Customer {
   id: string;
@@ -123,6 +125,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [saving, setSaving] = useState(false);
   const [loyaltyMultiplier, setLoyaltyMultiplier] = useState(0);
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
+  const [receiptPrinting, setReceiptPrinting] = useState(false);
+  const [receiptPrintError, setReceiptPrintError] = useState<string | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState('');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [showLegacyCheckout, setShowLegacyCheckout] = useState(false);
@@ -164,6 +168,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setManualCode('');
     setError(null);
     setPurchaseResult(null);
+    setReceiptPrintError(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
     setPosRetryRequired(false);
@@ -231,6 +236,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setAmount('');
       setPaymentMethod('');
       setPurchaseResult(null);
+      setReceiptPrintError(null);
       setSelectedRewardId('');
       setShowLegacyCheckout(false);
       setPosRetryRequired(false);
@@ -277,6 +283,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setPaymentMethod('');
     setError(null);
     setPurchaseResult(null);
+    setReceiptPrintError(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
     setLoyaltyMultiplier(0);
@@ -294,6 +301,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setManualCode('');
     setError(null);
     setPurchaseResult(null);
+    setReceiptPrintError(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
     setLoyaltyMultiplier(0);
@@ -527,11 +535,61 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     }
   };
 
+  const handlePrintPurchaseReceipt = async () => {
+    if (!purchaseResult || receiptPrinting) return;
+
+    setReceiptPrintError(null);
+    const receiptWindow = window.open('', '_blank', 'width=500,height=800');
+    if (!receiptWindow) {
+      setReceiptPrintError(
+        language === 'en'
+          ? 'Could not open the print window. Please allow pop-ups and try again.'
+          : 'ไม่สามารถเปิดหน้าต่างพิมพ์ได้ กรุณาอนุญาตป๊อปอัปแล้วลองอีกครั้ง'
+      );
+      return;
+    }
+
+    receiptWindow.document.open();
+    receiptWindow.document.write('<!doctype html><title>JOKO TODAY</title><p style="font-family:Arial,sans-serif;padding:24px">Preparing receipt…</p>');
+    receiptWindow.document.close();
+
+    try {
+      setReceiptPrinting(true);
+      const { data: order, error: receiptError } = await supabase
+        .from('orders')
+        .select('order_number, customer_name, order_items, total_amount, walk_in_amount, loyalty_discount_amount, amount_paid, purchase_type, created_at, picked_up_at, payment_method, payment_status, loyalty_points_earned')
+        .eq('id', purchaseResult.order_id)
+        .single();
+
+      if (receiptError || !order) {
+        throw receiptError ?? new Error('Receipt order could not be loaded.');
+      }
+
+      printOrderReceipt({
+        order,
+        customerName: order.customer_name ?? null,
+        language: staffLanguage,
+        targetWindow: receiptWindow,
+      });
+    } catch (err) {
+      console.error('Could not prepare POS receipt:', err);
+      receiptWindow.close();
+      setReceiptPrintError(
+        language === 'en'
+          ? 'Could not prepare the receipt. The sale is complete; please try Print Receipt again.'
+          : 'ไม่สามารถเตรียมใบเสร็จได้ รายการขายเสร็จสมบูรณ์แล้ว กรุณาลองพิมพ์ใบเสร็จอีกครั้ง'
+      );
+    } finally {
+      setReceiptPrinting(false);
+    }
+  };
+
   const handleAnotherPurchase = () => {
     setAmount('');
     setPaymentMethod('');
     setError(null);
     setPurchaseResult(null);
+    setReceiptPrintError(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
     setPosRetryRequired(false);
@@ -935,6 +993,20 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     )}
 
                     <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => void handlePrintPurchaseReceipt()}
+                        disabled={receiptPrinting}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800 px-6 py-3 font-semibold text-white transition-colors hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {receiptPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                        {receiptPrinting
+                          ? (language === 'en' ? 'Preparing Receipt…' : 'กำลังเตรียมใบเสร็จ…')
+                          : (language === 'en' ? 'Print Receipt' : 'พิมพ์ใบเสร็จ')}
+                      </button>
+                      {receiptPrintError && (
+                        <p className="text-center text-sm font-medium text-red-600">{receiptPrintError}</p>
+                      )}
                       <button type="button" onClick={handleAnotherPurchase} className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                         {language === 'en' ? 'Make Another Purchase' : 'ทำรายการซื้ออีกครั้ง'}
                       </button>
