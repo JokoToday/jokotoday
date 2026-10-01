@@ -185,7 +185,10 @@ export function PosWorkspace({
         </div>
       )}
 
-      <div className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] ${checkoutLocked ? 'pointer-events-none opacity-70' : ''}`}>
+      <fieldset
+        disabled={checkoutLocked}
+        className={`grid min-w-0 gap-6 border-0 p-0 lg:grid-cols-[minmax(0,1fr)_360px] ${checkoutLocked ? 'opacity-70' : ''}`}
+      >
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:p-5">
           <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-4 bg-white/95 px-1 pb-3 pt-1 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -523,7 +526,7 @@ export function PosWorkspace({
             </p>
           </div>
         </aside>
-      </div>
+      </fieldset>
     </div>
   );
 }
