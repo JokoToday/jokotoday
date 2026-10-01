@@ -107,14 +107,14 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
-        <div className="text-center">
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4">
+        <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
           <p className="text-gray-600 mb-4">
             {language === 'zh' ? '请登录查看您的订单' : language === 'th' ? 'กรุณาเข้าสู่ระบบเพื่อดูคำสั่งซื้อ' : 'Please sign in to view your orders.'}
           </p>
           <button
             onClick={() => onNavigate('home')}
-            className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-semibold text-white transition-colors"
+            className="rounded-xl bg-[#C76624] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#A95120]"
           >
             {language === 'zh' ? '返回首页' : language === 'th' ? 'กลับหน้าหลัก' : 'Go to Home'}
           </button>
@@ -125,42 +125,44 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
   return (
     <>
-      <div className="min-h-screen py-8 px-4" style={{ background: '#f6f1e7' }}>
-        <div className="max-w-5xl mx-auto">
+      <div className="joko-mineral-field min-h-screen px-4 py-8 sm:py-12">
+        <div className="mx-auto max-w-5xl">
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center gap-2 text-stone-500 hover:text-stone-800 mb-6 transition-colors text-sm font-medium"
+            className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
           >
             <ArrowLeft className="w-4 h-4" />
             {language === 'th' ? 'กลับ' : language === 'zh' ? '返回' : 'Back'}
           </button>
 
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-stone-900">
+          <div className="mb-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
               {getLabel('my_orders_page.my_orders_title', language, 'My Orders')}
             </h1>
-            <div className="mt-1.5 h-0.5 w-12 rounded-full" style={{ background: '#c6a75e' }} />
           </div>
 
-          {loading ? (
-            <div className="py-20 text-center">
-              <div
-                className="inline-block w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-                style={{ borderColor: '#c6a75e', borderTopColor: 'transparent' }}
+          <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/88 p-4 shadow-[0_18px_50px_rgba(59,74,69,0.06)] sm:p-6">
+            {loading ? (
+              <div className="py-20 text-center">
+                <div
+                  className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{ borderColor: '#55766F', borderTopColor: 'transparent' }}
+                />
+              </div>
+            ) : (
+              <MyOrdersList
+                orders={orders}
+                language={language}
+                productMap={productMap}
+                pickupDays={pickupDays}
+                locationMap={locationMap}
+                getLabel={getLabel}
+                onNavigate={onNavigate}
+                onCancelRequest={openCancelModal}
               />
-            </div>
-          ) : (
-            <MyOrdersList
-              orders={orders}
-              language={language}
-              productMap={productMap}
-              pickupDays={pickupDays}
-              locationMap={locationMap}
-              getLabel={getLabel}
-              onNavigate={onNavigate}
-              onCancelRequest={openCancelModal}
-            />
-          )}
+            )}
+          </div>
         </div>
       </div>
 

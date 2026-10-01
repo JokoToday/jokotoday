@@ -419,7 +419,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'our-story' || currentPage === 'profile';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'our-story' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
