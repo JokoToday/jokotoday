@@ -79,7 +79,7 @@ interface PurchaseResult {
 
 type PosSubmission = {
   customerId: string | null;
-  orderNumber: string;
+  requestReference: string;
   requestKey: string;
   items: Array<{ product_id: string; quantity: number }>;
   rewardId: string | null;
@@ -142,7 +142,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
-  const purchaseReferenceRef = useRef<string | null>(null);
+  const purchaseRequestReferenceRef = useRef<string | null>(null);
   const purchaseRequestKeyRef = useRef<string | null>(null);
   const pendingPosSubmissionRef = useRef<PosSubmission | null>(null);
 
@@ -175,7 +175,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setShowLegacyCheckout(false);
     setPosRetryRequired(false);
     posCart.clear();
-    purchaseReferenceRef.current = null;
+    purchaseRequestReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
     pendingPosSubmissionRef.current = null;
   };
@@ -243,7 +243,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setShowLegacyCheckout(false);
       setPosRetryRequired(false);
       if (!preservePosCart) posCart.clear();
-      purchaseReferenceRef.current = null;
+      purchaseRequestReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
       pendingPosSubmissionRef.current = null;
 
@@ -289,7 +289,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
     setLoyaltyMultiplier(0);
-    purchaseReferenceRef.current = null;
+    purchaseRequestReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
     pendingPosSubmissionRef.current = null;
   };
@@ -424,15 +424,15 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         return;
       }
 
-      const orderNumber = purchaseReferenceRef.current ?? `WI-${crypto.randomUUID()}`;
+      const requestReference = purchaseRequestReferenceRef.current ?? `WI-${crypto.randomUUID()}`;
       const requestKey = purchaseRequestKeyRef.current ?? crypto.randomUUID();
-      purchaseReferenceRef.current = orderNumber;
+      purchaseRequestReferenceRef.current = requestReference;
       purchaseRequestKeyRef.current = requestKey;
 
       const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v2', {
         p_customer_id: customer.id,
         p_amount: amountNum,
-        p_order_number: orderNumber,
+        p_order_number: requestReference,
         p_reward_id: selectedRewardId || null,
         p_request_key: requestKey,
         p_payment_method: paymentMethod,
@@ -467,11 +467,11 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     let submission = pendingPosSubmissionRef.current;
     if (!submission) {
       if (posCart.items.length === 0) return;
-      const orderNumber = `WI-${crypto.randomUUID()}`;
+      const requestReference = `WI-${crypto.randomUUID()}`;
       const requestKey = crypto.randomUUID();
       submission = {
         customerId: customer?.id ?? null,
-        orderNumber,
+        requestReference,
         requestKey,
         items: posCart.items.map((item) => ({
           product_id: item.product.id,
@@ -481,7 +481,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         paymentMethod: posPaymentMethod,
       };
       pendingPosSubmissionRef.current = submission;
-      purchaseReferenceRef.current = orderNumber;
+      purchaseRequestReferenceRef.current = requestReference;
       purchaseRequestKeyRef.current = requestKey;
     }
 
@@ -493,7 +493,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       const { data, error: purchaseError } = await supabase.rpc('record_walk_in_purchase_v3', {
         p_customer_id: submission.customerId,
         p_items: submission.items,
-        p_order_number: submission.orderNumber,
+        p_order_number: submission.requestReference,
         p_reward_id: submission.rewardId,
         p_request_key: submission.requestKey,
         p_payment_method: submission.paymentMethod,
@@ -502,7 +502,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       if (purchaseError) {
         if (isDefinitePurchaseRejection(purchaseError)) {
           pendingPosSubmissionRef.current = null;
-          purchaseReferenceRef.current = null;
+          purchaseRequestReferenceRef.current = null;
           purchaseRequestKeyRef.current = null;
           setPosRetryRequired(false);
         } else {
@@ -597,7 +597,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setShowLegacyCheckout(false);
     setPosRetryRequired(false);
     posCart.clear();
-    purchaseReferenceRef.current = null;
+    purchaseRequestReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
     pendingPosSubmissionRef.current = null;
   };
