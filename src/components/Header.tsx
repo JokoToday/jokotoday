@@ -21,17 +21,15 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const curiositiesLabel = getLabel(
-    'nav.curiosities',
-    language,
-    language === 'th' ? 'ความสงสัย' : language === 'zh' ? '好奇' : 'Curiosities',
-  );
+  const galleryLabel = language === 'th' ? 'แกลเลอรี' : language === 'zh' ? '影像集' : 'Gallery';
+  const peopleSayLabel = language === 'th' ? 'คนอื่นพูดถึงเรา' : language === 'zh' ? '大家怎么说' : 'What People Say';
 
   const navItems = [
     { label: t.nav.home, value: 'home' },
     { label: t.nav.products, value: 'products' },
-    { label: curiositiesLabel, value: 'notebook-today' },
     { label: t.nav.about, value: 'about' },
+    { label: galleryLabel, value: 'gallery' },
+    { label: peopleSayLabel, value: 'what-people-say' },
   ];
 
   return (
@@ -49,7 +47,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             />
           </button>
 
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden lg:flex space-x-6">
             {navItems.map((item) => (
               <button
                 key={item.value}
