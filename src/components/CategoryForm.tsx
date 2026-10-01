@@ -89,9 +89,9 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 p-4 sm:items-center">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {category ? 'Edit Category' : 'New Category'}
           </h2>
@@ -100,7 +100,7 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 space-y-4 overflow-y-auto p-6">
           {errors.submit && (
             <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
