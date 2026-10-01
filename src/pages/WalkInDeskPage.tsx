@@ -32,6 +32,9 @@ import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHis
 import { LoyaltyRewardSelector } from '../components/staff/LoyaltyRewardSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
+import { PosWorkspace } from '../components/pos/PosWorkspace';
+import { usePosCart } from '../hooks/usePosCart';
 
 interface Customer {
   id: string;
@@ -80,6 +83,13 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState('');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [showLegacyCheckout, setShowLegacyCheckout] = useState(false);
+  const [posProducts, setPosProducts] = useState<CMSProduct[]>([]);
+  const [posCategories, setPosCategories] = useState<CMSCategory[]>([]);
+  const [posCatalogLoading, setPosCatalogLoading] = useState(false);
+  const [posCatalogError, setPosCatalogError] = useState(false);
+  const [posCatalogReloadKey, setPosCatalogReloadKey] = useState(0);
+  const posCart = usePosCart();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
@@ -101,6 +111,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
+    setShowLegacyCheckout(false);
+    posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
   };
@@ -150,6 +162,8 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setPaymentMethod('');
       setPurchaseResult(null);
       setSelectedRewardId('');
+      setShowLegacyCheckout(false);
+      posCart.clear();
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
 
@@ -185,6 +199,35 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     deepLinkHandledRef.current = true;
     void findCustomer(memberCode, 'manual');
   }, [hasStaffAccess]);
+
+  useEffect(() => {
+    if (!hasStaffAccess) return;
+
+    let active = true;
+    const loadPosCatalog = async () => {
+      try {
+        setPosCatalogLoading(true);
+        setPosCatalogError(false);
+        const [categories, products] = await Promise.all([
+          getCategories(),
+          getProducts(),
+        ]);
+        if (!active) return;
+        setPosCategories(categories);
+        setPosProducts(products);
+      } catch (catalogError) {
+        console.error('Could not load POS catalogue:', catalogError);
+        if (active) setPosCatalogError(true);
+      } finally {
+        if (active) setPosCatalogLoading(false);
+      }
+    };
+
+    void loadPosCatalog();
+    return () => {
+      active = false;
+    };
+  }, [hasStaffAccess, posCatalogReloadKey]);
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
@@ -383,9 +426,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             <div className="p-8">
               <p className="text-center text-sm text-gray-600">
                 {language === 'en'
-                  ? 'Staff account required. Sign in from the main site, then return to this page.'
-                  : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}
+                  ? 'Staff account required to open JOKO POS.'
+                  : 'ต้องใช้บัญชีพนักงานเพื่อเปิด JOKO POS'}
               </p>
+              <button
+                type="button"
+                onClick={() => window.location.assign('/staff?return=/walk-in')}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-4 py-3 font-bold text-white transition-colors hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-100"
+              >
+                <Lock className="h-5 w-5" />
+                {language === 'en' ? 'Sign In to Staff' : 'เข้าสู่ระบบพนักงาน'}
+              </button>
             </div>
           </div>
         </div>
@@ -403,16 +454,20 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         {language === 'en' ? 'Back to Home' : 'กลับหน้าแรก'}
       </button>
 
-      <div className="max-w-2xl mx-auto py-8">
+      <div className="max-w-7xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
+                  {customer
+                    ? 'JOKO POS'
+                    : (language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In')}
                 </h1>
                 <p className="text-green-100">
-                  {language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก'}
+                  {customer
+                    ? (language === 'en' ? 'Create this customer’s in-store basket' : 'สร้างตะกร้าซื้อหน้าร้านสำหรับลูกค้ารายนี้')
+                    : (language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -638,7 +693,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : showLegacyCheckout ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLegacyCheckout(false);
+                        setError(null);
+                      }}
+                      className="mb-4 inline-flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-50"
+                    >
+                      ← {language === 'en' ? 'Back to POS preview' : 'กลับไปที่ตัวอย่าง POS'}
+                    </button>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
@@ -745,6 +811,26 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </form>
                   </div>
+                  </>
+                ) : (
+                  <PosWorkspace
+                    products={posProducts}
+                    categories={posCategories}
+                    loading={posCatalogLoading}
+                    loadError={posCatalogError}
+                    language={staffLanguage}
+                    currentBalance={currentBalance}
+                    loyaltyMultiplier={loyaltyMultiplier}
+                    cart={posCart}
+                    onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
+                    onUseLegacyCheckout={(previewSubtotal) => {
+                      setShowLegacyCheckout(true);
+                      setError(null);
+                      setAmount(previewSubtotal > 0 ? previewSubtotal.toFixed(2) : '');
+                      setPaymentMethod('');
+                      setSelectedRewardId('');
+                    }}
+                  />
                 )}
 
                 <CustomerPurchaseHistory
