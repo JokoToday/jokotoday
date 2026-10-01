@@ -233,7 +233,7 @@ export function PosWorkspace({
               />
             </div>
 
-            <div className="mt-3 flex touch-pan-x gap-3 overflow-x-auto pb-1">
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('all')}
