@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { AdminModalPortal } from './AdminModalPortal';
 import { CMSPage } from '../lib/cmsService';
 
 interface PageFormPreset {
@@ -87,9 +88,10 @@ export function PageForm({ page, preset = null, lockPageKey = false, onSave, onC
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
+    <AdminModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+        <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {page ? 'Edit Page' : preset?.page_key ? 'Create Page' : 'New Page'}
           </h2>
@@ -98,7 +100,7 @@ export function PageForm({ page, preset = null, lockPageKey = false, onSave, onC
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
           {errors.submit && (
             <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -247,5 +249,6 @@ export function PageForm({ page, preset = null, lockPageKey = false, onSave, onC
         </form>
       </div>
     </div>
+    </AdminModalPortal>
   );
 }
