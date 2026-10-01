@@ -17,5 +17,8 @@ export function AdminModalPortal({ children }: AdminModalPortalProps) {
 
   if (typeof document === 'undefined') return null;
 
-  return createPortal(children, document.body);
+  return createPortal(
+    <div className="joko-admin-content contents">{children}</div>,
+    document.body,
+  );
 }
