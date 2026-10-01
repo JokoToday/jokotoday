@@ -813,7 +813,6 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       setSelectedRewardId('');
                     }}
                   />
-                )
                 )}
 
                 <CustomerPurchaseHistory
