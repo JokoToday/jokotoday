@@ -32,6 +32,8 @@ import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHis
 import { LoyaltyRewardSelector } from '../components/staff/LoyaltyRewardSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
+import { PosWorkspace } from '../components/pos/PosWorkspace';
 
 interface Customer {
   id: string;
@@ -80,6 +82,12 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState('');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [showLegacyCheckout, setShowLegacyCheckout] = useState(false);
+  const [posProducts, setPosProducts] = useState<CMSProduct[]>([]);
+  const [posCategories, setPosCategories] = useState<CMSCategory[]>([]);
+  const [posCatalogLoading, setPosCatalogLoading] = useState(false);
+  const [posCatalogError, setPosCatalogError] = useState(false);
+  const [posCatalogReloadKey, setPosCatalogReloadKey] = useState(0);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
@@ -101,6 +109,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setError(null);
     setPurchaseResult(null);
     setSelectedRewardId('');
+    setShowLegacyCheckout(false);
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
   };
@@ -150,6 +159,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setPaymentMethod('');
       setPurchaseResult(null);
       setSelectedRewardId('');
+      setShowLegacyCheckout(false);
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
 
@@ -185,6 +195,35 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     deepLinkHandledRef.current = true;
     void findCustomer(memberCode, 'manual');
   }, [hasStaffAccess]);
+
+  useEffect(() => {
+    if (!hasStaffAccess) return;
+
+    let active = true;
+    const loadPosCatalog = async () => {
+      try {
+        setPosCatalogLoading(true);
+        setPosCatalogError(false);
+        const [categories, products] = await Promise.all([
+          getCategories(),
+          getProducts(),
+        ]);
+        if (!active) return;
+        setPosCategories(categories);
+        setPosProducts(products);
+      } catch (catalogError) {
+        console.error('Could not load POS catalogue:', catalogError);
+        if (active) setPosCatalogError(true);
+      } finally {
+        if (active) setPosCatalogLoading(false);
+      }
+    };
+
+    void loadPosCatalog();
+    return () => {
+      active = false;
+    };
+  }, [hasStaffAccess, posCatalogReloadKey]);
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
@@ -403,16 +442,16 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         {language === 'en' ? 'Back to Home' : 'กลับหน้าแรก'}
       </button>
 
-      <div className="max-w-2xl mx-auto py-8">
+      <div className="max-w-7xl mx-auto py-8">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-700 to-emerald-900 px-8 py-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In'}
+                  {language === 'en' ? 'JOKO POS' : 'JOKO POS'}
                 </h1>
                 <p className="text-green-100">
-                  {language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก'}
+                  {language === 'en' ? 'Walk-In sales for existing members' : 'การขายหน้าร้านสำหรับสมาชิก'}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -638,7 +677,18 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : showLegacyCheckout ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLegacyCheckout(false);
+                        setError(null);
+                      }}
+                      className="mb-4 inline-flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-50"
+                    >
+                      ← {language === 'en' ? 'Back to POS preview' : 'กลับไปที่ตัวอย่าง POS'}
+                    </button>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
@@ -745,6 +795,25 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </button>
                     </form>
                   </div>
+                  </>
+                ) : (
+                  <PosWorkspace
+                    products={posProducts}
+                    categories={posCategories}
+                    loading={posCatalogLoading}
+                    loadError={posCatalogError}
+                    language={staffLanguage}
+                    currentBalance={currentBalance}
+                    loyaltyMultiplier={loyaltyMultiplier}
+                    onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
+                    onUseLegacyCheckout={() => {
+                      setShowLegacyCheckout(true);
+                      setError(null);
+                      setPaymentMethod('');
+                      setSelectedRewardId('');
+                    }}
+                  />
+                )
                 )}
 
                 <CustomerPurchaseHistory
