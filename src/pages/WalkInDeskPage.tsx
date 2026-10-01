@@ -422,9 +422,17 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             <div className="p-8">
               <p className="text-center text-sm text-gray-600">
                 {language === 'en'
-                  ? 'Staff account required. Sign in from the main site, then return to this page.'
-                  : 'ต้องใช้บัญชีพนักงาน กรุณาเข้าสู่ระบบจากเว็บไซต์หลัก แล้วกลับมาที่หน้านี้'}
+                  ? 'Staff account required to open JOKO POS.'
+                  : 'ต้องใช้บัญชีพนักงานเพื่อเปิด JOKO POS'}
               </p>
+              <button
+                type="button"
+                onClick={() => window.location.assign('/staff?return=/walk-in')}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-4 py-3 font-bold text-white transition-colors hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-100"
+              >
+                <Lock className="h-5 w-5" />
+                {language === 'en' ? 'Sign In to Staff' : 'เข้าสู่ระบบพนักงาน'}
+              </button>
             </div>
           </div>
         </div>
