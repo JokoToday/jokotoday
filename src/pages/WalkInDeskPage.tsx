@@ -34,6 +34,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { PosWorkspace } from '../components/pos/PosWorkspace';
+import { usePosCart } from '../hooks/usePosCart';
 
 interface Customer {
   id: string;
@@ -88,6 +89,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [posCatalogLoading, setPosCatalogLoading] = useState(false);
   const [posCatalogError, setPosCatalogError] = useState(false);
   const [posCatalogReloadKey, setPosCatalogReloadKey] = useState(0);
+  const posCart = usePosCart();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
   const savingRef = useRef(false);
@@ -110,6 +112,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setPurchaseResult(null);
     setSelectedRewardId('');
     setShowLegacyCheckout(false);
+    posCart.clear();
     purchaseReferenceRef.current = null;
     purchaseRequestKeyRef.current = null;
   };
@@ -160,6 +163,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setPurchaseResult(null);
       setSelectedRewardId('');
       setShowLegacyCheckout(false);
+      posCart.clear();
       purchaseReferenceRef.current = null;
       purchaseRequestKeyRef.current = null;
 
@@ -456,10 +460,14 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
-                  {language === 'en' ? 'JOKO POS' : 'JOKO POS'}
+                  {customer
+                    ? 'JOKO POS'
+                    : (language === 'en' ? 'Walk-In Desk' : 'เคาน์เตอร์ลูกค้า Walk-In')}
                 </h1>
                 <p className="text-green-100">
-                  {language === 'en' ? 'Walk-In sales for existing members' : 'การขายหน้าร้านสำหรับสมาชิก'}
+                  {customer
+                    ? (language === 'en' ? 'Create this customer’s in-store basket' : 'สร้างตะกร้าซื้อหน้าร้านสำหรับลูกค้ารายนี้')
+                    : (language === 'en' ? 'Record in-store purchases for existing members' : 'บันทึกการซื้อหน้าร้านสำหรับสมาชิก')}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -813,10 +821,12 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                     language={staffLanguage}
                     currentBalance={currentBalance}
                     loyaltyMultiplier={loyaltyMultiplier}
+                    cart={posCart}
                     onRetry={() => setPosCatalogReloadKey((value) => value + 1)}
-                    onUseLegacyCheckout={() => {
+                    onUseLegacyCheckout={(previewSubtotal) => {
                       setShowLegacyCheckout(true);
                       setError(null);
+                      setAmount(previewSubtotal > 0 ? previewSubtotal.toFixed(2) : '');
                       setPaymentMethod('');
                       setSelectedRewardId('');
                     }}
