@@ -90,9 +90,9 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
 
   // Keep the category editor constrained to the viewport so every field remains reachable.
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black bg-opacity-50 p-4 sm:items-center">
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="relative z-10 flex shrink-0 items-center justify-between border-b border-gray-200 bg-white p-6">
           <h2 className="text-2xl font-bold text-gray-900">
             {category ? 'Edit Category' : 'New Category'}
           </h2>
@@ -101,7 +101,7 @@ export function CategoryForm({ category, onSave, onCancel }: CategoryFormProps) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="min-h-0 space-y-4 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-6">
           {errors.submit && (
             <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
