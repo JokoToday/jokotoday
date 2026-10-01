@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, QrCode } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { AdminModalPortal } from './AdminModalPortal';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../lib/cmsService';
 import { getPickupDays, PickupDay } from '../lib/availabilityService';
 import { ProductMediaUploader } from './ProductMediaUploader';
@@ -265,9 +266,10 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90dvh] flex flex-col overflow-hidden">
-        <div className="shrink-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+    <AdminModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="shrink-0 bg-white border-b border-gray-200 p-4 sm:p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">{product ? 'Edit Product' : 'Add New Product'}</h2>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="w-6 h-6" /></button>
         </div>
@@ -528,5 +530,6 @@ export function ProductForm({ product, categories, onSave, onCancel }: ProductFo
         </form>
       </div>
     </div>
+    </AdminModalPortal>
   );
 }
