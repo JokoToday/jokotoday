@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, AlertCircle, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { AdminModalPortal } from './AdminModalPortal';
 import { CMSCategory } from '../lib/cmsService';
 
 interface QuickAddProductProps {
@@ -111,9 +112,10 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6 rounded-t-lg shrink-0">
+    <AdminModalPortal>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-4 sm:p-6 rounded-t-lg shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-white bg-opacity-20 p-2 rounded-lg">
@@ -271,5 +273,6 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
         </form>
       </div>
     </div>
+    </AdminModalPortal>
   );
 }
