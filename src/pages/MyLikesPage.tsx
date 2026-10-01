@@ -131,7 +131,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center">
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">{t.loading}</p>
@@ -142,25 +142,25 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="joko-mineral-field min-h-screen">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-8 transition-colors"
+            className="mb-8 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
           >
             <ArrowLeft className="w-5 h-5" />
             {t.back}
           </button>
 
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mb-6">
-              <Heart className="w-10 h-10 text-primary-600" />
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#CFE3DF]/75">
+              <Heart className="h-10 w-10 text-[#C76624]" />
             </div>
-            <h1 className="text-2xl font-bold text-primary-900 mb-3">{t.myLikes}</h1>
+            <h1 className="mb-3 text-2xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.myLikes}</h1>
             <p className="text-gray-600 text-center max-w-md mb-6">{t.signInRequired}</p>
             <button
               onClick={() => setShowAuthModal(true)}
-              className="px-8 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]"
             >
               {t.signIn}
             </button>
@@ -176,25 +176,26 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="joko-mineral-field min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <button
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-8 transition-colors"
+          className="mb-8 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
         >
           <ArrowLeft className="w-5 h-5" />
           {t.back}
         </button>
 
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-            <Heart className="w-8 h-8 text-primary-600 fill-primary-600" />
+        <div className="mb-8 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-6 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#CFE3DF]/75">
+            <Heart className="h-8 w-8 fill-[#C76624] text-[#C76624]" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-header font-bold text-primary-900 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <h1 className="mb-2 mt-2 text-4xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
             {t.myLikes}
           </h1>
           {likedProducts.length > 0 && (
-            <p className="text-gray-600">
+            <p className="text-[#303532]/65">
               {likedProducts.length} {likedProducts.length === 1 ? 'product' : 'products'}
             </p>
           )}
@@ -214,7 +215,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
             <p className="text-gray-600 text-center max-w-md mb-8">{t.emptyHint}</p>
             <button
               onClick={() => onNavigate('products')}
-              className="flex items-center gap-2 px-8 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]"
             >
               <ShoppingBag className="w-5 h-5" />
               {t.browseProducts}

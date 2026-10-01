@@ -192,12 +192,12 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-gray-600">{pageText.signInPrompt[lang]}</p>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4">
+        <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <p className="text-[#303532]/68">{pageText.signInPrompt[lang]}</p>
           <button
             onClick={() => onNavigate('home')}
-            className="mt-4 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+            className="mt-4 rounded-xl bg-[#C76624] px-6 py-2.5 font-semibold text-white transition hover:bg-[#A95120]"
           >
             {pageText.goHome[lang]}
           </button>
@@ -208,12 +208,12 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
 
   if (!qrToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-gray-600">{pageText.notGenerated[lang]}</p>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4">
+        <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <p className="text-[#303532]/68">{pageText.notGenerated[lang]}</p>
           <button
             onClick={() => onNavigate('profile')}
-            className="mt-4 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+            className="mt-4 rounded-xl bg-[#C76624] px-6 py-2.5 font-semibold text-white transition hover:bg-[#A95120]"
           >
             {pageText.completeProfile[lang]}
           </button>
@@ -223,18 +223,19 @@ export function MyQRPage({ onNavigate }: MyQRPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="joko-mineral-field min-h-screen px-4 py-8 sm:py-12">
+      <div className="mx-auto max-w-2xl">
         <button
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
         >
           <ArrowLeft className="w-5 h-5" />
           {pageText.back[lang]}
         </button>
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
+        <div className="rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] md:p-8">
+          <p className="text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <h1 className="mb-2 mt-2 text-center text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
             {getLabel('qr_page.header', language, pageText.header[lang])}
           </h1>
           <p className="text-gray-700 mb-6 text-center">
