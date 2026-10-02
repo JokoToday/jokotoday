@@ -202,6 +202,12 @@ function pickupLabel(day: PickupDay, language: LanguageCode): string {
   return day.label_en || day.label;
 }
 
+function pickupLocationImageAlt(location: CMSPickupLocation, language: LanguageCode): string {
+  if (language === 'th') return location.image_alt_th || location.image_alt_en || location.name_th || location.name_en;
+  if (language === 'zh') return location.image_alt_zh || location.image_alt_en || location.name_zh || location.name_en;
+  return location.image_alt_en || location.name_en;
+}
+
 function SectionTitle({
   title,
   intro,
@@ -418,7 +424,7 @@ export function HomepageLowerSections({
                       <div><MapPin className="h-6 w-6 text-[#668B86]" strokeWidth={1.4} /><h3 className="mt-3 text-2xl font-semibold text-[#303532]">{name}</h3></div>
                       {location.maps_url && <a href={location.maps_url} target="_blank" rel="noreferrer" className="text-sm text-[#A44F1D] underline decoration-[#C76624]/40 underline-offset-4">{labels.maps}</a>}
                     </div>
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className={`mt-5 grid gap-3 ${days.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                       {days.map((day) => (
                         <div key={day.id} className="rounded-2xl bg-[#DCE9EC]/50 p-4">
                           <p className="font-semibold text-[#303532]">{pickupLabel(day, language)}</p>
@@ -427,6 +433,17 @@ export function HomepageLowerSections({
                         </div>
                       ))}
                     </div>
+                    {location.image_url && (
+                      <div className="mt-4 overflow-hidden rounded-2xl bg-[#E9E0D0]">
+                        <img
+                          src={location.image_url}
+                          alt={pickupLocationImageAlt(location, language)}
+                          className="aspect-[16/7] w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                    )}
                   </article>
                 );
               })}

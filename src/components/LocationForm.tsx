@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Image as ImageIcon, Loader2, UploadCloud } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { AdminModalPortal } from './AdminModalPortal';
 import { CMSPickupLocation } from '../lib/cmsService';
+import { uploadGalleryImage } from '../lib/mediaService';
 
 interface LocationFormProps {
   location: CMSPickupLocation | null;
@@ -24,6 +25,10 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
     description_th: location?.description_th || '',
     description_zh: location?.description_zh || '',
     maps_url: location?.maps_url || '',
+    image_url: location?.image_url || '',
+    image_alt_en: location?.image_alt_en || '',
+    image_alt_th: location?.image_alt_th || '',
+    image_alt_zh: location?.image_alt_zh || '',
     // Legacy compatibility field. Actual recurring v2 day/location relationships
     // are managed by pickup_schedule_locations in Pickup Schedule.
     available_days: (location?.available_days as string[]) || [],
@@ -35,6 +40,8 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
   const [dependencyLoading, setDependencyLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
 
   useEffect(() => {
     if (!location?.id) {
@@ -143,6 +150,10 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
         description_th: formData.description_th.trim() || null,
         description_zh: formData.description_zh.trim() || null,
         maps_url: formData.maps_url.trim() || null,
+        image_url: formData.image_url.trim() || null,
+        image_alt_en: formData.image_alt_en.trim() || null,
+        image_alt_th: formData.image_alt_th.trim() || null,
+        image_alt_zh: formData.image_alt_zh.trim() || null,
         available_days: formData.available_days,
         is_active: formData.is_active,
       };
@@ -231,6 +242,130 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
             <p className="text-xs text-gray-500 mt-1">Link to Google Maps location (optional)</p>
           </div>
 
+          <div className="rounded-2xl border border-[#55766F]/16 bg-[#F7F1E7]/55 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Location photo</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  One wide landscape image appears below this location's pickup information on the homepage.
+                </p>
+              </div>
+              <ImageIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#55766F]" />
+            </div>
+
+            {formData.image_url ? (
+              <div className="mt-4 overflow-hidden rounded-xl border border-[#55766F]/12 bg-[#E9E0D0]">
+                <img
+                  src={formData.image_url}
+                  alt={formData.image_alt_en || formData.name_en || 'Pickup location'}
+                  className="aspect-[16/7] w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="mt-4 flex aspect-[16/7] items-center justify-center rounded-xl border border-dashed border-[#55766F]/25 bg-white/35 text-center">
+                <div>
+                  <ImageIcon className="mx-auto h-8 w-8 text-[#55766F]/35" />
+                  <p className="mt-2 text-xs text-gray-500">No location photo yet</p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <label className="block text-sm font-medium text-gray-700">
+                Image URL
+                <input
+                  type="url"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://…"
+                />
+              </label>
+              <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#55766F]/22 bg-white px-4 py-2 text-sm font-medium text-[#304B45] transition hover:bg-[#F4EFE5]">
+                {imageUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                {imageUploading ? `Uploading ${imageUploadProgress}%` : 'Upload image'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/webp,image/png"
+                  className="sr-only"
+                  disabled={imageUploading}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.currentTarget.value = '';
+                    if (!file) return;
+                    setImageUploading(true);
+                    setImageUploadProgress(0);
+                    setErrors((current) => {
+                      const next = { ...current };
+                      delete next.image;
+                      return next;
+                    });
+                    void uploadGalleryImage(
+                      { file, gallerySlot: 'pickup-locations' },
+                      setImageUploadProgress,
+                    )
+                      .then((ticket) => {
+                        setFormData((current) => ({ ...current, image_url: ticket.publicUrl }));
+                      })
+                      .catch((error) => {
+                        console.error('Pickup location image upload failed:', error);
+                        setErrors((current) => ({
+                          ...current,
+                          image: error instanceof Error ? error.message : 'Could not upload location photo.',
+                        }));
+                      })
+                      .finally(() => setImageUploading(false));
+                  }}
+                />
+              </label>
+            </div>
+
+            {errors.image && (
+              <p className="mt-2 text-xs text-red-600">{errors.image}</p>
+            )}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <label className="block text-xs font-medium text-gray-600">
+                Alt text (English)
+                <input
+                  type="text"
+                  value={formData.image_alt_en}
+                  onChange={(e) => setFormData({ ...formData, image_alt_en: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary-500"
+                  placeholder="Mae Rim bakery exterior"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Alt text (ไทย)
+                <input
+                  type="text"
+                  value={formData.image_alt_th}
+                  onChange={(e) => setFormData({ ...formData, image_alt_th: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary-500"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Alt text (中文)
+                <input
+                  type="text"
+                  value={formData.image_alt_zh}
+                  onChange={(e) => setFormData({ ...formData, image_alt_zh: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary-500"
+                />
+              </label>
+            </div>
+
+            {formData.image_url && (
+              <button
+                type="button"
+                onClick={() => setFormData((current) => ({ ...current, image_url: '' }))}
+                className="mt-3 text-xs font-medium text-red-600 hover:text-red-700"
+              >
+                Remove photo from this location
+              </button>
+            )}
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
             <p className="text-sm font-medium text-gray-900 mb-1">Pickup schedule usage</p>
             {activeV2Schedules.length > 0 ? (
@@ -273,7 +408,7 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
 
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" disabled={loading || dependencyLoading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : location ? 'Update' : 'Create'}</button>
+            <button type="submit" disabled={loading || dependencyLoading || imageUploading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : location ? 'Update' : 'Create'}</button>
           </div>
         </form>
       </div>

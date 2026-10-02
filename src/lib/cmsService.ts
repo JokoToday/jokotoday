@@ -92,6 +92,10 @@ export interface CMSPickupLocation {
   description_th: string | null;
   description_zh?: string | null;
   maps_url: string | null;
+  image_url?: string | null;
+  image_alt_en?: string | null;
+  image_alt_th?: string | null;
+  image_alt_zh?: string | null;
   available_days: string[];
   is_active: boolean;
   sort_order: number;
