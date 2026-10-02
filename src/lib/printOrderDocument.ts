@@ -355,4 +355,75 @@ export function printOrderDocument({
           : nextLanguage === 'zh'
             ? '订单确认单'
             : 'Order Confirmation'))
-        : labe
+        : labels.title;
+
+    const itemRows = items.map((item) => {
+      const quantity = Math.max(0, Number(item.quantity ?? item.qty ?? 0));
+      const price = Number(item.price_at_order ?? item.price ?? 0);
+      const name = escapeHtml(itemName(item, nextLanguage));
+
+      if (isPrep) {
+        return `<div class="prep-item"><strong>${escapeHtml(quantity)} ×</strong><span>${name}</span></div>`;
+      }
+
+      if (isThermal) {
+        return `<div class="thermal-item"><div>${name}<div class="muted">${escapeHtml(quantity)} × ฿${money(price)}</div></div><strong>฿${money(quantity * price)}</strong></div>`;
+      }
+
+      return `<tr><td>${name}</td><td class="num">${escapeHtml(quantity)}</td><td class="num">฿${money(price)}</td><td class="num strong">฿${money(quantity * price)}</td></tr>`;
+    }).join('');
+
+    const paymentState = paymentStateLabel(order, labels);
+    const paymentDescription = order.payment_status === 'paid'
+      ? `${paymentState}${order.payment_method ? ` · ${paymentMethodLabel(order.payment_method, nextLanguage)}` : ''}`
+      : paymentState;
+
+    const profileButtons = (isPrep ? ['80mm', '58mm'] : ['standard', '80mm', '58mm']).map((candidate) => {
+      const typedProfile = candidate as PrintOrderProfile;
+      const profileLabel = typedProfile === 'standard'
+        ? labels.standard
+        : typedProfile === '80mm'
+          ? labels.thermal80
+          : labels.thermal58;
+      return `<button type="button" data-profile="${typedProfile}" class="${typedProfile === nextProfile ? 'active' : ''}">${escapeHtml(profileLabel)}</button>`;
+    }).join('');
+
+    const languageButtons = (['en', 'th', 'zh'] as PrintOrderLanguage[]).map((candidate) => {
+      const label = candidate === 'en' ? 'EN' : candidate === 'th' ? 'ไทย' : '中文';
+      return `<button type="button" data-language="${candidate}" class="${candidate === nextLanguage ? 'active' : ''}">${label}</button>`;
+    }).join('');
+
+    const standardMeta = `
+      ${resolvedCustomerName ? `<div class="meta-card customer"><div class="label">${escapeHtml(labels.customer)}</div><div class="value">${escapeHtml(resolvedCustomerName)}</div></div>` : ''}
+      <div class="meta-card"><div class="label">${escapeHtml(labels.order)}</div><div class="value">#${escapeHtml(order.order_number)}</div></div>
+      ${order.created_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.ordered)}</div><div class="value">${escapeHtml(formatDate(order.created_at, nextLanguage, false, true))}</div></div>` : ''}
+      ${resolvedPickupLabel || order.pickup_date ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickup)}</div><div class="value">${resolvedPickupLabel ? escapeHtml(resolvedPickupLabel) : ''}${resolvedPickupLabel && order.pickup_date ? '<br />' : ''}${order.pickup_date ? escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false)) : ''}</div></div>` : ''}
+      ${resolvedPickupLocationName ? `<div class="meta-card"><div class="label">${escapeHtml(labels.location)}</div><div class="value">${escapeHtml(resolvedPickupLocationName)}</div></div>` : ''}
+      ${resolvedStatusLabel || order.status ? `<div class="meta-card"><div class="label">${escapeHtml(labels.status)}</div><div class="value">${escapeHtml(resolvedStatusLabel || order.status || '—')}</div></div>` : ''}
+    `;
+
+    const thermalMeta = `
+      ${resolvedCustomerName ? `<div class="customer-name">${escapeHtml(resolvedCustomerName)}</div>` : ''}
+      <div class="thermal-meta"><strong>${escapeHtml(labels.order)}</strong><span>#${escapeHtml(order.order_number)}</span></div>
+      ${order.pickup_date ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickup)}</strong><span>${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</span></div>` : ''}
+      ${resolvedPickupLocationName ? `<div class="thermal-meta"><strong>${escapeHtml(labels.location)}</strong><span>${escapeHtml(resolvedPickupLocationName)}</span></div>` : ''}
+      <div class="thermal-meta"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
+    `;
+
+    const financialSummary = `
+      ${documentType === 'receipt' || discount > 0 ? `<div class="summary-row"><span>${escapeHtml(labels.gross)}</span><strong>฿${money(grossTotal)}</strong></div>` : ''}
+      ${discount > 0 ? `<div class="summary-row discount"><span>${escapeHtml(labels.discount)}</span><strong>−฿${money(discount)}</strong></div>` : ''}
+      <div class="summary-row total"><span>${escapeHtml(order.payment_status === 'paid' ? labels.totalPaid : labels.amountDue)}</span><strong>฿${money(netTotal)}</strong></div>
+      ${documentType === 'receipt' && pointsEarned > 0 ? `<div class="summary-row"><span>${escapeHtml(labels.pointsEarned)}</span><strong>+${escapeHtml(pointsEarned)}</strong></div>` : ''}
+    `;
+
+    const prepBody = `
+      <div class="prep-focus">
+        ${resolvedCustomerName ? `<div class="prep-customer">${escapeHtml(resolvedCustomerName)}</div>` : ''}
+        ${order.pickup_date ? `<div class="prep-pickup">${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</div>` : ''}
+        ${resolvedPickupLocationName ? `<div class="prep-location">${escapeHtml(resolvedPickupLocationName)}</div>` : ''}
+        <div class="prep-order">#${escapeHtml(order.order_number)}</div>
+      </div>
+      <div class="section-title">${escapeHtml(labels.items)}</div>
+      <div class="prep-items">${itemRows || '<div class="muted">—</div>'}</div>
+      <div class="pr
