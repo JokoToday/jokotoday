@@ -10,6 +10,7 @@ import type {
 import type { BuilderHeroMediaProvider, BuilderMedia } from '../../providers';
 import { localize } from '../localize';
 import { localizeRichText, richTextToPlainText } from '../../richText';
+import { JokoHeroNotebookNote } from '../../../../components/JokoHeroNotebookNote';
 
 interface HomeHeroSectionRendererProps {
   section: HomeHeroSection;
@@ -40,6 +41,13 @@ export function HomeHeroSectionRenderer({
   const title = localize(section.props.title, locale, fallbackLocale);
   const titleRichText = localizeRichText(section.props.titleRichText, locale, fallbackLocale, title);
   const subtitle = localize(section.props.subtitle, locale, fallbackLocale);
+  const notebookNote = section.props.notebookNote;
+  const notebookTitle = notebookNote?.title ? localize(notebookNote.title, locale, fallbackLocale) : '';
+  const notebookBody = notebookNote?.body ? localize(notebookNote.body, locale, fallbackLocale) : '';
+  const notebookImageAlt = notebookNote?.imageAlt ? localize(notebookNote.imageAlt, locale, fallbackLocale) : '';
+  const showNotebookNote = Boolean(
+    notebookNote?.enabled && (notebookTitle || notebookBody || notebookNote.imageUrl),
+  );
   const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
   const chrome = locale === 'th'
     ? {
@@ -83,6 +91,18 @@ export function HomeHeroSectionRenderer({
         </div>
 
         <div className="relative grid min-h-[34rem] gap-7 py-8 lg:grid-cols-[minmax(19rem,.72fr)_minmax(33rem,1.35fr)] lg:items-start">
+          {showNotebookNote && (
+            <div className="absolute left-[38%] top-7 z-30 hidden w-[15rem] lg:block">
+              <JokoHeroNotebookNote
+                title={notebookTitle}
+                body={notebookBody}
+                imageUrl={notebookNote?.imageUrl}
+                imageAlt={notebookImageAlt}
+                interactive={false}
+              />
+            </div>
+          )}
+
           <div className="relative z-20 max-w-[31rem] lg:pt-7">
             <p className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>
               {chrome.eyebrow}
@@ -136,6 +156,18 @@ export function HomeHeroSectionRenderer({
                 {localize(section.props.secondaryActionLabel, locale, fallbackLocale)}
               </button>
             </div>
+
+            {showNotebookNote && (
+              <div className="mt-6 max-w-[18rem] lg:hidden">
+                <JokoHeroNotebookNote
+                  title={notebookTitle}
+                  body={notebookBody}
+                  imageUrl={notebookNote?.imageUrl}
+                  imageAlt={notebookImageAlt}
+                  interactive={false}
+                />
+              </div>
+            )}
 
             <div className="mt-7 grid grid-cols-2 gap-3 border-t border-[#55766F]/15 pt-5 text-xs text-[#304B45]/78">
               <div className="flex items-center gap-2"><Leaf className="h-5 w-5 text-[#6E9A4F]" />{chrome.smallBatch}</div>
