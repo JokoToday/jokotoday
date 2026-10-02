@@ -32,6 +32,7 @@ import {
 } from '../lib/customerLookup';
 import { QRScanner } from '../components/QRScanner';
 import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHistory';
+import { PrintPrepTicketButton } from '../components/orders/PrintPrepTicketButton';
 import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemption';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -48,14 +49,30 @@ interface Customer {
   loyalty_points: number;
 }
 
+interface OrderItem {
+  product_id?: string;
+  product_name?: string;
+  product_name_en?: string;
+  product_name_th?: string | null;
+  product_name_zh?: string | null;
+  name?: string;
+  name_th?: string | null;
+  name_zh?: string | null;
+  quantity?: number;
+  qty?: number;
+  price_at_order?: number;
+  price?: number;
+}
+
 interface Order {
   id: string;
   order_number: string;
-  order_items: unknown[];
+  order_items: OrderItem[];
   total_amount: number;
   loyalty_discount_amount?: number | null;
   amount_paid?: number | null;
   pickup_date: string | null;
+  pickup_location_id?: string | null;
   status: string;
   payment_status: string;
   payment_method: string | null;
@@ -66,6 +83,8 @@ interface Order {
   staff_id?: string | null;
   purchase_type?: string | null;
 }
+
+type PickupLocation = { id: string; name_en: string; name_th: string; name_zh?: string | null };
 
 const getBangkokToday = () => {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -98,6 +117,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [upcomingOrders, setUpcomingOrders] = useState<Order[]>([]);
+  const [pickupLocations, setPickupLocations] = useState<Record<string, PickupLocation>>({});
   const [earlyPickupOrder, setEarlyPickupOrder] = useState<Order | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [lastReceiptOrder, setLastReceiptOrder] = useState<Order | null>(null);
@@ -113,6 +133,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setCustomer(null);
     setOrders([]);
     setUpcomingOrders([]);
+    setPickupLocations({});
     setEarlyPickupOrder(null);
     setLastReceiptOrder(null);
     setShowScanner(false);
@@ -141,6 +162,30 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     if (ordersError) throw ordersError;
 
     const scheduledOrders = (ordersData || []) as Order[];
+
+    const locationIds = Array.from(new Set(
+      scheduledOrders
+        .map((order) => order.pickup_location_id)
+        .filter(Boolean) as string[]
+    ));
+    if (locationIds.length > 0) {
+      const { data: locationRows, error: locationError } = await supabase
+        .from('cms_pickup_locations')
+        .select('id, name_en, name_th, name_zh')
+        .in('id', locationIds);
+      if (locationError) {
+        console.warn('Could not enrich pickup orders with pickup locations:', locationError);
+        setPickupLocations({});
+      } else {
+        setPickupLocations(((locationRows || []) as PickupLocation[]).reduce<Record<string, PickupLocation>>((map, row) => {
+          map[row.id] = row;
+          return map;
+        }, {}));
+      }
+    } else {
+      setPickupLocations({});
+    }
+
     setOrders(scheduledOrders.filter((order) => order.pickup_date === today && order.status !== 'cancelled'));
     setUpcomingOrders(scheduledOrders.filter((order) => (
       Boolean(order.pickup_date && order.pickup_date > today)
@@ -722,6 +767,25 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </span>
                           </div>
 
+                          {order.status !== 'picked_up' && order.order_items?.length > 0 && (
+                            <PrintPrepTicketButton
+                              order={order}
+                              customerName={order.customer_name || customer.name}
+                              language={staffLanguage}
+                              logoUrl={publishedLogoUrl}
+                              pickupLocationName={(() => {
+                                const location = order.pickup_location_id
+                                  ? pickupLocations[order.pickup_location_id]
+                                  : undefined;
+                                if (!location) return null;
+                                return language === 'th'
+                                  ? location.name_th || location.name_en
+                                  : location.name_en;
+                              })()}
+                              className="mb-4 w-full"
+                            />
+                          )}
+
                           {(order.loyalty_points_earned ?? 0) > 0 && (
                             <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
                               <Award className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -832,6 +896,25 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 </span>
                               </div>
                             </div>
+
+                            {order.order_items?.length > 0 && (
+                              <PrintPrepTicketButton
+                                order={order}
+                                customerName={order.customer_name || customer.name}
+                                language={staffLanguage}
+                                logoUrl={publishedLogoUrl}
+                                pickupLocationName={(() => {
+                                  const location = order.pickup_location_id
+                                    ? pickupLocations[order.pickup_location_id]
+                                    : undefined;
+                                  if (!location) return null;
+                                  return language === 'th'
+                                    ? location.name_th || location.name_en
+                                    : location.name_en;
+                                })()}
+                                className="mt-4 w-full"
+                              />
+                            )}
 
                             <div className="mt-4 grid grid-cols-2 gap-2">
                               <button
