@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom';
 import {
   Eye,
   EyeOff,
+  ImagePlus,
   LayoutTemplate,
+  Loader2,
   Palette,
   SlidersHorizontal,
+  Trash2,
   Type,
 } from 'lucide-react';
 import {
@@ -28,10 +31,12 @@ import {
   type BuilderSection,
   type BuilderSiteIdentity,
   type HomepageBuilderProviders,
+  type HomeHeroNotebookNote,
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
+import { uploadImage } from '../../../lib/storage';
 
 interface JokoHomepageEditorProps {
   document: BuilderDocument;
@@ -66,12 +71,48 @@ const previewViewportLabels: Record<PreviewViewport, string> = {
   mobile: 'Mobile',
 };
 
+const DEFAULT_HERO_NOTE: HomeHeroNotebookNote = {
+  enabled: false,
+  title: {
+    en: 'Meet Joe & Phuttan',
+    th: 'รู้จัก Joe และ Phuttan',
+    zh: '认识 Joe 和 Phuttan',
+  },
+  body: {
+    en: 'A little note from the bakery.',
+    th: 'โน้ตเล็ก ๆ จากเบเกอรี่',
+    zh: '来自烘焙坊的一张小纸条。',
+  },
+  imageAlt: {
+    en: 'Joe and Phuttan',
+    th: 'Joe และ Phuttan',
+    zh: 'Joe 和 Phuttan',
+  },
+  linkUrl: '/about',
+};
+
 function localized(value: LocalizedText, locale: string, fallback: string): string {
   return value[locale] ?? value[fallback] ?? Object.values(value)[0] ?? '';
 }
 
 function withLocale(value: LocalizedText, locale: string, next: string): LocalizedText {
   return { ...value, [locale]: next };
+}
+
+function localizedOptional(
+  value: LocalizedText | undefined,
+  locale: string,
+  fallback: string,
+): string {
+  return value ? localized(value, locale, fallback) : '';
+}
+
+function withOptionalLocale(
+  value: LocalizedText | undefined,
+  locale: string,
+  next: string,
+): LocalizedText {
+  return { ...(value ?? {}), [locale]: next };
 }
 
 function withLocaleRichText(
@@ -181,6 +222,174 @@ function ColorField({
         />
       </div>
     </div>
+  );
+}
+
+function HeroNotebookNoteEditor({
+  note,
+  locale,
+  fallbackLocale,
+  onChange,
+  onUploadingChange,
+}: {
+  note?: HomeHeroNotebookNote;
+  locale: string;
+  fallbackLocale: string;
+  onChange: (note: HomeHeroNotebookNote) => void;
+  onUploadingChange?: (uploading: boolean) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const value = note ?? DEFAULT_HERO_NOTE;
+
+  const patch = (next: Partial<HomeHeroNotebookNote>) => {
+    onChange({ ...value, ...next });
+  };
+
+  const setBusy = (busy: boolean) => {
+    setUploading(busy);
+    onUploadingChange?.(busy);
+  };
+
+  const handleImageUpload = async (file: File | undefined) => {
+    if (!file) return;
+
+    const extensionByType: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+    const extension = extensionByType[file.type];
+    if (!extension) {
+      setUploadError('Use a PNG, JPEG or WebP image.');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError('Notebook images must be 8 MB or smaller.');
+      return;
+    }
+
+    const baseName = file.name
+      .replace(/\.[^.]+$/, '')
+      .replace(/[^a-z0-9_-]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'notebook-note';
+    const path = `homepage/hero-notebook/${Date.now()}-${baseName}.${extension}`;
+
+    setUploadError('');
+    setBusy(true);
+    try {
+      const result = await uploadImage(file, path);
+      if (result.error || !result.url) {
+        throw result.error ?? new Error('Upload did not return an image URL.');
+      }
+      patch({ imageUrl: result.url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Could not upload notebook image.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <details className="rounded-xl border border-[#55766F]/12 bg-white/60 p-3" open>
+      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">
+        Hero notebook note
+      </summary>
+
+      <div className="mt-4 space-y-4">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-[#55766F]/12 bg-[#FFF9EE]/75 px-3 py-2.5">
+          <span>
+            <span className="block text-sm font-semibold text-[#303532]">Show notebook note</span>
+            <span className="block text-xs text-[#303532]/52">The paper, tape and punched-hole frame stay fixed.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={value.enabled}
+            onChange={(event) => patch({ enabled: event.target.checked })}
+            className="h-4 w-4 accent-[#C76624]"
+          />
+        </label>
+
+        <TextField
+          label="Notebook heading"
+          value={localizedOptional(value.title, locale, fallbackLocale)}
+          onChange={(next) => patch({ title: withOptionalLocale(value.title, locale, next) })}
+        />
+        <TextField
+          label="Notebook text"
+          multiline
+          value={localizedOptional(value.body, locale, fallbackLocale)}
+          onChange={(next) => patch({ body: withOptionalLocale(value.body, locale, next) })}
+        />
+
+        <div>
+          <FieldLabel>Notebook image</FieldLabel>
+          {value.imageUrl ? (
+            <div className="mb-3 rounded-xl border border-[#55766F]/14 bg-[#FFF9EE] p-3">
+              <img
+                src={value.imageUrl}
+                alt={localizedOptional(value.imageAlt, locale, fallbackLocale)}
+                className="mx-auto max-h-44 w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="mb-3 rounded-xl border border-dashed border-[#55766F]/22 bg-[#FFF9EE]/60 px-4 py-6 text-center text-xs text-[#303532]/50">
+              No notebook illustration uploaded yet.
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs font-semibold text-[#304B45] hover:bg-[#EEF5F2]">
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              {value.imageUrl ? 'Replace image' : 'Upload image'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={uploading}
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  void handleImageUpload(file);
+                }}
+              />
+            </label>
+
+            {value.imageUrl && (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => patch({ imageUrl: undefined })}
+                className="inline-flex items-center gap-2 rounded-lg border border-[#C76624]/18 bg-white px-3 py-2 text-xs font-semibold text-[#9E4E1D] hover:bg-[#FFF3E7]"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove image
+              </button>
+            )}
+          </div>
+
+          {uploadError && <p className="mt-2 text-xs text-red-700">{uploadError}</p>}
+        </div>
+
+        <TextField
+          label="Image alt text"
+          value={localizedOptional(value.imageAlt, locale, fallbackLocale)}
+          onChange={(next) => patch({ imageAlt: withOptionalLocale(value.imageAlt, locale, next) })}
+        />
+
+        <div>
+          <TextField
+            label="Optional link"
+            value={value.linkUrl ?? ''}
+            onChange={(next) => patch({ linkUrl: next.trim() || undefined })}
+          />
+          <p className="mt-1.5 text-[11px] leading-4 text-[#303532]/50">
+            Use an internal path such as /about, a #section link, or an HTTPS URL. Leave blank for a non-clickable note.
+          </p>
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -698,6 +907,7 @@ export function JokoHomepageEditor({
               locale={locale}
               fallbackLocale={site.defaultLocale}
               branding={branding}
+              onUploadingChange={onUploadingChange}
               onChange={(next) => updateSection(selectedSection.id, () => next)}
             />
           ) : (
@@ -716,12 +926,14 @@ function SectionEditor({
   fallbackLocale,
   branding,
   onChange,
+  onUploadingChange,
 }: {
   section: BuilderSection;
   locale: string;
   fallbackLocale: string;
   branding: BuilderHomepageBranding;
   onChange: (section: BuilderSection) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const definition = getBuilderComponentDefinition(section.type);
   const setVisible = (visible: boolean) => onChange({ ...section, visible } as BuilderSection);
@@ -799,6 +1011,13 @@ function SectionEditor({
           <TextField label="Subtitle" multiline value={localized(props.subtitle, locale, fallbackLocale)} onChange={(value) => patch({ subtitle: withLocale(props.subtitle, locale, value) })} />
           <TextField label="Primary button" value={localized(props.primaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ primaryActionLabel: withLocale(props.primaryActionLabel, locale, value) })} />
           <TextField label="Secondary button" value={localized(props.secondaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ secondaryActionLabel: withLocale(props.secondaryActionLabel, locale, value) })} />
+          <HeroNotebookNoteEditor
+            note={props.notebookNote}
+            locale={locale}
+            fallbackLocale={fallbackLocale}
+            onUploadingChange={onUploadingChange}
+            onChange={(notebookNote) => patch({ notebookNote })}
+          />
           <details className="rounded-xl border border-[#55766F]/12 bg-white/60 p-3">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">Accessibility</summary>
             <div className="mt-3"><TextField label="Hero image alt text" value={localized(props.mediaAlt, locale, fallbackLocale)} onChange={(value) => patch({ mediaAlt: withLocale(props.mediaAlt, locale, value) })} /></div>
