@@ -594,6 +594,11 @@ export function CustomerPurchaseHistory({
                                     ? (language === 'th' ? location.name_th || location.name_en : location.name_en)
                                     : null
                                 }
+                                pickupLocationNames={location ? {
+                                  en: location.name_en,
+                                  th: location.name_th || location.name_en,
+                                  zh: location.name_en,
+                                } : undefined}
                                 className="w-full"
                               />
                             )}
