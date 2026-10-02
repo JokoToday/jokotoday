@@ -36,7 +36,7 @@ import {
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
-import { uploadImage } from '../../../lib/storage';
+import { uploadGalleryImage } from '../../../lib/mediaService';
 
 interface JokoHomepageEditorProps {
   document: BuilderDocument;
@@ -254,36 +254,14 @@ function HeroNotebookNoteEditor({
   const handleImageUpload = async (file: File | undefined) => {
     if (!file) return;
 
-    const extensionByType: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'image/webp': 'webp',
-    };
-    const extension = extensionByType[file.type];
-    if (!extension) {
-      setUploadError('Use a PNG, JPEG or WebP image.');
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      setUploadError('Notebook images must be 8 MB or smaller.');
-      return;
-    }
-
-    const baseName = file.name
-      .replace(/\.[^.]+$/, '')
-      .replace(/[^a-z0-9_-]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 48) || 'notebook-note';
-    const path = `homepage/hero-notebook/${Date.now()}-${baseName}.${extension}`;
-
     setUploadError('');
     setBusy(true);
     try {
-      const result = await uploadImage(file, path);
-      if (result.error || !result.url) {
-        throw result.error ?? new Error('Upload did not return an image URL.');
-      }
-      patch({ imageUrl: result.url });
+      const result = await uploadGalleryImage({
+        file,
+        gallerySlot: 'hero-notebook',
+      });
+      patch({ imageUrl: result.publicUrl });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Could not upload notebook image.');
     } finally {
