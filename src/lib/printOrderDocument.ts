@@ -492,4 +492,79 @@ export function printOrderDocument({
     .thermal-item > strong { white-space: nowrap; }
     .summary { margin-top: ${isThermal ? '2mm' : '12px'}; padding-top: ${isThermal ? '1mm' : '8px'}; border-top: 1px solid #222; }
     .summary-row { display: flex; justify-content: space-between; gap: 4mm; padding: ${isThermal ? '.8mm 0' : '4px 0'}; font-size: ${isThermal ? '10px' : '12px'}; }
-    .summary-row.total { padding-top: ${isThermal ? '1.5mm' : '7px'}; font-size: 
+    .summary-row.total { padding-top: ${isThermal ? '1.5mm' : '7px'}; font-size: ${isThermal ? '13px' : '16px'}; font-weight: 800; }
+    .discount { color: #7a4900; }
+    .payment-box { display: flex; justify-content: space-between; gap: 3mm; margin-top: ${isThermal ? '2mm' : '14px'}; padding: ${isThermal ? '2mm 0' : '10px 12px'}; border-top: ${isThermal ? '1px solid #222' : '0'}; border-bottom: ${isThermal ? '1px solid #222' : '0'}; background: ${isThermal ? '#fff' : '#f5f5f5'}; font-size: ${isThermal ? '10px' : '12px'}; }
+    .payment-box span { text-align: right; font-weight: 800; }
+    .disclaimer { margin-top: 12px; color: #666; text-align: center; font-size: 9px; }
+    .footer { margin-top: ${isThermal ? '4mm' : '22px'}; text-align: center; font-size: ${isThermal ? '9px' : '11px'}; color: #666; }
+    .prep-focus { padding: 2mm 0; border-top: 2px solid #111; border-bottom: 2px solid #111; text-align: center; }
+    .prep-customer { overflow-wrap: anywhere; font-size: ${nextProfile === '58mm' ? '20px' : '24px'}; font-weight: 900; line-height: 1.05; }
+    .prep-pickup { margin-top: 1.5mm; font-size: ${nextProfile === '58mm' ? '12px' : '14px'}; font-weight: 800; }
+    .prep-location { margin-top: .7mm; font-size: ${nextProfile === '58mm' ? '10px' : '11px'}; }
+    .prep-order { margin-top: 1.5mm; font-family: monospace; font-size: ${nextProfile === '58mm' ? '10px' : '11px'}; }
+    .prep-items { border-top: 1px solid #111; }
+    .prep-item { display: grid; grid-template-columns: auto 1fr; gap: 2mm; padding: 2mm 0; border-bottom: 1px dotted #888; font-size: ${nextProfile === '58mm' ? '11px' : '12.5px'}; line-height: 1.25; }
+    .prep-item span { overflow-wrap: anywhere; }
+    .prep-count { display: flex; justify-content: space-between; gap: 3mm; margin-top: 2mm; padding-top: 2mm; border-top: 2px solid #111; font-size: ${nextProfile === '58mm' ? '11px' : '12px'}; }
+    .prep-count strong { font-size: ${nextProfile === '58mm' ? '16px' : '18px'}; }
+    .prep-payment { margin-top: 2mm; padding: 2mm 1mm; border: 1px solid #111; text-align: center; font-size: ${nextProfile === '58mm' ? '11px' : '13px'}; font-weight: 900; }
+    .prep-ready { margin-top: 4mm; padding-top: 2mm; border-top: 1px dashed #777; text-align: center; font-size: ${nextProfile === '58mm' ? '9px' : '10px'}; font-weight: 800; letter-spacing: .08em; }
+    @media print {
+      @page { size: ${pageSize}; margin: ${isThermal ? '3mm' : '12mm'}; }
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .sheet { width: ${isThermal ? thermalWidth : '100%'}; max-width: none; margin: 0; padding: 0; }
+      .brand-logo { filter: grayscale(1) contrast(1.9); }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <span class="toolbar-label">${escapeHtml(labels.language)}:</span>
+    ${languageButtons}
+    <span class="toolbar-label">${escapeHtml(labels.profile)}:</span>
+    ${profileButtons}
+    <button id="order-document-print" type="button" class="print-button">${escapeHtml(labels.print)}</button>
+  </div>
+  <main class="sheet">
+    <div class="brand">
+      <img
+        class="brand-logo"
+        src="${escapeHtml(receiptLogoUrl)}"
+        alt="JOKO TODAY"
+        onerror="this.style.display='none';document.getElementById('order-document-brand-text').style.display='block';"
+      />
+      <h1 id="order-document-brand-text" class="brand-text-fallback">JOKO TODAY</h1>
+    </div>
+    <h2>${escapeHtml(documentTitle)}</h2>
+    ${isPrep ? prepBody : normalBody}
+  </main>
+</body>
+</html>`);
+    printWindow.document.close();
+
+    printWindow.document.querySelectorAll<HTMLButtonElement>('[data-language]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const next = button.dataset.language as PrintOrderLanguage | undefined;
+        if (next) render(next, nextProfile);
+      });
+    });
+    printWindow.document.querySelectorAll<HTMLButtonElement>('[data-profile]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const next = button.dataset.profile as PrintOrderProfile | undefined;
+        if (!next) return;
+        rememberProfile(next);
+        render(nextLanguage, next);
+      });
+    });
+    printWindow.document.getElementById('order-document-print')?.addEventListener('click', () => {
+      rememberProfile(nextProfile);
+      printWindow.focus();
+      printWindow.print();
+    });
+  };
+
+  render(language, initialProfile);
+  printWindow.focus();
+}
