@@ -87,6 +87,25 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
           th: 'JOKO Bakery',
           zh: 'JOKO Bakery',
         },
+        notebookNote: {
+          enabled: false,
+          title: {
+            en: 'Meet Joe & Phuttan',
+            th: 'รู้จัก Joe และ Phuttan',
+            zh: '认识 Joe 和 Phuttan',
+          },
+          body: {
+            en: 'A little note from the bakery.',
+            th: 'โน้ตเล็ก ๆ จากเบเกอรี่',
+            zh: '来自烘焙坊的一张小纸条。',
+          },
+          imageAlt: {
+            en: 'Joe and Phuttan',
+            th: 'Joe และ Phuttan',
+            zh: 'Joe 和 Phuttan',
+          },
+          linkUrl: '/about',
+        },
       },
       design: {
         width: 'wide',
