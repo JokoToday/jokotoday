@@ -18,6 +18,7 @@ import {
 } from '../../../platform/builder';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
+import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
@@ -104,6 +105,22 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
+  const heroNotebookNote = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.props.notebookNote
+    : undefined;
+  const heroNotebookTitle = heroNotebookNote?.title
+    ? localize(heroNotebookNote.title, lang, 'en')
+    : '';
+  const heroNotebookBody = heroNotebookNote?.body
+    ? localize(heroNotebookNote.body, lang, 'en')
+    : '';
+  const heroNotebookImageAlt = heroNotebookNote?.imageAlt
+    ? localize(heroNotebookNote.imageAlt, lang, 'en')
+    : '';
+  const showHeroNotebookNote = Boolean(
+    heroNotebookNote?.enabled
+    && (heroNotebookTitle || heroNotebookBody || heroNotebookNote.imageUrl),
+  );
   const publishedTopLiked = publishedHomepage?.sections.find(
     (section): section is HomeTopLikedSection => section.type === 'home.top-liked.v1',
   );
@@ -135,6 +152,21 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
       <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
+            {showHeroNotebookNote && (
+              <div
+                className="absolute top-[6.5rem] z-30 hidden w-[15.5rem] xl:block 2xl:w-[16.5rem]"
+                style={{ left: 'clamp(28rem, 39%, 36rem)' }}
+              >
+                <JokoHeroNotebookNote
+                  title={heroNotebookTitle}
+                  body={heroNotebookBody}
+                  imageUrl={heroNotebookNote?.imageUrl}
+                  imageAlt={heroNotebookImageAlt}
+                  href={heroNotebookNote?.linkUrl}
+                />
+              </div>
+            )}
+
             <div
               className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
               style={{ left: '22%' }}
@@ -216,6 +248,18 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     {heroSecondaryLabel}
                   </button>
                 </div>
+
+                {showHeroNotebookNote && (
+                  <div className="mt-7 max-w-[19rem] xl:hidden">
+                    <JokoHeroNotebookNote
+                      title={heroNotebookTitle}
+                      body={heroNotebookBody}
+                      imageUrl={heroNotebookNote?.imageUrl}
+                      imageAlt={heroNotebookImageAlt}
+                      href={heroNotebookNote?.linkUrl}
+                    />
+                  </div>
+                )}
 
                 <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
                   <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
