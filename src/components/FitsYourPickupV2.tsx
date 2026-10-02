@@ -167,7 +167,7 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
   );
 
   return (
-    <div className={`space-y-3 rounded-[1.5rem] border p-4 ${isCheckout ? 'border-[#55766F]/14 bg-[#CFE3DF]/34' : 'border-emerald-200 bg-emerald-50/70'}`}>
+    <div className={`space-y-3 rounded-[1.5rem] border p-4 ${isCheckout ? 'border-[#55766F]/[.14] bg-[#CFE3DF]/[.34]' : 'border-emerald-200 bg-emerald-50/70'}`}>
       <div className="flex items-start gap-2.5">
         {isCheckout
           ? <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
@@ -193,7 +193,7 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
           return (
             <div
               key={product.id}
-              className={`flex items-center gap-3 rounded-xl border bg-white/72 p-2.5 ${isCheckout ? 'border-[#55766F]/12' : 'border-emerald-100'}`}
+              className={`flex items-center gap-3 rounded-xl border bg-white/[.72] p-2.5 ${isCheckout ? 'border-[#55766F]/[.12]' : 'border-emerald-100'}`}
             >
               <button
                 type="button"

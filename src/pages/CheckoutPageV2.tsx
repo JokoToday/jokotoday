@@ -371,7 +371,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     if (cancelled) {
       return (
         <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
             <CheckCircle className="mx-auto mb-6 h-12 w-12 text-[#55766F]" />
             <p className="mb-8 text-lg text-[#303532]/75">{t.confirmation.cancelSuccess}</p>
             <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">
@@ -383,9 +383,10 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     }
 
     return (
-      <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
-        <div className="w-full max-w-lg overflow-hidden rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/96 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-          <div className="border-b border-[#55766F]/12 bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
+      <>
+        <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-lg overflow-hidden rounded-[2.25rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/[.96] shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <div className="border-b border-[#55766F]/[.12] bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/70 text-[#3F665E]">
               <CheckCircle className="h-9 w-9" />
             </div>
@@ -422,7 +423,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               )}
             </div>
 
-            <div className="space-y-3 border-t border-[#55766F]/12 pt-4">
+            <div className="space-y-3 border-t border-[#55766F]/[.12] pt-4">
               {completedItems.map((item) => (
                 <div key={`${item.product_id}-${getItemName(item)}`} className="flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
@@ -433,20 +434,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   <span className="text-sm font-semibold text-[#303532]">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>
                 </div>
               ))}
-              <div className="flex justify-between border-t border-[#55766F]/16 pt-3 font-bold text-[#292D2B]">
+              <div className="flex justify-between border-t border-[#55766F]/[.16] pt-3 font-bold text-[#292D2B]">
                 <span>{t.confirmation.total}</span>
                 <span className="text-[#C76624]">฿{completedTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {completedLoyaltyPoints > 0 && (
-              <div className="flex justify-between rounded-xl border border-[#55766F]/14 bg-[#CFE3DF]/45 px-4 py-3">
+              <div className="flex justify-between rounded-xl border border-[#55766F]/[.14] bg-[#CFE3DF]/45 px-4 py-3">
                 <span className="text-sm font-semibold text-[#304B45]">{language === 'th' ? 'แต้มที่ได้รับ' : language === 'zh' ? '本单获得积分' : 'Points earned'}</span>
                 <span className="font-bold text-[#304B45]">+{completedLoyaltyPoints}</span>
               </div>
             )}
 
-            <p className="text-center text-xs leading-5 text-[#303532]/58">{t.confirmation.paymentReminder}</p>
+            <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
             <OrderPrintButtonById
               orderId={orderId}
               language={language}
@@ -456,6 +457,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.confirmation.backToHome}</button>
             <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
           </div>
+        </div>
         </div>
 
         {showCancelModal && (
@@ -473,35 +475,39 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   }
 
   if (!user) {
     return (
-      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#CFE3DF]/70 text-[#3F665E]">
-            <Sparkles className="h-6 w-6" />
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#CFE3DF]/70 text-[#3F665E]">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h2 className="mb-4 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.title}</h2>
+            <p className="mb-8 text-[#303532]/[.68]">{t.checkout.authRequired}</p>
+            <button onClick={() => setIsAuthModalOpen(true)} className="mb-3 w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.checkout.logIn}</button>
+            <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/[.18] bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
           </div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
-          <h2 className="mb-4 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.title}</h2>
-          <p className="mb-8 text-[#303532]/68">{t.checkout.authRequired}</p>
-          <button onClick={() => setIsAuthModalOpen(true)} className="mb-3 w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.checkout.logIn}</button>
-          <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/18 bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
-          <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
         </div>
-      </div>
+        <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
+      </>
     );
   }
 
   if (user && (!userProfile || !userProfile.profile_completed) && !profileLoading) {
     return (
-      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
-          <h2 className="mb-3 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
-          <p className="mb-6 text-[#303532]/68">{t.profile.completeProfileMessage}</p>
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h2 className="mb-3 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
+            <p className="mb-6 text-[#303532]/[.68]">{t.profile.completeProfileMessage}</p>
+          </div>
         </div>
         <ProfileCompletionModal
           isOpen={isProfileModalOpen}
@@ -510,14 +516,14 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
           showCelebration={showCelebrationOnProfile}
           onNavigate={onNavigate}
         />
-      </div>
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
       <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
           <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.cart.empty}</h2>
           <button onClick={() => onNavigate('products')} className="rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.nav.products}</button>
         </div>
@@ -559,7 +565,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         <button
           type="button"
           onClick={backToCart}
-          className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
+          className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/[.78] px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
         >
           <ArrowLeft className="w-4 h-4" />
           {backToCartLabel}
@@ -570,7 +576,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         </div>
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="space-y-6">
-            <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+            <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
               <h2 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.orderSummary}</h2>
               <div className="space-y-3">
                 {items.map((item) => (
@@ -588,23 +594,23 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 </div>
               </div>
             </div>
-            <div className="rounded-[1.5rem] border border-[#55766F]/14 bg-[#CFE3DF]/42 p-6">
+            <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.42] p-6">
               <h3 className="mb-2 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
-              <p className="text-sm leading-6 text-[#303532]/72">{t.checkout.paymentInfoText}</p>
+              <p className="text-sm leading-6 text-[#303532]/[.72]">{t.checkout.paymentInfoText}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)] sm:p-7">
-            <div className="rounded-xl border border-[#55766F]/14 bg-[#CFE3DF]/45 p-4">
+          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)] sm:p-7">
+            <div className="rounded-xl border border-[#55766F]/[.14] bg-[#CFE3DF]/45 p-4">
               <p className="text-sm text-[#304B45]">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user.email || '')}</p>
             </div>
 
             {!preferredSelectionResolved ? (
-              <div className="rounded-[1.5rem] border border-[#55766F]/14 bg-[#CFE3DF]/28 py-10 text-center text-sm text-[#303532]/55">
+              <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.28] py-10 text-center text-sm text-[#303532]/55">
                 {language === 'th' ? 'กำลังตรวจสอบวันที่รับสินค้า…' : language === 'zh' ? '正在确认取货安排…' : 'Confirming your pickup selection…'}
               </div>
             ) : selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor ? (
-              <div className="rounded-[1.5rem] border border-[#55766F]/16 bg-[#CFE3DF]/34 p-5 sm:p-6">
+              <div className="rounded-[1.5rem] border border-[#55766F]/[.16] bg-[#CFE3DF]/[.34] p-5 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
                     <h2 className="font-semibold text-gray-900">{confirmTitle}</h2>
@@ -613,21 +619,21 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   <button
                     type="button"
                     onClick={beginPickupEdit}
-                    className="shrink-0 rounded-xl border border-[#55766F]/22 bg-white/70 px-3 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#CFE3DF]/40"
+                    className="shrink-0 rounded-xl border border-[#55766F]/[.22] bg-white/70 px-3 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#CFE3DF]/40"
                   >
                     {changeLabel}
                   </button>
                 </div>
 
                 <div className="mt-5 grid sm:grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-[#55766F]/12 bg-white/68 p-4">
+                  <div className="rounded-xl border border-[#55766F]/[.12] bg-white/[.68] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupDay}</p>
                     <p className="flex items-start gap-2 font-semibold text-gray-900">
                       <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
                       {formatStoredPickupDate(selection.pickupDate, language)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-[#55766F]/12 bg-white/68 p-4">
+                  <div className="rounded-xl border border-[#55766F]/[.12] bg-white/[.68] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupLocation}</p>
                     {selectedCheckoutLocation.maps_url ? (
                       <a
@@ -680,7 +686,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             <div>
-              <label htmlFor="pickup-notes" className="mb-2 block text-sm font-medium text-[#303532]/72">
+              <label htmlFor="pickup-notes" className="mb-2 block text-sm font-medium text-[#303532]/[.72]">
                 {language === 'th' ? 'หมายเหตุ (ไม่บังคับ)' : language === 'zh' ? '备注（可选）' : 'Notes (optional)'}
               </label>
               <textarea
@@ -689,7 +695,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
                 maxLength={1000}
-                className="w-full resize-none rounded-xl border border-[#55766F]/20 bg-white/72 px-3 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
+                className="w-full resize-none rounded-xl border border-[#55766F]/20 bg-white/[.72] px-3 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/[.16]"
               />
             </div>
 
@@ -706,7 +712,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             </button>
 
             {(!selection || showPickupEditor) && (
-              <div className="rounded-xl border border-[#C76624]/22 bg-[#FFF4DF] px-4 py-3 text-center text-sm font-semibold text-[#8D451C]">
+              <div className="rounded-xl border border-[#C76624]/[.22] bg-[#FFF4DF] px-4 py-3 text-center text-sm font-semibold text-[#8D451C]">
                 {pickupActionRequired}
               </div>
             )}

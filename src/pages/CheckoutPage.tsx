@@ -276,7 +276,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     if (cancelled) {
       return (
         <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-12 w-12 text-gray-400" />
             </div>
@@ -290,10 +290,11 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     }
 
     return (
-      <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
+      <>
+        <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
         <div className="w-full max-w-lg">
-          <div className="overflow-hidden rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/96 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-            <div className="border-b border-[#55766F]/12 bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
+          <div className="overflow-hidden rounded-[2.25rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/[.96] shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <div className="border-b border-[#55766F]/[.12] bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-9 w-9 text-green-600" />
               </div>
@@ -308,7 +309,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                   <p className="mb-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-[#55766F]">{t.confirmation.orderNumber}</p>
                   <p className="font-mono text-sm font-bold text-gray-900">{orderNumber || orderId}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#55766F]/16 bg-[#CFE3DF]/45 px-3 py-1.5 text-xs font-semibold text-[#3F665E]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#55766F]/[.16] bg-[#CFE3DF]/45 px-3 py-1.5 text-xs font-semibold text-[#3F665E]">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#55766F]" />
                   {t.confirmation.pending}
                 </span>
@@ -415,6 +416,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             </div>
           </div>
         </div>
+        </div>
 
         {showCancelModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
@@ -431,40 +433,44 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   }
 
   if (!user) {
     return (
-      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md text-center">
-          <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#CFE3DF]/65"><Sparkles className="h-8 w-8 text-[#C76624]" /></div>
-            <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.nav.products}</h2>
-            <p className="text-gray-600 mb-8">{t.checkout.authRequired}</p>
-            <div className="space-y-3 mb-6">
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120]"
-              >
-                {t.checkout.logIn}
-              </button>
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md text-center">
+            <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#CFE3DF]/65"><Sparkles className="h-8 w-8 text-[#C76624]" /></div>
+              <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.nav.products}</h2>
+              <p className="text-gray-600 mb-8">{t.checkout.authRequired}</p>
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120]"
+                >
+                  {t.checkout.logIn}
+                </button>
+              </div>
+              <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/[.18] bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
             </div>
-            <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/18 bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
           </div>
         </div>
         <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
-      </div>
+      </>
     );
   }
 
   if (user && (!userProfile || !userProfile.profile_completed) && !profileLoading) {
     return (
-      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
-          <h2 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
-          <p className="mb-6 text-[#303532]/68">{t.profile.completeProfileMessage}</p>
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <h2 className="mb-3 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
+            <p className="mb-6 text-[#303532]/[.68]">{t.profile.completeProfileMessage}</p>
+          </div>
         </div>
         <ProfileCompletionModal
           isOpen={isProfileModalOpen}
@@ -473,14 +479,14 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
           showCelebration={showCelebrationOnProfile}
           onNavigate={onNavigate}
         />
-      </div>
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
       <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
           <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.cart.empty}</h2>
           <button onClick={() => onNavigate('products')} className="rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.nav.products}</button>
         </div>
@@ -498,7 +504,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+            <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
               <h2 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.orderSummary}</h2>
               <div className="space-y-3">
                 {items.map((item) => {
@@ -517,14 +523,14 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[#55766F]/14 bg-[#CFE3DF]/42 p-6">
+            <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.42] p-6">
               <h3 className="mb-3 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
-              <p className="text-sm leading-6 text-[#303532]/72">{t.checkout.paymentInfoText}</p>
+              <p className="text-sm leading-6 text-[#303532]/[.72]">{t.checkout.paymentInfoText}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
-            <div className="rounded-xl border border-[#55766F]/14 bg-[#CFE3DF]/45 p-4">
+          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+            <div className="rounded-xl border border-[#55766F]/[.14] bg-[#CFE3DF]/45 p-4">
               <p className="text-sm text-[#304B45]">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user?.email || '')}</p>
             </div>
 
@@ -549,7 +555,7 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
                         isSelected
                           ? 'border-[#55766F] bg-[#CFE3DF]/55'
                           : isSelectable
-                            ? 'cursor-pointer border-[#55766F]/16 bg-white/65 hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/30'
+                            ? 'cursor-pointer border-[#55766F]/[.16] bg-white/65 hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/30'
                             : 'cursor-not-allowed border-[#55766F]/10 bg-white/40 opacity-50'
                       }`}
                     >

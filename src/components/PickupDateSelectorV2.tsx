@@ -318,22 +318,22 @@ export function PickupDateSelectorV2({
 
   return (
     <div className="mx-auto mb-8 max-w-3xl">
-      <div className="rounded-[1.75rem] border border-[#55766F]/16 bg-[#CFE3DF]/34 p-4 sm:p-5">
+      <div className="rounded-[1.75rem] border border-[#55766F]/[.16] bg-[#CFE3DF]/[.34] p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#55766F]/14 bg-white/70">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#55766F]/[.14] bg-white/70">
               <CalendarDays className="h-5 w-5 text-[#3F665E]" />
             </div>
             <div>
               <h2 className="font-semibold text-[#292D2B]">{title}</h2>
-              <p className="mt-1 text-sm leading-6 text-[#303532]/68">{helper}</p>
+              <p className="mt-1 text-sm leading-6 text-[#303532]/[.68]">{helper}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => void loadAvailability()}
             disabled={loading || productIds.length === 0}
-            className="rounded-lg border border-[#55766F]/16 bg-white/70 p-2 text-[#3F665E] transition hover:bg-[#CFE3DF]/45 disabled:opacity-40"
+            className="rounded-lg border border-[#55766F]/[.16] bg-white/70 p-2 text-[#3F665E] transition hover:bg-[#CFE3DF]/45 disabled:opacity-40"
             aria-label="Refresh pickup availability"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -345,15 +345,15 @@ export function PickupDateSelectorV2({
         )}
 
         {loading ? (
-          <div className="rounded-xl bg-white/62 py-10 text-center text-sm text-[#303532]/55">
+          <div className="rounded-xl bg-white/[.62] py-10 text-center text-sm text-[#303532]/55">
             {language === 'th' ? 'กำลังโหลดวันรับสินค้า…' : language === 'zh' ? '正在加载取货日期…' : 'Loading pickup dates…'}
           </div>
         ) : productIds.length === 0 ? (
-          <div className="rounded-xl bg-white/62 py-10 text-center text-sm text-[#303532]/55">
+          <div className="rounded-xl bg-white/[.62] py-10 text-center text-sm text-[#303532]/55">
             {language === 'th' ? 'เพิ่มสินค้าในตะกร้าก่อนเลือกวันรับสินค้า' : language === 'zh' ? '请先将商品加入购物车。' : 'Add products to your cart before choosing a pickup date.'}
           </div>
         ) : calendarDates.length === 0 ? (
-          <div className="rounded-xl border border-[#55766F]/14 bg-white/70 px-4 py-5 text-sm text-[#303532]/65">
+          <div className="rounded-xl border border-[#55766F]/[.14] bg-white/70 px-4 py-5 text-sm text-[#303532]/65">
             {language === 'th' ? 'ยังไม่มีวันรับสินค้าที่เปิดให้สั่ง' : language === 'zh' ? '目前没有可订购的取货日期。' : 'No orderable pickup dates are currently available.'}
           </div>
         ) : (
@@ -367,7 +367,7 @@ export function PickupDateSelectorV2({
                 <button
                   type="button"
                   onClick={() => changeLocationFilter('all')}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/18 bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/[.18] bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
                 >
                   {allLocationsLabel}
                 </button>
@@ -376,7 +376,7 @@ export function PickupDateSelectorV2({
                     key={location.id}
                     type="button"
                     onClick={() => changeLocationFilter(location.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/18 bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/[.18] bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
                   >
                     {localizedLocationName(location, language)}
                   </button>
@@ -384,7 +384,7 @@ export function PickupDateSelectorV2({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-[#55766F]/14 bg-white/75">
+            <div className="overflow-hidden rounded-xl border border-[#55766F]/[.14] bg-white/75">
               <div className="flex items-center justify-between border-b border-[#55766F]/10 px-3 py-2">
                 <button
                   type="button"
@@ -441,7 +441,7 @@ export function PickupDateSelectorV2({
                             : pendingInvalid
                               ? 'bg-orange-200 border-orange-500 text-orange-950 ring-2 ring-orange-200'
                               : selectableDate
-                                ? 'border-[#55766F]/18 bg-[#F5FBF9] text-[#292D2B] hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/45'
+                                ? 'border-[#55766F]/[.18] bg-[#F5FBF9] text-[#292D2B] hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/45'
                                 : calendarDate
                                   ? 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-300'
                                   : 'bg-white border-transparent text-gray-300 cursor-default'
@@ -469,7 +469,7 @@ export function PickupDateSelectorV2({
             )}
 
             {activeCalendarDate && (
-              <div className="mt-4 rounded-[1.5rem] border border-[#55766F]/14 bg-white/72 p-4 sm:p-5">
+              <div className="mt-4 rounded-[1.5rem] border border-[#55766F]/[.14] bg-white/[.72] p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">
@@ -634,7 +634,7 @@ export function PickupDateSelectorV2({
                       return (
                         <div
                           key={location.id}
-                          className={`overflow-hidden rounded-xl border transition-all ${isLocationSelected ? 'border-[#55766F]/55 bg-[#CFE3DF]/42 ring-2 ring-[#CFE3DF]/70' : 'border-[#55766F]/12 bg-white/70'}`}
+                          className={`overflow-hidden rounded-xl border transition-all ${isLocationSelected ? 'border-[#55766F]/55 bg-[#CFE3DF]/[.42] ring-2 ring-[#CFE3DF]/70' : 'border-[#55766F]/[.12] bg-white/70'}`}
                         >
                           <button
                             type="button"
@@ -655,7 +655,7 @@ export function PickupDateSelectorV2({
                               )}
                             </div>
                             {canSelectLocation && (
-                              <p className={`mt-3 text-xs font-semibold ${isLocationSelected ? 'text-[#3F665E]' : 'text-[#303532]/52'}`}>
+                              <p className={`mt-3 text-xs font-semibold ${isLocationSelected ? 'text-[#3F665E]' : 'text-[#303532]/[.52]'}`}>
                                 {isLocationSelected
                                   ? (language === 'th' ? 'เลือกสถานที่นี้แล้ว' : language === 'zh' ? '已选择此地点' : 'Location selected')
                                   : (language === 'th' ? 'เลือกสถานที่นี้' : language === 'zh' ? '选择此地点' : 'Select this location')}
@@ -679,7 +679,7 @@ export function PickupDateSelectorV2({
                   </div>
 
                   {activeCommonDate && (
-                    <div className="mt-5 rounded-[1.25rem] border border-[#55766F]/18 bg-[#CFE3DF]/34 p-3 sm:p-4">
+                    <div className="mt-5 rounded-[1.25rem] border border-[#55766F]/[.18] bg-[#CFE3DF]/[.34] p-3 sm:p-4">
                       {pendingLocation ? (
                         <p className="mb-3 text-center text-sm font-semibold text-[#304B45]">
                           {new Intl.DateTimeFormat(locale, {
