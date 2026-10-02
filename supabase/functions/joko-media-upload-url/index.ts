@@ -11,13 +11,14 @@ const corsHeaders = {
 
 const PRODUCT_MAX_BYTES = 8 * 1024 * 1024;
 const BRAND_LOGO_MAX_BYTES = 1024 * 1024;
+const GALLERY_MAX_BYTES = 8 * 1024 * 1024;
 const CONTENT_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "image/png": "png",
 };
 
-type AssetKind = "product" | "brand";
+type AssetKind = "product" | "brand" | "gallery";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -38,7 +39,11 @@ function resolveObjectKey(
   timestamp: string,
   nonce: string,
 ): { objectKey: string; maxBytes: number; errorLabel: string } | null {
-  const assetKind: AssetKind = body.assetKind === "brand" ? "brand" : "product";
+  const assetKind: AssetKind = body.assetKind === "brand"
+    ? "brand"
+    : body.assetKind === "gallery"
+      ? "gallery"
+      : "product";
 
   if (assetKind === "brand") {
     const brandSlot = typeof body.brandSlot === "string" ? body.brandSlot.trim().toLowerCase() : "";
@@ -47,6 +52,18 @@ function resolveObjectKey(
       objectKey: `brand/site-logo/${timestamp}-${nonce}-logo.${extension}`,
       maxBytes: BRAND_LOGO_MAX_BYTES,
       errorLabel: "Logo files must be 1 MB or smaller",
+    };
+  }
+
+  if (assetKind === "gallery") {
+    const gallerySlot = typeof body.gallerySlot === "string"
+      ? body.gallerySlot.trim().toLowerCase()
+      : "around-joko";
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(gallerySlot)) return null;
+    return {
+      objectKey: `gallery/${gallerySlot}/${timestamp}-${nonce}.${extension}`,
+      maxBytes: GALLERY_MAX_BYTES,
+      errorLabel: "Gallery images must be 8 MB or smaller",
     };
   }
 

@@ -4,7 +4,9 @@ import {
   CalendarDays,
   ExternalLink,
   Gift,
+  Images,
   LayoutDashboard,
+  MessageSquareQuote,
   Monitor,
   PackageCheck,
   Palette,
@@ -18,6 +20,8 @@ import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CuriosityManagement } from './CuriosityManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
+import { GalleryManagement } from './GalleryManagement';
+import { WhatPeopleSayManagement } from './WhatPeopleSayManagement';
 import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
@@ -35,6 +39,8 @@ interface AdminWorkspaceProps {
 type WorkspaceTab =
   | 'cms'
   | 'homepage'
+  | 'gallery'
+  | 'what-people-say'
   | 'curiosities'
   | 'notebook-content'
   | 'customer-experience'
@@ -48,6 +54,8 @@ type WorkspaceTab =
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/homepage')) return 'homepage';
+  if (path.startsWith('/admin/gallery')) return 'gallery';
+  if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
   if (path.startsWith('/admin/curiosities')) return 'curiosities';
   if (path.startsWith('/admin/notebook')) return 'notebook-content';
   if (path.startsWith('/admin/customer-experience')) return 'customer-experience';
@@ -63,6 +71,8 @@ function workspaceTabFromLocation(): WorkspaceTab {
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'homepage': return '/admin/homepage';
+    case 'gallery': return '/admin/gallery';
+    case 'what-people-say': return '/admin/what-people-say';
     case 'curiosities': return '/admin/curiosities';
     case 'notebook-content': return '/admin/notebook';
     case 'customer-experience': return '/admin/customer-experience';
@@ -141,6 +151,14 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('gallery')} className={tabClass('gallery')}>
+                  <Images className="h-4 w-4" />
+                  Gallery
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('what-people-say')} className={tabClass('what-people-say')}>
+                  <MessageSquareQuote className="h-4 w-4" />
+                  What People Say
+                </button>
                 <button type="button" onClick={() => selectWorkspaceTab('customer-experience')} className={tabClass('customer-experience')}>
                   <Users className="h-4 w-4" />
                   Customer Experience
@@ -198,6 +216,26 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
           <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
             <HomepageBuilderAdmin />
           </Suspense>
+        )}
+
+        {activeTab === 'gallery' && (
+          <AdminSection
+            eyebrow="About JOKO"
+            title="Gallery"
+            description="Curate the real photos and videos used on the Gallery page and select a small number for the homepage. This content is managed independently from the Homepage Builder."
+          >
+            <GalleryManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'what-people-say' && (
+          <AdminSection
+            eyebrow="Social proof"
+            title="What People Say"
+            description="Curate real Google Maps reviews, TikTok, RedNote, YouTube and other third-party mentions. Preserve original source URLs and choose which items appear on the homepage."
+          >
+            <WhatPeopleSayManagement />
+          </AdminSection>
         )}
 
         {activeTab === 'curiosities' && (

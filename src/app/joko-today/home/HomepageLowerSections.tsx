@@ -6,11 +6,13 @@ import {
   Croissant,
   MapPin,
   PackageCheck,
+  Play,
+  MessageSquareQuote,
+  Star,
   ShoppingBasket,
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useLanguage } from '../../../context/LanguageContext';
 import { getPickupDays, type PickupDay } from '../../../lib/availabilityService';
 import {
   getPickupLocations,
@@ -19,6 +21,13 @@ import {
   type CMSProduct,
 } from '../../../lib/cmsService';
 import { getPublicImageUrl } from '../../../lib/storage';
+import {
+  getPublishedExternalMentions,
+  getPublishedGalleryItems,
+  localizedGalleryText,
+  type ExternalMention,
+  type GalleryItem,
+} from '../../../lib/aboutMediaService';
 import {
   BuilderRichTextContent,
   localize,
@@ -62,6 +71,24 @@ const copy = {
     beyondTitle: 'Not Bread. Still Good.',
     beyondIntro: 'A small home for carefully selected non-bakery things.',
     beyondEmpty: 'We will only put something here when there is a real JOKO-curated find worth sharing.',
+    aboutTitle: 'About JOKO',
+    aboutIntro: 'A small bakery in Chiang Mai, baking in Mae Rim and selling where our customers are.',
+    aboutBakeryTitle: 'Our Bakery',
+    aboutBakeryText: 'We bake in the peace of our garden in Mae Rim, then bring JOKO closer to town on selected pickup days.',
+    aboutStoryTitle: 'Our Story',
+    aboutStoryText: 'JOKO began with chocolate pralines, one slightly reckless “Yes, we can make croissants,” and a second-hand dough sheeter bought before we knew why we needed it.',
+    aboutMissionTitle: 'What We’re Here to Do',
+    aboutMissionText: 'Make good international-style bakery products accessible enough to enjoy often — not only on special occasions.',
+    readStory: 'Read our story',
+    galleryTitle: 'Around JOKO',
+    galleryIntro: 'A few real moments from the bakery, pickup days and the people around us.',
+    galleryAction: 'See the Gallery',
+    galleryEmpty: 'Add 3–5 published Gallery items in Admin to bring this section to life.',
+    peopleSayTitle: 'What People Say',
+    peopleSayIntro: 'Real reviews, videos and posts from outside JOKO.',
+    peopleSayAction: 'See what people say',
+    peopleSayEmpty: 'Curate a few real Google Maps reviews, TikToks, RedNote posts or other mentions in Admin.',
+    originalPost: 'View original',
     backToTop: 'Back to top',
   },
   th: {
@@ -90,6 +117,24 @@ const copy = {
     beyondTitle: 'ไม่ใช่ขนมปัง แต่ก็ดี',
     beyondIntro: 'พื้นที่เล็ก ๆ สำหรับสิ่งที่ไม่ใช่เบเกอรี่แต่ JOKO เลือกจริง ๆ',
     beyondEmpty: 'เราจะใส่ของไว้ตรงนี้ก็ต่อเมื่อมีสิ่งที่ JOKO คัดเลือกจริงและควรค่าแก่การแบ่งปัน',
+    aboutTitle: 'เกี่ยวกับ JOKO',
+    aboutIntro: 'ร้านเบเกอรี่เล็ก ๆ ในเชียงใหม่ เราอบที่แม่ริม และไปขายในที่ที่ลูกค้าของเราอยู่',
+    aboutBakeryTitle: 'เบเกอรี่ของเรา',
+    aboutBakeryText: 'เราอบขนมท่ามกลางความสงบในสวนที่แม่ริม แล้วพา JOKO เข้าใกล้เมืองในวันรับสินค้าที่กำหนด',
+    aboutStoryTitle: 'เรื่องราวของเรา',
+    aboutStoryText: 'JOKO เริ่มจากช็อกโกแลตพราลีน คำตอบ “ได้สิ เราทำครัวซองต์ได้” ที่มั่นใจเกินจริงไปนิด และเครื่องรีดแป้งมือสองที่เราซื้อก่อนจะรู้เสียอีกว่าต้องใช้มันทำอะไร',
+    aboutMissionTitle: 'สิ่งที่เราอยากทำ',
+    aboutMissionText: 'ทำเบเกอรี่สไตล์นานาชาติที่ดี ในราคาที่แวะมากินได้บ่อย ๆ ไม่จำเป็นต้องรอโอกาสพิเศษ',
+    readStory: 'อ่านเรื่องราวของเรา',
+    galleryTitle: 'รอบ ๆ JOKO',
+    galleryIntro: 'ภาพจริงเล็ก ๆ จากเบเกอรี่ วันรับสินค้า และผู้คนรอบตัวเรา',
+    galleryAction: 'ดูแกลเลอรี',
+    galleryEmpty: 'เพิ่มภาพแกลเลอรีที่เผยแพร่แล้ว 3–5 รายการใน Admin เพื่อให้ส่วนนี้มีชีวิตขึ้นมา',
+    peopleSayTitle: 'คนอื่นพูดถึงเราอย่างไร',
+    peopleSayIntro: 'รีวิว วิดีโอ และโพสต์จริงจากโลกภายนอก JOKO',
+    peopleSayAction: 'ดูสิ่งที่คนอื่นพูด',
+    peopleSayEmpty: 'คัดเลือกรีวิว Google Maps, TikTok, RedNote หรือการพูดถึง JOKO จริง ๆ ใน Admin',
+    originalPost: 'ดูต้นฉบับ',
     backToTop: 'กลับด้านบน',
   },
   zh: {
@@ -118,6 +163,24 @@ const copy = {
     beyondTitle: '不是面包，也很好。',
     beyondIntro: '留给 JOKO 真正精选的非烘焙小物。',
     beyondEmpty: '只有遇到真正值得分享的 JOKO 精选物件，我们才会把它放在这里。',
+    aboutTitle: '关于 JOKO',
+    aboutIntro: '一家位于清迈的小烘焙坊：我们在湄林烘焙，也去到顾客方便取货的地方。',
+    aboutBakeryTitle: '我们的烘焙坊',
+    aboutBakeryText: '我们在湄林花园里的烘焙坊安静地制作，再在指定取货日把 JOKO 带到离大家更近的地方。',
+    aboutStoryTitle: '我们的故事',
+    aboutStoryText: 'JOKO 从巧克力果仁糖开始，也从一句稍微自信过头的“当然会做可颂”开始，再加上一台买来时还不知道为什么需要的二手压面机。',
+    aboutMissionTitle: '我们想做的事',
+    aboutMissionText: '把好的国际风格烘焙做得亲切可享，让它可以经常出现在日常生活里，而不只是特殊日子。',
+    readStory: '阅读我们的故事',
+    galleryTitle: 'JOKO 日常',
+    galleryIntro: '来自烘焙坊、取货日和身边人们的真实片段。',
+    galleryAction: '查看影像集',
+    galleryEmpty: '请在 Admin 中添加 3–5 个已发布并勾选首页展示的影像。',
+    peopleSayTitle: '大家怎么说',
+    peopleSayIntro: '来自 JOKO 之外的真实评价、视频和帖子。',
+    peopleSayAction: '看看大家怎么说',
+    peopleSayEmpty: '请在 Admin 中精选真实的 Google Maps 评价、TikTok、RedNote 或其他提及。',
+    originalPost: '查看原帖',
     backToTop: '返回顶部',
   },
 } as const;
@@ -208,19 +271,28 @@ export function HomepageLowerSections({
     ? localize(publishedTopLiked.props.browseLabel, language, 'en')
     : labels.seeAll;
   const showBaking = publishedTopLiked?.visible ?? true;
-  const { t } = useLanguage();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [externalMentions, setExternalMentions] = useState<ExternalMention[]>([]);
 
   useEffect(() => {
     let active = true;
-    void Promise.all([getProducts(), getPickupLocations(), getPickupDays()])
-      .then(([nextProducts, nextLocations, nextPickupDays]) => {
+    void Promise.all([
+      getProducts(),
+      getPickupLocations(),
+      getPickupDays(),
+      getPublishedGalleryItems(undefined, { homepageOnly: true, limit: 5 }),
+      getPublishedExternalMentions(undefined, { homepageOnly: true, limit: 3 }),
+    ])
+      .then(([nextProducts, nextLocations, nextPickupDays, nextGalleryItems, nextExternalMentions]) => {
         if (!active) return;
         setProducts(nextProducts);
         setLocations(nextLocations);
         setPickupDays(nextPickupDays.filter((day) => day.is_open));
+        setGalleryItems(nextGalleryItems);
+        setExternalMentions(nextExternalMentions);
       })
       .catch((error) => console.error('Homepage bakery data failed to load:', error));
     return () => { active = false; };
@@ -385,14 +457,15 @@ export function HomepageLowerSections({
       <section id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle
-            title={t.about.title}
+            title={labels.aboutTitle}
+            intro={labels.aboutIntro}
             action={(
               <button
                 type="button"
                 onClick={() => onNavigate('our-story')}
                 className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]"
               >
-                {t.about.story}
+                {labels.readStory}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
@@ -401,18 +474,108 @@ export function HomepageLowerSections({
           />
           <div className="grid gap-4 md:grid-cols-3">
             <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{t.about.story}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.storyText}</p>
+              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutBakeryTitle}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutBakeryText}</p>
             </article>
             <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{t.about.mission}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.missionText}</p>
+              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutStoryTitle}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutStoryText}</p>
+              <button type="button" onClick={() => onNavigate('our-story')} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#A44F1D]">
+                {labels.readStory}<ArrowRight className="h-4 w-4" />
+              </button>
             </article>
             <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{t.about.commitment}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{t.about.commitmentText}</p>
+              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutMissionTitle}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutMissionText}</p>
             </article>
           </div>
+        </Container>
+      </section>
+
+      <section id="gallery-preview" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
+        <Container width="wide">
+          <SectionTitle
+            title={labels.galleryTitle}
+            intro={labels.galleryIntro}
+            action={(
+              <button type="button" onClick={() => onNavigate('gallery')} className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]">
+                {labels.galleryAction}<ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+            backToTopLabel={labels.backToTop}
+            onBackToTop={backToTop}
+          />
+          {galleryItems.length ? (
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
+              {galleryItems.map((item, index) => {
+                const text = localizedGalleryText(item, language);
+                const media = item.thumbnail_url || item.media_url;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onNavigate('gallery')}
+                    className={`group relative overflow-hidden rounded-2xl bg-[#E8E1D5] text-left shadow-[0_9px_24px_rgba(48,75,69,.06)] ${index === 0 ? 'col-span-2 aspect-[2/1] lg:col-span-2 lg:row-span-2 lg:aspect-auto' : 'aspect-[4/3]'}`}
+                  >
+                    <img src={media} alt={text.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]" loading="lazy" />
+                    {item.media_type === 'video' && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF9EE]/90 text-[#303532] shadow-md"><Play className="ml-0.5 h-5 w-5" fill="currentColor" /></span>
+                      </span>
+                    )}
+                    {(text.title || text.caption) && (
+                      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/58 to-transparent px-4 pb-3 pt-10 text-sm font-medium text-white">
+                        {text.title || text.caption}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-3xl border border-dashed border-[#55766F]/20 bg-[#F7F1E7]/45 p-8 text-center text-sm text-[#303532]/60">{labels.galleryEmpty}</p>
+          )}
+        </Container>
+      </section>
+
+      <section id="what-people-say-preview" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
+        <Container width="wide">
+          <SectionTitle
+            title={labels.peopleSayTitle}
+            intro={labels.peopleSayIntro}
+            action={(
+              <button type="button" onClick={() => onNavigate('what-people-say')} className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]">
+                {labels.peopleSayAction}<ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+            backToTopLabel={labels.backToTop}
+            onBackToTop={backToTop}
+          />
+          {externalMentions.length ? (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {externalMentions.map((item) => (
+                <a key={item.id} href={item.source_url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/62 transition hover:-translate-y-0.5 hover:shadow-md">
+                  {item.thumbnail_url && (
+                    <div className="relative aspect-video overflow-hidden bg-[#E8E1D5]">
+                      <img src={item.thumbnail_url} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" />
+                      {item.content_type === 'video' && <span className="absolute inset-0 flex items-center justify-center bg-black/10"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF9EE]/90 text-[#303532]"><Play className="ml-0.5 h-5 w-5" fill="currentColor" /></span></span>}
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#55766F]">{item.source_type.replace('_', ' ')}</span>
+                      {item.rating !== null && <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#A44F1D]"><Star className="h-3.5 w-3.5 fill-current" />{item.rating.toFixed(1)}</span>}
+                    </div>
+                    {item.excerpt ? <blockquote className="mt-3 line-clamp-4 text-sm leading-6 text-[#303532]/70">“{item.excerpt}”</blockquote> : <MessageSquareQuote className="mt-4 h-6 w-6 text-[#55766F]/45" />}
+                    {item.author_name && <p className="mt-3 text-sm font-medium text-[#303532]">{item.author_name}</p>}
+                    <span className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-[#A44F1D]">{labels.originalPost}<ArrowRight className="h-3.5 w-3.5" /></span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-3xl border border-dashed border-[#8B765E]/20 bg-white/20 p-8 text-center text-sm text-[#303532]/60">{labels.peopleSayEmpty}</p>
+          )}
         </Container>
       </section>
 
