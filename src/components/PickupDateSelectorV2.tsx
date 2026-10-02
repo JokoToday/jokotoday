@@ -317,23 +317,23 @@ export function PickupDateSelectorV2({
       : 'Select a pickup location above to continue';
 
   return (
-    <div className="max-w-3xl mx-auto mb-8">
-      <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-4 sm:p-5 shadow-sm">
+    <div className="mx-auto mb-8 max-w-3xl">
+      <div className="rounded-[1.75rem] border border-[#55766F]/[.16] bg-[#CFE3DF]/[.34] p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-amber-200 flex items-center justify-center shrink-0">
-              <CalendarDays className="w-5 h-5 text-amber-700" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#55766F]/[.14] bg-white/70">
+              <CalendarDays className="h-5 w-5 text-[#3F665E]" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">{title}</h2>
-              <p className="text-sm text-gray-600 mt-1">{helper}</p>
+              <h2 className="font-semibold text-[#292D2B]">{title}</h2>
+              <p className="mt-1 text-sm leading-6 text-[#303532]/[.68]">{helper}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => void loadAvailability()}
             disabled={loading || productIds.length === 0}
-            className="p-2 rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+            className="rounded-lg border border-[#55766F]/[.16] bg-white/70 p-2 text-[#3F665E] transition hover:bg-[#CFE3DF]/45 disabled:opacity-40"
             aria-label="Refresh pickup availability"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -345,29 +345,29 @@ export function PickupDateSelectorV2({
         )}
 
         {loading ? (
-          <div className="bg-white/70 rounded-xl py-10 text-center text-sm text-gray-500">
+          <div className="rounded-xl bg-white/[.62] py-10 text-center text-sm text-[#303532]/55">
             {language === 'th' ? 'กำลังโหลดวันรับสินค้า…' : language === 'zh' ? '正在加载取货日期…' : 'Loading pickup dates…'}
           </div>
         ) : productIds.length === 0 ? (
-          <div className="bg-white/70 rounded-xl py-10 text-center text-sm text-gray-500">
+          <div className="rounded-xl bg-white/[.62] py-10 text-center text-sm text-[#303532]/55">
             {language === 'th' ? 'เพิ่มสินค้าในตะกร้าก่อนเลือกวันรับสินค้า' : language === 'zh' ? '请先将商品加入购物车。' : 'Add products to your cart before choosing a pickup date.'}
           </div>
         ) : calendarDates.length === 0 ? (
-          <div className="rounded-xl border border-amber-200 bg-white px-4 py-5 text-sm text-gray-600">
+          <div className="rounded-xl border border-[#55766F]/[.14] bg-white/70 px-4 py-5 text-sm text-[#303532]/65">
             {language === 'th' ? 'ยังไม่มีวันรับสินค้าที่เปิดให้สั่ง' : language === 'zh' ? '目前没有可订购的取货日期。' : 'No orderable pickup dates are currently available.'}
           </div>
         ) : (
           <>
             <div className="mb-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-700" />
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#303532]/55">
+                <MapPin className="h-3.5 w-3.5 text-[#3F665E]" />
                 {language === 'th' ? 'เลือกสถานที่' : language === 'zh' ? '选择地点' : 'Choose location'}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => changeLocationFilter('all')}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === 'all' ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/[.18] bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
                 >
                   {allLocationsLabel}
                 </button>
@@ -376,7 +376,7 @@ export function PickupDateSelectorV2({
                     key={location.id}
                     type="button"
                     onClick={() => changeLocationFilter(location.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-white text-gray-700 hover:bg-amber-50'}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${locationFilterId === location.id ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#55766F]/[.18] bg-white/70 text-[#303532] hover:bg-[#CFE3DF]/45'}`}
                   >
                     {localizedLocationName(location, language)}
                   </button>
@@ -384,25 +384,25 @@ export function PickupDateSelectorV2({
               </div>
             </div>
 
-            <div className="bg-white border border-amber-100 rounded-xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-amber-100">
+            <div className="overflow-hidden rounded-xl border border-[#55766F]/[.14] bg-white/75">
+              <div className="flex items-center justify-between border-b border-[#55766F]/10 px-3 py-2">
                 <button
                   type="button"
                   onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex - 1))}
                   disabled={currentMonthIndex <= minMonthIndex}
-                  className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                  className="rounded-lg p-1.5 text-[#3F665E] transition hover:bg-[#CFE3DF]/45 disabled:opacity-25"
                   aria-label="Previous month"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <p className="text-sm font-semibold text-gray-900 capitalize">
+                <p className="text-sm font-semibold capitalize text-[#292D2B]">
                   {new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(visibleMonth)}
                 </p>
                 <button
                   type="button"
                   onClick={() => setVisibleMonth(monthFromIndex(currentMonthIndex + 1))}
                   disabled={currentMonthIndex >= maxMonthIndex}
-                  className="p-1.5 rounded-lg text-gray-600 hover:bg-amber-50 disabled:opacity-25"
+                  className="rounded-lg p-1.5 text-[#3F665E] transition hover:bg-[#CFE3DF]/45 disabled:opacity-25"
                   aria-label="Next month"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -435,13 +435,13 @@ export function PickupDateSelectorV2({
                       disabled={!calendarDate}
                       className={`h-12 rounded-lg border flex flex-col items-center justify-center transition-all ${
                         isCommitted
-                          ? 'bg-amber-600 border-amber-600 text-white shadow-sm'
+                          ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
                           : pendingValid
-                            ? 'bg-amber-200 border-amber-500 text-amber-950 ring-2 ring-amber-200'
+                            ? 'border-[#55766F]/55 bg-[#CFE3DF] text-[#304B45] ring-2 ring-[#CFE3DF]/70'
                             : pendingInvalid
                               ? 'bg-orange-200 border-orange-500 text-orange-950 ring-2 ring-orange-200'
                               : selectableDate
-                                ? 'bg-amber-50 border-amber-200 text-gray-900 hover:bg-amber-100 hover:border-amber-400'
+                                ? 'border-[#55766F]/[.18] bg-[#F5FBF9] text-[#292D2B] hover:border-[#55766F]/45 hover:bg-[#CFE3DF]/45'
                                 : calendarDate
                                   ? 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100 hover:border-orange-300'
                                   : 'bg-white border-transparent text-gray-300 cursor-default'
@@ -469,7 +469,7 @@ export function PickupDateSelectorV2({
             )}
 
             {activeCalendarDate && (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-white p-4 sm:p-5">
+              <div className="mt-4 rounded-[1.5rem] border border-[#55766F]/[.14] bg-white/[.72] p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">
@@ -616,8 +616,8 @@ export function PickupDateSelectorV2({
                 )}
 
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-800 mb-2 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-amber-700" />
+                  <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#303532]">
+                    <MapPin className="h-4 w-4 text-[#3F665E]" />
                     {language === 'th' ? 'จุดรับสินค้า' : language === 'zh' ? '取货地点' : 'Pickup location'}
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -634,14 +634,14 @@ export function PickupDateSelectorV2({
                       return (
                         <div
                           key={location.id}
-                          className={`rounded-xl border overflow-hidden transition-all ${isLocationSelected ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-200 shadow-sm' : 'border-gray-200 bg-white'}`}
+                          className={`overflow-hidden rounded-xl border transition-all ${isLocationSelected ? 'border-[#55766F]/55 bg-[#CFE3DF]/[.42] ring-2 ring-[#CFE3DF]/70' : 'border-[#55766F]/[.12] bg-white/70'}`}
                         >
                           <button
                             type="button"
                             onClick={() => canSelectLocation && setPendingLocationId(location.id)}
                             disabled={!canSelectLocation}
                             aria-pressed={isLocationSelected}
-                            className="w-full text-left px-4 py-4 transition-colors hover:bg-amber-50/60 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="w-full px-4 py-4 text-left transition-colors hover:bg-[#CFE3DF]/35 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
@@ -649,13 +649,13 @@ export function PickupDateSelectorV2({
                                 {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
                               </div>
                               {isLocationSelected && (
-                                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white">
+                                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#55766F] text-white">
                                   <CheckCircle2 className="w-4 h-4" />
                                 </span>
                               )}
                             </div>
                             {canSelectLocation && (
-                              <p className={`mt-3 text-xs font-semibold ${isLocationSelected ? 'text-amber-800' : 'text-gray-500'}`}>
+                              <p className={`mt-3 text-xs font-semibold ${isLocationSelected ? 'text-[#3F665E]' : 'text-[#303532]/[.52]'}`}>
                                 {isLocationSelected
                                   ? (language === 'th' ? 'เลือกสถานที่นี้แล้ว' : language === 'zh' ? '已选择此地点' : 'Location selected')
                                   : (language === 'th' ? 'เลือกสถานที่นี้' : language === 'zh' ? '选择此地点' : 'Select this location')}
@@ -667,7 +667,7 @@ export function PickupDateSelectorV2({
                               href={location.maps_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="border-t border-gray-100 px-4 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 flex items-center gap-1.5"
+                              className="flex items-center gap-1.5 border-t border-[#55766F]/10 px-4 py-2 text-xs font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                               {language === 'th' ? 'ดูแผนที่' : language === 'zh' ? '查看地图' : 'View map'}
@@ -679,9 +679,9 @@ export function PickupDateSelectorV2({
                   </div>
 
                   {activeCommonDate && (
-                    <div className="mt-5 rounded-xl border-2 border-amber-300 bg-amber-50 p-3 sm:p-4 shadow-sm">
+                    <div className="mt-5 rounded-[1.25rem] border border-[#55766F]/[.18] bg-[#CFE3DF]/[.34] p-3 sm:p-4">
                       {pendingLocation ? (
-                        <p className="mb-3 text-center text-sm font-semibold text-amber-950">
+                        <p className="mb-3 text-center text-sm font-semibold text-[#304B45]">
                           {new Intl.DateTimeFormat(locale, {
                             weekday: 'long',
                             day: 'numeric',
@@ -692,18 +692,18 @@ export function PickupDateSelectorV2({
                           {localizedLocationName(pendingLocation, language)}
                         </p>
                       ) : (
-                        <p className="mb-3 text-center text-sm font-medium text-amber-900">{selectLocationPrompt}</p>
+                        <p className="mb-3 text-center text-sm font-medium text-[#3F665E]">{selectLocationPrompt}</p>
                       )}
                       <button
                         type="button"
                         onClick={() => confirmPickupSelection(activeCommonDate)}
                         disabled={!pendingLocationId}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-4 text-base font-bold text-white shadow-md transition-all hover:bg-amber-700 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-amber-200 disabled:bg-gray-300 disabled:text-gray-600 disabled:shadow-none disabled:cursor-not-allowed"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#C76624] px-4 py-4 text-base font-bold text-white transition hover:bg-[#A95120] focus:outline-none focus:ring-4 focus:ring-[#C76624]/15 disabled:cursor-not-allowed disabled:bg-[#A9ACA9] disabled:text-white"
                       >
                         <CheckCircle2 className="w-5 h-5" />
                         {confirmPickupLabel}
                       </button>
-                      <p className="mt-2 text-center text-xs text-gray-500">
+                      <p className="mt-2 text-center text-xs text-[#303532]/50">
                         {language === 'th'
                           ? 'ขั้นตอนนี้ยืนยันการรับสินค้าก่อนที่คุณจะสั่งซื้อ'
                           : language === 'zh'

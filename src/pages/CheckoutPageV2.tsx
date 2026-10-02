@@ -370,11 +370,11 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   if (orderComplete) {
     if (cancelled) {
       return (
-        <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-background rounded-2xl shadow-xl p-8 text-center">
-            <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-6" />
-            <p className="text-gray-700 mb-8 text-lg">{t.confirmation.cancelSuccess}</p>
-            <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <CheckCircle className="mx-auto mb-6 h-12 w-12 text-[#55766F]" />
+            <p className="mb-8 text-lg text-[#303532]/75">{t.confirmation.cancelSuccess}</p>
+            <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">
               {t.confirmation.backToHome}
             </button>
           </div>
@@ -383,76 +383,81 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4 py-10">
-        <div className="max-w-lg w-full bg-background rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-green-50 px-8 pt-8 pb-6 text-center border-b border-green-100">
-            <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-header font-bold text-primary-900 mb-1">{t.confirmation.title}</h2>
-            <p className="text-gray-600 text-sm">{t.confirmation.thankYou}</p>
+      <>
+        <div className="joko-mineral-field flex min-h-screen items-center justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-lg overflow-hidden rounded-[2.25rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/[.96] shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <div className="border-b border-[#55766F]/[.12] bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/70 text-[#3F665E]">
+              <CheckCircle className="h-9 w-9" />
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.confirmation.title}</h2>
+            <p className="mt-2 text-sm text-[#303532]/65">{t.confirmation.thankYou}</p>
           </div>
 
-          <div className="px-8 py-5 space-y-4">
+          <div className="space-y-4 px-6 py-6 sm:px-8">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t.confirmation.orderNumber}</p>
-              <p className="font-mono text-sm font-bold text-gray-900">{orderNumber || orderId}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#303532]/45">{t.confirmation.orderNumber}</p>
+              <p className="font-mono text-sm font-bold text-[#292D2B]">{orderNumber || orderId}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupDay}</p>
                 <p className="text-sm font-medium text-gray-800 flex gap-1.5">
-                  <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Calendar className="h-4 w-4 shrink-0 text-[#C76624]" />
                   {formatStoredPickupDate(completedPickupDate, language)}
                 </p>
               </div>
               {orderLocationName && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{t.confirmation.pickupLocation}</p>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#303532]/45">{t.confirmation.pickupLocation}</p>
                   {orderLocationMapsUrl ? (
-                    <a href={orderLocationMapsUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-amber-700 flex gap-1.5 hover:underline">
+                    <a href={orderLocationMapsUrl} target="_blank" rel="noreferrer" className="flex gap-1.5 text-sm font-medium text-[#3F665E] hover:underline">
                       <MapPin className="w-4 h-4 shrink-0" />
                       {orderLocationName}
                     </a>
                   ) : (
-                    <p className="text-sm font-medium text-amber-700 flex gap-1.5"><MapPin className="w-4 h-4 shrink-0" />{orderLocationName}</p>
+                    <p className="flex gap-1.5 text-sm font-medium text-[#3F665E]"><MapPin className="h-4 w-4 shrink-0" />{orderLocationName}</p>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="border-t border-gray-100 pt-4 space-y-3">
+            <div className="space-y-3 border-t border-[#55766F]/[.12] pt-4">
               {completedItems.map((item) => (
                 <div key={`${item.product_id}-${getItemName(item)}`} className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <ShoppingBag className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span className="text-sm font-medium text-gray-900 truncate">{getItemName(item)}</span>
-                    <span className="text-xs text-gray-500">× {Number(item.quantity) || 0}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <ShoppingBag className="h-4 w-4 shrink-0 text-[#C76624]" />
+                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}</span>
+                    <span className="text-xs text-[#303532]/50">× {Number(item.quantity) || 0}</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-800">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-[#303532]">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>
                 </div>
               ))}
-              <div className="flex justify-between border-t border-gray-200 pt-3 font-bold">
+              <div className="flex justify-between border-t border-[#55766F]/[.16] pt-3 font-bold text-[#292D2B]">
                 <span>{t.confirmation.total}</span>
-                <span className="text-amber-700">฿{completedTotal.toFixed(2)}</span>
+                <span className="text-[#C76624]">฿{completedTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {completedLoyaltyPoints > 0 && (
-              <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex justify-between">
-                <span className="text-sm font-semibold text-amber-900">{language === 'th' ? 'แต้มที่ได้รับ' : language === 'zh' ? '本单获得积分' : 'Points earned'}</span>
-                <span className="font-bold text-amber-900">+{completedLoyaltyPoints}</span>
+              <div className="flex justify-between rounded-xl border border-[#55766F]/[.14] bg-[#CFE3DF]/45 px-4 py-3">
+                <span className="text-sm font-semibold text-[#304B45]">{language === 'th' ? 'แต้มที่ได้รับ' : language === 'zh' ? '本单获得积分' : 'Points earned'}</span>
+                <span className="font-bold text-[#304B45]">+{completedLoyaltyPoints}</span>
               </div>
             )}
 
-            <p className="text-xs text-gray-500 text-center">{t.confirmation.paymentReminder}</p>
+            <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
             <OrderPrintButtonById
               orderId={orderId}
               language={language}
               getLabel={getLabel}
               className="w-full justify-center py-3 text-sm"
             />
-            <button onClick={() => onNavigate('home')} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors">{t.confirmation.backToHome}</button>
+            <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.confirmation.backToHome}</button>
             <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
           </div>
+        </div>
         </div>
 
         {showCancelModal && (
@@ -470,31 +475,39 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-          <Sparkles className="w-10 h-10 text-amber-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.checkout.title}</h2>
-          <p className="text-gray-600 mb-8">{t.checkout.authRequired}</p>
-          <button onClick={() => setIsAuthModalOpen(true)} className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold mb-3">{t.checkout.logIn}</button>
-          <button onClick={() => onNavigate('products')} className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium">{t.nav.products}</button>
-          <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#CFE3DF]/70 text-[#3F665E]">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h2 className="mb-4 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.title}</h2>
+            <p className="mb-8 text-[#303532]/[.68]">{t.checkout.authRequired}</p>
+            <button onClick={() => setIsAuthModalOpen(true)} className="mb-3 w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.checkout.logIn}</button>
+            <button onClick={() => onNavigate('products')} className="w-full rounded-xl border border-[#55766F]/[.18] bg-white/65 py-3 font-medium text-[#3F665E] transition hover:bg-[#CFE3DF]/35">{t.nav.products}</button>
+          </div>
         </div>
-      </div>
+        <AuthRequiredModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} actionType="checkout" />
+      </>
     );
   }
 
   if (user && (!userProfile || !userProfile.profile_completed) && !profileLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-primary-900 mb-3">{t.profile.completeProfile}</h2>
-          <p className="text-gray-700 mb-6">{t.profile.completeProfileMessage}</p>
+      <>
+        <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+            <h2 className="mb-3 mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.profile.completeProfile}</h2>
+            <p className="mb-6 text-[#303532]/[.68]">{t.profile.completeProfileMessage}</p>
+          </div>
         </div>
         <ProfileCompletionModal
           isOpen={isProfileModalOpen}
@@ -503,16 +516,16 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
           showCelebration={showCelebrationOnProfile}
           onNavigate={onNavigate}
         />
-      </div>
+      </>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background flex items-center justify-center px-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-primary-900 mb-4">{t.cart.empty}</h2>
-          <button onClick={() => onNavigate('products')} className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold">{t.nav.products}</button>
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-8 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
+          <h2 className="mb-4 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.cart.empty}</h2>
+          <button onClick={() => onNavigate('products')} className="rounded-xl bg-[#C76624] px-8 py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.nav.products}</button>
         </div>
       </div>
     );
@@ -547,54 +560,57 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-background py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="joko-mineral-field min-h-screen py-8 sm:py-12 lg:py-14">
+      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <button
           type="button"
           onClick={backToCart}
-          className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-amber-800 hover:text-amber-950"
+          className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/[.78] px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
         >
           <ArrowLeft className="w-4 h-4" />
           {backToCartLabel}
         </button>
-        <h1 className="text-3xl md:text-4xl font-header font-bold text-primary-900 mb-8 text-center">{t.checkout.title}</h1>
+        <div className="mb-8 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.035em] text-[#292D2B] sm:text-5xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.title}</h1>
+        </div>
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
           <div className="space-y-6">
-            <div className="bg-background rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-primary-900 mb-4">{t.checkout.orderSummary}</h2>
+            <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)]">
+              <h2 className="mb-4 text-2xl font-semibold tracking-[-0.02em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.orderSummary}</h2>
               <div className="space-y-3">
                 {items.map((item) => (
-                  <div key={item.product.id} className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3 last:border-0">
+                  <div key={item.product.id} className="flex items-center justify-between gap-4 border-b border-[#55766F]/10 pb-3 last:border-0">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p>
-                      <p className="text-xs text-gray-500">{item.quantity} × ฿{item.product.price.toFixed(2)}</p>
+                      <p className="truncate font-medium text-[#292D2B]">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p>
+                      <p className="text-xs text-[#303532]/50">{item.quantity} × ฿{item.product.price.toFixed(2)}</p>
                     </div>
-                    <span className="font-semibold text-gray-800">฿{(item.product.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-semibold text-[#303532]">฿{(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
-                <div className="flex justify-between text-lg font-bold pt-2">
+                <div className="flex justify-between pt-2 text-lg font-bold text-[#292D2B]">
                   <span>{t.cart.total}</span>
-                  <span className="text-primary-900">฿{totalPrice.toFixed(2)}</span>
+                  <span className="text-[#C76624]">฿{totalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>
-            <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
-              <h3 className="font-semibold text-primary-900 mb-2">{t.checkout.paymentInfo}</h3>
-              <p className="text-sm text-gray-700">{t.checkout.paymentInfoText}</p>
+            <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.42] p-6">
+              <h3 className="mb-2 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
+              <p className="text-sm leading-6 text-[#303532]/[.72]">{t.checkout.paymentInfoText}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-background rounded-lg shadow-md p-6 space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user.email || '')}</p>
+          <form onSubmit={handleSubmit} className="space-y-6 rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.07)] sm:p-7">
+            <div className="rounded-xl border border-[#55766F]/[.14] bg-[#CFE3DF]/45 p-4">
+              <p className="text-sm text-[#304B45]">{t.checkout.loggedInAs.replace('{{name}}', userProfile?.name || user.email || '')}</p>
             </div>
 
             {!preferredSelectionResolved ? (
-              <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 py-10 text-center text-sm text-gray-500">
+              <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.28] py-10 text-center text-sm text-[#303532]/55">
                 {language === 'th' ? 'กำลังตรวจสอบวันที่รับสินค้า…' : language === 'zh' ? '正在确认取货安排…' : 'Confirming your pickup selection…'}
               </div>
             ) : selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor ? (
-              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 p-5 sm:p-6 shadow-sm">
+              <div className="rounded-[1.5rem] border border-[#55766F]/[.16] bg-[#CFE3DF]/[.34] p-5 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
                     <h2 className="font-semibold text-gray-900">{confirmTitle}</h2>
@@ -603,36 +619,36 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   <button
                     type="button"
                     onClick={beginPickupEdit}
-                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-50"
+                    className="shrink-0 rounded-xl border border-[#55766F]/[.22] bg-white/70 px-3 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#CFE3DF]/40"
                   >
                     {changeLabel}
                   </button>
                 </div>
 
                 <div className="mt-5 grid sm:grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-amber-100 bg-white p-4">
+                  <div className="rounded-xl border border-[#55766F]/[.12] bg-white/[.68] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupDay}</p>
                     <p className="flex items-start gap-2 font-semibold text-gray-900">
-                      <Calendar className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
                       {formatStoredPickupDate(selection.pickupDate, language)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-amber-100 bg-white p-4">
+                  <div className="rounded-xl border border-[#55766F]/[.12] bg-white/[.68] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupLocation}</p>
                     {selectedCheckoutLocation.maps_url ? (
                       <a
                         href={selectedCheckoutLocation.maps_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-start gap-2 font-semibold text-amber-800 hover:underline"
+                        className="flex items-start gap-2 font-semibold text-[#3F665E] hover:underline"
                       >
-                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
                         <span>{getPickupLocationName()}</span>
                         <ExternalLink className="w-4 h-4 shrink-0 mt-0.5" />
                       </a>
                     ) : (
-                      <p className="flex items-start gap-2 font-semibold text-gray-900">
-                        <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="flex items-start gap-2 font-semibold text-[#292D2B]">
+                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[#C76624]" />
                         {getPickupLocationName()}
                       </p>
                     )}
@@ -645,7 +661,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   <button
                     type="button"
                     onClick={cancelPickupEdit}
-                    className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                    className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-[#3F665E] hover:text-[#304B45]"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     {cancelChangeLabel}
@@ -670,7 +686,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             <div>
-              <label htmlFor="pickup-notes" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="pickup-notes" className="mb-2 block text-sm font-medium text-[#303532]/[.72]">
                 {language === 'th' ? 'หมายเหตุ (ไม่บังคับ)' : language === 'zh' ? '备注（可选）' : 'Notes (optional)'}
               </label>
               <textarea
@@ -679,7 +695,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
                 maxLength={1000}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                className="w-full resize-none rounded-xl border border-[#55766F]/20 bg-white/[.72] px-3 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/[.16]"
               />
             </div>
 
@@ -690,13 +706,13 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             <button
               type="button"
               onClick={continueShopping}
-              className="w-full border border-amber-200 bg-white text-amber-900 py-3 rounded-lg font-semibold hover:bg-amber-50 transition-colors"
+              className="w-full rounded-xl border border-[#55766F]/20 bg-white/65 py-3 font-semibold text-[#3F665E] transition hover:bg-[#CFE3DF]/35"
             >
               {forgotSomethingLabel}
             </button>
 
             {(!selection || showPickupEditor) && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900">
+              <div className="rounded-xl border border-[#C76624]/[.22] bg-[#FFF4DF] px-4 py-3 text-center text-sm font-semibold text-[#8D451C]">
                 {pickupActionRequired}
               </div>
             )}
@@ -704,7 +720,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             <button
               type="submit"
               disabled={isSubmitting || !selection || showPickupEditor}
-              className="w-full bg-primary-600 text-white py-3.5 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-[#A9ACA9]"
             >
               {isSubmitting ? t.checkout.processing : t.checkout.placeOrder}
             </button>
