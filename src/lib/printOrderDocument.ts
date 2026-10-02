@@ -426,4 +426,70 @@ export function printOrderDocument({
       </div>
       <div class="section-title">${escapeHtml(labels.items)}</div>
       <div class="prep-items">${itemRows || '<div class="muted">—</div>'}</div>
-      <div class="pr
+      <div class="prep-count"><span>${escapeHtml(labels.itemCount)}</span><strong>${escapeHtml(totalQuantity)}</strong></div>
+      <div class="prep-payment">${escapeHtml(paymentDescription)}</div>
+      <div class="prep-ready">${escapeHtml(labels.readyForPickup)}</div>
+    `;
+
+    const normalBody = `
+      ${isThermal ? thermalMeta : `<div class="meta">${standardMeta}</div>`}
+      <div class="section-title">${escapeHtml(labels.items)}</div>
+      ${isThermal
+        ? `<div class="thermal-items">${itemRows || '<div class="muted">—</div>'}</div>`
+        : `<table><thead><tr><th>${escapeHtml(labels.items)}</th><th class="num">${escapeHtml(labels.quantity)}</th><th class="num">${escapeHtml(labels.unitPrice)}</th><th class="num">${escapeHtml(order.payment_status === 'paid' ? labels.totalPaid : labels.amountDue)}</th></tr></thead><tbody>${itemRows || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody></table>`}
+      <div class="summary">${financialSummary}</div>
+      <div class="payment-box"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
+      ${documentType === 'receipt' ? `<div class="disclaimer">${escapeHtml(labels.disclaimer)}</div>` : ''}
+      <div class="footer">${escapeHtml(labels.thanks)}</div>
+    `;
+
+    const pageSize = nextProfile === '80mm'
+      ? '80mm auto'
+      : nextProfile === '58mm'
+        ? '58mm auto'
+        : 'auto';
+    const thermalWidth = profileWidth(nextProfile);
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="${nextLanguage === 'zh' ? 'zh-CN' : nextLanguage}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>${escapeHtml(documentTitle)} · #${escapeHtml(order.order_number)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #191919; background: ${isThermal ? '#fff' : '#f4f1ea'}; font-family: Arial, "Noto Sans Thai", "Noto Sans SC", sans-serif; }
+    .toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 10px 12px; background: #f2f2f2; border-bottom: 1px solid #ddd; }
+    .toolbar-label { color: #666; font-size: 11px; font-weight: 700; }
+    .toolbar button { min-height: 34px; border: 1px solid #aaa; border-radius: 6px; background: #fff; padding: 6px 9px; color: #222; font-size: 11px; cursor: pointer; }
+    .toolbar button.active { border-color: #222; background: #222; color: #fff; }
+    .toolbar .print-button { margin-left: auto; font-weight: 800; }
+    .sheet { width: ${isThermal ? thermalWidth : 'min(760px, 100%)'}; max-width: 100%; margin: 0 auto; padding: ${isThermal ? '3mm' : '24px'}; background: #fff; }
+    .brand { text-align: center; margin-bottom: ${isThermal ? '3mm' : '18px'}; }
+    .brand-logo { display: block; width: auto; height: auto; max-width: ${nextProfile === '58mm' ? '34mm' : nextProfile === '80mm' ? '46mm' : '170px'}; max-height: ${isThermal ? '18mm' : '58px'}; margin: 0 auto 7px; object-fit: contain; filter: grayscale(1) contrast(1.75); }
+    .brand-text-fallback { display: none; margin: 0; font-size: ${isThermal ? '18px' : '22px'}; letter-spacing: .05em; }
+    h2 { margin: 0 0 ${isThermal ? '3mm' : '16px'}; text-align: center; font-size: ${isThermal ? '14px' : '18px'}; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .meta-card { padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; }
+    .meta-card.customer { grid-column: 1 / -1; }
+    .label, .section-title { color: #666; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .value { margin-top: 4px; font-size: 13px; font-weight: 700; line-height: 1.45; }
+    .customer .value { font-size: 17px; }
+    .section-title { margin: ${isThermal ? '3mm 0 1.5mm' : '8px 0'}; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 6px; border-bottom: 1px solid #ddd; text-align: left; vertical-align: top; font-size: 12px; }
+    th { color: #666; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+    .num { text-align: right; white-space: nowrap; }
+    .strong { font-weight: 800; }
+    .muted { color: #666; font-size: ${isThermal ? '9px' : '10px'}; margin-top: 2px; }
+    .customer-name { padding: 2mm 0; border-top: 1px solid #222; border-bottom: 1px solid #222; text-align: center; font-size: ${nextProfile === '58mm' ? '17px' : '20px'}; font-weight: 900; line-height: 1.15; }
+    .thermal-meta { display: flex; justify-content: space-between; gap: 3mm; padding: 1.1mm 0; border-bottom: 1px dotted #aaa; font-size: ${nextProfile === '58mm' ? '9.5px' : '10.5px'}; }
+    .thermal-meta span { text-align: right; }
+    .thermal-items { border-top: 1px solid #222; }
+    .thermal-item { display: flex; justify-content: space-between; gap: 2mm; padding: 1.8mm 0; border-bottom: 1px dotted #aaa; font-size: ${nextProfile === '58mm' ? '9.5px' : '10.5px'}; }
+    .thermal-item > div { min-width: 0; overflow-wrap: anywhere; }
+    .thermal-item > strong { white-space: nowrap; }
+    .summary { margin-top: ${isThermal ? '2mm' : '12px'}; padding-top: ${isThermal ? '1mm' : '8px'}; border-top: 1px solid #222; }
+    .summary-row { display: flex; justify-content: space-between; gap: 4mm; padding: ${isThermal ? '.8mm 0' : '4px 0'}; font-size: ${isThermal ? '10px' : '12px'}; }
+    .summary-row.total { padding-top: ${isThermal ? '1.5mm' : '7px'}; font-size: 
