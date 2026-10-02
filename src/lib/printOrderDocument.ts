@@ -44,6 +44,7 @@ export type PrintOrderCopy = {
   customer: string;
   scheduled: string;
   pickup: string;
+  pickedUp: string;
   location: string;
   status: string;
   payment: string;
@@ -102,6 +103,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     customer: 'Customer',
     scheduled: 'Scheduled pickup',
     pickup: 'Pickup',
+    pickedUp: 'Picked up',
     location: 'Location',
     status: 'Order status',
     payment: 'Payment',
@@ -137,6 +139,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     customer: 'ลูกค้า',
     scheduled: 'วันที่รับสินค้าที่กำหนด',
     pickup: 'รับสินค้า',
+    pickedUp: 'รับสินค้าจริง',
     location: 'สถานที่รับสินค้า',
     status: 'สถานะคำสั่งซื้อ',
     payment: 'การชำระเงิน',
@@ -172,6 +175,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     customer: '客户',
     scheduled: '计划取货时间',
     pickup: '取货',
+    pickedUp: '实际取货时间',
     location: '取货地点',
     status: '订单状态',
     payment: '付款',
@@ -404,6 +408,7 @@ export function printOrderDocument({
       <div class="meta-card"><div class="label">${escapeHtml(labels.order)}</div><div class="value">#${escapeHtml(order.order_number)}</div></div>
       ${order.created_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.ordered)}</div><div class="value">${escapeHtml(formatDate(order.created_at, nextLanguage, false, true))}</div></div>` : ''}
       ${resolvedPickupLabel || order.pickup_date ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickup)}</div><div class="value">${resolvedPickupLabel ? escapeHtml(resolvedPickupLabel) : ''}${resolvedPickupLabel && order.pickup_date ? '<br />' : ''}${order.pickup_date ? escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false)) : ''}</div></div>` : ''}
+      ${order.picked_up_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickedUp)}</div><div class="value">${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</div></div>` : ''}
       ${resolvedPickupLocationName ? `<div class="meta-card"><div class="label">${escapeHtml(labels.location)}</div><div class="value">${escapeHtml(resolvedPickupLocationName)}</div></div>` : ''}
       ${resolvedStatusLabel || order.status ? `<div class="meta-card"><div class="label">${escapeHtml(labels.status)}</div><div class="value">${escapeHtml(resolvedStatusLabel || order.status || '—')}</div></div>` : ''}
     `;
@@ -412,6 +417,7 @@ export function printOrderDocument({
       ${resolvedCustomerName ? `<div class="customer-name">${escapeHtml(resolvedCustomerName)}</div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.order)}</strong><span>#${escapeHtml(order.order_number)}</span></div>
       ${order.pickup_date ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickup)}</strong><span>${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</span></div>` : ''}
+      ${order.picked_up_at ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickedUp)}</strong><span>${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</span></div>` : ''}
       ${resolvedPickupLocationName ? `<div class="thermal-meta"><strong>${escapeHtml(labels.location)}</strong><span>${escapeHtml(resolvedPickupLocationName)}</span></div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
     `;
@@ -516,7 +522,7 @@ export function printOrderDocument({
       @page { margin: ${isThermal ? '3mm' : '12mm'}; }
       body { background: #fff; }
       .toolbar { display: none !important; }
-      .sheet { width: ${isThermal ? thermalWidth : '100%'}; max-width: none; margin: 0; padding: 0; }
+      .sheet { width: 100%; max-width: none; margin: 0; padding: 0; }
       .brand-logo { filter: grayscale(1) contrast(1.9); }
     }
   </style>
