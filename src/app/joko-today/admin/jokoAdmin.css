@@ -201,6 +201,21 @@
   background: rgba(255, 253, 247, .96);
 }
 
+.joko-admin-field {
+  border: 1px solid rgba(85, 118, 111, .22);
+  border-radius: .85rem;
+  background: rgba(255, 253, 247, .96);
+  padding: .62rem .75rem;
+  color: #303532;
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.joko-admin-field:focus {
+  border-color: rgba(85, 118, 111, .62);
+  box-shadow: 0 0 0 3px rgba(85, 118, 111, .12);
+}
+
 @media (max-width: 767px) {
   .joko-admin-shell::before {
     background-size: 1180px auto;
