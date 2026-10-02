@@ -11,6 +11,7 @@ type Props = {
   language: PrintOrderLanguage;
   logoUrl?: string | null;
   pickupLocationName?: string | null;
+  pickupLocationNames?: Partial<Record<PrintOrderLanguage, string>>;
   className?: string;
 };
 
@@ -26,6 +27,7 @@ export function PrintPrepTicketButton({
   language,
   logoUrl,
   pickupLocationName,
+  pickupLocationNames,
   className = '',
 }: Props) {
   const handlePrint = () => {
@@ -36,6 +38,7 @@ export function PrintPrepTicketButton({
       logoUrl,
       documentType: 'prep_ticket',
       pickupLocationName,
+      pickupLocationNames,
     });
   };
 
