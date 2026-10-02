@@ -778,6 +778,17 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                   ? location.name_th || location.name_en
                                   : location.name_en;
                               })()}
+                              pickupLocationNames={(() => {
+                                const location = order.pickup_location_id
+                                  ? pickupLocations[order.pickup_location_id]
+                                  : undefined;
+                                if (!location) return undefined;
+                                return {
+                                  en: location.name_en,
+                                  th: location.name_th || location.name_en,
+                                  zh: location.name_zh || location.name_en,
+                                };
+                              })()}
                               className="mb-4 w-full"
                             />
                           )}
@@ -908,6 +919,17 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                     ? location.name_th || location.name_en
                                     : location.name_en;
                                 })()}
+                              pickupLocationNames={(() => {
+                                const location = order.pickup_location_id
+                                  ? pickupLocations[order.pickup_location_id]
+                                  : undefined;
+                                if (!location) return undefined;
+                                return {
+                                  en: location.name_en,
+                                  th: location.name_th || location.name_en,
+                                  zh: location.name_zh || location.name_en,
+                                };
+                              })()}
                                 className="mt-4 w-full"
                               />
                             )}
