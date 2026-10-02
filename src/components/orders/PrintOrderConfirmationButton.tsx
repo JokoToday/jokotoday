@@ -1,6 +1,12 @@
 import { Printer } from 'lucide-react';
 import { CMSProduct } from '../../lib/cmsService';
 import { supabase } from '../../lib/supabase';
+import {
+  printOrderDocument,
+  type PrintOrderCopy,
+  type PrintOrderLanguage,
+} from '../../lib/printOrderDocument';
+import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
 
 interface PrintOrderConfirmationButtonProps {
@@ -65,34 +71,6 @@ const STATUS_FALLBACK: Record<string, Record<'en' | 'th' | 'zh', string>> = {
   cancelled: { en: 'Cancelled', th: 'ยกเลิกแล้ว', zh: '已取消' },
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function formatDate(value: string, language: 'en' | 'th' | 'zh', includeWeekday = false): string {
-  if (!value) return '—';
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  const date = dateOnly
-    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12))
-    : new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(
-    language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB',
-    {
-      ...(includeWeekday ? { weekday: 'long' as const } : {}),
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      ...(dateOnly ? { timeZone: 'UTC' } : {}),
-    },
-  );
-}
-
 function getProductName(item: OrderItem, language: 'en' | 'th' | 'zh', productMap: Record<string, CMSProduct>): string {
   if (language === 'th' && item.product_name_th) return item.product_name_th;
   if (language === 'zh' && item.product_name_zh) return item.product_name_zh;
@@ -135,11 +113,6 @@ function getLocationName(order: Order, language: 'en' | 'th' | 'zh', pickupDays:
   return location.name_en;
 }
 
-function money(value: unknown): number {
-  const amount = Number(value);
-  return Number.isFinite(amount) ? amount : 0;
-}
-
 export function PrintOrderConfirmationButton({
   order,
   language,
@@ -149,6 +122,7 @@ export function PrintOrderConfirmationButton({
   getLabel,
   className = '',
 }: PrintOrderConfirmationButtonProps) {
+  const publishedLogoUrl = usePublishedJokoLogo();
   const label = (key: string, fallback: string) => getLabel(`my_orders_page.${key}`, language, fallback);
 
   const handlePrint = async () => {
@@ -159,80 +133,104 @@ export function PrintOrderConfirmationButton({
     printWindow.document.write('<!doctype html><title>JOKO TODAY</title><p style="font-family:Arial,sans-serif;padding:32px">Loading current order confirmation…</p>');
     printWindow.document.close();
 
-    const { data: paymentState, error } = await supabase
+    const { data: orderState, error } = await supabase
       .from('orders')
-      .select('total_amount, loyalty_discount_amount, amount_paid, status, payment_status')
+      .select('order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
       .eq('id', order.id)
       .maybeSingle();
 
-    if (error || !paymentState) {
+    if (error || !orderState) {
       printWindow.document.open();
-      printWindow.document.write('<!doctype html><title>JOKO TODAY</title><p style="font-family:Arial,sans-serif;padding:32px">The current order payment state could not be verified. Please close this window and try again.</p>');
+      printWindow.document.write('<!doctype html><title>JOKO TODAY</title><p style="font-family:Arial,sans-serif;padding:32px">The current order state could not be verified. Please close this window and try again.</p>');
       printWindow.document.close();
       return;
     }
 
-    const currentOrder: Order = { ...order, ...paymentState };
-    const pickupLabel = getPickupLabel(currentOrder, language, pickupDays);
-    const locationName = getLocationName(currentOrder, language, pickupDays, locationMap);
-    const customerName = currentOrder.customer_name?.trim() || '—';
-    const gross = money(currentOrder.total_amount);
-    const discount = Math.max(0, money(currentOrder.loyalty_discount_amount));
+    const liveOrder = { ...order, ...orderState } as Order;
+    const currentOrder: Order = {
+      ...liveOrder,
+      order_items: (liveOrder.order_items || []).map((item) => ({
+        ...item,
+        product_name: getProductName(item, 'en', productMap),
+        product_name_th: getProductName(item, 'th', productMap),
+        product_name_zh: getProductName(item, 'zh', productMap),
+      })),
+    };
+
+    const languages: PrintOrderLanguage[] = ['en', 'th', 'zh'];
+    const pickupLabels = Object.fromEntries(
+      languages.map((lang) => [lang, getPickupLabel(currentOrder, lang, pickupDays)])
+    ) as Record<PrintOrderLanguage, string>;
+    const pickupLocationNames = Object.fromEntries(
+      languages.map((lang) => [lang, getLocationName(currentOrder, lang, pickupDays, locationMap)])
+    ) as Record<PrintOrderLanguage, string>;
+    const statusLabels = Object.fromEntries(
+      languages.map((lang) => {
+        const fallback = STATUS_FALLBACK[currentOrder.status]?.[lang] || currentOrder.status || '—';
+        return [lang, getLabel(`my_orders_page.print_status_${currentOrder.status}`, lang, fallback)];
+      })
+    ) as Record<PrintOrderLanguage, string>;
+
+    const copyByLanguage = Object.fromEntries(
+      languages.map((lang) => [lang, {
+        title: getLabel('my_orders_page.print_confirmation_title', lang, FALLBACK.title[lang]),
+        customer: getLabel('my_orders_page.print_customer', lang, FALLBACK.customer[lang]),
+        order: getLabel('my_orders_page.order_number', lang, FALLBACK.order[lang]),
+        ordered: getLabel('my_orders_page.print_ordered', lang, FALLBACK.ordered[lang]),
+        pickup: getLabel('my_orders_page.pickup_day', lang, FALLBACK.pickup[lang]),
+        location: getLabel('my_orders_page.print_location', lang, FALLBACK.location[lang]),
+        status: getLabel('my_orders_page.print_status', lang, FALLBACK.status[lang]),
+        items: getLabel('my_orders_page.print_items', lang, FALLBACK.items[lang]),
+        quantity: getLabel('my_orders_page.quantity', lang, FALLBACK.quantity[lang]),
+        unitPrice: getLabel('my_orders_page.unit_price', lang, FALLBACK.unitPrice[lang]),
+        gross: getLabel('my_orders_page.print_gross', lang, FALLBACK.gross[lang]),
+        discount: getLabel('my_orders_page.print_discount', lang, FALLBACK.discount[lang]),
+        amountDue: getLabel('my_orders_page.total', lang, FALLBACK.total[lang]),
+        totalPaid: getLabel('my_orders_page.total', lang, FALLBACK.total[lang]),
+        payment: getLabel('my_orders_page.print_payment_heading', lang, FALLBACK.paymentHeading[lang]),
+        thanks: getLabel('my_orders_page.print_footer', lang, FALLBACK.footer[lang]),
+      }])
+    ) as Record<PrintOrderLanguage, Partial<PrintOrderCopy>>;
+
+    const gross = Number(currentOrder.total_amount) || 0;
+    const discount = Math.max(0, Number(currentOrder.loyalty_discount_amount) || 0);
     const amountDue = Math.max(0, gross - discount);
-    const amountPaid = currentOrder.amount_paid == null ? amountDue : money(currentOrder.amount_paid);
-    const statusFallback = STATUS_FALLBACK[currentOrder.status]?.[language] || currentOrder.status || '—';
+    const storedPaid = Number(currentOrder.amount_paid);
+    const amountPaid = currentOrder.amount_paid != null && Number.isFinite(storedPaid)
+      ? storedPaid
+      : amountDue;
 
-    const title = label('print_confirmation_title', FALLBACK.title[language]);
-    const customerLabel = label('print_customer', FALLBACK.customer[language]);
-    const orderLabel = label('order_number', FALLBACK.order[language]);
-    const orderedLabel = label('print_ordered', FALLBACK.ordered[language]);
-    const pickupText = label('pickup_day', FALLBACK.pickup[language]);
-    const locationText = label('print_location', FALLBACK.location[language]);
-    const statusText = label('print_status', FALLBACK.status[language]);
-    const itemsText = label('print_items', FALLBACK.items[language]);
-    const quantityText = label('quantity', FALLBACK.quantity[language]);
-    const unitPriceText = label('unit_price', FALLBACK.unitPrice[language]);
-    const grossText = label('print_gross', FALLBACK.gross[language]);
-    const discountText = label('print_discount', FALLBACK.discount[language]);
-    const totalText = label('total', FALLBACK.total[language]);
-    const paymentHeading = label('print_payment_heading', FALLBACK.paymentHeading[language]);
-    const footerText = label('print_footer', FALLBACK.footer[language]);
-    const statusLabel = label(`print_status_${currentOrder.status}`, statusFallback);
+    const paymentDescriptions = Object.fromEntries(
+      languages.map((lang) => {
+        let paymentText: string;
+        if (currentOrder.status === 'cancelled') {
+          paymentText = getLabel('my_orders_page.print_payment_cancelled', lang, FALLBACK.paymentCancelled[lang]);
+        } else if (currentOrder.payment_status === 'paid') {
+          paymentText = getLabel('my_orders_page.print_payment_paid', lang, FALLBACK.paymentPaid[lang])
+            .replace('{{amount}}', amountPaid.toFixed(2));
+        } else if (['pending', 'confirmed', 'ready'].includes(currentOrder.status)) {
+          paymentText = getLabel('my_orders_page.print_payment_unpaid', lang, FALLBACK.paymentUnpaid[lang])
+            .replace('{{amount}}', amountDue.toFixed(2));
+        } else {
+          paymentText = getLabel('my_orders_page.print_payment_review', lang, FALLBACK.paymentReview[lang]);
+        }
+        return [lang, paymentText];
+      })
+    ) as Record<PrintOrderLanguage, string>;
 
-    let paymentText: string;
-    if (currentOrder.status === 'cancelled') {
-      paymentText = label('print_payment_cancelled', FALLBACK.paymentCancelled[language]);
-    } else if (currentOrder.payment_status === 'paid') {
-      paymentText = label('print_payment_paid', FALLBACK.paymentPaid[language]).replace('{{amount}}', amountPaid.toFixed(2));
-    } else if (currentOrder.status === 'pending' || currentOrder.status === 'confirmed' || currentOrder.status === 'ready') {
-      paymentText = label('print_payment_unpaid', FALLBACK.paymentUnpaid[language]).replace('{{amount}}', amountDue.toFixed(2));
-    } else {
-      paymentText = label('print_payment_review', FALLBACK.paymentReview[language]);
-    }
-
-    const rows = (currentOrder.order_items || []).map((item) => {
-      const quantity = money(item.quantity);
-      const unitPrice = money(item.price_at_order);
-      const lineTotal = quantity * unitPrice;
-      return `<tr><td>${escapeHtml(getProductName(item, language, productMap))}</td><td class="num">${quantity}</td><td class="num">฿${unitPrice.toFixed(2)}</td><td class="num strong">฿${lineTotal.toFixed(2)}</td></tr>`;
-    }).join('');
-
-    const totalsHtml = discount > 0
-      ? `<div class="summary-row"><span>${escapeHtml(grossText)}</span><strong>฿${gross.toFixed(2)}</strong></div><div class="summary-row discount"><span>${escapeHtml(discountText)}</span><strong>−฿${discount.toFixed(2)}</strong></div><div class="total"><span>${escapeHtml(totalText)}</span><strong>฿${amountDue.toFixed(2)}</strong></div>`
-      : `<div class="total"><span>${escapeHtml(totalText)}</span><strong>฿${amountDue.toFixed(2)}</strong></div>`;
-
-    printWindow.document.open();
-    printWindow.document.write(`<!doctype html>
-<html lang="${language}"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${escapeHtml(title)} · #${escapeHtml(currentOrder.order_number)}</title>
-<style>
-*{box-sizing:border-box}body{margin:0;color:#24231f;background:#fff9ef;font-family:Arial,Helvetica,sans-serif}.sheet{max-width:760px;margin:0 auto;padding:40px;background:#fff9ef}.brand{padding:28px 32px;text-align:center;background:#c7c79a;border-radius:18px 18px 0 0}.brand-name{font-size:24px;font-weight:800;letter-spacing:.18em}.brand-sub{margin-top:8px;color:#c45a00;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.content{padding:32px;border:1px solid #e0cbaa;border-top:0;border-radius:0 0 18px 18px;background:#fff}.meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 26px}.meta-card{padding:14px 16px;background:#f7ead7;border-radius:10px}.meta-card.customer{grid-column:1/-1;background:#eef0d9}.label{margin-bottom:5px;color:#52603b;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.value{font-size:15px;line-height:1.5;font-weight:700}.customer .value{font-size:18px}table{width:100%;border-collapse:collapse;margin-top:10px}th{padding:10px 8px;text-align:left;color:#8c8477;border-bottom:1px solid #e0cbaa;font-size:10px;letter-spacing:.08em;text-transform:uppercase}td{padding:13px 8px;border-bottom:1px solid #eee2cf;font-size:13px;vertical-align:top}.num{text-align:right;white-space:nowrap}.strong{font-weight:800}.summary-row{display:flex;justify-content:space-between;margin-top:14px;padding:0 18px;font-size:13px}.summary-row.discount{color:#52603b}.total{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:16px 18px;background:#eef0d9;border-radius:10px;font-weight:800}.total strong{font-size:20px}.payment{margin-top:20px;padding:14px 16px;border-left:4px solid #c45a00;background:#f7ead7;font-size:12px;line-height:1.6}.payment strong{display:block;margin-bottom:4px;color:#c45a00;text-transform:uppercase;font-size:10px;letter-spacing:.08em}.footer{margin-top:28px;text-align:center;color:#8c8477;font-size:11px}@media print{body{background:#fff}.sheet{max-width:none;padding:0}.content{border-color:#ddd}@page{margin:14mm}}
-</style></head><body><main class="sheet"><section class="brand"><div class="brand-name">JOKO TODAY</div><div class="brand-sub">${escapeHtml(title)}</div></section><section class="content"><div class="meta"><div class="meta-card customer"><div class="label">${escapeHtml(customerLabel)}</div><div class="value">${escapeHtml(customerName)}</div></div><div class="meta-card"><div class="label">${escapeHtml(orderLabel)}</div><div class="value">#${escapeHtml(currentOrder.order_number)}</div></div><div class="meta-card"><div class="label">${escapeHtml(orderedLabel)}</div><div class="value">${escapeHtml(formatDate(currentOrder.created_at, language))}</div></div><div class="meta-card"><div class="label">${escapeHtml(pickupText)}</div><div class="value">${escapeHtml(pickupLabel)}${currentOrder.pickup_date ? `<br />${escapeHtml(formatDate(currentOrder.pickup_date, language, true))}` : ''}</div></div><div class="meta-card"><div class="label">${escapeHtml(locationText)}</div><div class="value">${escapeHtml(locationName)}</div></div><div class="meta-card"><div class="label">${escapeHtml(statusText)}</div><div class="value">${escapeHtml(statusLabel)}</div></div></div><div class="label">${escapeHtml(itemsText)}</div><table><thead><tr><th>${escapeHtml(itemsText)}</th><th class="num">${escapeHtml(quantityText)}</th><th class="num">${escapeHtml(unitPriceText)}</th><th class="num">${escapeHtml(totalText)}</th></tr></thead><tbody>${rows}</tbody></table>${totalsHtml}<div class="payment"><strong>${escapeHtml(paymentHeading)}</strong>${escapeHtml(paymentText)}</div><div class="footer">${escapeHtml(footerText)}</div></section></main></body></html>`);
-    printWindow.document.close();
-
-    window.setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 180);
+    printOrderDocument({
+      order: currentOrder,
+      customerName: currentOrder.customer_name?.trim() || null,
+      language,
+      targetWindow: printWindow,
+      logoUrl: publishedLogoUrl,
+      documentType: 'confirmation',
+      pickupLabels,
+      pickupLocationNames,
+      statusLabels,
+      paymentDescriptions,
+      copyByLanguage,
+    });
   };
 
   return (
