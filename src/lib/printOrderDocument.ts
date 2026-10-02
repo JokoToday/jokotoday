@@ -85,6 +85,7 @@ export type PrintOrderDocumentOptions = {
   pickupLocationNames?: Partial<Record<PrintOrderLanguage, string>>;
   statusLabel?: string | null;
   statusLabels?: Partial<Record<PrintOrderLanguage, string>>;
+  paymentDescriptions?: Partial<Record<PrintOrderLanguage, string>>;
   copy?: Partial<PrintOrderCopy>;
   copyByLanguage?: Partial<Record<PrintOrderLanguage, Partial<PrintOrderCopy>>>;
 };
@@ -307,6 +308,7 @@ export function printOrderDocument({
   pickupLocationNames,
   statusLabel,
   statusLabels,
+  paymentDescriptions,
   copy,
   copyByLanguage,
 }: PrintOrderDocumentOptions) {
@@ -374,9 +376,9 @@ export function printOrderDocument({
     }).join('');
 
     const paymentState = paymentStateLabel(order, labels);
-    const paymentDescription = order.payment_status === 'paid'
+    const paymentDescription = paymentDescriptions?.[nextLanguage] ?? (order.payment_status === 'paid'
       ? `${paymentState}${order.payment_method ? ` · ${paymentMethodLabel(order.payment_method, nextLanguage)}` : ''}`
-      : paymentState;
+      : paymentState);
 
     const profileButtons = (isPrep ? ['80mm', '58mm'] : ['standard', '80mm', '58mm']).map((candidate) => {
       const typedProfile = candidate as PrintOrderProfile;
