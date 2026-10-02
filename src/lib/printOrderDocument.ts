@@ -412,6 +412,7 @@ export function printOrderDocument({
     const thermalMeta = `
       ${resolvedCustomerName ? `<div class="customer-name">${escapeHtml(resolvedCustomerName)}</div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.order)}</strong><span>#${escapeHtml(order.order_number)}</span></div>
+      ${order.created_at ? `<div class="thermal-meta"><strong>${escapeHtml(documentType === 'receipt' ? labels.date : labels.ordered)}</strong><span>${escapeHtml(formatDate(order.created_at, nextLanguage, false, true))}</span></div>` : ''}
       ${order.pickup_date ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickup)}</strong><span>${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</span></div>` : ''}
       ${documentType === 'receipt' && order.picked_up_at ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickedUp)}</strong><span>${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</span></div>` : ''}
       ${resolvedPickupLocationName ? `<div class="thermal-meta"><strong>${escapeHtml(labels.location)}</strong><span>${escapeHtml(resolvedPickupLocationName)}</span></div>` : ''}
