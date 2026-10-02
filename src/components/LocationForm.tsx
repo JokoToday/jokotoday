@@ -183,8 +183,9 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
 
   return (
     <AdminModalPortal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
-      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black bg-opacity-50">
+        <div className="flex min-h-full items-start justify-center p-2 sm:p-4">
+          <div className="my-auto flex max-h-[calc(100vh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100vh-2rem)]">
         <div className="joko-admin-modal-header relative z-10 flex shrink-0 items-center justify-between p-4 sm:p-6">
           <h2 className="text-2xl font-bold text-white">{location ? 'Edit Location' : 'New Location'}</h2>
           <button onClick={onCancel} className="text-white hover:text-gray-200"><X className="w-6 h-6" /></button>
@@ -411,8 +412,9 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
             <button type="submit" disabled={loading || dependencyLoading || imageUploading} className="flex-1 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Saving...' : location ? 'Update' : 'Create'}</button>
           </div>
         </form>
+          </div>
+        </div>
       </div>
-    </div>
     </AdminModalPortal>
   );
 }
