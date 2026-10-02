@@ -206,4 +206,153 @@ const escapeHtml = (value: unknown) => String(value ?? '')
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
-cons
+const money = (value: unknown) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
+};
+
+const itemName = (item: PrintableOrderItem, language: PrintOrderLanguage) => {
+  if (language === 'th') {
+    return item.product_name_th || item.name_th || item.product_name || item.product_name_en || item.name || '—';
+  }
+  if (language === 'zh') {
+    return item.product_name_zh || item.name_zh || item.product_name || item.product_name_en || item.name || '—';
+  }
+  return item.product_name || item.product_name_en || item.name || item.product_name_th || item.name_th || '—';
+};
+
+const paymentMethodLabel = (method: string | null | undefined, language: PrintOrderLanguage) => {
+  if (method === 'cash') {
+    if (language === 'th') return 'เงินสด';
+    if (language === 'zh') return '现金';
+    return 'Cash';
+  }
+  if (method === 'qr_code' || method === 'qr') return 'Thai QR';
+  if (language === 'th') return 'ไม่ได้บันทึก';
+  if (language === 'zh') return '未记录';
+  return 'Not recorded';
+};
+
+const formatDate = (
+  value: string | null | undefined,
+  language: PrintOrderLanguage,
+  includeWeekday = false,
+  includeTime = true,
+) => {
+  if (!value) return '—';
+
+  const isDateOnly = value.length === 10;
+  const source = isDateOnly ? `${value}T00:00:00+07:00` : value;
+  const date = new Date(source);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
+  return date.toLocaleString(locale, {
+    timeZone: 'Asia/Bangkok',
+    ...(includeWeekday ? { weekday: 'short' as const } : {}),
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    ...(!isDateOnly && includeTime ? { hour: '2-digit' as const, minute: '2-digit' as const } : {}),
+  });
+};
+
+const resolveInitialProfile = (
+  documentType: PrintOrderDocumentType,
+  requested?: PrintOrderProfile,
+): PrintOrderProfile => {
+  if (requested) return requested;
+  try {
+    const stored = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (stored === 'standard' || stored === '80mm' || stored === '58mm') {
+      if (documentType === 'prep_ticket' && stored === 'standard') return '80mm';
+      return stored;
+    }
+  } catch {
+    // Printing remains functional when storage is unavailable.
+  }
+  return documentType === 'prep_ticket' ? '80mm' : 'standard';
+};
+
+const rememberProfile = (profile: PrintOrderProfile) => {
+  try {
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, profile);
+  } catch {
+    // Do not block printing when storage is unavailable.
+  }
+};
+
+const paymentStateLabel = (order: PrintableOrder, labels: PrintOrderCopy) => {
+  if (order.status === 'cancelled') return labels.cancelled;
+  if (order.payment_status === 'paid') return labels.paid;
+  if (['pending', 'confirmed', 'ready'].includes(order.status || '')) return labels.payAtPickup;
+  return labels.paymentReview;
+};
+
+const profileWidth = (profile: PrintOrderProfile) => (
+  profile === '80mm' ? '80mm' : profile === '58mm' ? '58mm' : '760px'
+);
+
+export function printOrderDocument({
+  order,
+  customerName,
+  language = 'en',
+  targetWindow,
+  logoUrl,
+  documentType = 'receipt',
+  profile,
+  pickupLabel,
+  pickupLabels,
+  pickupLocationName,
+  pickupLocationNames,
+  statusLabel,
+  statusLabels,
+  copy,
+  copyByLanguage,
+}: PrintOrderDocumentOptions) {
+  const printWindow = targetWindow ?? window.open('', '_blank', 'width=760,height=900');
+  if (!printWindow) {
+    throw new Error('Print window was blocked');
+  }
+
+  const initialProfile = resolveInitialProfile(documentType, profile);
+  const receiptLogoUrl = new URL(
+    logoUrl?.trim() || '/assets/brand/joko-today-logo-v0.4.webp',
+    window.location.origin,
+  ).href;
+  const items = Array.isArray(order.order_items) ? order.order_items : [];
+  const resolvedCustomerName = customerName ?? order.customer_name ?? null;
+  const grossTotal = Number(order.purchase_type === 'walk_in'
+    ? order.walk_in_amount ?? order.total_amount
+    : order.total_amount) || 0;
+  const discount = Math.max(0, Number(order.loyalty_discount_amount) || 0);
+  const hasStoredAmountPaid = order.amount_paid !== null
+    && order.amount_paid !== undefined
+    && order.amount_paid !== '';
+  const paidValue = Number(order.amount_paid);
+  const netTotal = hasStoredAmountPaid && Number.isFinite(paidValue)
+    ? paidValue
+    : Math.max(0, grossTotal - discount);
+  const pointsEarned = Math.max(0, Number(order.loyalty_points_earned) || 0);
+  const totalQuantity = items.reduce(
+    (sum, item) => sum + Math.max(0, Number(item.quantity ?? item.qty ?? 0)),
+    0,
+  );
+
+  const render = (nextLanguage: PrintOrderLanguage, nextProfile: PrintOrderProfile) => {
+    const localizedCopy = copyByLanguage?.[nextLanguage] || copy || {};
+    const labels: PrintOrderCopy = { ...COPY[nextLanguage], ...localizedCopy };
+    const resolvedPickupLabel = pickupLabels?.[nextLanguage] ?? pickupLabel ?? null;
+    const resolvedPickupLocationName = pickupLocationNames?.[nextLanguage] ?? pickupLocationName ?? null;
+    const resolvedStatusLabel = statusLabels?.[nextLanguage] ?? statusLabel ?? null;
+    const isThermal = nextProfile !== 'standard';
+    const isPrep = documentType === 'prep_ticket';
+    const documentTitle = isPrep
+      ? labels.prepTitle
+      : documentType === 'confirmation'
+        ? (localizedCopy.title || (nextLanguage === 'th'
+          ? 'ใบยืนยันคำสั่งซื้อ'
+          : nextLanguage === 'zh'
+            ? '订单确认单'
+            : 'Order Confirmation'))
+        : labe
