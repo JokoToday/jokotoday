@@ -18,6 +18,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { printOrderReceipt } from '../../lib/printReceipt';
 import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
+import { PrintPrepTicketButton } from '../orders/PrintPrepTicketButton';
 
 type StaffLanguage = 'en' | 'th';
 type OrderTypeFilter = 'all' | 'pickup' | 'walk_in';
@@ -581,6 +582,21 @@ export function CustomerPurchaseHistory({
                                 </div>
                               </div>
                             </div>
+
+                            {!readOnly && !isWalkIn && !isCancelled && items.length > 0 && (
+                              <PrintPrepTicketButton
+                                order={order}
+                                customerName={order.customer_name ?? customerName}
+                                language={language}
+                                logoUrl={publishedLogoUrl}
+                                pickupLocationName={
+                                  location
+                                    ? (language === 'th' ? location.name_th || location.name_en : location.name_en)
+                                    : null
+                                }
+                                className="w-full"
+                              />
+                            )}
 
                             {!isCancelled && paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
                               <button
