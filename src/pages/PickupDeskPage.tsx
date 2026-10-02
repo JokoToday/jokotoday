@@ -173,11 +173,15 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
         .from('cms_pickup_locations')
         .select('id, name_en, name_th, name_zh')
         .in('id', locationIds);
-      if (locationError) throw locationError;
-      setPickupLocations(((locationRows || []) as PickupLocation[]).reduce<Record<string, PickupLocation>>((map, row) => {
-        map[row.id] = row;
-        return map;
-      }, {}));
+      if (locationError) {
+        console.warn('Could not enrich Pickup Desk orders with pickup locations:', locationError);
+        setPickupLocations({});
+      } else {
+        setPickupLocations(((locationRows || []) as PickupLocation[]).reduce<Record<string, PickupLocation>>((map, row) => {
+          map[row.id] = row;
+          return map;
+        }, {}));
+      }
     } else {
       setPickupLocations({});
     }
