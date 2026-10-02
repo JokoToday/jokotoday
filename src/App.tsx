@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+// Deployment marker: pickup-location-photo Admin rollout.
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { LikesProvider } from './context/LikesContext';
