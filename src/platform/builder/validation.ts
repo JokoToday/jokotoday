@@ -74,6 +74,33 @@ function validateLocalizedText(
   return valid;
 }
 
+function validateOptionalLocalizedText(
+  value: unknown,
+  path: string,
+  issues: BuilderValidationIssue[],
+  supportedLocales?: readonly string[],
+): value is LocalizedText {
+  if (!isRecord(value)) {
+    pushIssue(issues, path, 'Expected localized text object.');
+    return false;
+  }
+
+  let valid = true;
+  for (const [locale, text] of Object.entries(value)) {
+    if (!isNonEmptyString(locale) || typeof text !== 'string') {
+      pushIssue(issues, `${path}.${locale || '<empty>'}`, 'Expected localized text string.');
+      valid = false;
+      continue;
+    }
+    if (supportedLocales && !supportedLocales.includes(locale)) {
+      pushIssue(issues, `${path}.${locale}`, 'Unsupported Site locale.');
+      valid = false;
+    }
+  }
+
+  return valid;
+}
+
 function validateLocalizedRichText(
   value: unknown,
   path: string,
@@ -287,6 +314,43 @@ function validateSection(
           (!value.props.logoUrl.startsWith('/') && !/^https:\/\//i.test(value.props.logoUrl))
         ) {
           pushIssue(issues, `${path}.props.logoUrl`, 'Logo must be a bundled path or HTTPS URL.');
+        }
+      }
+      if (value.props.notebookNote !== undefined) {
+        if (!isRecord(value.props.notebookNote)) {
+          pushIssue(issues, `${path}.props.notebookNote`, 'Hero notebook note must be an object.');
+        } else {
+          const note = value.props.notebookNote;
+          if (typeof note.enabled !== 'boolean') {
+            pushIssue(issues, `${path}.props.notebookNote.enabled`, 'Hero notebook visibility must be boolean.');
+          }
+          if (note.title !== undefined) {
+            validateOptionalLocalizedText(note.title, `${path}.props.notebookNote.title`, issues, locales);
+          }
+          if (note.body !== undefined) {
+            validateOptionalLocalizedText(note.body, `${path}.props.notebookNote.body`, issues, locales);
+          }
+          if (note.imageAlt !== undefined) {
+            validateOptionalLocalizedText(note.imageAlt, `${path}.props.notebookNote.imageAlt`, issues, locales);
+          }
+          if (
+            note.imageUrl !== undefined
+            && (
+              !isNonEmptyString(note.imageUrl)
+              || (!note.imageUrl.startsWith('/') && !/^https:\/\//i.test(note.imageUrl))
+            )
+          ) {
+            pushIssue(issues, `${path}.props.notebookNote.imageUrl`, 'Hero notebook image must be a bundled path or HTTPS URL.');
+          }
+          if (
+            note.linkUrl !== undefined
+            && (
+              !isNonEmptyString(note.linkUrl)
+              || (!note.linkUrl.startsWith('/') && !note.linkUrl.startsWith('#') && !/^https:\/\//i.test(note.linkUrl))
+            )
+          ) {
+            pushIssue(issues, `${path}.props.notebookNote.linkUrl`, 'Hero notebook link must be an internal path, hash, or HTTPS URL.');
+          }
         }
       }
       validateLocalizedText(value.props.title, `${path}.props.title`, issues, locales);
