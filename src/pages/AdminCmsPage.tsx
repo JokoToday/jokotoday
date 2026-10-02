@@ -824,11 +824,26 @@ function LocationsTab({ locations, onRefresh, onDelete }: LocationsTabProps) {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {locations.map((location) => (
-          <div key={location.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <h3 className="font-semibold text-gray-900 text-sm">{location.name_en}</h3>
-            <p className="text-xs text-gray-600 mt-1">{location.name_th}</p>
-            {location.description_en && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{location.description_en}</p>}
-            <div className="mt-3 flex gap-3">
+          <div key={location.id} className="overflow-hidden rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
+            {location.image_url ? (
+              <div className="aspect-[16/7] bg-[#E9E0D0]">
+                <img
+                  src={location.image_url}
+                  alt={location.image_alt_en || location.name_en}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ) : (
+              <div className="flex aspect-[16/7] items-center justify-center border-b border-dashed border-gray-200 bg-gray-50 text-xs text-gray-400">
+                No location photo
+              </div>
+            )}
+            <div className="p-4">
+              <h3 className="font-semibold text-gray-900 text-sm">{location.name_en}</h3>
+              <p className="text-xs text-gray-600 mt-1">{location.name_th}</p>
+              {location.description_en && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{location.description_en}</p>}
+              <div className="mt-3 flex gap-3">
               <button
                 onClick={() => {
                   setEditing(location);
@@ -844,6 +859,7 @@ function LocationsTab({ locations, onRefresh, onDelete }: LocationsTabProps) {
               >
                 Delete
               </button>
+              </div>
             </div>
           </div>
         ))}
