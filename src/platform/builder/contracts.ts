@@ -85,6 +85,15 @@ interface BuilderSectionBase<TType extends string, TProps, TDesign> {
   design: TDesign;
 }
 
+export interface HomeHeroNotebookNote {
+  enabled: boolean;
+  title?: LocalizedText;
+  body?: LocalizedText;
+  imageUrl?: string;
+  imageAlt?: LocalizedText;
+  linkUrl?: string;
+}
+
 export interface HomeHeroProps {
   /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
   logoUrl?: string;
@@ -97,6 +106,8 @@ export interface HomeHeroProps {
   secondaryActionLabel: LocalizedText;
   secondaryAction: BuilderAction;
   mediaAlt: LocalizedText;
+  /** Optional CMS-controlled notebook card overlaid on the Experience hero. */
+  notebookNote?: HomeHeroNotebookNote;
 }
 
 export interface HomeHeroDesign {
