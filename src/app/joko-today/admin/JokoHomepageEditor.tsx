@@ -235,7 +235,7 @@ function HeroNotebookNoteEditor({
   note?: HomeHeroNotebookNote;
   locale: string;
   fallbackLocale: string;
-  onChange: (note: HomeHeroNotebookNote) => void;
+  onChange: (patch: Partial<HomeHeroNotebookNote>) => void;
   onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -243,7 +243,7 @@ function HeroNotebookNoteEditor({
   const value = note ?? DEFAULT_HERO_NOTE;
 
   const patch = (next: Partial<HomeHeroNotebookNote>) => {
-    onChange({ ...value, ...next });
+    onChange(next);
   };
 
   const setBusy = (busy: boolean) => {
@@ -393,6 +393,8 @@ export function JokoHomepageEditor({
   const previewHostRef = useRef<HTMLDivElement | null>(null);
   const previewTopScrollRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const latestDocumentRef = useRef(document);
+  latestDocumentRef.current = document;
   const branding = useMemo(() => resolveJokoHomepageBranding(document.branding), [document.branding]);
   const previewWidth = PREVIEW_WIDTHS[previewViewport];
   const previewScale = previewZoom === 'actual' || previewHostWidth === 0
@@ -466,9 +468,31 @@ export function JokoHomepageEditor({
   };
 
   const updateSection = (id: string, updater: (section: BuilderSection) => BuilderSection) => {
-    onDocumentChange({
-      ...document,
-      sections: document.sections.map((section) => section.id === id ? updater(section) : section),
+    const currentDocument = latestDocumentRef.current;
+    const nextDocument = {
+      ...currentDocument,
+      sections: currentDocument.sections.map((section) => section.id === id ? updater(section) : section),
+    };
+    latestDocumentRef.current = nextDocument;
+    onDocumentChange(nextDocument);
+  };
+
+  const updateHeroNotebookNote = (
+    sectionId: string,
+    notePatch: Partial<HomeHeroNotebookNote>,
+  ) => {
+    updateSection(sectionId, (section) => {
+      if (section.type !== 'home.hero.v1') return section;
+      return {
+        ...section,
+        props: {
+          ...section.props,
+          notebookNote: {
+            ...(section.props.notebookNote ?? DEFAULT_HERO_NOTE),
+            ...notePatch,
+          },
+        },
+      };
     });
   };
 
@@ -886,6 +910,7 @@ export function JokoHomepageEditor({
               fallbackLocale={site.defaultLocale}
               branding={branding}
               onUploadingChange={onUploadingChange}
+              onNotebookNoteChange={(notePatch) => updateHeroNotebookNote(selectedSection.id, notePatch)}
               onChange={(next) => updateSection(selectedSection.id, () => next)}
             />
           ) : (
@@ -905,6 +930,7 @@ function SectionEditor({
   branding,
   onChange,
   onUploadingChange,
+  onNotebookNoteChange,
 }: {
   section: BuilderSection;
   locale: string;
@@ -912,6 +938,7 @@ function SectionEditor({
   branding: BuilderHomepageBranding;
   onChange: (section: BuilderSection) => void;
   onUploadingChange?: (uploading: boolean) => void;
+  onNotebookNoteChange?: (patch: Partial<HomeHeroNotebookNote>) => void;
 }) {
   const definition = getBuilderComponentDefinition(section.type);
   const setVisible = (visible: boolean) => onChange({ ...section, visible } as BuilderSection);
@@ -994,7 +1021,18 @@ function SectionEditor({
             locale={locale}
             fallbackLocale={fallbackLocale}
             onUploadingChange={onUploadingChange}
-            onChange={(notebookNote) => patch({ notebookNote })}
+            onChange={(notePatch) => {
+              if (onNotebookNoteChange) {
+                onNotebookNoteChange(notePatch);
+                return;
+              }
+              patch({
+                notebookNote: {
+                  ...(props.notebookNote ?? DEFAULT_HERO_NOTE),
+                  ...notePatch,
+                },
+              });
+            }}
           />
           <details className="rounded-xl border border-[#55766F]/12 bg-white/60 p-3">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">Accessibility</summary>
