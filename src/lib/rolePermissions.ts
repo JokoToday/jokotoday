@@ -1,8 +1,9 @@
-export type UserRole = 'admin' | 'staff';
+export type UserRole = 'admin' | 'staff' | 'product_staff';
 
 export interface RolePermissions {
   canAccessAdmin: boolean;
   canAccessScanner: boolean;
+  canAccessProductStaff: boolean;
   canManageProducts: boolean;
   canManageCategories: boolean;
   canManagePages: boolean;
@@ -22,6 +23,7 @@ export function getPermissions(role: UserRole): RolePermissions {
     return {
       canAccessAdmin: true,
       canAccessScanner: true,
+      canAccessProductStaff: true,
       canManageProducts: true,
       canManageCategories: true,
       canManagePages: true,
@@ -37,10 +39,31 @@ export function getPermissions(role: UserRole): RolePermissions {
     };
   }
 
+  if (role === 'product_staff') {
+    return {
+      canAccessAdmin: false,
+      canAccessScanner: false,
+      canAccessProductStaff: true,
+      canManageProducts: true,
+      canManageCategories: false,
+      canManagePages: false,
+      canManageSettings: false,
+      canManageLabels: false,
+      canManagePickupRules: false,
+      canManageLocations: false,
+      canManageUsers: false,
+      canManageOrders: false,
+      canViewOrderDetails: false,
+      canMarkOrderPaid: false,
+      canMarkOrderPickedUp: false,
+    };
+  }
+
   if (role === 'staff') {
     return {
       canAccessAdmin: false,
       canAccessScanner: true,
+      canAccessProductStaff: false,
       canManageProducts: false,
       canManageCategories: false,
       canManagePages: false,
@@ -59,6 +82,7 @@ export function getPermissions(role: UserRole): RolePermissions {
   return {
     canAccessAdmin: false,
     canAccessScanner: false,
+    canAccessProductStaff: false,
     canManageProducts: false,
     canManageCategories: false,
     canManagePages: false,
@@ -72,6 +96,10 @@ export function getPermissions(role: UserRole): RolePermissions {
     canMarkOrderPaid: false,
     canMarkOrderPickedUp: false,
   };
+}
+
+export function canAccessProductStaff(role: UserRole): boolean {
+  return role === 'admin' || role === 'product_staff';
 }
 
 export function isAdmin(role: UserRole): boolean {
