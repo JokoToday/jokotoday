@@ -235,12 +235,41 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
       if (product?.id) {
         if (isProductStaff) {
-          const {
-            public_code: _publicCode,
-            slug: _slug,
-            stock_by_day: _stockByDay,
-            ...staffData
-          } = baseData;
+          const staffData = {
+            name_en: baseData.name_en,
+            name_th: baseData.name_th,
+            name_zh: baseData.name_zh,
+            desc_en: baseData.desc_en,
+            desc_th: baseData.desc_th,
+            desc_zh: baseData.desc_zh,
+            price: baseData.price,
+            category_id: baseData.category_id,
+            image: baseData.image,
+            short_desc_en: baseData.short_desc_en,
+            short_desc_th: baseData.short_desc_th,
+            short_desc_zh: baseData.short_desc_zh,
+            joko_note_en: baseData.joko_note_en,
+            joko_note_th: baseData.joko_note_th,
+            joko_note_zh: baseData.joko_note_zh,
+            ingredients_en: baseData.ingredients_en,
+            ingredients_th: baseData.ingredients_th,
+            ingredients_zh: baseData.ingredients_zh,
+            allergens_en: baseData.allergens_en,
+            allergens_th: baseData.allergens_th,
+            allergens_zh: baseData.allergens_zh,
+            storage_en: baseData.storage_en,
+            storage_th: baseData.storage_th,
+            storage_zh: baseData.storage_zh,
+            best_enjoyed_en: baseData.best_enjoyed_en,
+            best_enjoyed_th: baseData.best_enjoyed_th,
+            best_enjoyed_zh: baseData.best_enjoyed_zh,
+            reheating_en: baseData.reheating_en,
+            reheating_th: baseData.reheating_th,
+            reheating_zh: baseData.reheating_zh,
+            is_sold_out: baseData.is_sold_out,
+            is_active: baseData.is_active,
+            available_days: baseData.available_days,
+          };
           const { error } = await supabase.rpc('product_staff_update_product_v1', {
             p_product_id: product.id,
             p_patch: staffData,
