@@ -3,6 +3,8 @@ import { ArrowLeft, KeyRound, Loader2, Lock, LogOut, Package, PackageSearch, Sto
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
+import '../app/joko-today/admin/jokoAdmin.css';
 
 interface StaffLoginPageProps {
   onNavigate: (page: string) => void;
@@ -81,6 +83,7 @@ function getSafeReturnPath(): string | null {
 
 export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   const { language, setLanguage } = useLanguage();
+  const { logoUrl, brandingStyle } = useInternalJokoBranding();
   const staffLanguage = language === 'th' ? 'th' : 'en';
   const { user, userRole, profileLoading, sendEmailOtp, verifyEmailOtp, signOut } = useAuth();
   const text = copy[staffLanguage];
@@ -111,7 +114,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   }, [hasStaffAccess, canUseOperations]);
 
   const languageSwitch = (
-    <div className="inline-flex rounded-lg bg-white/15 p-1" aria-label="Language">
+    <div className="inline-flex rounded-lg border border-[#55766F]/15 bg-[#FFF9EE]/80 p-1" aria-label="Language">
       {(['en', 'th'] as const).map((option) => (
         <button
           key={option}
@@ -119,8 +122,8 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
           onClick={() => setLanguage(option)}
           className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors ${
             staffLanguage === option
-              ? 'bg-white text-slate-800'
-              : 'text-white hover:bg-white/10'
+              ? 'bg-[#55766F] text-white'
+              : 'text-[#3F665E] hover:bg-[#CFE3DF]/50'
           }`}
           aria-pressed={staffLanguage === option}
         >
@@ -195,7 +198,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
 
   if (hasStaffAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      <div className="joko-admin-shell min-h-screen p-4" style={brandingStyle}>
         <div className="max-w-3xl mx-auto py-10">
           <div className="flex items-center justify-between gap-4 mb-8">
             <button
@@ -217,45 +220,48 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="relative bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+          <div className="joko-admin-paper-card overflow-hidden">
+            <div className="relative border-b border-[#55766F]/15 bg-[#CFE3DF]/70 px-8 py-8 text-center">
               <div className="absolute right-4 top-4">{languageSwitch}</div>
-              <Lock className="w-12 h-12 text-white mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-white mb-2">{text.accessTitle}</h1>
-              <p className="text-slate-300">{text.accessSubtitle}</p>
+              <img src={logoUrl} alt="JOKO TODAY" className="joko-admin-brand-logo mx-auto mb-5" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF9EE]/80 text-[#55766F]">
+                <Lock className="h-6 w-6" />
+              </div>
+              <h1 className="joko-admin-title mb-2 text-3xl font-semibold">{text.accessTitle}</h1>
+              <p className="text-[#303532]/65">{text.accessSubtitle}</p>
             </div>
 
             <div className="p-8 grid gap-4 md:grid-cols-3">
               {canUseOperations && (
                 <button
                   onClick={() => onNavigate('pickup')}
-                  className="text-left border border-slate-200 rounded-xl p-6 hover:border-slate-400 hover:shadow-md transition-all"
+                  className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE]/75 p-6 text-left transition-all hover:border-[#55766F]/35 hover:shadow-md"
                 >
-                  <Package className="w-8 h-8 text-slate-700 mb-4" />
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{text.pickupDesk}</h2>
-                  <p className="text-sm text-slate-600 leading-relaxed">{text.pickupDescription}</p>
+                  <Package className="mb-4 h-8 w-8 text-[#55766F]" />
+                  <h2 className="joko-admin-title mb-2 text-xl font-semibold">{text.pickupDesk}</h2>
+                  <p className="text-sm leading-relaxed text-[#303532]/65">{text.pickupDescription}</p>
                 </button>
               )}
 
               {canUseOperations && (
                 <button
                   onClick={() => onNavigate('walk-in')}
-                  className="text-left border border-slate-200 rounded-xl p-6 hover:border-slate-400 hover:shadow-md transition-all"
+                  className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE]/75 p-6 text-left transition-all hover:border-[#55766F]/35 hover:shadow-md"
                 >
-                  <Store className="w-8 h-8 text-slate-700 mb-4" />
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{text.walkInDesk}</h2>
-                  <p className="text-sm text-slate-600 leading-relaxed">{text.walkInDescription}</p>
+                  <Store className="mb-4 h-8 w-8 text-[#55766F]" />
+                  <h2 className="joko-admin-title mb-2 text-xl font-semibold">{text.walkInDesk}</h2>
+                  <p className="text-sm leading-relaxed text-[#303532]/65">{text.walkInDescription}</p>
                 </button>
               )}
 
               {canUseProductStaff && (
                 <button
                   onClick={() => onNavigate('product-staff')}
-                  className="text-left border border-slate-200 rounded-xl p-6 hover:border-slate-400 hover:shadow-md transition-all"
+                  className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE]/75 p-6 text-left transition-all hover:border-[#55766F]/35 hover:shadow-md"
                 >
-                  <PackageSearch className="w-8 h-8 text-slate-700 mb-4" />
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{text.productStaff}</h2>
-                  <p className="text-sm text-slate-600 leading-relaxed">{text.productStaffDescription}</p>
+                  <PackageSearch className="mb-4 h-8 w-8 text-[#55766F]" />
+                  <h2 className="joko-admin-title mb-2 text-xl font-semibold">{text.productStaff}</h2>
+                  <p className="text-sm leading-relaxed text-[#303532]/65">{text.productStaffDescription}</p>
                 </button>
               )}
             </div>
@@ -266,21 +272,24 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+    <div className="joko-admin-shell flex min-h-screen items-center justify-center p-4" style={brandingStyle}>
       <button
         onClick={() => onNavigate('home')}
-        className="absolute top-4 left-4 inline-flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 font-medium"
+        className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/75 px-4 py-2 font-medium text-[#3F665E] transition hover:bg-[#FFF9EE]"
       >
         <ArrowLeft className="w-4 h-4" />
         {text.backHome}
       </button>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="relative bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-8 text-center">
+      <div className="joko-admin-paper-card w-full max-w-md overflow-hidden">
+        <div className="relative border-b border-[#55766F]/15 bg-[#CFE3DF]/70 px-8 py-8 text-center">
           <div className="absolute right-4 top-4">{languageSwitch}</div>
-          <Lock className="w-12 h-12 text-white mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-white mb-2">{text.title}</h1>
-          <p className="text-slate-300">{text.subtitle}</p>
+          <img src={logoUrl} alt="JOKO TODAY" className="joko-admin-brand-logo mx-auto mb-5" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF9EE]/80 text-[#55766F]">
+            <Lock className="h-6 w-6" />
+          </div>
+          <h1 className="joko-admin-title mb-2 text-3xl font-semibold">{text.title}</h1>
+          <p className="text-[#303532]/65">{text.subtitle}</p>
         </div>
 
         <div className="p-8">
@@ -295,7 +304,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
               </div>
               <button
                 onClick={handleUseDifferentAccount}
-                className="w-full py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors"
+                className="joko-admin-primary-button w-full py-3"
               >
                 {text.useDifferentAccount}
               </button>
@@ -312,13 +321,13 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
                   placeholder={text.emailPlaceholder}
                   required
                   autoComplete="email"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className="joko-admin-login-field w-full px-4 py-3 outline-none focus:ring-2 focus:ring-[#55766F]/30"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="joko-admin-primary-button flex w-full items-center justify-center gap-2 py-3 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <KeyRound className="w-5 h-5" />}
                 {loading ? text.sending : text.sendCode}
@@ -328,7 +337,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
             <form onSubmit={handleVerifyCode} className="space-y-5">
               {error && <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">{displayedError}</div>}
               <div className="text-center">
-                <h2 className="text-xl font-semibold text-slate-900 mb-2">{text.codeTitle}</h2>
+                <h2 className="joko-admin-title mb-2 text-xl font-semibold">{text.codeTitle}</h2>
                 <p className="text-sm text-slate-600">{text.codeInstruction}</p>
                 <p className="text-sm font-semibold text-slate-900 mt-1">{email}</p>
               </div>
@@ -342,13 +351,13 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
                   autoComplete="one-time-code"
                   maxLength={6}
                   placeholder="000000"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-2xl tracking-[0.35em] font-mono focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  className="joko-admin-login-field w-full px-4 py-3 text-center font-mono text-2xl tracking-[0.35em] outline-none focus:ring-2 focus:ring-[#55766F]/30"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="joko-admin-primary-button flex w-full items-center justify-center gap-2 py-3 disabled:opacity-50"
               >
                 {loading && <Loader2 className="w-5 h-5 animate-spin" />}
                 {loading ? text.verifying : text.verify}

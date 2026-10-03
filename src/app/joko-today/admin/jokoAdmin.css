@@ -2,8 +2,9 @@
   position: relative;
   isolation: isolate;
   min-height: 100vh;
-  color: #303532;
-  background-color: #d9ece9;
+  color: var(--joko-brand-text, #303532);
+  font-family: var(--joko-font-body, 'Inter', system-ui, sans-serif);
+  background-color: var(--joko-brand-turquoise, #d9ece9);
   background-image:
     radial-gradient(ellipse at 9% 3%, rgba(249, 246, 237, .42) 0 10%, transparent 28%),
     radial-gradient(ellipse at 91% 14%, rgba(235, 244, 245, .42) 0 14%, transparent 34%);
@@ -48,9 +49,18 @@
 }
 
 .joko-admin-title {
-  color: #303532;
+  color: var(--joko-brand-text, #303532);
   font-family: var(--joko-font-display, Georgia, serif);
   letter-spacing: -.025em;
+}
+
+.joko-admin-shell h1,
+.joko-admin-shell h2,
+.joko-admin-shell h3,
+.joko-admin-content h1,
+.joko-admin-content h2,
+.joko-admin-content h3 {
+  font-family: var(--joko-font-display, Georgia, serif);
 }
 
 .joko-admin-nav-chip {
@@ -95,7 +105,7 @@
 
 .joko-admin-primary-button {
   border-radius: .95rem;
-  background: #c76624;
+  background: var(--joko-brand-accent, #c76624);
   color: #fff;
   font-weight: 650;
   box-shadow: 0 7px 18px rgba(164, 79, 29, .14);
