@@ -394,12 +394,20 @@ export function JokoHomepageEditor({
   const previewTopScrollRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const latestDocumentRef = useRef(document);
+  const activeUploadsRef = useRef(new Set<string>());
   latestDocumentRef.current = document;
   const branding = useMemo(() => resolveJokoHomepageBranding(document.branding), [document.branding]);
   const previewWidth = PREVIEW_WIDTHS[previewViewport];
   const previewScale = previewZoom === 'actual' || previewHostWidth === 0
     ? 1
     : Math.min(1, Math.max(0.2, (previewHostWidth - 2) / previewWidth));
+
+  const reportUploadState = (source: string, uploading: boolean) => {
+    const activeUploads = activeUploadsRef.current;
+    if (uploading) activeUploads.add(source);
+    else activeUploads.delete(source);
+    onUploadingChange?.(activeUploads.size > 0);
+  };
 
   useEffect(() => {
     if (!document.sections.some((section) => section.id === selectedSectionId)) {
@@ -605,7 +613,7 @@ export function JokoHomepageEditor({
               compact
               value={hero.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp'}
               onChange={updateLogo}
-              onUploadingChange={onUploadingChange}
+              onUploadingChange={(uploading) => reportUploadState('logo', uploading)}
             />
           )}
 
@@ -909,7 +917,7 @@ export function JokoHomepageEditor({
               locale={locale}
               fallbackLocale={site.defaultLocale}
               branding={branding}
-              onUploadingChange={onUploadingChange}
+              onUploadingChange={(uploading) => reportUploadState('hero-notebook', uploading)}
               onNotebookNoteChange={(notePatch) => updateHeroNotebookNote(selectedSection.id, notePatch)}
               onChange={(next) => updateSection(selectedSection.id, () => next)}
             />
