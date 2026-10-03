@@ -334,6 +334,32 @@ function validateSection(
             validateOptionalLocalizedText(note.imageAlt, `${path}.props.notebookNote.imageAlt`, issues, locales);
           }
           if (
+            note.fontPreset !== undefined
+            && !['handwritten', 'display', 'body'].includes(String(note.fontPreset))
+          ) {
+            pushIssue(issues, `${path}.props.notebookNote.fontPreset`, 'Unsupported hero notebook font preset.');
+          }
+          if (
+            note.headingSize !== undefined
+            && (
+              typeof note.headingSize !== 'number'
+              || note.headingSize < 16
+              || note.headingSize > 32
+            )
+          ) {
+            pushIssue(issues, `${path}.props.notebookNote.headingSize`, 'Hero notebook heading size must be between 16 and 32.');
+          }
+          if (
+            note.bodySize !== undefined
+            && (
+              typeof note.bodySize !== 'number'
+              || note.bodySize < 11
+              || note.bodySize > 20
+            )
+          ) {
+            pushIssue(issues, `${path}.props.notebookNote.bodySize`, 'Hero notebook body size must be between 11 and 20.');
+          }
+          if (
             note.imageUrl !== undefined
             && (
               !isNonEmptyString(note.imageUrl)
