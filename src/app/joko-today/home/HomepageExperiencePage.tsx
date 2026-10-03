@@ -186,6 +186,9 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                   imageUrl={heroNotebookNote?.imageUrl}
                   imageAlt={heroNotebookImageAlt}
                   href={heroNotebookNote?.linkUrl}
+                  fontPreset={heroNotebookNote?.fontPreset}
+                  headingSize={heroNotebookNote?.headingSize}
+                  bodySize={heroNotebookNote?.bodySize}
                 />
               </div>
             )}
@@ -280,6 +283,9 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                       imageUrl={heroNotebookNote?.imageUrl}
                       imageAlt={heroNotebookImageAlt}
                       href={heroNotebookNote?.linkUrl}
+                      fontPreset={heroNotebookNote?.fontPreset}
+                      headingSize={heroNotebookNote?.headingSize}
+                      bodySize={heroNotebookNote?.bodySize}
                     />
                   </div>
                 )}
