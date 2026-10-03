@@ -107,10 +107,18 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (profileError) throw profileError;
-    if (profile?.role !== "admin") return jsonResponse({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => null) as Record<string, unknown> | null;
     if (!body || Array.isArray(body)) return jsonResponse({ error: "Invalid request body" }, 400);
+
+    const assetKind: AssetKind = body.assetKind === "brand"
+      ? "brand"
+      : body.assetKind === "gallery"
+        ? "gallery"
+        : "product";
+    const canUpload = profile?.role === "admin"
+      || (profile?.role === "product_staff" && assetKind === "product");
+    if (!canUpload) return jsonResponse({ error: "Forbidden" }, 403);
 
     const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "";
     const contentType = typeof body.contentType === "string"
