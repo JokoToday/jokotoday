@@ -105,9 +105,32 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
-  const heroNotebookNote = publishedHero?.type === 'home.hero.v1'
+  const configuredHeroNotebookNote = publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.notebookNote
     : undefined;
+  const isBranchPreview = typeof window !== 'undefined'
+    && window.location.hostname.endsWith('.jokotoday-preview.pages.dev');
+  const heroNotebookNote = configuredHeroNotebookNote ?? (isBranchPreview
+    ? {
+        enabled: true,
+        title: {
+          en: 'Meet Joe & Phuttan',
+          th: 'รู้จัก Joe และ Phuttan',
+          zh: '认识 Joe 和 Phuttan',
+        },
+        body: {
+          en: 'A little note from the bakery.',
+          th: 'โน้ตเล็ก ๆ จากเบเกอรี่',
+          zh: '来自烘焙坊的一张小纸条。',
+        },
+        imageAlt: {
+          en: 'Joe and Phuttan',
+          th: 'Joe และ Phuttan',
+          zh: 'Joe 和 Phuttan',
+        },
+        linkUrl: '/about',
+      }
+    : undefined);
   const heroNotebookTitle = heroNotebookNote?.title
     ? localize(heroNotebookNote.title, lang, 'en')
     : '';
