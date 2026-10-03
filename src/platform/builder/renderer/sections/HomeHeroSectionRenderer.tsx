@@ -18,6 +18,7 @@ interface HomeHeroSectionRendererProps {
   site: BuilderSiteIdentity;
   provider: BuilderHeroMediaProvider;
   onAction?: (action: BuilderAction) => void;
+  interactive?: boolean;
 }
 
 export function HomeHeroSectionRenderer({
@@ -26,6 +27,7 @@ export function HomeHeroSectionRenderer({
   site,
   provider,
   onAction,
+  interactive = true,
 }: HomeHeroSectionRendererProps) {
   const [media, setMedia] = useState<BuilderMedia | null>(null);
 
@@ -98,7 +100,8 @@ export function HomeHeroSectionRenderer({
                 body={notebookBody}
                 imageUrl={notebookNote?.imageUrl}
                 imageAlt={notebookImageAlt}
-                interactive={false}
+                href={notebookNote?.linkUrl}
+                interactive={interactive}
               />
             </div>
           )}
@@ -164,7 +167,8 @@ export function HomeHeroSectionRenderer({
                   body={notebookBody}
                   imageUrl={notebookNote?.imageUrl}
                   imageAlt={notebookImageAlt}
-                  interactive={false}
+                  href={notebookNote?.linkUrl}
+                  interactive={interactive}
                 />
               </div>
             )}
