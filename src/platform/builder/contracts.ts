@@ -85,6 +85,8 @@ interface BuilderSectionBase<TType extends string, TProps, TDesign> {
   design: TDesign;
 }
 
+export type HomeHeroNotebookFontPreset = 'handwritten' | 'display' | 'body';
+
 export interface HomeHeroNotebookNote {
   enabled: boolean;
   title?: LocalizedText;
@@ -92,6 +94,12 @@ export interface HomeHeroNotebookNote {
   imageUrl?: string;
   imageAlt?: LocalizedText;
   linkUrl?: string;
+  /** Controlled visual font family; defaults to the JOKO handwritten treatment. */
+  fontPreset?: HomeHeroNotebookFontPreset;
+  /** Heading size in px. */
+  headingSize?: number;
+  /** Body size in px. */
+  bodySize?: number;
 }
 
 export interface HomeHeroProps {
