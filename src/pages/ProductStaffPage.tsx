@@ -5,6 +5,7 @@ import { ProductEditor } from '../components/products/ProductEditor';
 import { getCategories, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { getProductStaffProducts } from '../lib/productStaffService';
 import '../app/joko-today/admin/jokoAdmin.css';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 
 interface ProductStaffPageProps {
   onNavigate: (page: string) => void;
@@ -12,6 +13,7 @@ interface ProductStaffPageProps {
 
 export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
   const { user, loading, userRole, profileLoading, signOut } = useAuth();
+  const { logoUrl, brandingStyle } = useInternalJokoBranding();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [editing, setEditing] = useState<CMSProduct | null>(null);
@@ -86,12 +88,12 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
   }
 
   return (
-    <div className="joko-admin-shell min-h-screen">
+    <div className="joko-admin-shell min-h-screen" style={brandingStyle}>
       <header className="joko-admin-topbar sticky top-0 z-40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => onNavigate('home')} aria-label="Open JOKO TODAY">
-              <img src="/assets/brand/joko-today-logo-v0.4.webp" alt="JOKO TODAY" className="joko-admin-brand-logo" />
+              <img src={logoUrl} alt="JOKO TODAY" className="joko-admin-brand-logo" />
             </button>
             <div className="border-l border-[#55766F]/20 pl-4">
               <p className="joko-admin-eyebrow">Workspace</p>
@@ -280,7 +282,7 @@ function ProductStaffLogin() {
       <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#D9ECE9]">
         <PackageSearch className="h-7 w-7 text-[#55766F]" />
       </div>
-      <h1 className="text-center text-2xl font-semibold text-gray-900">JOKO TODAY Product Staff</h1>
+      <h1 className="joko-admin-title text-center text-2xl font-semibold">JOKO TODAY Product Staff</h1>
       <p className="mt-2 text-center text-sm text-gray-600">Sign in with an authorized Product Staff or Admin account.</p>
 
       {!otpSent ? (
@@ -323,11 +325,13 @@ function ProductStaffLogin() {
 }
 
 function ProductStaffGate({ children }: { children: ReactNode }) {
+  const { logoUrl, brandingStyle } = useInternalJokoBranding();
+
   return (
-    <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10" style={brandingStyle}>
       <div className="w-full max-w-md">
         <div className="joko-admin-paper-card p-7 sm:p-8">
-          <img src="/assets/brand/joko-today-logo-v0.4.webp" alt="JOKO TODAY" className="joko-admin-brand-logo mb-6" />
+          <img src={logoUrl} alt="JOKO TODAY" className="joko-admin-brand-logo mb-6" />
           {children}
         </div>
       </div>

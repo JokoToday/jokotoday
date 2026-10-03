@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { resetAdminAuthentication, setAdminAuthenticated } from '../lib/adminConfig';
 import { AdminWorkspace } from '../components/AdminWorkspace';
 import '../app/joko-today/admin/jokoAdmin.css';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
@@ -176,7 +177,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
             <Lock className="w-8 h-8 text-red-600" />
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">{copy.accessDenied}</h1>
+        <h1 className="joko-admin-title mb-2 text-center text-2xl font-semibold">{copy.accessDenied}</h1>
         <p className="text-center text-gray-600 text-sm mb-3">{copy.accessDeniedBody}</p>
         <p className="text-center text-sm font-medium text-gray-800 mb-6 break-all">
           {user.email || copy.signedInAccount}
@@ -201,7 +202,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
         </div>
       </div>
 
-      <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">{copy.title}</h1>
+      <h1 className="joko-admin-title mb-2 text-center text-2xl font-semibold">{copy.title}</h1>
       <p className="text-center text-gray-600 text-sm mb-6">{copy.intro}</p>
 
       {!otpSent ? (
@@ -308,13 +309,15 @@ function AdminGateShell({
   language: AdminLanguage;
   onLanguageChange: (language: 'en' | 'th') => void;
 }) {
+  const { logoUrl, brandingStyle } = useInternalJokoBranding();
+
   return (
-    <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10" style={brandingStyle}>
       <div className="w-full max-w-md">
         <div className="joko-admin-paper-card p-7 sm:p-8">
           <div className="mb-5 flex items-start justify-between gap-4">
             <img
-              src="/assets/brand/joko-today-logo-v0.4.webp"
+              src={logoUrl}
               alt="JOKO TODAY"
               className="joko-admin-brand-logo"
             />

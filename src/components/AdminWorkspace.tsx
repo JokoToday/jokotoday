@@ -28,7 +28,7 @@ import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
 import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 import '../app/joko-today/admin/jokoAdmin.css';
-import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
@@ -90,7 +90,7 @@ function workspacePath(tab: WorkspaceTab): string {
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(workspaceTabFromLocation);
-  const logoUrl = usePublishedJokoLogo();
+  const { logoUrl, brandingStyle } = useInternalJokoBranding();
 
   useEffect(() => {
     const handlePopState = () => setActiveTab(workspaceTabFromLocation());
@@ -110,7 +110,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
     `joko-admin-nav-chip ${activeTab === tab ? 'joko-admin-nav-chip--active' : ''}`;
 
   return (
-    <div className="joko-admin-shell">
+    <div className="joko-admin-shell" style={brandingStyle}>
       <header className="joko-admin-topbar sticky top-0 z-40">
         <div className="mx-auto max-w-[92rem] px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
