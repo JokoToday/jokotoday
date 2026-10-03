@@ -98,6 +98,9 @@ begin
   if p_patch is null or jsonb_typeof(p_patch) <> 'object' then
     raise exception 'Product patch must be a JSON object';
   end if;
+  if p_patch = '{}'::jsonb then
+    raise exception 'Product patch cannot be empty';
+  end if;
 
   select array_agg(key order by key)
   into v_unknown_keys
