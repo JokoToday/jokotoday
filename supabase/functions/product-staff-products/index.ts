@@ -23,6 +23,18 @@ const ALLOWED_FIELDS = [
 
 type AllowedField = (typeof ALLOWED_FIELDS)[number];
 
+const REQUIRED_TEXT_FIELDS = ["name_en", "name_th", "desc_en", "desc_th"] as const;
+const OPTIONAL_TEXT_FIELDS = [
+  "name_zh", "desc_zh",
+  "short_desc_en", "short_desc_th", "short_desc_zh",
+  "joko_note_en", "joko_note_th", "joko_note_zh",
+  "ingredients_en", "ingredients_th", "ingredients_zh",
+  "allergens_en", "allergens_th", "allergens_zh",
+  "storage_en", "storage_th", "storage_zh",
+  "best_enjoyed_en", "best_enjoyed_th", "best_enjoyed_zh",
+  "reheating_en", "reheating_th", "reheating_zh",
+] as const;
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -48,9 +60,19 @@ function validatePatch(patch: Record<string, unknown>): string | null {
     return `Product Staff cannot change fields: ${unknownFields.join(", ")}`;
   }
 
-  for (const field of ["name_en", "name_th"] as const) {
-    if (field in patch && (typeof patch[field] !== "string" || !patch[field]!.trim())) {
-      return `${field} is required`;
+  if (Object.keys(patch).length === 0) return "Product patch cannot be empty";
+
+  for (const field of REQUIRED_TEXT_FIELDS) {
+    if (!(field in patch)) continue;
+    const value = patch[field];
+    if (typeof value !== "string" || !value.trim()) return `${field} is required`;
+  }
+
+  for (const field of OPTIONAL_TEXT_FIELDS) {
+    if (!(field in patch)) continue;
+    const value = patch[field];
+    if (value !== null && typeof value !== "string") {
+      return `${field} must be text or null`;
     }
   }
 
@@ -142,13 +164,17 @@ Deno.serve(async (req: Request) => {
     if (patchError) return jsonResponse({ error: patchError }, 400);
 
     if ("category_id" in patch) {
-      if (typeof patch.category_id !== "string" || !patch.category_id) {
+      const categoryId = patch.category_id;
+      if (
+        typeof categoryId !== "string"
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(categoryId)
+      ) {
         return jsonResponse({ error: "An active category is required" }, 400);
       }
       const { data: category, error: categoryError } = await supabase
         .from("cms_categories")
         .select("id")
-        .eq("id", patch.category_id)
+        .eq("id", categoryId)
         .eq("is_active", true)
         .maybeSingle();
       if (categoryError) throw categoryError;
