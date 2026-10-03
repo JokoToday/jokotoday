@@ -11,7 +11,7 @@ interface ProductStaffPageProps {
 }
 
 export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
-  const { user, loading, userRole, profileLoading, sendEmailOtp, verifyEmailOtp, signOut } = useAuth();
+  const { user, loading, userRole, profileLoading, signOut } = useAuth();
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [categories, setCategories] = useState<CMSCategory[]>([]);
   const [editing, setEditing] = useState<CMSProduct | null>(null);
