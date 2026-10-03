@@ -105,6 +105,9 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
             zh: 'Joe 和 Phuttan',
           },
           linkUrl: '/about',
+          fontPreset: 'handwritten',
+          headingSize: 22,
+          bodySize: 14,
         },
       },
       design: {
