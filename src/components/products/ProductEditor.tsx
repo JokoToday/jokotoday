@@ -131,7 +131,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
     if (!formData.category_id) newErrors.category_id = 'Category is required';
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
-    if (!formData.slug.trim()) newErrors.slug = 'Slug is required';
+    if (!isProductStaff && !formData.slug.trim()) newErrors.slug = 'Slug is required';
     if (formData.image.trim()) {
       try {
         const imageUrl = new URL(formData.image.trim());
@@ -145,13 +145,15 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         newErrors.image = 'Image URL must be a valid URL.';
       }
     }
-    if (formData.public_code && !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(formData.public_code)) {
+    if (!isProductStaff && formData.public_code && !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(formData.public_code)) {
       newErrors.public_code = 'Use 3–32 uppercase letters, numbers, hyphens or underscores';
     }
-    if (!formData.stock_total) newErrors.stock_total = 'Total stock is required';
-    else if (isNaN(parseInt(formData.stock_total)) || parseInt(formData.stock_total) < 0) newErrors.stock_total = 'Total stock must be a valid positive number';
-    if (product && !formData.stock_remaining) newErrors.stock_remaining = 'Remaining stock is required';
-    else if (product && (isNaN(parseInt(formData.stock_remaining)) || parseInt(formData.stock_remaining) < 0)) newErrors.stock_remaining = 'Remaining stock must be a valid positive number';
+    if (!isProductStaff) {
+      if (!formData.stock_total) newErrors.stock_total = 'Total stock is required';
+      else if (isNaN(parseInt(formData.stock_total)) || parseInt(formData.stock_total) < 0) newErrors.stock_total = 'Total stock must be a valid positive number';
+      if (product && !formData.stock_remaining) newErrors.stock_remaining = 'Remaining stock is required';
+      else if (product && (isNaN(parseInt(formData.stock_remaining)) || parseInt(formData.stock_remaining) < 0)) newErrors.stock_remaining = 'Remaining stock must be a valid positive number';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
