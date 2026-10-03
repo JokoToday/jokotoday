@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ExternalLink, KeyRound, Loader2, LogOut, Mail, PackageSearch, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ProductEditor } from '../components/products/ProductEditor';
@@ -22,7 +22,7 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
 
   const canEnter = userRole === 'product_staff' || userRole === 'admin';
 
-  const refreshCatalogue = async () => {
+  const refreshCatalogue = useCallback(async () => {
     setCatalogueLoading(true);
     setCatalogueError('');
     try {
@@ -38,11 +38,11 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
     } finally {
       setCatalogueLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user && canEnter) void refreshCatalogue();
-  }, [user?.id, userRole]);
+  }, [user?.id, canEnter, refreshCatalogue]);
 
   const filteredProducts = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -322,7 +322,7 @@ function ProductStaffLogin() {
   );
 }
 
-function ProductStaffGate({ children }: { children: React.ReactNode }) {
+function ProductStaffGate({ children }: { children: ReactNode }) {
   return (
     <div className="joko-admin-shell flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
