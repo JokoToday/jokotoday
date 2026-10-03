@@ -18,6 +18,7 @@ import {
 } from '../../../platform/builder';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
+import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
@@ -104,6 +105,46 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
+  const configuredHeroNotebookNote = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.props.notebookNote
+    : undefined;
+  const isBranchPreview = typeof window !== 'undefined'
+    && window.location.hostname.endsWith('.jokotoday-preview.pages.dev');
+  const heroNotebookNote = configuredHeroNotebookNote ?? (isBranchPreview
+    ? {
+        enabled: true,
+        title: {
+          en: 'Meet Joe & Phuttan',
+          th: 'รู้จัก Joe และ Phuttan',
+          zh: '认识 Joe 和 Phuttan',
+        },
+        body: {
+          en: 'A little note from the bakery.',
+          th: 'โน้ตเล็ก ๆ จากเบเกอรี่',
+          zh: '来自烘焙坊的一张小纸条。',
+        },
+        imageUrl: '/assets/preview/joe-phuttan-faces.svg',
+        imageAlt: {
+          en: 'Joe and Phuttan',
+          th: 'Joe และ Phuttan',
+          zh: 'Joe 和 Phuttan',
+        },
+        linkUrl: '/about',
+      }
+    : undefined);
+  const heroNotebookTitle = heroNotebookNote?.title
+    ? localize(heroNotebookNote.title, lang, 'en')
+    : '';
+  const heroNotebookBody = heroNotebookNote?.body
+    ? localize(heroNotebookNote.body, lang, 'en')
+    : '';
+  const heroNotebookImageAlt = heroNotebookNote?.imageAlt
+    ? localize(heroNotebookNote.imageAlt, lang, 'en')
+    : '';
+  const showHeroNotebookNote = Boolean(
+    heroNotebookNote?.enabled
+    && (heroNotebookTitle || heroNotebookBody || heroNotebookNote.imageUrl),
+  );
   const publishedTopLiked = publishedHomepage?.sections.find(
     (section): section is HomeTopLikedSection => section.type === 'home.top-liked.v1',
   );
@@ -135,6 +176,23 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
       <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
+            {showHeroNotebookNote && (
+              <div
+                className="absolute right-4 top-5 z-30 hidden w-[14.5rem] xl:block 2xl:right-7 2xl:top-7 2xl:w-[15.5rem]"
+              >
+                <JokoHeroNotebookNote
+                  title={heroNotebookTitle}
+                  body={heroNotebookBody}
+                  imageUrl={heroNotebookNote?.imageUrl}
+                  imageAlt={heroNotebookImageAlt}
+                  href={heroNotebookNote?.linkUrl}
+                  fontPreset={heroNotebookNote?.fontPreset}
+                  headingSize={heroNotebookNote?.headingSize}
+                  bodySize={heroNotebookNote?.bodySize}
+                />
+              </div>
+            )}
+
             <div
               className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
               style={{ left: '22%' }}
@@ -216,6 +274,21 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                     {heroSecondaryLabel}
                   </button>
                 </div>
+
+                {showHeroNotebookNote && (
+                  <div className="mt-7 max-w-[19rem] xl:hidden">
+                    <JokoHeroNotebookNote
+                      title={heroNotebookTitle}
+                      body={heroNotebookBody}
+                      imageUrl={heroNotebookNote?.imageUrl}
+                      imageAlt={heroNotebookImageAlt}
+                      href={heroNotebookNote?.linkUrl}
+                      fontPreset={heroNotebookNote?.fontPreset}
+                      headingSize={heroNotebookNote?.headingSize}
+                      bodySize={heroNotebookNote?.bodySize}
+                    />
+                  </div>
+                )}
 
                 <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
                   <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">

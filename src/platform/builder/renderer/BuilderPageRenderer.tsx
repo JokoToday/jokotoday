@@ -43,6 +43,7 @@ function renderSection(
         <HomeHeroSectionRenderer
           section={section}
           provider={props.providers.heroMedia}
+          interactive={!props.onSectionSelect}
           {...common}
         />
       );
