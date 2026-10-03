@@ -53,7 +53,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   userRole: UserRole | null;
   profileLoading: boolean;
-  sendEmailOtp: (email: string, requestedLanguage?: Language, allowSignUp?: boolean) => Promise<void>;
+  sendEmailOtp: (email: string, requestedLanguage?: Language, allowSignUp?: boolean, returnPage?: 'product-staff') => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<void>;
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -157,11 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendEmailOtp = async (
     email: string,
     requestedLanguage?: Language,
-    allowSignUp = true
+    allowSignUp = true,
+    returnPage?: 'product-staff'
   ) => {
     const authLanguage = requestedLanguage ?? language;
     const callbackUrl = new URL(`${getPublicAppUrl()}/auth/callback`);
     callbackUrl.searchParams.set('lang', authLanguage);
+    if (returnPage) callbackUrl.searchParams.set('next', returnPage);
     sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, authLanguage);
 
     const { error } = await supabase.auth.signInWithOtp({
