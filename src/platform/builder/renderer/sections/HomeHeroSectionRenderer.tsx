@@ -101,6 +101,9 @@ export function HomeHeroSectionRenderer({
                 imageUrl={notebookNote?.imageUrl}
                 imageAlt={notebookImageAlt}
                 href={notebookNote?.linkUrl}
+                fontPreset={notebookNote?.fontPreset}
+                headingSize={notebookNote?.headingSize}
+                bodySize={notebookNote?.bodySize}
                 interactive={interactive}
               />
             </div>
@@ -168,6 +171,9 @@ export function HomeHeroSectionRenderer({
                   imageUrl={notebookNote?.imageUrl}
                   imageAlt={notebookImageAlt}
                   href={notebookNote?.linkUrl}
+                  fontPreset={notebookNote?.fontPreset}
+                  headingSize={notebookNote?.headingSize}
+                  bodySize={notebookNote?.bodySize}
                   interactive={interactive}
                 />
               </div>
