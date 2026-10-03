@@ -31,6 +31,7 @@ import {
   type BuilderSection,
   type BuilderSiteIdentity,
   type HomepageBuilderProviders,
+  type HomeHeroNotebookFontPreset,
   type HomeHeroNotebookNote,
   type LocalizedText,
 } from '../../../platform/builder';
@@ -89,6 +90,9 @@ const DEFAULT_HERO_NOTE: HomeHeroNotebookNote = {
     zh: 'Joe 和 Phuttan',
   },
   linkUrl: '/about',
+  fontPreset: 'handwritten',
+  headingSize: 22,
+  bodySize: 14,
 };
 
 function localized(value: LocalizedText, locale: string, fallback: string): string {
@@ -300,6 +304,42 @@ function HeroNotebookNoteEditor({
           value={localizedOptional(value.body, locale, fallbackLocale)}
           onChange={(next) => patch({ body: withOptionalLocale(value.body, locale, next) })}
         />
+
+        <div className="rounded-xl border border-[#55766F]/12 bg-[#FFF9EE]/65 p-3">
+          <FieldLabel>Notebook typography</FieldLabel>
+          <select
+            value={value.fontPreset ?? 'handwritten'}
+            onChange={(event) => patch({
+              fontPreset: event.target.value as HomeHeroNotebookFontPreset,
+            })}
+            className="w-full rounded-xl border border-[#55766F]/20 bg-white px-3 py-2.5 text-sm text-[#303532] outline-none transition focus:border-[#55766F]/55 focus:ring-2 focus:ring-[#55766F]/12"
+          >
+            <option value="handwritten">Handwritten — default</option>
+            <option value="display">JOKO display font</option>
+            <option value="body">JOKO body font</option>
+          </select>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <RangeField
+              label="Heading size"
+              value={value.headingSize ?? 22}
+              min={16}
+              max={32}
+              onChange={(headingSize) => patch({ headingSize })}
+            />
+            <RangeField
+              label="Body size"
+              value={value.bodySize ?? 14}
+              min={11}
+              max={20}
+              onChange={(bodySize) => patch({ bodySize })}
+            />
+          </div>
+
+          <p className="mt-3 text-[11px] leading-4 text-[#303532]/50">
+            JOKO display/body follow the homepage typography for the active language. The handwritten option keeps the notebook-note look.
+          </p>
+        </div>
 
         <div>
           <FieldLabel>Notebook image</FieldLabel>
