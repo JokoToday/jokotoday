@@ -79,6 +79,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const callbackLanguage = searchParams.get('lang');
+      const callbackNext = searchParams.get('next') === 'product-staff' ? 'product-staff' : 'home';
       const code = searchParams.get('code');
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
@@ -175,8 +176,9 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           logSupabaseError('profile update failed', profileUpdateError);
         }
 
-        window.history.replaceState({}, document.title, '/');
-        navigateRef.current('home');
+        const destinationPath = callbackNext === 'product-staff' ? '/product-staff' : '/';
+        window.history.replaceState({}, document.title, destinationPath);
+        navigateRef.current(callbackNext);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         logSupabaseError('unexpected callback failure', error);
