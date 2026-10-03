@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       if (data) {
-        setUserRole(data.role === 'admin' || data.role === 'staff' ? data.role : null);
+        setUserRole(data.role === 'admin' || data.role === 'staff' || data.role === 'product_staff' ? data.role : null);
 
         const pendingAuthLanguage = sessionStorage.getItem(AUTH_LANGUAGE_STORAGE_KEY);
         if (isSupportedLanguage(pendingAuthLanguage)) {

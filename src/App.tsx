@@ -21,6 +21,7 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const WhatPeopleSayPage = lazy(() => import('./pages/WhatPeopleSayPage'));
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
+const ProductStaffPage = lazy(() => import('./pages/ProductStaffPage').then(({ ProductStaffPage }) => ({ default: ProductStaffPage })));
 const CreativeLabPage = lazy(() => import('./app/creative-lab/CreativeLabPage'));
 const LineCallback = lazy(() => import('./components/LineCallback').then(({ LineCallback }) => ({ default: LineCallback })));
 const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
@@ -67,6 +68,7 @@ const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
 
 const STANDALONE_PAGE_PATHS: Record<string, string> = {
   admin: '/admin',
+  'product-staff': '/product-staff',
   creative: '/creative',
   staff: '/staff',
   'customer-desk': '/customer-desk',
@@ -395,6 +397,8 @@ function AppContent() {
         return <HowItWorksPage onNavigate={handleNavigate} />;
       case 'admin':
         return <AdminPage onNavigate={handleNavigate} />;
+      case 'product-staff':
+        return <ProductStaffPage onNavigate={handleNavigate} />;
       case 'creative':
         return <CreativeLabPage onNavigate={handleNavigate} />;
       case 'staff':
@@ -447,6 +451,7 @@ function AppContent() {
   const isStandalonePage =
     currentPage === 'customer-account' ||
     currentPage === 'admin' ||
+    currentPage === 'product-staff' ||
     currentPage === 'creative' ||
     currentPage === 'staff' ||
     currentPage === 'staff-scanner' ||
