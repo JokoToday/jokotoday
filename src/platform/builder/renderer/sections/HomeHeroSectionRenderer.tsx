@@ -94,7 +94,7 @@ export function HomeHeroSectionRenderer({
 
         <div className="relative grid min-h-[34rem] gap-7 py-8 lg:grid-cols-[minmax(19rem,.72fr)_minmax(33rem,1.35fr)] lg:items-start">
           {showNotebookNote && (
-            <div className="absolute left-[38%] top-7 z-30 hidden w-[15rem] lg:block">
+            <div className="absolute right-4 top-5 z-30 hidden w-[14.5rem] lg:block xl:right-6 xl:top-6 xl:w-[15.5rem]">
               <JokoHeroNotebookNote
                 title={notebookTitle}
                 body={notebookBody}
