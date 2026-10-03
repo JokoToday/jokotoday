@@ -5,6 +5,7 @@ import { AdminModalPortal } from '../AdminModalPortal';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../../lib/cmsService';
 import { getPickupDays, PickupDay } from '../../lib/availabilityService';
 import { ProductMediaUploader } from '../ProductMediaUploader';
+import { updateProductStaffProduct } from '../../lib/productStaffService';
 
 export type ProductEditorMode = 'admin' | 'product-staff';
 
@@ -272,11 +273,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             is_active: baseData.is_active,
             available_days: baseData.available_days,
           };
-          const { error } = await supabase.rpc('product_staff_update_product_v1', {
-            p_product_id: product.id,
-            p_patch: staffData,
-          });
-          if (error) throw error;
+          await updateProductStaffProduct(product.id, staffData);
         } else {
           const { error } = await supabase.from('cms_products').update(baseData).eq('id', product.id);
           if (error) throw error;
