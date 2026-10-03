@@ -246,7 +246,7 @@ function ProductStaffLogin() {
     setSubmitting(true);
     setError('');
     try {
-      await sendEmailOtp(email.trim(), undefined, false);
+      await sendEmailOtp(email.trim(), undefined, false, 'product-staff');
       setOtpSent(true);
       setOtp('');
     } catch (err) {
