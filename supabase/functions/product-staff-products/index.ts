@@ -40,10 +40,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function sameValue(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
-}
-
 function validatePatch(patch: Record<string, unknown>): string | null {
   const unknownFields = Object.keys(patch).filter(
     (key) => !ALLOWED_FIELDS.includes(key as AllowedField),
@@ -159,45 +155,19 @@ Deno.serve(async (req: Request) => {
       if (!category) return jsonResponse({ error: "An active category is required" }, 400);
     }
 
-    const { data: current, error: currentError } = await supabase
-      .from("cms_products")
-      .select("*")
-      .eq("id", productId)
-      .maybeSingle();
-    if (currentError) throw currentError;
-    if (!current) return jsonResponse({ error: "Product not found" }, 404);
-
-    const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    for (const field of ALLOWED_FIELDS) {
-      if (field in patch) updatePayload[field] = patch[field];
-    }
-
-    const { data: product, error: updateError } = await supabase
-      .from("cms_products")
-      .update(updatePayload)
-      .eq("id", productId)
-      .select("*")
-      .single();
-    if (updateError) throw updateError;
-
-    const changedFields = ALLOWED_FIELDS.filter(
-      (field) => field in patch && !sameValue(current[field], product[field]),
+    const { data: product, error: updateError } = await supabase.rpc(
+      "product_staff_apply_product_update_v1",
+      {
+        p_product_id: productId,
+        p_actor_user_id: authData.user.id,
+        p_actor_role: actorRole,
+        p_patch: patch,
+      },
     );
-    if (changedFields.length > 0) {
-      const oldValues = Object.fromEntries(changedFields.map((field) => [field, current[field]]));
-      const newValues = Object.fromEntries(changedFields.map((field) => [field, product[field]]));
-      const { error: auditError } = await supabase
-        .from("product_change_log")
-        .insert({
-          product_id: productId,
-          actor_user_id: authData.user.id,
-          actor_role: actorRole,
-          action: "update_product",
-          changed_fields: changedFields,
-          old_values: oldValues,
-          new_values: newValues,
-        });
-      if (auditError) throw auditError;
+    if (updateError) {
+      if (updateError.code === "P0002") return jsonResponse({ error: "Product not found" }, 404);
+      if (updateError.code === "42501") return jsonResponse({ error: updateError.message }, 403);
+      throw updateError;
     }
 
     return jsonResponse({ product });
