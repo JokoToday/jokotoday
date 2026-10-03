@@ -123,6 +123,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
           th: 'โน้ตเล็ก ๆ จากเบเกอรี่',
           zh: '来自烘焙坊的一张小纸条。',
         },
+        imageUrl: '/assets/preview/joe-phuttan-faces.svg',
         imageAlt: {
           en: 'Joe and Phuttan',
           th: 'Joe และ Phuttan',
