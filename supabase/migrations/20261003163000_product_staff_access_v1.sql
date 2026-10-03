@@ -116,7 +116,7 @@ begin
   for update;
 
   if not found then
-    raise exception 'Product not found';
+    raise exception 'Product not found' using errcode = 'P0002';
   end if;
 
   v_next := jsonb_populate_record(v_current, p_patch);
