@@ -1,3 +1,5 @@
+import type { HomeHeroNotebookFontPreset } from '../platform/builder/contracts';
+
 interface JokoHeroNotebookNoteProps {
   title?: string;
   body?: string;
@@ -6,14 +8,30 @@ interface JokoHeroNotebookNoteProps {
   href?: string;
   className?: string;
   interactive?: boolean;
+  fontPreset?: HomeHeroNotebookFontPreset;
+  headingSize?: number;
+  bodySize?: number;
 }
+
+const NOTEBOOK_FONT_STACKS: Record<HomeHeroNotebookFontPreset, string> = {
+  handwritten: '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive',
+  display: 'var(--joko-font-display, "Noto Sans", sans-serif)',
+  body: 'var(--joko-font-body, "Inter", sans-serif)',
+};
 
 function NotebookPaper({
   title,
   body,
   imageUrl,
   imageAlt,
-}: Pick<JokoHeroNotebookNoteProps, 'title' | 'body' | 'imageUrl' | 'imageAlt'>) {
+  fontPreset = 'handwritten',
+  headingSize = 22,
+  bodySize = 14,
+}: Pick<
+  JokoHeroNotebookNoteProps,
+  'title' | 'body' | 'imageUrl' | 'imageAlt' | 'fontPreset' | 'headingSize' | 'bodySize'
+>) {
+  const fontFamily = NOTEBOOK_FONT_STACKS[fontPreset];
   return (
     <div
       className="relative -rotate-[2deg] overflow-visible rounded-[2px] border border-[#8B7658]/15 bg-[#FFF9EC] px-5 pb-5 pl-9 pt-7 shadow-[0_16px_34px_rgba(48,53,50,.18)]"
@@ -40,8 +58,8 @@ function NotebookPaper({
       <div className="relative z-10">
         {title && (
           <p
-            className="whitespace-pre-line text-[1.35rem] font-semibold leading-[1.08] text-[#2F302E]"
-            style={{ fontFamily: '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive' }}
+            className="whitespace-pre-line font-semibold leading-[1.08] text-[#2F302E]"
+            style={{ fontFamily, fontSize: `${headingSize}px` }}
           >
             {title}
           </p>
@@ -49,8 +67,8 @@ function NotebookPaper({
 
         {body && (
           <p
-            className="mt-2 whitespace-pre-line text-[0.9rem] leading-5 text-[#3D403C]/75"
-            style={{ fontFamily: '"Segoe Print", "Bradley Hand", "Comic Sans MS", cursive' }}
+            className="mt-2 whitespace-pre-line leading-[1.4] text-[#3D403C]/75"
+            style={{ fontFamily, fontSize: `${bodySize}px` }}
           >
             {body}
           </p>
@@ -85,6 +103,9 @@ export function JokoHeroNotebookNote({
   href,
   className = '',
   interactive = true,
+  fontPreset = 'handwritten',
+  headingSize = 22,
+  bodySize = 14,
 }: JokoHeroNotebookNoteProps) {
   const content = (
     <NotebookPaper
@@ -92,6 +113,9 @@ export function JokoHeroNotebookNote({
       body={body}
       imageUrl={imageUrl}
       imageAlt={imageAlt}
+      fontPreset={fontPreset}
+      headingSize={headingSize}
+      bodySize={bodySize}
     />
   );
 
