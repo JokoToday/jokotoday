@@ -177,8 +177,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             {showHeroNotebookNote && (
               <div
-                className="absolute top-[6.5rem] z-30 hidden w-[15.5rem] xl:block 2xl:w-[16.5rem]"
-                style={{ left: 'clamp(28rem, 39%, 36rem)' }}
+                className="absolute right-4 top-5 z-30 hidden w-[14.5rem] xl:block 2xl:right-7 2xl:top-7 2xl:w-[15.5rem]"
               >
                 <JokoHeroNotebookNote
                   title={heroNotebookTitle}
