@@ -112,7 +112,7 @@ export default function MeetFoundersPage({ onNavigate }: MeetFoundersPageProps) 
           <p className="text-base italic leading-7 text-[#304B45]">{text.note}</p>
           <div className="mt-5 flex flex-wrap gap-5">
             <button type="button" onClick={() => onNavigate('our-story')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#9D4B1E] hover:underline">{text.story}<ArrowRight className="h-4 w-4" /></button>
-            <button type="button" onClick={() => onNavigate('products')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#3F665E] hover:underline">{text.bakery}<MapPin className="h-4 w-4" /></button>
+            <button type="button" onClick={() => onNavigate('products-bakery')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#3F665E] hover:underline">{text.bakery}<MapPin className="h-4 w-4" /></button>
           </div>
         </div>
       </Container>
