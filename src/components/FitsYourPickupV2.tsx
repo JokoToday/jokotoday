@@ -18,6 +18,7 @@ import { getPublicImageUrl } from '../lib/storage';
 interface FitsYourPickupV2Props {
   pickupDateId: string;
   placement?: RecommendationPlacement;
+  onVisibilityChange?: (hasSuggestions: boolean) => void;
   onProductClick?: (product: CMSProduct) => void;
 }
 
@@ -41,7 +42,7 @@ function productImage(product: CMSProduct): string {
   return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
 }
 
-export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductClick }: FitsYourPickupV2Props) {
+export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductClick, onVisibilityChange }: FitsYourPickupV2Props) {
   const { items, addToCart } = useCart();
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
@@ -130,6 +131,10 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
     return rankFitsYourPickupProducts(eligible, cartCategoryIds, likeCounts, config)
       .slice(0, placementConfig.maxSuggestions);
   }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config, placement, placementConfig?.enabled, placementConfig?.maxSuggestions]);
+
+  useEffect(() => {
+    onVisibilityChange?.(!loading && Boolean(config && placementConfig?.enabled && recommendations.length));
+  }, [loading, config, placementConfig?.enabled, recommendations.length, onVisibilityChange]);
 
   if (loading || !config || !placementConfig?.enabled || recommendations.length === 0) return null;
 
