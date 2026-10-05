@@ -370,7 +370,7 @@ export function HomepageLowerSections({
             title={bakingTitle ? <BuilderRichTextContent value={bakingTitle} /> : labels.bakingTitle}
             intro={bakingIntro ? <BuilderRichTextContent value={bakingIntro} /> : labels.bakingIntro}
             action={(
-              <button type="button" onClick={() => onNavigate('products')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
+              <button type="button" onClick={() => onNavigate('products-bakery')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
                 {bakingBrowseLabel}<ArrowRight className="h-4 w-4" />
               </button>
             )}
@@ -561,7 +561,7 @@ export function HomepageLowerSections({
               <div className="mt-6 flex flex-col items-start gap-3">
                 <button
                   type="button"
-                  onClick={() => onNavigate('products')}
+                  onClick={() => onNavigate('products-bakery')}
                   className="inline-flex items-center gap-2 text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
                 >{labels.aboutBakeryProducts}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
                 <button
