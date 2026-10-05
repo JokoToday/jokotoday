@@ -51,6 +51,10 @@ export interface CMSProduct {
   reheating_zh?: string | null;
   is_sold_out: boolean;
   is_active: boolean;
+  /** Product-level non-bakery designation, independent of catalogue category. */
+  is_non_bakery?: boolean;
+  /** Positive curated position; null means not on the homepage. */
+  non_bakery_feature_order?: number | null;
   sort_order: number;
   stock_total: number;
   stock_remaining: number;

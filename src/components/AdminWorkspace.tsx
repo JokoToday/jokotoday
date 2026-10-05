@@ -10,6 +10,7 @@ import {
   Monitor,
   PackageCheck,
   Palette,
+  ShoppingBasket,
   QrCode,
   Rocket,
   Sparkles,
@@ -21,6 +22,7 @@ import { CuriosityManagement } from './CuriosityManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
 import { GalleryManagement } from './GalleryManagement';
+import { NonBakeryManagement } from './NonBakeryManagement';
 import { WhatPeopleSayManagement } from './WhatPeopleSayManagement';
 import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
@@ -40,6 +42,7 @@ interface AdminWorkspaceProps {
 type WorkspaceTab =
   | 'cms'
   | 'homepage'
+  | 'non-bakery'
   | 'gallery'
   | 'what-people-say'
   | 'curiosities'
@@ -55,6 +58,7 @@ type WorkspaceTab =
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/homepage')) return 'homepage';
+  if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
   if (path.startsWith('/admin/curiosities')) return 'curiosities';
@@ -72,6 +76,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'homepage': return '/admin/homepage';
+    case 'non-bakery': return '/admin/non-bakery';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
     case 'curiosities': return '/admin/curiosities';
@@ -153,6 +158,10 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('non-bakery')} className={tabClass('non-bakery')}>
+                  <ShoppingBasket className="h-4 w-4" />
+                  Not Bread
+                </button>
                 <button type="button" onClick={() => selectWorkspaceTab('gallery')} className={tabClass('gallery')}>
                   <Images className="h-4 w-4" />
                   Gallery
@@ -213,6 +222,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
 
       <main className="joko-admin-content pb-14">
         {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
+        {activeTab === 'non-bakery' && <NonBakeryManagement />}
 
         {activeTab === 'homepage' && (
           <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>

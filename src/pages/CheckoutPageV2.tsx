@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { FitsYourPickupV2 } from '../components/FitsYourPickupV2';
+import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSuggestions';
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
@@ -678,11 +679,17 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             {selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor && (
-              <FitsYourPickupV2
-                pickupDateId={selection.pickupDateId}
-                placement="checkout"
-                onProductClick={openRecommendedProduct}
-              />
+              <>
+                <FitsYourPickupV2
+                  pickupDateId={selection.pickupDateId}
+                  placement="checkout"
+                  onProductClick={openRecommendedProduct}
+                />
+                <NonBakeryCheckoutSuggestions
+                  pickupDateId={selection.pickupDateId}
+                  onProductClick={openRecommendedProduct}
+                />
+              </>
             )}
 
             <div>

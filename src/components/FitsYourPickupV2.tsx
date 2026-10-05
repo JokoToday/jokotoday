@@ -123,11 +123,13 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
   const recommendations = useMemo(() => {
     if (!config || !placementConfig?.enabled) return [];
     const eligible = products.filter(
-      (product) => !cartProductIds.has(product.id) && (remainingByProduct.get(product.id) || 0) > 0,
+      (product) => !cartProductIds.has(product.id)
+        && (placement !== 'checkout' || !product.is_non_bakery)
+        && (remainingByProduct.get(product.id) || 0) > 0,
     );
     return rankFitsYourPickupProducts(eligible, cartCategoryIds, likeCounts, config)
       .slice(0, placementConfig.maxSuggestions);
-  }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config, placementConfig?.enabled, placementConfig?.maxSuggestions]);
+  }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config, placement, placementConfig?.enabled, placementConfig?.maxSuggestions]);
 
   if (loading || !config || !placementConfig?.enabled || recommendations.length === 0) return null;
 

@@ -268,6 +268,22 @@ function AppContent() {
       return;
     }
 
+    // Dedicated deep link: browser refresh/back should preserve the Non-bakery filter.
+    if (page === 'products-non-bakery') {
+      const targetPath = '/products?category=non-bakery';
+      if (`${window.location.pathname}${window.location.search}` !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+      window.dispatchEvent(new Event('joko-products-category-navigation'));
+      setCurrentPage('products');
+      return;
+    }
+
+    if (page === 'products' && window.location.pathname === '/products' && window.location.search) {
+      window.history.pushState({}, '', '/products');
+      window.dispatchEvent(new Event('joko-products-category-navigation'));
+    }
+
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
       const slug = productNavMatch[1];

@@ -7,6 +7,7 @@ import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
+import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSuggestions';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
 import { getPickupDayLabel, getPickupDays, getNextPickupDate, isDayOpenForOrdering, PickupDay } from '../lib/availabilityService';
 
@@ -589,6 +590,13 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
               </div>
               {errors.pickupDay && <p className="text-red-500 text-xs mt-2">{errors.pickupDay}</p>}
             </div>
+
+            {findSelectedDay() && isDayOpenForOrdering(findSelectedDay()!) && isDayCompatibleWithCart(findSelectedDay()!) && (
+              <NonBakeryCheckoutSuggestions
+                legacyPickupDay={findSelectedDay()}
+                onProductClick={(product) => onNavigate(`product/${product.slug}`)}
+              />
+            )}
 
             <button
               type="submit"
