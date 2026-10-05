@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Menu, ShoppingCart, UserRound, X } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
@@ -6,6 +6,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { UserAvatarDropdown } from '../../../components/UserAvatarDropdown';
 import { Container } from '../../../platform/design-system';
 import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../builder/usePublishedJokoLogo';
+import './jokoNavPencil.css';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
@@ -17,7 +18,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'how-it-works' | 'pickup' | 'about' | 'gallery' | 'what-people-say';
+  key: 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
   targetId?: string;
@@ -27,36 +28,33 @@ type NavItem = {
 const copy = {
   en: {
     home: 'Home',
-    products: 'Bakery',
+    products: 'Baked Goodies',
+    otherProducts: 'Other Goodies',
     howItWorks: 'How It Works',
-    pickup: 'Pickup',
+    pickup: 'Pick Up',
     about: 'About',
-    gallery: 'Gallery',
-    whatPeopleSay: 'What People Say',
     account: 'Account',
     cart: 'Cart',
     menu: 'Menu',
   },
   th: {
     home: 'หน้าแรก',
-    products: 'เบเกอรี่',
+    products: 'ขนมอบ',
+    otherProducts: 'ของดีอื่น ๆ',
     howItWorks: 'วิธีสั่งซื้อ',
     pickup: 'จุดรับสินค้า',
     about: 'เกี่ยวกับเรา',
-    gallery: 'แกลเลอรี',
-    whatPeopleSay: 'คนอื่นพูดถึงเรา',
     account: 'บัญชี',
     cart: 'ตะกร้า',
     menu: 'เมนู',
   },
   zh: {
     home: '首页',
-    products: '烘焙坊',
+    products: '烘焙好物',
+    otherProducts: '其他好物',
     howItWorks: '如何订购',
     pickup: '取货',
     about: '关于',
-    gallery: '影像集',
-    whatPeopleSay: '大家怎么说',
     account: '账户',
     cart: '购物车',
     menu: '菜单',
@@ -72,20 +70,38 @@ const languageOptions = [
 export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellHeaderProps) {
   const { language, setLanguage } = useLanguage();
   const { user } = useAuth();
-  const { totalItems, setIsCartOpen } = useCart();
+  const { totalItems, setIsCartOpen, selectedCategory } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // pushState does not emit popstate. Keep section selection synchronized with
+  // programmatic navigation, Home/Back to home, and browser back/forward.
+  const [activeHash, setActiveHash] = useState(() =>
+    window.location.pathname === '/' ? window.location.hash : '',
+  );
+  useEffect(() => {
+    const syncLocation = () => setActiveHash(
+      window.location.pathname === '/' ? window.location.hash : '',
+    );
+    window.addEventListener('popstate', syncLocation);
+    window.addEventListener('hashchange', syncLocation);
+    window.addEventListener('joko-navigation-updated', syncLocation);
+    syncLocation();
+    return () => {
+      window.removeEventListener('popstate', syncLocation);
+      window.removeEventListener('hashchange', syncLocation);
+      window.removeEventListener('joko-navigation-updated', syncLocation);
+    };
+  }, [activeSection]);
   const labels = copy[language];
   const logoUrl = usePublishedJokoLogo();
 
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
-    { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
+    { key: 'products', label: labels.products, page: 'products-bakery', activeKey: 'bakery' },
+    { key: 'other-products', label: labels.otherProducts, page: 'products-non-bakery', activeKey: 'bakery' },
     { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
     { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
     { key: 'about', label: labels.about, targetId: 'about', activeKey: 'about' },
-    { key: 'gallery', label: labels.gallery, page: 'gallery', activeKey: 'gallery' },
-    { key: 'what-people-say', label: labels.whatPeopleSay, page: 'what-people-say', activeKey: 'what-people-say' },
   ];
 
   const handleHomeSection = (targetId: string) => {
@@ -105,6 +121,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
       if (currentPath !== targetPath) {
         window.history.pushState({ jokoHomepageSection: isTop ? null : targetId }, '', targetPath);
       }
+      setActiveHash(isTop ? '' : `#${targetId}`);
+      window.dispatchEvent(new Event('joko-navigation-updated'));
       scrollToTarget();
     };
 
@@ -133,8 +151,15 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
 
   const isNavItemActive = (item: NavItem) => {
     const path = window.location.pathname;
-    if (item.key === 'home') return path === '/';
-    return item.activeKey ? activeSection === item.activeKey : false;
+    // Home is intentionally not permanently marked; a stroke appears on hover.
+    if (item.key === 'home') return false;
+    // The two product menus share /products but differ by query-controlled filter.
+    if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
+    if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';
+    if (path === '/' && item.targetId) return activeHash === `#${item.targetId}`;
+    // The founder and full-story pages belong to About, but the indicator must
+    // disappear when the customer navigates back to the homepage.
+    return item.key === 'about' && activeSection === 'about';
   };
 
   return (
@@ -145,7 +170,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             <button
               type="button"
               onClick={() => handleNav(navItems[0])}
-              className="shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#CFE3DF]"
+              className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#CFE3DF]"
               aria-label="JOKO TODAY home"
             >
               <img
@@ -159,8 +184,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               />
             </button>
 
-            <nav className="hidden lg:block" aria-label="JOKO TODAY">
-              <ul className="flex items-center gap-5 xl:gap-7">
+            <nav className="hidden min-[1180px]:block" aria-label="JOKO TODAY">
+              <ul className="flex items-center gap-4 xl:gap-6">
                 {navItems.map((item) => {
                   const isActive = isNavItemActive(item);
                   return (
@@ -168,13 +193,9 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                       <button
                         type="button"
                         onClick={() => handleNav(item)}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={[
-                          'border-b pb-1 font-medium transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#CFE3DF]',
-                          isActive
-                            ? 'border-[#C76624] text-[#303532]'
-                            : 'border-transparent text-[#303532]/85 hover:border-[#C76624]/65 hover:text-[#303532]',
-                        ].join(' ')}
+                        aria-current={isActive ? (item.targetId ? 'location' : 'page') : undefined}
+                        data-current={isActive ? 'true' : 'false'}
+                        className="joko-nav-pencil font-medium text-[#303532]/85 transition hover:text-[#303532]"
                       >
                         {item.label}
                       </button>
@@ -234,7 +255,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen((open) => !open)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F] lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F] min-[1180px]:hidden"
                 aria-label={labels.menu}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -244,7 +265,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
           </div>
 
           {isMobileMenuOpen && (
-            <div className="border-t border-[#55766F]/15 pb-5 pt-4 lg:hidden">
+            <div className="border-t border-[#55766F]/15 pb-5 pt-4 min-[1180px]:hidden">
               <nav aria-label="JOKO TODAY mobile">
                 <ul className="grid grid-cols-2 gap-2">
                   {navItems.map((item) => {
@@ -256,7 +277,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                           onClick={() => handleNav(item)}
                           aria-current={isActive ? 'page' : undefined}
                           className={[
-                            'w-full rounded-lg px-3 py-2 text-left text-base font-medium transition focus:outline-none focus:ring-2 focus:ring-[#55766F]',
+                            'w-full rounded-lg px-3 py-2 text-left text-base font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]',
                             isActive ? 'bg-[#F4EFE5]/65 text-[#303532]' : 'text-[#303532] hover:bg-white/20',
                           ].join(' ')}
                         >

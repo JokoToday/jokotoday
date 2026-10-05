@@ -35,6 +35,7 @@ import {
   type HomeTopLikedSection,
 } from '../../../platform/builder';
 import { Container } from '../../../platform/design-system';
+import { useJokoFounderPortrait } from './useJokoFounderPortrait';
 
 interface HomepageLowerSectionsProps {
   locale: string;
@@ -75,17 +76,20 @@ const copy = {
     aboutTitle: 'About JOKO',
     aboutIntro: 'A small bakery in Chiang Mai, baking in Mae Rim and selling where our customers are.',
     aboutBakeryTitle: 'Our Bakery',
-    aboutBakeryText: 'We bake in the peace of our garden in Mae Rim, then bring JOKO closer to town on selected pickup days.',
+    aboutBakeryText: 'We bake in our garden in Mae Rim, then bring the good things closer to town on selected pickup days.',
+    aboutBakeryProducts: 'Browse the baked goodies',
+    aboutBakeryPickup: 'See pickup days & locations',
+    aboutPeopleTitle: 'Who’s in Charge?',
+    aboutPeopleText: 'Meet Joe & Phuttan. Two people, a lot of baking, and a few unexpected turns along the way.',
+    aboutPeopleAction: 'Meet Joe & Phuttan',
     aboutStoryTitle: 'Our Story',
     aboutStoryText: 'JOKO began with chocolate pralines, one slightly reckless “Yes, we can make croissants,” and a second-hand dough sheeter bought before we knew why we needed it.',
-    aboutMissionTitle: 'What We’re Here to Do',
-    aboutMissionText: 'Make good international-style bakery products accessible enough to enjoy often — not only on special occasions.',
     readStory: 'Read our story',
     galleryTitle: 'Around JOKO',
     galleryIntro: 'A few real moments from the bakery, pickup days and the people around us.',
     galleryAction: 'See the Gallery',
     galleryEmpty: 'Add 3–5 published Gallery items in Admin to bring this section to life.',
-    peopleSayTitle: 'What People Say',
+    peopleSayTitle: 'What Others Say',
     peopleSayIntro: 'Real reviews, videos and posts from outside JOKO.',
     peopleSayAction: 'See what people say',
     peopleSayEmpty: 'Curate a few real Google Maps reviews, TikToks, RedNote posts or other mentions in Admin.',
@@ -122,11 +126,14 @@ const copy = {
     aboutTitle: 'เกี่ยวกับ JOKO',
     aboutIntro: 'ร้านเบเกอรี่เล็ก ๆ ในเชียงใหม่ เราอบที่แม่ริม และไปขายในที่ที่ลูกค้าของเราอยู่',
     aboutBakeryTitle: 'เบเกอรี่ของเรา',
-    aboutBakeryText: 'เราอบขนมท่ามกลางความสงบในสวนที่แม่ริม แล้วพา JOKO เข้าใกล้เมืองในวันรับสินค้าที่กำหนด',
+    aboutBakeryText: 'เราอบขนมในสวนที่แม่ริม แล้วนำขนมมาให้รับใกล้เมืองในวันที่กำหนด',
+    aboutBakeryProducts: 'ดูขนมอบทั้งหมด',
+    aboutBakeryPickup: 'ดูวันและจุดรับสินค้า',
+    aboutPeopleTitle: 'ใครอยู่เบื้องหลัง?',
+    aboutPeopleText: 'รู้จัก Joe และ Phuttan คนสองคนกับขนมอบมากมายและเรื่องราวที่ไม่ได้วางแผนไว้',
+    aboutPeopleAction: 'รู้จัก Joe และ Phuttan',
     aboutStoryTitle: 'เรื่องราวของเรา',
     aboutStoryText: 'JOKO เริ่มจากช็อกโกแลตพราลีน คำตอบ “ได้สิ เราทำครัวซองต์ได้” ที่มั่นใจเกินจริงไปนิด และเครื่องรีดแป้งมือสองที่เราซื้อก่อนจะรู้เสียอีกว่าต้องใช้มันทำอะไร',
-    aboutMissionTitle: 'สิ่งที่เราอยากทำ',
-    aboutMissionText: 'ทำเบเกอรี่สไตล์นานาชาติที่ดี ในราคาที่แวะมากินได้บ่อย ๆ ไม่จำเป็นต้องรอโอกาสพิเศษ',
     readStory: 'อ่านเรื่องราวของเรา',
     galleryTitle: 'รอบ ๆ JOKO',
     galleryIntro: 'ภาพจริงเล็ก ๆ จากเบเกอรี่ วันรับสินค้า และผู้คนรอบตัวเรา',
@@ -169,11 +176,14 @@ const copy = {
     aboutTitle: '关于 JOKO',
     aboutIntro: '一家位于清迈的小烘焙坊：我们在湄林烘焙，也去到顾客方便取货的地方。',
     aboutBakeryTitle: '我们的烘焙坊',
-    aboutBakeryText: '我们在湄林花园里的烘焙坊安静地制作，再在指定取货日把 JOKO 带到离大家更近的地方。',
+    aboutBakeryText: '我们在湄林花园里的烘焙坊制作烘焙食品，再在指定取货日送到离顾客更近的地点。',
+    aboutBakeryProducts: '浏览烘焙好物',
+    aboutBakeryPickup: '查看取货时间与地点',
+    aboutPeopleTitle: '谁在打理 JOKO？',
+    aboutPeopleText: '认识 Joe 和 Phuttan。两个人、一间烘焙坊，还有许多计划外的转折。',
+    aboutPeopleAction: '认识 Joe 和 Phuttan',
     aboutStoryTitle: '我们的故事',
     aboutStoryText: 'JOKO 从巧克力果仁糖开始，也从一句稍微自信过头的“当然会做可颂”开始，再加上一台买来时还不知道为什么需要的二手压面机。',
-    aboutMissionTitle: '我们想做的事',
-    aboutMissionText: '把好的国际风格烘焙做得亲切可享，让它可以经常出现在日常生活里，而不只是特殊日子。',
     readStory: '阅读我们的故事',
     galleryTitle: 'JOKO 日常',
     galleryIntro: '来自烘焙坊、取货日和身边人们的真实片段。',
@@ -254,6 +264,7 @@ export function HomepageLowerSections({
 }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
+  const foundersPortrait = useJokoFounderPortrait();
   const publishedBakingTitle = publishedTopLiked
     ? localize(publishedTopLiked.props.title, language, 'en')
     : labels.bakingTitle;
@@ -359,7 +370,7 @@ export function HomepageLowerSections({
             title={bakingTitle ? <BuilderRichTextContent value={bakingTitle} /> : labels.bakingTitle}
             intro={bakingIntro ? <BuilderRichTextContent value={bakingIntro} /> : labels.bakingIntro}
             action={(
-              <button type="button" onClick={() => onNavigate('products')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
+              <button type="button" onClick={() => onNavigate('products-bakery')} className="inline-flex items-center gap-2 self-start border-b border-[#C76624]/50 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]">
                 {bakingBrowseLabel}<ArrowRight className="h-4 w-4" />
               </button>
             )}
@@ -534,128 +545,151 @@ export function HomepageLowerSections({
         </Container>
       </section>
 
+
       <section id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle
             title={labels.aboutTitle}
             intro={labels.aboutIntro}
-            action={(
-              <button
-                type="button"
-                onClick={() => onNavigate('our-story')}
-                className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]"
-              >
-                {labels.readStory}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
             backToTopLabel={labels.backToTop}
             onBackToTop={backToTop}
           />
           <div className="grid gap-4 md:grid-cols-3">
-            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutBakeryTitle}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutBakeryText}</p>
+            <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutBakeryTitle}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutBakeryText}</p>
+              <div className="mt-6 flex flex-col items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('products-bakery')}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                >{labels.aboutBakeryProducts}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pickup = window.document.getElementById('pickup');
+                    if (pickup) {
+                      if (window.location.pathname === '/') window.history.pushState({ jokoHomepageSection: 'pickup' }, '', '/#pickup');
+                      pickup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      onNavigate('home');
+                      window.setTimeout(() => window.document.getElementById('pickup')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#3F665E] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                >{labels.aboutBakeryPickup}<MapPin className="h-4 w-4" aria-hidden="true" /></button>
+              </div>
             </article>
-            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutStoryTitle}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutStoryText}</p>
-              <button type="button" onClick={() => onNavigate('our-story')} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#A44F1D]">
-                {labels.readStory}<ArrowRight className="h-4 w-4" />
+
+            <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutPeopleTitle}</h3>
+              <div className="mt-4 flex min-h-36 items-center justify-center overflow-hidden rounded-2xl bg-[#F5EBD9]/70 px-3 py-2">
+                {foundersPortrait ? (
+                  <img
+                    src={foundersPortrait}
+                    alt={language === 'th' ? 'Joe และ Phuttan' : language === 'zh' ? 'Joe 和 Phuttan' : 'Joe and Phuttan'}
+                    className="h-36 w-full object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="text-center text-2xl font-semibold text-[#55766F]" style={{ fontFamily: 'var(--joko-font-display)' }}>Joe &amp; Phuttan</span>
+                )}
+              </div>
+              <p className="mt-4 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutPeopleText}</p>
+              <button
+                type="button"
+                onClick={() => onNavigate('meet-founders')}
+                className="mt-5 inline-flex items-center gap-2 self-start text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+              >{labels.aboutPeopleAction}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+            </article>
+
+            <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
+              <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutStoryTitle}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutStoryText}</p>
+              <button type="button" onClick={() => onNavigate('our-story')} className="mt-6 inline-flex items-center gap-2 self-start text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]">
+                {labels.readStory}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
-            </article>
-            <article className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/58 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]">{labels.aboutMissionTitle}</h3>
-              <p className="mt-3 text-sm leading-6 text-[#303532]/66">{labels.aboutMissionText}</p>
             </article>
           </div>
-        </Container>
-      </section>
 
-      <section id="gallery-preview" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
-        <Container width="wide">
-          <SectionTitle
-            title={labels.galleryTitle}
-            intro={labels.galleryIntro}
-            action={(
-              <button type="button" onClick={() => onNavigate('gallery')} className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]">
-                {labels.galleryAction}<ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-            backToTopLabel={labels.backToTop}
-            onBackToTop={backToTop}
-          />
-          {galleryItems.length ? (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
-              {galleryItems.map((item, index) => {
-                const text = localizedGalleryText(item, language);
-                const media = item.thumbnail_url || item.media_url;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onNavigate('gallery')}
-                    className={`group relative overflow-hidden rounded-2xl bg-[#E8E1D5] text-left shadow-[0_9px_24px_rgba(48,75,69,.06)] ${index === 0 ? 'col-span-2 aspect-[2/1] lg:col-span-2 lg:row-span-2 lg:aspect-auto' : 'aspect-[4/3]'}`}
-                  >
-                    <img src={media} alt={text.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]" loading="lazy" />
-                    {item.media_type === 'video' && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/10">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF9EE]/90 text-[#303532] shadow-md"><Play className="ml-0.5 h-5 w-5" fill="currentColor" /></span>
-                      </span>
-                    )}
-                    {(text.title || text.caption) && (
-                      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/58 to-transparent px-4 pb-3 pt-10 text-sm font-medium text-white">
-                        {text.title || text.caption}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="rounded-3xl border border-dashed border-[#55766F]/20 bg-[#F7F1E7]/45 p-8 text-center text-sm text-[#303532]/60">{labels.galleryEmpty}</p>
-          )}
-        </Container>
-      </section>
+          <div className="mt-7 grid items-stretch gap-4 lg:grid-cols-2">
+            <article id="gallery-preview" className="min-w-0 rounded-3xl border border-[#55766F]/15 bg-[#E2ECE6]/55 p-5 scroll-mt-24 sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.galleryTitle}</h3>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-[#303532]/67">{labels.galleryIntro}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('gallery')}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                >{labels.galleryAction}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+              </div>
+              {galleryItems.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  {galleryItems.slice(0, 3).map((item) => {
+                    const text = localizedGalleryText(item, language);
+                    const media = item.thumbnail_url || item.media_url;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onNavigate('gallery')}
+                        className="group relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl bg-[#E8E1D5] transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                      >
+                        <img src={media} alt={text.alt} className="h-full w-full object-cover transition group-hover:scale-[1.025]" loading="lazy" />
+                        {item.media_type === 'video' && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <Play className="h-7 w-7 text-white drop-shadow" fill="currentColor" aria-hidden="true" />
+                          </span>
+                        )}
+                        {text.title && <span className="sr-only">{text.title}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-[#55766F]/20 bg-white/40 p-6 text-sm text-[#303532]/65">{labels.galleryEmpty}</p>
+              )}
+            </article>
 
-      <section id="what-people-say-preview" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
-        <Container width="wide">
-          <SectionTitle
-            title={labels.peopleSayTitle}
-            intro={labels.peopleSayIntro}
-            action={(
-              <button type="button" onClick={() => onNavigate('what-people-say')} className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] transition hover:border-[#C76624]">
-                {labels.peopleSayAction}<ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-            backToTopLabel={labels.backToTop}
-            onBackToTop={backToTop}
-          />
-          {externalMentions.length ? (
-            <div className="grid gap-4 lg:grid-cols-3">
-              {externalMentions.map((item) => (
-                <a key={item.id} href={item.source_url} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/62 transition hover:-translate-y-0.5 hover:shadow-md">
-                  {item.thumbnail_url && (
-                    <div className="relative aspect-video overflow-hidden bg-[#E8E1D5]">
-                      <img src={item.thumbnail_url} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" loading="lazy" />
-                      {item.content_type === 'video' && <span className="absolute inset-0 flex items-center justify-center bg-black/10"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF9EE]/90 text-[#303532]"><Play className="ml-0.5 h-5 w-5" fill="currentColor" /></span></span>}
-                    </div>
-                  )}
-                  <div className="p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#55766F]">{item.source_type.replace('_', ' ')}</span>
-                      {item.rating !== null && <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#A44F1D]"><Star className="h-3.5 w-3.5 fill-current" />{item.rating.toFixed(1)}</span>}
-                    </div>
-                    {item.excerpt ? <blockquote className="mt-3 line-clamp-4 text-sm leading-6 text-[#303532]/70">“{item.excerpt}”</blockquote> : <MessageSquareQuote className="mt-4 h-6 w-6 text-[#55766F]/45" />}
-                    {item.author_name && <p className="mt-3 text-sm font-medium text-[#303532]">{item.author_name}</p>}
-                    <span className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-[#A44F1D]">{labels.originalPost}<ArrowRight className="h-3.5 w-3.5" /></span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-3xl border border-dashed border-[#8B765E]/20 bg-white/20 p-8 text-center text-sm text-[#303532]/60">{labels.peopleSayEmpty}</p>
-          )}
+            <article id="what-people-say-preview" className="min-w-0 rounded-3xl border border-[#55766F]/15 bg-[#E2ECE6]/55 p-5 scroll-mt-24 sm:p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.peopleSayTitle}</h3>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-[#303532]/67">{labels.peopleSayIntro}</p>
+                </div>
+                <button type="button" onClick={() => onNavigate('what-people-say')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]">
+                  {labels.peopleSayAction}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              {externalMentions.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {externalMentions.slice(0, 2).map((item) => (
+                    <a key={item.id} href={item.source_url} target="_blank" rel="noopener noreferrer" className="group min-w-0 overflow-hidden rounded-2xl border border-[#8B765E]/12 bg-[#FFFDF7]/85 transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]">
+                      {item.thumbnail_url && (
+                        <div className="relative aspect-[16/7] overflow-hidden bg-[#E8E1D5]">
+                          <img src={item.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          {item.content_type === 'video' && <Play className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" fill="currentColor" aria-hidden="true" />}
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <div className="flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[.12em] text-[#55766F]">
+                          <span>{item.source_type.replace('_', ' ')}</span>
+                          {item.rating !== null && <span className="inline-flex items-center gap-1 text-[#A44F1D]"><Star className="h-3 w-3 fill-current" />{item.rating.toFixed(1)}</span>}
+                        </div>
+                        {item.excerpt ? <blockquote className="mt-2 line-clamp-3 text-xs leading-5 text-[#303532]/75">“{item.excerpt}”</blockquote> : <MessageSquareQuote className="mt-3 h-6 w-6 text-[#55766F]/55" />}
+                        {item.author_name && <p className="mt-2 truncate text-xs font-medium text-[#303532]">{item.author_name}</p>}
+                        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#A44F1D]">{labels.originalPost}<ArrowRight className="h-3 w-3" aria-hidden="true" /></span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-dashed border-[#55766F]/20 bg-white/40 p-6 text-sm text-[#303532]/65">{labels.peopleSayEmpty}</p>
+              )}
+            </article>
+          </div>
         </Container>
       </section>
 

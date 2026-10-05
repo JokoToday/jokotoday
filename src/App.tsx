@@ -17,6 +17,7 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const OurStoryPage = lazy(() => import('./pages/OurStoryPage'));
+const MeetFoundersPage = lazy(() => import('./pages/MeetFoundersPage'));
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const WhatPeopleSayPage = lazy(() => import('./pages/WhatPeopleSayPage'));
 const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
@@ -46,6 +47,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   checkout: '/checkout',
   about: '/about',
   'our-story': '/our-story',
+  'meet-founders': '/meet-joe-and-phuttan',
   gallery: '/gallery',
   'what-people-say': '/what-people-say',
   'how-it-works': '/how-it-works',
@@ -268,9 +270,11 @@ function AppContent() {
       return;
     }
 
-    // Dedicated deep link: browser refresh/back should preserve the Non-bakery filter.
-    if (page === 'products-non-bakery') {
-      const targetPath = '/products?category=non-bakery';
+    // Distinct, refresh-safe public links for the two product families.
+    if (page === 'products-bakery' || page === 'products-non-bakery') {
+      const targetPath = page === 'products-bakery'
+        ? '/products?category=bakery'
+        : '/products?category=non-bakery';
       if (`${window.location.pathname}${window.location.search}` !== targetPath) {
         window.history.pushState({}, '', targetPath);
       }
@@ -304,8 +308,14 @@ function AppContent() {
       || NOTEBOOK_PAGE_PATHS[page]
       || null;
 
-    if (targetPath && window.location.pathname !== targetPath) {
+    // Comparing just pathname leaves old section hashes (e.g. /#about)
+    // behind when navigating "Back to home", making an old menu stay active.
+    const currentRoute = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (targetPath && currentRoute !== targetPath) {
       window.history.pushState({}, '', targetPath);
+    }
+    if (targetPath) {
+      window.dispatchEvent(new Event('joko-navigation-updated'));
     }
 
     setCurrentPage(page);
@@ -405,6 +415,8 @@ function AppContent() {
         return <AboutPage />;
       case 'our-story':
         return <OurStoryPage onNavigate={handleNavigate} />;
+      case 'meet-founders':
+        return <MeetFoundersPage onNavigate={handleNavigate} />;
       case 'gallery':
         return <GalleryPage onNavigate={handleNavigate} />;
       case 'what-people-say':
@@ -448,14 +460,14 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
     ? 'curiosities'
     : currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout'
       ? 'bakery'
-      : currentPage === 'our-story'
+      : currentPage === 'our-story' || currentPage === 'meet-founders'
         ? 'about'
       : currentPage === 'gallery'
         ? 'gallery'

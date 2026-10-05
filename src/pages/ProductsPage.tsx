@@ -100,7 +100,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   useEffect(() => {
     const syncDeepLinkedCategory = () => {
       const category = new URLSearchParams(window.location.search).get('category');
-      setSelectedCategory(category === 'non-bakery' ? 'non-bakery' : (category || 'all'));
+      setSelectedCategory(category === 'non-bakery' || category === 'bakery' ? category : (category || 'all'));
     };
     syncDeepLinkedCategory();
     window.addEventListener('popstate', syncDeepLinkedCategory);
@@ -353,7 +353,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     setSelectedCategory(category);
     const nextPath = category === 'non-bakery'
       ? '/products?category=non-bakery'
-      : '/products';
+      : category === 'bakery' ? '/products?category=bakery' : '/products';
     if (`${window.location.pathname}${window.location.search}` !== nextPath) {
       window.history.replaceState({}, '', nextPath);
     }
@@ -363,7 +363,9 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     const matchesCategory = !selectedCategory || selectedCategory === 'all'
       || (selectedCategory === 'non-bakery'
         ? Boolean(product.is_non_bakery)
-        : product.category_id === selectedCategory);
+        : selectedCategory === 'bakery'
+          ? !product.is_non_bakery
+          : product.category_id === selectedCategory);
     if (!matchesCategory) return false;
 
     if (pickupV2Enabled) {
@@ -560,6 +562,18 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               }`}
             >
               {t.categories.all}
+            </button>
+            <button
+              type="button"
+              onClick={() => selectCatalogCategory('bakery')}
+              aria-pressed={selectedCategory === 'bakery'}
+              className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
+                selectedCategory === 'bakery'
+                  ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
+                  : 'border-[#55766F]/18 bg-[#FFF9EE]/62 text-[#303532]/78 hover:border-[#C76624]/35 hover:bg-[#FFF9EE]'
+              }`}
+            >
+              {language === 'th' ? 'ขนมอบ' : language === 'zh' ? '烘焙好物' : 'Baked Goodies'}
             </button>
             <button
               type="button"

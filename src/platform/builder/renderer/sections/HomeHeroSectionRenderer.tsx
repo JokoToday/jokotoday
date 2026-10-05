@@ -53,20 +53,20 @@ export function HomeHeroSectionRenderer({
   const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
   const chrome = locale === 'th'
     ? {
-        nav: ['หน้าแรก', 'เบเกอรี่', 'วิธีสั่งซื้อ', 'รับสินค้า', 'เกี่ยวกับเรา'],
+        nav: ['หน้าแรก', 'ขนมอบ', 'ของดีอื่น ๆ', 'วิธีสั่งซื้อ', 'จุดรับสินค้า', 'เกี่ยวกับเรา'],
         eyebrow: 'เบเกอรี่อาร์ติซาน · เชียงใหม่ · อบทีละน้อย',
         smallBatch: 'อบทีละน้อย',
         pickup: 'รับสินค้าในเชียงใหม่',
       }
     : locale === 'zh'
     ? {
-        nav: ['首页', '烘焙', '如何订购', '取货', '关于我们'],
+        nav: ['首页', '烘焙好物', '其他好物', '如何订购', '取货', '关于我们'],
         eyebrow: '手作烘焙 · 清迈 · 小批量制作',
         smallBatch: '小批量烘焙',
         pickup: '清迈取货',
       }
     : {
-        nav: ['Home', 'Bakery', 'How It Works', 'Pickup', 'About'],
+        nav: ['Home', 'Baked Goodies', 'Other Goodies', 'How It Works', 'Pick Up', 'About'],
         eyebrow: 'Artisan bakery · Chiang Mai · Small batches',
         smallBatch: 'Small-batch baking',
         pickup: 'Pickup in Chiang Mai',
@@ -87,7 +87,7 @@ export function HomeHeroSectionRenderer({
       <Container width={section.design.width}>
         <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
           <img src={logoUrl} alt={site.name} className="w-auto object-contain mix-blend-multiply" style={{ height: 'calc(3rem * var(--joko-logo-scale, 1.2))' }} />
-          <div className="ml-auto hidden gap-7 font-medium text-[#303532]/72 sm:flex" style={{ fontSize: 'var(--joko-size-nav, 16px)' }}>
+          <div className="ml-auto hidden gap-4 font-medium text-[#303532]/72 xl:gap-5 lg:flex" style={{ fontSize: 'var(--joko-size-nav, 16px)' }}>
             {chrome.nav.map((label) => <span key={label}>{label}</span>)}
           </div>
         </div>
