@@ -98,16 +98,23 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   const [productPickupCalendar, setProductPickupCalendar] = useState<ProductPickupCalendarRequest | null>(null);
 
   useEffect(() => {
+    const syncDeepLinkedCategory = () => {
+      const category = new URLSearchParams(window.location.search).get('category');
+      setSelectedCategory(category === 'non-bakery' ? 'non-bakery' : (category || 'all'));
+    };
+    syncDeepLinkedCategory();
+    window.addEventListener('popstate', syncDeepLinkedCategory);
+    window.addEventListener('joko-products-category-navigation', syncDeepLinkedCategory);
+
     void loadData();
-    if (!selectedCategory) {
-      setSelectedCategory('all');
-    }
 
     const handleOpenProductDetail = (e: CustomEvent<CMSProduct>) => {
       setSelectedProduct(e.detail);
     };
     window.addEventListener('openProductDetail', handleOpenProductDetail as EventListener);
     return () => {
+      window.removeEventListener('popstate', syncDeepLinkedCategory);
+      window.removeEventListener('joko-products-category-navigation', syncDeepLinkedCategory);
       window.removeEventListener('openProductDetail', handleOpenProductDetail as EventListener);
     };
   }, []);
@@ -342,8 +349,21 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     };
   };
 
+  const selectCatalogCategory = (category: string) => {
+    setSelectedCategory(category);
+    const nextPath = category === 'non-bakery'
+      ? '/products?category=non-bakery'
+      : '/products';
+    if (`${window.location.pathname}${window.location.search}` !== nextPath) {
+      window.history.replaceState({}, '', nextPath);
+    }
+  };
+
   const filteredProducts = products.filter((product) => {
-    const matchesCategory = !selectedCategory || selectedCategory === 'all' || product.category_id === selectedCategory;
+    const matchesCategory = !selectedCategory || selectedCategory === 'all'
+      || (selectedCategory === 'non-bakery'
+        ? Boolean(product.is_non_bakery)
+        : product.category_id === selectedCategory);
     if (!matchesCategory) return false;
 
     if (pickupV2Enabled) {
@@ -532,7 +552,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         <div className="mb-9">
           <div className="joko-products-category-strip flex flex-wrap gap-2.5 p-2.5 sm:gap-3 sm:p-3">
             <button
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => selectCatalogCategory('all')}
               className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
                 selectedCategory === 'all'
                   ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
@@ -540,6 +560,18 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               }`}
             >
               {t.categories.all}
+            </button>
+            <button
+              type="button"
+              onClick={() => selectCatalogCategory('non-bakery')}
+              aria-pressed={selectedCategory === 'non-bakery'}
+              className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
+                selectedCategory === 'non-bakery'
+                  ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
+                  : 'border-[#55766F]/18 bg-[#FFF9EE]/62 text-[#303532]/78 hover:border-[#C76624]/35 hover:bg-[#FFF9EE]'
+              }`}
+            >
+              {language === 'th' ? 'ไม่ใช่เบเกอรี่' : language === 'zh' ? '非烘焙' : 'Non-bakery'}
             </button>
             {categories.map((category) => {
               const categoryName = language === 'zh'
@@ -550,7 +582,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               return (
                 <button
                   key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
+                  onClick={() => selectCatalogCategory(category.id)}
                   className={`rounded-full border px-5 py-2.5 text-sm font-medium transition-all sm:px-6 ${
                     selectedCategory === category.id
                       ? 'border-[#55766F] bg-[#55766F] text-white shadow-sm'
