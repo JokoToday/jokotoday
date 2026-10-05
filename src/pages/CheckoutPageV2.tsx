@@ -63,6 +63,11 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [showPickupEditor, setShowPickupEditor] = useState(false);
   const pickupEditSessionRef = useRef(false);
   const [notes, setNotes] = useState('');
+  // Optional final extras are reviewed after the pickup has been confirmed.
+  // Never make this promotional step a requirement for placing an order.
+  const [hasBakeryExtras, setHasBakeryExtras] = useState(false);
+  const [hasNonBakeryExtras, setHasNonBakeryExtras] = useState(false);
+  const [declinedExtras, setDeclinedExtras] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [orderAttemptReference, setOrderAttemptReference] = useState('');
@@ -230,6 +235,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
 
   const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
     setSelection(next);
+    setHasBakeryExtras(false);
+    setHasNonBakeryExtras(false);
+    setDeclinedExtras(false);
     if (!next) {
       pickupEditSessionRef.current = true;
       setShowPickupEditor(true);
@@ -554,6 +562,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     : language === 'zh'
       ? '请先在上方确认取货日期和地点，然后继续。'
       : 'Confirm your pickup date and location above to continue.';
+  const hasOptionalExtras = hasBakeryExtras || hasNonBakeryExtras;
+  const extrasStepTitle = language === 'th'
+    ? '3 · ต้องการเพิ่มอะไรอีกไหม?'
+    : language === 'zh' ? '3 · 还需要添加其他商品吗？' : '3 · One last thing?';
+  const extrasStepHelper = language === 'th'
+    ? 'ไม่บังคับ: เพิ่มสินค้าสำหรับวันรับเดิม หรือเลือกข้ามขั้นตอนนี้'
+    : language === 'zh' ? '可选：为同一取货日添加商品，或跳过这一步。'
+      : 'Optional: add something for the same pickup, or skip this step.';
+  const declineExtrasLabel = language === 'th'
+    ? 'ไม่เป็นไร ขอบคุณ พร้อมสั่งซื้อแล้ว'
+    : language === 'zh' ? '不用了，谢谢，我准备下单了' : 'No, thank you. I’m ready for checkout';
+  const revisitExtrasLabel = language === 'th'
+    ? 'เรียบร้อย · กลับไปดูสินค้าแนะนำ'
+    : language === 'zh' ? '已选择不添加 · 再看看推荐' : 'All set · See suggestions again';
   const forgotSomethingLabel = getLabel(
     'checkout.continue_shopping',
     language,
@@ -679,17 +701,65 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             {selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor && (
-              <>
-                <FitsYourPickupV2
-                  pickupDateId={selection.pickupDateId}
-                  placement="checkout"
-                  onProductClick={openRecommendedProduct}
-                />
-                <NonBakeryCheckoutSuggestions
-                  pickupDateId={selection.pickupDateId}
-                  onProductClick={openRecommendedProduct}
-                />
-              </>
+              <section
+                aria-label={extrasStepTitle}
+                className={hasOptionalExtras
+                  ? declinedExtras
+                    ? 'rounded-[1.5rem] border-2 border-[#55766F]/35 bg-[#EAF1EB]/75 p-3 sm:p-4'
+                    : 'rounded-[1.5rem] border-[3px] border-[#B85C25] bg-[#FFF2E2] p-3 shadow-[0_0_0_4px_rgba(184,92,37,.14)] sm:p-4'
+                  : 'contents'}
+              >
+                {hasOptionalExtras && (
+                  <div className="mb-4 flex items-start gap-2.5">
+                    {declinedExtras ? (
+                      <CheckCircle className="mt-0.5 h-6 w-6 shrink-0 text-[#3F665E]" aria-hidden="true" />
+                    ) : (
+                      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B85C25] text-xs font-bold text-white">3</span>
+                    )}
+                    <div>
+                      <h2 className="text-base font-bold text-[#303532]">{extrasStepTitle}</h2>
+                      {!declinedExtras && <p className="mt-1 text-sm font-medium text-[#96501F]">{extrasStepHelper}</p>}
+                    </div>
+                  </div>
+                )}
+
+                <div className={declinedExtras ? 'hidden' : 'space-y-3'}>
+                  <FitsYourPickupV2
+                    pickupDateId={selection.pickupDateId}
+                    placement="checkout"
+                    onProductClick={openRecommendedProduct}
+                    onVisibilityChange={setHasBakeryExtras}
+                  />
+                  <NonBakeryCheckoutSuggestions
+                    pickupDateId={selection.pickupDateId}
+                    onProductClick={openRecommendedProduct}
+                    onVisibilityChange={setHasNonBakeryExtras}
+                  />
+                </div>
+
+                {hasOptionalExtras && (
+                  <button
+                    type="button"
+                    aria-pressed={declinedExtras}
+                    onClick={() => setDeclinedExtras((current) => !current)}
+                    className={`mt-4 flex min-h-12 w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#55766F]/25 ${
+                      declinedExtras
+                        ? 'border-[#55766F]/45 bg-white/90 text-[#304B45] hover:bg-[#F2F7F3]'
+                        : 'border-[#B85C25]/45 bg-[#FFFDF8] text-[#7F3F1D] hover:border-[#B85C25] hover:bg-white'
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
+                        declinedExtras ? 'border-[#55766F] bg-[#55766F] text-white' : 'border-[#B85C25] bg-white'
+                      }`}
+                    >
+                      {declinedExtras && <CheckCircle className="h-4 w-4" />}
+                    </span>
+                    {declinedExtras ? revisitExtrasLabel : declineExtrasLabel}
+                  </button>
+                )}
+              </section>
             )}
 
             <div>
@@ -713,8 +783,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             <button
               type="button"
               onClick={continueShopping}
-              className="w-full rounded-xl border border-[#55766F]/20 bg-white/65 py-3 font-semibold text-[#3F665E] transition hover:bg-[#CFE3DF]/35"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#345A63] bg-[#426C75] px-4 py-3.5 font-semibold text-white shadow-[0_5px_14px_rgba(48,76,83,.12)] transition hover:bg-[#315760] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#426C75]/25"
             >
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
               {forgotSomethingLabel}
             </button>
 
