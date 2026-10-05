@@ -69,7 +69,7 @@ const languageOptions = [
 export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellHeaderProps) {
   const { language, setLanguage } = useLanguage();
   const { user } = useAuth();
-  const { totalItems, setIsCartOpen } = useCart();
+  const { totalItems, setIsCartOpen, selectedCategory } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const labels = copy[language];
@@ -131,9 +131,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     const path = window.location.pathname;
     if (item.key === 'home') return path === '/';
     // The two product menus share /products but differ by query-controlled filter.
-    const nonBakery = new URLSearchParams(window.location.search).get('category') === 'non-bakery';
-    if (item.key === 'other-products') return path === '/products' && nonBakery;
-    if (item.key === 'products') return path === '/products' && !nonBakery;
+    if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
+    if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';
     return item.activeKey ? activeSection === item.activeKey : false;
   };
 
