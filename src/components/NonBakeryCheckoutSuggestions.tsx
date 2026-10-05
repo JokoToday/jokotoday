@@ -16,6 +16,7 @@ interface NonBakeryCheckoutSuggestionsProps {
   /** Legacy checkout selection; never offer items for an unconfirmed day. */
   legacyPickupDay?: PickupDay | null;
   onProductClick?: (product: CMSProduct) => void;
+  onVisibilityChange?: (hasSuggestions: boolean) => void;
 }
 
 const copy = {
@@ -62,6 +63,7 @@ export function NonBakeryCheckoutSuggestions({
   pickupDateId,
   legacyPickupDay,
   onProductClick,
+  onVisibilityChange,
 }: NonBakeryCheckoutSuggestionsProps) {
   const { items, addToCart } = useCart();
   const { language } = useLanguage();
@@ -126,6 +128,10 @@ export function NonBakeryCheckoutSuggestions({
         : Boolean(legacyPickupDay && eligibleForLegacyDay(product, legacyPickupDay)))
     ).slice(0, 4);
   }, [products, alreadyInCart, remaining, pickupDateId, legacyPickupDay]);
+
+  useEffect(() => {
+    onVisibilityChange?.(ready && suggestions.length > 0);
+  }, [ready, suggestions.length, onVisibilityChange]);
 
   if (!ready || suggestions.length === 0) return null;
 
