@@ -158,8 +158,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               />
             </button>
 
-            <nav className="hidden lg:block" aria-label="JOKO TODAY">
-              <ul className="flex items-center gap-5 xl:gap-7">
+            <nav className="hidden min-[1180px]:block" aria-label="JOKO TODAY">
+              <ul className="flex items-center gap-4 xl:gap-6">
                 {navItems.map((item) => {
                   const isActive = isNavItemActive(item);
                   return (
@@ -233,7 +233,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen((open) => !open)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F] lg:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#303532] transition hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-[#55766F] min-[1180px]:hidden"
                 aria-label={labels.menu}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -243,7 +243,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
           </div>
 
           {isMobileMenuOpen && (
-            <div className="border-t border-[#55766F]/15 pb-5 pt-4 lg:hidden">
+            <div className="border-t border-[#55766F]/15 pb-5 pt-4 min-[1180px]:hidden">
               <nav aria-label="JOKO TODAY mobile">
                 <ul className="grid grid-cols-2 gap-2">
                   {navItems.map((item) => {
