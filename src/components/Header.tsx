@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { UserAvatarDropdown } from './UserAvatarDropdown';
+import '../app/joko-today/shell/jokoNavPencil.css';
 
 const AuthModal = lazy(() => import('./AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
@@ -47,6 +48,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
         if (`${window.location.pathname}${window.location.hash}` !== target) {
           window.history.pushState({ jokoHomepageSection: hash }, '', target);
         }
+        window.dispatchEvent(new Event('joko-navigation-updated'));
         window.document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, window.location.pathname === '/' ? 0 : 80);
       return;
@@ -69,16 +71,13 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             />
           </button>
 
-          <nav className="hidden lg:flex space-x-6">
+          <nav className="hidden min-[1180px]:flex gap-4">
             {navItems.map((item) => (
               <button
                 key={item.value}
                 onClick={() => navigateMenu(item.value)}
-                className={`text-sm font-medium transition-colors ${
-                  currentPage === item.value
-                    ? 'text-primary-900 border-b-2 border-primary-900'
-                    : 'text-primary-700 hover:text-primary-900'
-                }`}
+                data-current={item.value !== 'home' && currentPage === item.value ? 'true' : 'false'}
+                className="joko-nav-pencil text-sm font-medium text-primary-700 transition hover:text-primary-900"
               >
                 {item.label}
               </button>
@@ -146,7 +145,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-primary-900"
+              className="min-[1180px]:hidden p-2 text-primary-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-700"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -154,7 +153,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
         </div>
 
         {isMobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-primary-200">
+          <nav className="min-[1180px]:hidden py-4 border-t border-primary-200">
             {navItems.map((item) => (
               <button
                 key={item.value}
@@ -163,7 +162,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                   setIsMobileMenuOpen(false);
                 }}
                 className={`block w-full text-left px-4 py-2 text-sm font-medium transition-colors ${
-                  currentPage === item.value
+                  item.value !== 'home' && currentPage === item.value
                     ? 'text-primary-900 bg-primary-100'
                     : 'text-primary-700 hover:bg-primary-100'
                 }`}
