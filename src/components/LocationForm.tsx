@@ -183,7 +183,7 @@ export function LocationForm({ location, onSave, onCancel }: LocationFormProps) 
 
   return (
     <AdminModalPortal>
-      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black bg-opacity-50">
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/50">
         <div className="flex min-h-full items-start justify-center p-2 sm:p-4">
           <div className="my-auto flex max-h-[calc(100vh-1rem)] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl sm:max-h-[calc(100vh-2rem)]">
         <div className="joko-admin-modal-header relative z-10 flex shrink-0 items-center justify-between p-4 sm:p-6">

@@ -113,12 +113,12 @@ export function QuickAddProduct({ categories, onSave, onCancel }: QuickAddProduc
 
   return (
     <AdminModalPortal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
         <div className="joko-admin-modal-header p-4 sm:p-6 rounded-t-lg shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-white bg-opacity-20 p-2 rounded-lg">
+              <div className="bg-white/20 p-2 rounded-lg">
                 <Zap className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-xl font-bold text-white">Quick Add Product</h2>

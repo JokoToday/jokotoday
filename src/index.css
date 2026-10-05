@@ -1,11 +1,96 @@
 @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Itim&family=Maitree:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai+Looped:wght@300;400;500;600;700;800;900&family=Noto+Serif+SC:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&family=Sarabun:wght@300;400;500;600;700;800&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-gb-web@1.522.0/style.css');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind 4 with the existing v3 JOKO design tokens and JS theme. */
+@import "tailwindcss";
+@import "./legacy-tailwind-v3-tokens.css";
+@config "../tailwind.config.js";
+
+/*
+ * Visual parity: Tailwind 4 understands arbitrary alpha values that v3 silently
+ * discarded. Do not activate previously inert classes during a security-only
+ * framework upgrade; review each if re-introducing new opacity styles.
+ */
+@source not inline("bg-[#303532]/82");
+@source not inline("bg-[#303532]/88");
+@source not inline("bg-[#55766F]/12");
+@source not inline("bg-[#55766F]/14");
+@source not inline("bg-[#55766F]/8");
+@source not inline("bg-[#DCE9EC]/28");
+@source not inline("bg-[#F4EFE5]/72");
+@source not inline("bg-[#F4EFE5]/78");
+@source not inline("bg-[#F7F1E7]/76");
+@source not inline("bg-[#F9E9E5]/72");
+@source not inline("bg-[#FFF9EE]/62");
+@source not inline("bg-[#FFF9EE]/68");
+@source not inline("bg-[#FFF9EE]/72");
+@source not inline("bg-[#FFF9EE]/78");
+@source not inline("bg-[#FFF9EE]/82");
+@source not inline("bg-[#FFF9EE]/86");
+@source not inline("bg-[#FFF9EE]/88");
+@source not inline("bg-[#FFF9EE]/92");
+@source not inline("bg-[#FFF9EE]/94");
+@source not inline("bg-[#FFFDF7]/72");
+@source not inline("bg-primary-600/50");
+@source not inline("bg-white/12");
+@source not inline("bg-white/48");
+@source not inline("bg-white/58");
+@source not inline("bg-white/72");
+@source not inline("border-[#55766F]/12");
+@source not inline("border-[#55766F]/14");
+@source not inline("border-[#55766F]/16");
+@source not inline("border-[#55766F]/18");
+@source not inline("border-[#55766F]/22");
+@source not inline("border-[#8B765E]/12");
+@source not inline("border-[#8B765E]/14");
+@source not inline("border-[#8B765E]/16");
+@source not inline("border-[#8B765E]/22");
+@source not inline("border-[#C76624]/12");
+@source not inline("border-[#C76624]/18");
+@source not inline("border-[#C76624]/28");
+@source not inline("focus:ring-[#55766F]/12");
+@source not inline("focus:ring-[#55766F]/16");
+@source not inline("grow");
+@source not inline("h-4.5");
+@source not inline("hover:bg-[#CFE3DF]/38");
+@source not inline("hover:bg-[#FFF9EE]/72");
+@source not inline("inline");
+@source not inline("inline-grid");
+@source not inline("invisible");
+@source not inline("joko-shell-card");
+@source not inline("joko-shell-muted");
+@source not inline("joko-shell-orange");
+@source not inline("joko-shell-teal");
+@source not inline("text-[#303532]/48");
+@source not inline("text-[#303532]/52");
+@source not inline("text-[#303532]/58");
+@source not inline("text-[#303532]/62");
+@source not inline("text-[#303532]/64");
+@source not inline("text-[#303532]/66");
+@source not inline("text-[#303532]/67");
+@source not inline("text-[#303532]/68");
+@source not inline("text-[#303532]/72");
+@source not inline("text-[#303532]/76");
+@source not inline("text-[#303532]/78");
+@source not inline("text-[#304B45]/72");
+@source not inline("text-[#304B45]/78");
+@source not inline("text-[#304B45]/82");
+@source not inline("text-[#55766F]/72");
+@source not inline("text-[#C76624]/14");
+@source not inline("text-[var(--joko-brand-text,#303532)]/80");
+@source not inline("text-primary-900/80");
+@source not inline("w-4.5");
+
 
 @layer base {
+  /* Match Tailwind 3 preflight. */
+  *, ::before, ::after, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+  input::placeholder, textarea::placeholder { color: var(--color-gray-400); }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  dialog { margin: auto; }
+
   :root {
     --joko-color-brand-50: 254 252 232;
     --joko-color-brand-100: 254 243 199;
@@ -31,27 +116,11 @@
     --joko-font-notebook: 'Itim', 'Noto Sans Thai Looped', cursive;
     --joko-font-notebook-zh: 'LXGW WenKai GB', 'Noto Sans SC', 'PingFang SC', cursive;
 
-    --color-primary-50: var(--joko-color-brand-50);
-    --color-primary-100: var(--joko-color-brand-100);
-    --color-primary-200: var(--joko-color-brand-200);
-    --color-primary-300: var(--joko-color-brand-300);
-    --color-primary-400: var(--joko-color-brand-400);
-    --color-primary-500: var(--joko-color-brand-500);
-    --color-primary-600: var(--joko-color-brand-600);
-    --color-primary-700: var(--joko-color-brand-700);
-    --color-primary-800: var(--joko-color-brand-800);
-    --color-primary-900: var(--joko-color-brand-900);
-    --color-primary-950: var(--joko-color-brand-950);
 
-    --color-background: var(--joko-surface-canvas);
-    --color-background-secondary: var(--joko-surface-soft);
-    --color-accent: var(--joko-accent);
-    --font-header: var(--joko-font-display);
-    --font-body: var(--joko-font-body);
   }
 
-  body { font-family: var(--font-body); }
-  h1, h2, h3, h4, h5, h6 { font-family: var(--font-header); }
+  body { font-family: var(--joko-font-body); }
+  h1, h2, h3, h4, h5, h6 { font-family: var(--joko-font-display); }
 
   :lang(zh) {
     font-family: 'Noto Sans SC', 'PingFang SC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -179,8 +248,6 @@
   }
 
   #community-notebook-reader {
-    --color-background: 248 244 234;
-    --color-background-secondary: 241 233 218;
     font-family: var(--joko-font-notebook);
     font-weight: 400;
   }
