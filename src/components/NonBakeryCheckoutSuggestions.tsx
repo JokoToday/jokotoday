@@ -46,7 +46,7 @@ function thumbnail(product: CMSProduct): string | null {
 }
 
 function eligibleForLegacyDay(product: CMSProduct, day: PickupDay): boolean {
-  if (!isDayOpenForOrdering(day) || product.is_sold_out || product.stock_remaining <= 0) return false;
+  if (!isDayOpenForOrdering(day) || product.is_sold_out) return false;
   const aliases = [day.day_key, day.label, day.label_en, day.label_th, day.label_zh]
     .filter((value): value is string => Boolean(value));
   const availableDays = product.available_days ?? [];
@@ -55,7 +55,7 @@ function eligibleForLegacyDay(product: CMSProduct, day: PickupDay): boolean {
   // Legacy inventory may be tracked by day; don't recommend a known empty slot.
   const dayStock = product.stock_by_day ?? {};
   const matchingStock = aliases.find((value) => Object.prototype.hasOwnProperty.call(dayStock, value));
-  return !matchingStock || Number(dayStock[matchingStock]) > 0;
+  return matchingStock ? Number(dayStock[matchingStock]) > 0 : product.stock_remaining > 0;
 }
 
 export function NonBakeryCheckoutSuggestions({
