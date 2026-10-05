@@ -35,7 +35,7 @@ export function InternalSignedInAccount({
     >
       <UserRound className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
       <div className="min-w-0">
-        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] opacity-65">{label}</p>
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] opacity-70">{label}</p>
         <p className="max-w-[12rem] truncate text-xs font-semibold">{displayName}</p>
         {showEmail && (
           <p className="max-w-[12rem] truncate text-[11px] opacity-70">{email}</p>
