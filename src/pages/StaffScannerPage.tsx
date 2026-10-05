@@ -22,6 +22,7 @@ import jsQR from 'jsqr';
 import { QRScanner } from '../components/QRScanner';
 import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHistory';
 import { useAuth } from '../context/AuthContext';
+import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -390,7 +391,7 @@ export function StaffScannerPage({ onNavigate }: { onNavigate: (page: string) =>
         </div>
 
         <header className="mb-6 rounded-[1.75rem] border border-[#55766F]/15 bg-[#FFF9EE] p-6 shadow-sm sm:p-8">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#55766F] text-white">
               <UserCircle className="h-8 w-8" />
             </div>
@@ -398,6 +399,7 @@ export function StaffScannerPage({ onNavigate }: { onNavigate: (page: string) =>
               <h1 className="text-3xl font-bold tracking-tight text-[#292D2B]">{copy.title}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/65">{copy.subtitle}</p>
             </div>
+            <InternalSignedInAccount label={staffLanguage === 'th' ? 'เข้าสู่ระบบเป็น' : 'Signed in as'} />
           </div>
         </header>
 
