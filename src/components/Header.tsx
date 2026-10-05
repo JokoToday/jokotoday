@@ -38,19 +38,12 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   ];
 
   const navigateMenu = (page: string) => {
-    if (page === 'how-it-works' || page === 'pickup' || page === 'about') {
-      const hash = page === 'about' ? 'about' : page;
-      const target = `/#${hash}`;
-      if (window.location.pathname !== '/') {
-        onNavigate('home');
-      }
-      window.setTimeout(() => {
-        if (`${window.location.pathname}${window.location.hash}` !== target) {
-          window.history.pushState({ jokoHomepageSection: hash }, '', target);
-        }
-        window.dispatchEvent(new Event('joko-navigation-updated'));
-        window.document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, window.location.pathname === '/' ? 0 : 80);
+    // This header is used by the legacy/fallback public pages, which do not
+    // contain the experience homepage's section anchors. Use real public routes
+    // rather than creating dead /#hash links. In particular, /pickup is the
+    // internal staff pickup desk, NOT the public pickup-information page.
+    if (page === 'pickup') {
+      onNavigate('how-it-works');
       return;
     }
     onNavigate(page);
