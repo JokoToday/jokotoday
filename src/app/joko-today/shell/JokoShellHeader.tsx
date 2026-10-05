@@ -77,7 +77,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
 
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
-    { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
+    { key: 'products', label: labels.products, page: 'products-bakery', activeKey: 'bakery' },
     { key: 'other-products', label: labels.otherProducts, page: 'products-non-bakery', activeKey: 'bakery' },
     { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
     { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
