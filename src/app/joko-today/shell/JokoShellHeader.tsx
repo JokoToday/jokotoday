@@ -17,7 +17,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'how-it-works' | 'pickup' | 'about' | 'gallery' | 'what-people-say';
+  key: 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
   targetId?: string;
@@ -27,36 +27,33 @@ type NavItem = {
 const copy = {
   en: {
     home: 'Home',
-    products: 'Bakery',
+    products: 'Baked Goodies',
+    otherProducts: 'Other Goodies',
     howItWorks: 'How It Works',
-    pickup: 'Pickup',
+    pickup: 'Pick Up',
     about: 'About',
-    gallery: 'Gallery',
-    whatPeopleSay: 'What People Say',
     account: 'Account',
     cart: 'Cart',
     menu: 'Menu',
   },
   th: {
     home: 'หน้าแรก',
-    products: 'เบเกอรี่',
+    products: 'ขนมอบ',
+    otherProducts: 'ของดีอื่น ๆ',
     howItWorks: 'วิธีสั่งซื้อ',
     pickup: 'จุดรับสินค้า',
     about: 'เกี่ยวกับเรา',
-    gallery: 'แกลเลอรี',
-    whatPeopleSay: 'คนอื่นพูดถึงเรา',
     account: 'บัญชี',
     cart: 'ตะกร้า',
     menu: 'เมนู',
   },
   zh: {
     home: '首页',
-    products: '烘焙坊',
+    products: '烘焙好物',
+    otherProducts: '其他好物',
     howItWorks: '如何订购',
     pickup: '取货',
     about: '关于',
-    gallery: '影像集',
-    whatPeopleSay: '大家怎么说',
     account: '账户',
     cart: '购物车',
     menu: '菜单',
@@ -81,11 +78,10 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const navItems: NavItem[] = [
     { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
     { key: 'products', label: labels.products, page: 'products', activeKey: 'bakery' },
+    { key: 'other-products', label: labels.otherProducts, page: 'products-non-bakery', activeKey: 'bakery' },
     { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
     { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
     { key: 'about', label: labels.about, targetId: 'about', activeKey: 'about' },
-    { key: 'gallery', label: labels.gallery, page: 'gallery', activeKey: 'gallery' },
-    { key: 'what-people-say', label: labels.whatPeopleSay, page: 'what-people-say', activeKey: 'what-people-say' },
   ];
 
   const handleHomeSection = (targetId: string) => {
@@ -134,6 +130,10 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const isNavItemActive = (item: NavItem) => {
     const path = window.location.pathname;
     if (item.key === 'home') return path === '/';
+    // The two product menus share /products but differ by query-controlled filter.
+    const nonBakery = new URLSearchParams(window.location.search).get('category') === 'non-bakery';
+    if (item.key === 'other-products') return path === '/products' && nonBakery;
+    if (item.key === 'products') return path === '/products' && !nonBakery;
     return item.activeKey ? activeSection === item.activeKey : false;
   };
 
