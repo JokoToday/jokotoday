@@ -29,6 +29,7 @@ import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 import '../app/joko-today/admin/jokoAdmin.css';
 import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
+import { InternalSignedInAccount } from './InternalSignedInAccount';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
@@ -114,7 +115,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
       <header className="joko-admin-topbar sticky top-0 z-40">
         <div className="mx-auto max-w-[92rem] px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <div className="flex shrink-0 items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={() => onNavigate('home')}
@@ -131,6 +132,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 <p className="joko-admin-eyebrow">Workspace</p>
                 <p className="joko-admin-title text-xl font-semibold">Admin</p>
               </div>
+              <InternalSignedInAccount className="max-w-[13rem]" />
               <button
                 type="button"
                 onClick={() => onNavigate('home')}
