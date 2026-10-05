@@ -314,7 +314,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
   return (
     <AdminModalPortal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black bg-opacity-50 p-2 sm:p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
         <div className="joko-admin-modal-header shrink-0 p-4 sm:p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">{isProductStaff ? 'Edit Product' : product ? 'Edit Product' : 'Add New Product'}</h2>

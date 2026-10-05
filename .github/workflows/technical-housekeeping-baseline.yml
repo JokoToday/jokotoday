@@ -38,5 +38,8 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Tailwind v4 visual compatibility contract
+        run: npm run audit:tailwind-compat
+
       - name: Dependency audit
         run: npm audit --audit-level=high
