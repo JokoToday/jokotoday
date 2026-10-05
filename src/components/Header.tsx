@@ -21,16 +21,38 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const galleryLabel = language === 'th' ? 'แกลเลอรี' : language === 'zh' ? '影像集' : 'Gallery';
-  const peopleSayLabel = language === 'th' ? 'คนอื่นพูดถึงเรา' : language === 'zh' ? '大家怎么说' : 'What People Say';
+  const copy = language === 'th'
+    ? { baked: 'ขนมอบ', other: 'ของดีอื่น ๆ', how: 'วิธีสั่งซื้อ', pickup: 'จุดรับสินค้า', about: 'เกี่ยวกับเรา' }
+    : language === 'zh'
+      ? { baked: '烘焙好物', other: '其他好物', how: '如何订购', pickup: '取货', about: '关于' }
+      : { baked: 'Baked Goodies', other: 'Other Goodies', how: 'How It Works', pickup: 'Pick Up', about: 'About' };
 
   const navItems = [
     { label: t.nav.home, value: 'home' },
-    { label: t.nav.products, value: 'products' },
-    { label: t.nav.about, value: 'about' },
-    { label: galleryLabel, value: 'gallery' },
-    { label: peopleSayLabel, value: 'what-people-say' },
+    { label: copy.baked, value: 'products' },
+    { label: copy.other, value: 'products-non-bakery' },
+    { label: copy.how, value: 'how-it-works' },
+    { label: copy.pickup, value: 'pickup' },
+    { label: copy.about, value: 'about' },
   ];
+
+  const navigateMenu = (page: string) => {
+    if (page === 'how-it-works' || page === 'pickup' || page === 'about') {
+      const hash = page === 'about' ? 'about' : page;
+      const target = `/#${hash}`;
+      if (window.location.pathname !== '/') {
+        onNavigate('home');
+      }
+      window.setTimeout(() => {
+        if (`${window.location.pathname}${window.location.hash}` !== target) {
+          window.history.pushState({ jokoHomepageSection: hash }, '', target);
+        }
+        window.document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, window.location.pathname === '/' ? 0 : 80);
+      return;
+    }
+    onNavigate(page);
+  };
 
   return (
     <header className="bg-primary-50 shadow-sm sticky top-0 z-40">
@@ -51,7 +73,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
             {navItems.map((item) => (
               <button
                 key={item.value}
-                onClick={() => onNavigate(item.value)}
+                onClick={() => navigateMenu(item.value)}
                 className={`text-sm font-medium transition-colors ${
                   currentPage === item.value
                     ? 'text-primary-900 border-b-2 border-primary-900'
@@ -137,7 +159,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
               <button
                 key={item.value}
                 onClick={() => {
-                  onNavigate(item.value);
+                  navigateMenu(item.value);
                   setIsMobileMenuOpen(false);
                 }}
                 className={`block w-full text-left px-4 py-2 text-sm font-medium transition-colors ${
