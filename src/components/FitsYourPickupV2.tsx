@@ -18,6 +18,8 @@ import { getPublicImageUrl } from '../lib/storage';
 interface FitsYourPickupV2Props {
   pickupDateId: string;
   placement?: RecommendationPlacement;
+  onVisibilityChange?: (hasSuggestions: boolean) => void;
+  inFinalCheckoutStep?: boolean;
   onProductClick?: (product: CMSProduct) => void;
 }
 
@@ -41,7 +43,7 @@ function productImage(product: CMSProduct): string {
   return 'https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg';
 }
 
-export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductClick }: FitsYourPickupV2Props) {
+export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductClick, onVisibilityChange, inFinalCheckoutStep = false }: FitsYourPickupV2Props) {
   const { items, addToCart } = useCart();
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
@@ -131,11 +133,17 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
       .slice(0, placementConfig.maxSuggestions);
   }, [products, cartProductIds, remainingByProduct, cartCategoryIds, likeCounts, config, placement, placementConfig?.enabled, placementConfig?.maxSuggestions]);
 
+  useEffect(() => {
+    onVisibilityChange?.(!loading && Boolean(config && placementConfig?.enabled && recommendations.length));
+  }, [loading, config, placementConfig?.enabled, recommendations.length, onVisibilityChange]);
+
   if (loading || !config || !placementConfig?.enabled || recommendations.length === 0) return null;
 
   const selectedDate = selectedDateRows[0]?.pickup_date || null;
   const isCheckout = placement === 'checkout';
-  const title = getLabel(
+  const title = inFinalCheckoutStep && isCheckout
+    ? (language === 'th' ? 'จากเบเกอรี่' : language === 'zh' ? '烘焙精选' : 'From the bakery')
+    : getLabel(
     isCheckout ? 'checkout_recommendations.title' : 'fits_your_pickup.title',
     language,
     isCheckout
