@@ -729,6 +729,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                     placement="checkout"
                     onProductClick={openRecommendedProduct}
                     onVisibilityChange={setHasBakeryExtras}
+                    inFinalCheckoutStep
                   />
                   <NonBakeryCheckoutSuggestions
                     pickupDateId={selection.pickupDateId}
