@@ -35,7 +35,7 @@ import {
   type HomeTopLikedSection,
 } from '../../../platform/builder';
 import { Container } from '../../../platform/design-system';
-import { useJokoFounderPortrait } from './useJokoFounderPortrait';
+import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 
 interface HomepageLowerSectionsProps {
   locale: string;
@@ -264,7 +264,18 @@ export function HomepageLowerSections({
 }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
-  const foundersPortrait = useJokoFounderPortrait();
+  const { branding, document: publishedHomepage } = usePublishedJokoBranding();
+  const hero = publishedHomepage?.sections.find((section) => section.type === 'home.hero.v1');
+  const legacyFounderPortrait = hero?.type === 'home.hero.v1'
+    ? hero.props.notebookNote?.imageUrl?.trim() || null
+    : null;
+  const bakeryImage = branding.aboutCards?.bakery?.imageUrl?.trim() || null;
+  const foundersPortrait = branding.aboutCards?.people?.imageUrl?.trim() || legacyFounderPortrait;
+  const storyImage = branding.aboutCards?.story?.imageUrl?.trim() || null;
+  const aboutImageAlt = (card: 'bakery' | 'people' | 'story', fallback: string) =>
+    branding.aboutCards?.[card]?.imageAlt?.[language]?.trim()
+    || branding.aboutCards?.[card]?.imageAlt?.en?.trim()
+    || fallback;
   const publishedBakingTitle = publishedTopLiked
     ? localize(publishedTopLiked.props.title, language, 'en')
     : labels.bakingTitle;
@@ -556,6 +567,11 @@ export function HomepageLowerSections({
           />
           <div className="grid gap-4 md:grid-cols-3">
             <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
+              {bakeryImage && (
+                <div className="mb-5 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-[#F5EBD9]/70">
+                  <img src={bakeryImage} alt={aboutImageAlt('bakery', labels.aboutBakeryTitle)} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                </div>
+              )}
               <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutBakeryTitle}</h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutBakeryText}</p>
               <div className="mt-6 flex flex-col items-start gap-3">
@@ -582,20 +598,20 @@ export function HomepageLowerSections({
             </article>
 
             <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
-              <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutPeopleTitle}</h3>
-              <div className="mt-4 flex min-h-36 items-center justify-center overflow-hidden rounded-2xl bg-[#F5EBD9]/70 px-3 py-2">
+              <div className="mb-5 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-[#F5EBD9]/70 px-3 py-2">
                 {foundersPortrait ? (
                   <img
                     src={foundersPortrait}
-                    alt={language === 'th' ? 'Joe และ Phuttan' : language === 'zh' ? 'Joe 和 Phuttan' : 'Joe and Phuttan'}
-                    className="h-36 w-full object-contain"
+                    alt={aboutImageAlt('people', language === 'th' ? 'Joe และ Phuttan' : language === 'zh' ? 'Joe 和 Phuttan' : 'Joe and Phuttan')}
+                    className="h-full w-full object-contain"
                     loading="lazy"
                   />
                 ) : (
                   <span className="text-center text-2xl font-semibold text-[#55766F]" style={{ fontFamily: 'var(--joko-font-display)' }}>Joe &amp; Phuttan</span>
                 )}
               </div>
-              <p className="mt-4 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutPeopleText}</p>
+              <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutPeopleTitle}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutPeopleText}</p>
               <button
                 type="button"
                 onClick={() => onNavigate('meet-founders')}
@@ -604,6 +620,11 @@ export function HomepageLowerSections({
             </article>
 
             <article className="flex h-full flex-col rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/72 p-6 sm:p-7">
+              {storyImage && (
+                <div className="mb-5 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-[#F5EBD9]/70">
+                  <img src={storyImage} alt={aboutImageAlt('story', labels.aboutStoryTitle)} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                </div>
+              )}
               <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.aboutStoryTitle}</h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-[#303532]/70">{labels.aboutStoryText}</p>
               <button type="button" onClick={() => onNavigate('our-story')} className="mt-6 inline-flex items-center gap-2 self-start text-sm font-semibold text-[#A44F1D] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]">

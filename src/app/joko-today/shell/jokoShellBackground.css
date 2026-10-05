@@ -110,6 +110,15 @@
   --joko-structure-size: max(112%, 1780px) auto;
 }
 
+/* Non-bakery curation: a deeper mineral turquoise than the airy hero and
+   How It Works band. Retain the hand-drawn connection artwork above it. */
+.joko-home-shell #not-bread.joko-mineral-field {
+  background-color: #ACCEC8;
+  background-image:
+    radial-gradient(ellipse at 10% 14%, rgba(232,246,241,.23), transparent 36%),
+    radial-gradient(ellipse at 84% 12%, rgba(230,245,242,.16), transparent 45%);
+}
+
 /* Bakery-first hero: the bakery scene now owns the full visual field beside
    the editorial text column. No space is reserved for an embedded experience. */
 @media (min-width: 1280px) {

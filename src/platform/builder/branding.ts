@@ -6,6 +6,8 @@ import type {
   BuilderDisplayFont,
   BuilderFontWeight,
   BuilderHomepageBranding,
+  HomeAboutCardImage,
+  HomeAboutCardKey,
   BuilderThaiBodyFont,
   BuilderThaiDisplayFont,
 } from './contracts';
@@ -13,6 +15,7 @@ import type {
 export type JokoHomepageBranding = BuilderHomepageBranding;
 
 export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
+  aboutCards: {},
   logoScale: 120,
   typography: {
     displayFont: 'noto-sans',
@@ -82,6 +85,23 @@ function safeHex(value: unknown, fallback: string): string {
   return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : fallback;
 }
 
+function safeAboutCardImage(value: unknown): HomeAboutCardImage | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const imageUrl = typeof record.imageUrl === 'string' ? record.imageUrl.trim() : '';
+  const validUrl = imageUrl.startsWith('/') && !imageUrl.startsWith('//')
+    || /^https:\/\//i.test(imageUrl);
+  const imageAlt = record.imageAlt && typeof record.imageAlt === 'object' && !Array.isArray(record.imageAlt)
+    ? Object.fromEntries(Object.entries(record.imageAlt).filter(
+      ([key, alt]) => key.trim() && typeof alt === 'string',
+    )) as Record<string, string>
+    : undefined;
+  return {
+    ...(validUrl ? { imageUrl } : {}),
+    ...(imageAlt ? { imageAlt } : {}),
+  };
+}
+
 export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBranding {
   const input = value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -121,7 +141,17 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
     ? typography.chineseBodyFont as BuilderChineseBodyFont
     : legacyChineseFont ?? DEFAULT_JOKO_HOMEPAGE_BRANDING.typography.chineseBodyFont;
 
+  const aboutCardsInput = input.aboutCards && typeof input.aboutCards === 'object' && !Array.isArray(input.aboutCards)
+    ? input.aboutCards as Record<string, unknown>
+    : {};
+  const aboutCards: Partial<Record<HomeAboutCardKey, HomeAboutCardImage>> = {};
+  for (const card of ['bakery', 'people', 'story'] as const) {
+    const image = safeAboutCardImage(aboutCardsInput[card]);
+    if (image) aboutCards[card] = image;
+  }
+
   return {
+    aboutCards,
     logoScale: numberInRange(input.logoScale, DEFAULT_JOKO_HOMEPAGE_BRANDING.logoScale, 70, 150),
     typography: {
       displayFont,
