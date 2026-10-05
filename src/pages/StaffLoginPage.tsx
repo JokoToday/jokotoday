@@ -201,7 +201,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
     return (
       <div className="joko-admin-shell min-h-screen p-4" style={brandingStyle}>
         <div className="max-w-3xl mx-auto py-10">
-          <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <button
               onClick={() => onNavigate('home')}
               className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium"
@@ -216,9 +216,9 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
                   await signOut();
                   onNavigate('staff');
                 }}
-              className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
-            >
-              <LogOut className="w-4 h-4" />
+                className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
+              >
+                <LogOut className="w-4 h-4" />
                 {text.signOut}
               </button>
             </div>
