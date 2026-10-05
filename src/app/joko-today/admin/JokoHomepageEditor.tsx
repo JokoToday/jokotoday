@@ -33,6 +33,8 @@ import {
   type HomepageBuilderProviders,
   type HomeHeroNotebookFontPreset,
   type HomeHeroNotebookNote,
+  type HomeAboutCardImage,
+  type HomeAboutCardKey,
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
@@ -411,6 +413,88 @@ function HeroNotebookNoteEditor({
   );
 }
 
+/** Separate About card images share the same secure, metadata-stripping Admin upload rail. */
+function AboutCardImageEditor({
+  card,
+  title,
+  value,
+  fallbackImage,
+  locale,
+  fallbackLocale,
+  onChange,
+  onUploadingChange,
+}: {
+  card: HomeAboutCardKey;
+  title: string;
+  value?: HomeAboutCardImage;
+  fallbackImage?: string;
+  locale: string;
+  fallbackLocale: string;
+  onChange: (patch: Partial<HomeAboutCardImage>) => void;
+  onUploadingChange: (uploading: boolean) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const imageUrl = value?.imageUrl || fallbackImage;
+
+  const handleImageUpload = async (file: File | undefined) => {
+    if (!file || uploading) return;
+    setUploadError('');
+    setUploading(true);
+    onUploadingChange(true);
+    try {
+      const uploaded = await uploadGalleryImage({ file, gallerySlot: `about-${card}` });
+      onChange({ imageUrl: uploaded.publicUrl });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Could not upload image.');
+    } finally {
+      setUploading(false);
+      onUploadingChange(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-[#55766F]/14 bg-[#FFF9EE]/80 p-3">
+      <h3 className="mb-2 text-sm font-semibold text-[#303532]">{title}</h3>
+      <div className="mb-3 flex h-28 items-center justify-center overflow-hidden rounded-lg border border-[#55766F]/12 bg-[#F5EBD9]/70">
+        {imageUrl ? (
+          <img src={imageUrl} alt={localizedOptional(value?.imageAlt, locale, fallbackLocale) || title}
+            className="h-full w-full object-contain" />
+        ) : (
+          <span className="text-xs text-[#303532]/55">No image selected</span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs font-semibold text-[#304B45] hover:bg-[#EEF5F2]">
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+          {value?.imageUrl ? 'Replace image' : 'Upload image'}
+          <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading}
+            className="hidden" onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              void handleImageUpload(file);
+            }} />
+        </label>
+        {value?.imageUrl && (
+          <button type="button" disabled={uploading}
+            onClick={() => onChange({ imageUrl: undefined })}
+            className="inline-flex items-center gap-1 rounded-lg border border-[#C76624]/18 bg-white px-3 py-2 text-xs font-semibold text-[#9E4E1D]">
+            <Trash2 className="h-4 w-4" />Remove
+          </button>
+        )}
+      </div>
+      {card === 'people' && !value?.imageUrl && (
+        <p className="mt-2 text-[11px] text-[#303532]/60">Using the published hero notebook portrait until you upload another.</p>
+      )}
+      {uploadError && <p role="alert" className="mt-2 text-xs text-red-700">{uploadError}</p>}
+      <div className="mt-3">
+        <TextField label="Image alt text" value={localizedOptional(value?.imageAlt, locale, fallbackLocale)}
+          onChange={(next) => onChange({ imageAlt: withOptionalLocale(value?.imageAlt, locale, next) })} />
+      </div>
+    </div>
+  );
+}
+
 export function JokoHomepageEditor({
   document,
   locale,
@@ -499,6 +583,25 @@ export function JokoHomepageEditor({
 
   const updateBranding = (next: BuilderHomepageBranding) => {
     onDocumentChange({ ...document, branding: next });
+  };
+
+  const updateAboutCardImage = (card: HomeAboutCardKey, patch: Partial<HomeAboutCardImage>) => {
+    // Read the latest document, not a stale render closure after asynchronous uploads.
+    const current = latestDocumentRef.current;
+    const latestBranding = resolveJokoHomepageBranding(current.branding);
+    const previous = latestBranding.aboutCards?.[card] ?? {};
+    const next: BuilderDocument = {
+      ...current,
+      branding: {
+        ...latestBranding,
+        aboutCards: {
+          ...latestBranding.aboutCards,
+          [card]: { ...previous, ...patch },
+        },
+      },
+    };
+    latestDocumentRef.current = next;
+    onDocumentChange(next);
   };
 
   const updateTypography = (patch: Partial<BuilderHomepageBranding['typography']>) => {
@@ -784,6 +887,36 @@ export function JokoHomepageEditor({
               <ColorField label="Text" value={branding.colors.text} onChange={(text) => updateColors({ text })} />
               <ColorField label="Accent" value={branding.colors.accent} onChange={(accent) => updateColors({ accent })} />
               <ColorField label="Turquoise" value={branding.colors.turquoise} onChange={(turquoise) => updateColors({ turquoise })} />
+            </div>
+          </details>
+
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
+            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#303532]">
+              <ImagePlus className="h-4 w-4 text-[#55766F]" />
+              About JOKO — card images
+            </summary>
+            <p className="mt-2 text-xs leading-5 text-[#303532]/65">
+              Upload an image for each of the three public About cards. Images appear above their text after Save Draft and Publish. JPG, PNG or WebP; up to 8 MB.
+            </p>
+            <div className="mt-3 space-y-3">
+              {([
+                ['bakery', 'Our Bakery'],
+                ['people', 'Who’s in Charge?'],
+                ['story', 'Our Story'],
+              ] as const).map(([card, title]) => (
+                <AboutCardImageEditor
+                  key={card}
+                  card={card}
+                  title={title}
+                  value={branding.aboutCards?.[card]}
+                  fallbackImage={card === 'people' && hero?.type === 'home.hero.v1'
+                    ? hero.props.notebookNote?.imageUrl : undefined}
+                  locale={locale}
+                  fallbackLocale={site.defaultLocale}
+                  onChange={(patch) => updateAboutCardImage(card, patch)}
+                  onUploadingChange={(uploading) => reportUploadState(`about-${card}`, uploading)}
+                />
+              ))}
             </div>
           </details>
 

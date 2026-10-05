@@ -42,7 +42,17 @@ export type BuilderThaiBodyFont =
 export type BuilderChineseDisplayFont = 'noto-sans-sc' | 'noto-serif-sc';
 export type BuilderChineseBodyFont = 'noto-sans-sc' | 'noto-serif-sc';
 
+/** Optional published imagery for the three fixed About JOKO homepage cards. */
+export interface HomeAboutCardImage {
+  imageUrl?: string;
+  imageAlt?: LocalizedText;
+}
+
+export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
+
 export interface BuilderHomepageBranding {
+  /** Images are published with the Homepage Builder, not independent Admin state. */
+  aboutCards?: Partial<Record<HomeAboutCardKey, HomeAboutCardImage>>;
   logoScale: number;
   typography: {
     displayFont: BuilderDisplayFont;

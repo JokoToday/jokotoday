@@ -210,6 +210,30 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.aboutCards !== undefined) {
+    if (!isRecord(value.aboutCards)) {
+      pushIssue(issues, 'branding.aboutCards', 'About images must be an object.');
+    } else {
+      for (const [key, card] of Object.entries(value.aboutCards)) {
+        if (!['bakery', 'people', 'story'].includes(key)) {
+          pushIssue(issues, `branding.aboutCards.${key}`, 'Unsupported About card.');
+        } else if (!isRecord(card)) {
+          pushIssue(issues, `branding.aboutCards.${key}`, 'About card image must be an object.');
+        } else {
+          if (card.imageUrl !== undefined && (
+            !isNonEmptyString(card.imageUrl)
+            || !(card.imageUrl.startsWith('/') && !card.imageUrl.startsWith('//') || /^https:\/\//i.test(card.imageUrl))
+          )) {
+            pushIssue(issues, `branding.aboutCards.${key}.imageUrl`, 'Image must be a bundled path or HTTPS URL.');
+          }
+          if (card.imageAlt !== undefined) {
+            validateOptionalLocalizedText(card.imageAlt, `branding.aboutCards.${key}.imageAlt`, issues, ['en', 'th', 'zh']);
+          }
+        }
+      }
+    }
+  }
+
   if (!isRecord(value.colors)) {
     pushIssue(issues, 'branding.colors', 'Brand colors must be an object.');
   } else {
