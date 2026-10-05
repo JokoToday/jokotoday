@@ -484,6 +484,7 @@ export function PickupDateSelectorV2({
                   );
                 })}
               </div>
+              </div>
             </section>
 
             {commonDates.length === 0 && !activeCalendarDate && (
