@@ -29,7 +29,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
 
   const navItems = [
     { label: t.nav.home, value: 'home' },
-    { label: copy.baked, value: 'products' },
+    { label: copy.baked, value: 'products-bakery' },
     { label: copy.other, value: 'products-non-bakery' },
     { label: copy.how, value: 'how-it-works' },
     { label: copy.pickup, value: 'pickup' },
