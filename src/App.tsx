@@ -270,9 +270,11 @@ function AppContent() {
       return;
     }
 
-    // Dedicated deep link: browser refresh/back should preserve the Non-bakery filter.
-    if (page === 'products-non-bakery') {
-      const targetPath = '/products?category=non-bakery';
+    // Distinct, refresh-safe public links for the two product families.
+    if (page === 'products-bakery' || page === 'products-non-bakery') {
+      const targetPath = page === 'products-bakery'
+        ? '/products?category=bakery'
+        : '/products?category=non-bakery';
       if (`${window.location.pathname}${window.location.search}` !== targetPath) {
         window.history.pushState({}, '', targetPath);
       }
