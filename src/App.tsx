@@ -308,8 +308,14 @@ function AppContent() {
       || NOTEBOOK_PAGE_PATHS[page]
       || null;
 
-    if (targetPath && window.location.pathname !== targetPath) {
+    // Comparing just pathname leaves old section hashes (e.g. /#about)
+    // behind when navigating "Back to home", making an old menu stay active.
+    const currentRoute = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (targetPath && currentRoute !== targetPath) {
       window.history.pushState({}, '', targetPath);
+    }
+    if (targetPath) {
+      window.dispatchEvent(new Event('joko-navigation-updated'));
     }
 
     setCurrentPage(page);
