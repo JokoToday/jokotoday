@@ -310,6 +310,14 @@ export function PickupDateSelectorV2({
     : language === 'zh'
       ? '确认取货日期和地点'
       : 'Confirm date & location';
+  const dateStepComplete = Boolean(activeCommonDate);
+  const locationStepActive = Boolean(activeCommonDate && !pendingLocationId);
+  const locationStepComplete = Boolean(activeCommonDate && pendingLocationId);
+  const dateStepLabel = language === 'th' ? '1 · เลือกวันที่รับสินค้า' : language === 'zh' ? '1 · 选择取货日期' : '1 · Choose your pickup date';
+  const locationStepLabel = language === 'th' ? '2 · เลือกจุดรับสินค้า' : language === 'zh' ? '2 · 选择取货地点' : '2 · Choose your pickup location';
+  const dateStepPrompt = language === 'th' ? 'แตะวันที่ที่มีสินค้าเพียงพอเพื่อไปขั้นตอนถัดไป' : language === 'zh' ? '请选择有足够库存的日期，然后继续下一步。' : 'Select an available date to continue.';
+  const locationStepPrompt = language === 'th' ? 'เลือกสถานที่รับสินค้าสำหรับวันที่คุณเลือก' : language === 'zh' ? '请选择所选日期的取货地点。' : 'Now select a pickup location for that date.';
+  const dateFilterLabel = language === 'th' ? 'กรองวันที่ตามสถานที่ (ไม่บังคับ)' : language === 'zh' ? '按地点筛选日期（可选）' : 'Filter dates by location (optional)';
   const selectLocationPrompt = language === 'th'
     ? 'เลือกสถานที่รับสินค้าด้านบนเพื่อดำเนินการต่อ'
     : language === 'zh'
@@ -358,11 +366,31 @@ export function PickupDateSelectorV2({
           </div>
         ) : (
           <>
-            <div className="mb-3">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#303532]/55">
-                <MapPin className="h-3.5 w-3.5 text-[#3F665E]" />
-                {language === 'th' ? 'เลือกสถานที่' : language === 'zh' ? '选择地点' : 'Choose location'}
-              </p>
+            <section
+              aria-label={dateStepLabel}
+              aria-current={!dateStepComplete ? 'step' : undefined}
+              className={`mb-4 rounded-[1.5rem] border-[3px] p-3 transition-colors sm:p-4 ${
+                !dateStepComplete
+                  ? 'border-[#B85C25] bg-[#FFF2E2] shadow-[0_0_0_4px_rgba(184,92,37,.14)]'
+                  : 'border-[#55766F]/35 bg-[#F5F8F3]/70'
+              }`}
+            >
+              <div className="mb-3 flex items-start gap-2.5">
+                {dateStepComplete ? (
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#3F665E]" aria-hidden="true" />
+                ) : (
+                  <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B85C25] text-xs font-bold text-white">1</span>
+                )}
+                <div>
+                  <h3 className="text-base font-bold text-[#303532]">{dateStepLabel}</h3>
+                  {!dateStepComplete && <p className="mt-1 text-sm font-medium text-[#96501F]">{dateStepPrompt}</p>}
+                </div>
+              </div>
+              <div className="mb-3">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#303532]/55">
+                  <MapPin className="h-3.5 w-3.5 text-[#3F665E]" />
+                  {dateFilterLabel}
+                </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -384,7 +412,7 @@ export function PickupDateSelectorV2({
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-[#55766F]/[.14] bg-white/75">
+              <div className="overflow-hidden rounded-xl border border-[#55766F]/[.14] bg-white/85">
               <div className="flex items-center justify-between border-b border-[#55766F]/10 px-3 py-2">
                 <button
                   type="button"
@@ -456,7 +484,8 @@ export function PickupDateSelectorV2({
                   );
                 })}
               </div>
-            </div>
+              </div>
+            </section>
 
             {commonDates.length === 0 && !activeCalendarDate && (
               <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-4 text-sm text-orange-800">
@@ -615,11 +644,30 @@ export function PickupDateSelectorV2({
                   </div>
                 )}
 
-                <div className="mt-4">
-                  <p className="mb-2 flex items-center gap-2 text-sm font-medium text-[#303532]">
-                    <MapPin className="h-4 w-4 text-[#3F665E]" />
-                    {language === 'th' ? 'จุดรับสินค้า' : language === 'zh' ? '取货地点' : 'Pickup location'}
-                  </p>
+                <section
+                  aria-label={locationStepLabel}
+                  aria-current={locationStepActive ? 'step' : undefined}
+                  className={`mt-4 rounded-[1.5rem] border-[3px] p-3 transition-colors sm:p-4 ${
+                    locationStepActive
+                      ? 'border-[#B85C25] bg-[#FFF2E2] shadow-[0_0_0_4px_rgba(184,92,37,.14)]'
+                      : locationStepComplete
+                        ? 'border-[#55766F]/35 bg-[#F5F8F3]/70'
+                        : 'border-[#55766F]/15 bg-white/55'
+                  }`}
+                >
+                  <div className="mb-3 flex items-start gap-2.5">
+                    {locationStepComplete ? (
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#3F665E]" aria-hidden="true" />
+                    ) : (
+                      <span aria-hidden="true" className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                        locationStepActive ? 'bg-[#B85C25] text-white' : 'bg-[#D7DDD8] text-[#55645E]'
+                      }`}>2</span>
+                    )}
+                    <div>
+                      <h3 className="text-base font-bold text-[#303532]">{locationStepLabel}</h3>
+                      {locationStepActive && <p className="mt-1 text-sm font-medium text-[#96501F]">{locationStepPrompt}</p>}
+                    </div>
+                  </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {activeCalendarDate.locations.map((location) => {
                       const isLocationSelected = pendingLocationId === location.id;
@@ -712,7 +760,7 @@ export function PickupDateSelectorV2({
                       </p>
                     </div>
                   )}
-                </div>
+                </section>
               </div>
             )}
           </>
