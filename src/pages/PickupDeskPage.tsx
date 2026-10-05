@@ -36,6 +36,7 @@ import { PrintPrepTicketButton } from '../components/orders/PrintPrepTicketButto
 import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemption';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 
 interface Customer {
   id: string;
@@ -508,6 +509,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </div>
               <div className="flex flex-col items-end gap-3">
                 {languageSwitch}
+                <InternalSignedInAccount appearance="dark" label={language === 'th' ? 'เข้าสู่ระบบเป็น' : 'Signed in as'} />
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"

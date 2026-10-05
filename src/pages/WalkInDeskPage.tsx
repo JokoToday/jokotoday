@@ -33,6 +33,7 @@ import { CustomerPurchaseHistory } from '../components/staff/CustomerPurchaseHis
 import { LoyaltyRewardSelector } from '../components/staff/LoyaltyRewardSelector';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { PosWorkspace } from '../components/pos/PosWorkspace';
 import { usePosCart } from '../hooks/usePosCart';
@@ -729,6 +730,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
               </div>
               <div className="flex flex-col items-end gap-3">
                 {languageSwitch}
+                <InternalSignedInAccount appearance="dark" label={language === 'th' ? 'เข้าสู่ระบบเป็น' : 'Signed in as'} />
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"

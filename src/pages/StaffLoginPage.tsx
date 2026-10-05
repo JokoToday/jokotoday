@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft, KeyRound, Loader2, Lock, LogOut, Package, PackageSearch, Store } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
@@ -200,7 +201,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
     return (
       <div className="joko-admin-shell min-h-screen p-4" style={brandingStyle}>
         <div className="max-w-3xl mx-auto py-10">
-          <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <button
               onClick={() => onNavigate('home')}
               className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium"
@@ -208,16 +209,19 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
               <ArrowLeft className="w-4 h-4" />
               {text.backHome}
             </button>
-            <button
-              onClick={async () => {
-                await signOut();
-                onNavigate('staff');
-              }}
-              className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
-            >
-              <LogOut className="w-4 h-4" />
-              {text.signOut}
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <InternalSignedInAccount label={language === 'th' ? 'เข้าสู่ระบบเป็น' : 'Signed in as'} />
+              <button
+                onClick={async () => {
+                  await signOut();
+                  onNavigate('staff');
+                }}
+                className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
+              >
+                <LogOut className="w-4 h-4" />
+                {text.signOut}
+              </button>
+            </div>
           </div>
 
           <div className="joko-admin-paper-card overflow-hidden">
