@@ -258,7 +258,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => onNavigate('products')}
+                    onClick={() => onNavigate('products-bakery')}
                     className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                   >
                     <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
