@@ -21,7 +21,7 @@ export function InternalSignedInAccount({
   if (!user) return null;
 
   const email = user.email?.trim() || '';
-  const displayName = userProfile?.name?.trim() || email || 'Account';
+  const displayName = (userProfile?.id === user.id ? userProfile.name?.trim() : '') || email || 'Account';
   const showEmail = Boolean(email && displayName.toLowerCase() !== email.toLowerCase());
   const dark = appearance === 'dark';
 
