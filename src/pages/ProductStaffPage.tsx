@@ -1,6 +1,7 @@
 import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ExternalLink, KeyRound, Loader2, LogOut, Mail, PackageSearch, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { ProductEditor } from '../components/products/ProductEditor';
 import { getCategories, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { getProductStaffProducts } from '../lib/productStaffService';
@@ -100,7 +101,8 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
               <p className="joko-admin-title text-xl font-semibold">Product Staff</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <InternalSignedInAccount className="max-w-[13rem]" />
             {userRole === 'admin' && (
               <button type="button" onClick={() => onNavigate('admin')} className="joko-admin-secondary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
                 <ShieldCheck className="h-4 w-4" />
