@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
-import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
+import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 
@@ -234,15 +234,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Supabase Auth handles PKCE, state, LINE tokens and trusted sessions.
     // Never synthesize an email/password from a LINE user ID.
     sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, language);
+    sessionStorage.setItem(LINE_OAUTH_DESTINATION_KEY, JSON.stringify({ destination: 'home', startedAt: Date.now() }));
     const { error } = await supabase.auth.signInWithOAuth({
       provider: LINE_PROVIDER,
       options: {
-        redirectTo: lineRedirectTo('home', language),
+        redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
       },
     });
     if (error) {
       sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
       throw error;
     }
   };
@@ -258,15 +260,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Only a signed-in account holder can request identity linking.
     // Never merge JOKO accounts by unverified names, phones, or LINE IDs.
     sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, language);
+    sessionStorage.setItem(LINE_OAUTH_DESTINATION_KEY, JSON.stringify({ destination: 'profile', startedAt: Date.now() }));
     const { error } = await supabase.auth.linkIdentity({
       provider: LINE_PROVIDER,
       options: {
-        redirectTo: lineRedirectTo('profile', language),
+        redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
       },
     });
     if (error) {
       sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
       throw error;
     }
   };
