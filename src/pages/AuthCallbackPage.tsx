@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { generateQRToken } from '../lib/qrTokenGenerator';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { LINE_OAUTH_DESTINATION_KEY } from '../lib/lineAuth';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
 type CallbackLanguage = 'en' | 'th' | 'zh';
@@ -72,6 +73,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
     const failAndRedirect = (kind: 'failed' | 'unexpected') => {
       if (abortController.signal.aborted) return;
       sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
       clearCallbackParameters();
       setErrorKind(kind);
       redirectTimer = window.setTimeout(() => navigateRef.current('home'), 3000);
@@ -82,10 +84,23 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const callbackLanguage = searchParams.get('lang');
       const requestedNext = searchParams.get('next');
+      const code = searchParams.get('code');
+      const pendingLineIntent = sessionStorage.getItem(LINE_OAUTH_DESTINATION_KEY);
+      let isRecentLINELink = false;
+      if (code && pendingLineIntent) {
+        try {
+          const intent = JSON.parse(pendingLineIntent) as { destination?: string; startedAt?: number };
+          isRecentLINELink = intent.destination === 'profile'
+            && typeof intent.startedAt === 'number'
+            && Date.now() - intent.startedAt >= 0
+            && Date.now() - intent.startedAt < 15 * 60 * 1000;
+        } catch {
+          isRecentLINELink = false;
+        }
+      }
       const callbackNext = requestedNext === 'product-staff' || requestedNext === 'profile'
         ? requestedNext
-        : 'home';
-      const code = searchParams.get('code');
+        : isRecentLINELink ? 'profile' : 'home';
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const callbackType: CallbackType = code
@@ -191,6 +206,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
         }
 
         await refreshProfile();
+        sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
         const destinationPath = callbackNext === 'product-staff' ? '/product-staff'
           : callbackNext === 'profile' ? '/my-profile'
             : '/';
