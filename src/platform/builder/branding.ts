@@ -11,11 +11,13 @@ import type {
   BuilderThaiBodyFont,
   BuilderThaiDisplayFont,
 } from './contracts';
+import { resolveTopMenu } from './topMenu';
 
 export type JokoHomepageBranding = BuilderHomepageBranding;
 
 export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   aboutCards: {},
+  topMenu: resolveTopMenu(undefined),
   logoScale: 120,
   typography: {
     displayFont: 'noto-sans',
@@ -152,6 +154,7 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
 
   return {
     aboutCards,
+    topMenu: resolveTopMenu(input.topMenu),
     logoScale: numberInRange(input.logoScale, DEFAULT_JOKO_HOMEPAGE_BRANDING.logoScale, 70, 150),
     typography: {
       displayFont,

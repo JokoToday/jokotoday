@@ -7,11 +7,31 @@ export type LocaleCode = string;
 export type LocalizedText = Readonly<Record<LocaleCode, string>>;
 
 export type BuilderRichTextColor = 'text' | 'accent' | 'turquoise';
+export type HeroFontPreset = 'inherit' | 'display' | 'body' | 'handwritten';
+export type HeroTextAlign = 'left' | 'center' | 'right';
+
+/** Controls apply only to fixed, safe design tokens, never arbitrary CSS/HTML. */
+export interface HeroTextStyle {
+  font?: HeroFontPreset;
+  size?: number;
+  align?: HeroTextAlign;
+  bold?: boolean;
+  italic?: boolean;
+}
+
+export interface HeroTitleLineStyle {
+  align?: HeroTextAlign;
+  size?: number;
+  font?: HeroFontPreset;
+}
+
 
 export interface BuilderRichTextMarks {
   bold?: boolean;
   italic?: boolean;
   color?: BuilderRichTextColor;
+  font?: HeroFontPreset;
+  size?: number;
 }
 
 export interface BuilderRichTextRun {
@@ -50,7 +70,16 @@ export interface HomeAboutCardImage {
 
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
+export type TopMenuKey = 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
+export interface TopMenuItem {
+  key: TopMenuKey;
+  visible: boolean;
+  labels?: LocalizedText;
+}
+
 export interface BuilderHomepageBranding {
+  /** Desktop and mobile use one menu model; destinations are fixed and safe. */
+  topMenu?: readonly TopMenuItem[];
   /** Images are published with the Homepage Builder, not independent Admin state. */
   aboutCards?: Partial<Record<HomeAboutCardKey, HomeAboutCardImage>>;
   logoScale: number;
@@ -119,6 +148,15 @@ export interface HomeHeroProps {
   /** Controlled rich text for the Hero title. Plain title remains the fallback/source for legacy revisions. */
   titleRichText?: LocalizedRichText;
   subtitle: LocalizedText;
+  /** The visible small tagline above the main title. */
+  eyebrow?: LocalizedText;
+  eyebrowStyle?: HeroTextStyle;
+  /** Per-language headline line alignment, sizing and default font. */
+  titleLineStyles?: Readonly<Record<LocaleCode, readonly HeroTitleLineStyle[]>>;
+  /** Base headline font/size/weight/alignment. Word overrides live in titleRichText. */
+  titleStyle?: HeroTextStyle;
+  subtitleRichText?: LocalizedRichText;
+  subtitleStyle?: HeroTextStyle;
   primaryActionLabel: LocalizedText;
   primaryAction: BuilderAction;
   secondaryActionLabel: LocalizedText;

@@ -6,9 +6,11 @@ import type {
 } from './contracts';
 
 function sameMarks(a: BuilderRichTextMarks | undefined, b: BuilderRichTextMarks | undefined): boolean {
-  return Boolean(a?.bold) === Boolean(b?.bold)
-    && Boolean(a?.italic) === Boolean(b?.italic)
-    && (a?.color ?? 'text') === (b?.color ?? 'text');
+  return a?.bold === b?.bold
+    && a?.italic === b?.italic
+    && (a?.color ?? 'text') === (b?.color ?? 'text')
+    && (a?.font ?? 'inherit') === (b?.font ?? 'inherit')
+    && (a?.size ?? 0) === (b?.size ?? 0);
 }
 
 export function normalizeBuilderRichText(value: BuilderRichText): BuilderRichText {
@@ -18,9 +20,11 @@ export function normalizeBuilderRichText(value: BuilderRichText): BuilderRichTex
     if (!run || typeof run.text !== 'string' || run.text.length === 0) continue;
 
     const marks: BuilderRichTextMarks = {};
-    if (run.marks?.bold) marks.bold = true;
-    if (run.marks?.italic) marks.italic = true;
+    if (typeof run.marks?.bold === 'boolean') marks.bold = run.marks.bold;
+    if (typeof run.marks?.italic === 'boolean') marks.italic = run.marks.italic;
     if (run.marks?.color && run.marks.color !== 'text') marks.color = run.marks.color;
+    if (run.marks?.font && run.marks.font !== 'inherit') marks.font = run.marks.font;
+    if (typeof run.marks?.size === 'number') marks.size = run.marks.size;
 
     const previous = next[next.length - 1];
     if (previous && sameMarks(previous.marks, marks)) {

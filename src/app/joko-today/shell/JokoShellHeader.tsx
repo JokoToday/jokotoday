@@ -5,7 +5,8 @@ import { useCart } from '../../../context/CartContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { UserAvatarDropdown } from '../../../components/UserAvatarDropdown';
 import { Container } from '../../../platform/design-system';
-import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoLogo } from '../builder/usePublishedJokoLogo';
+import { DEFAULT_JOKO_LOGO_URL, usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
+import { getTopMenuLabel, resolveTopMenu } from '../../../platform/builder';
 import './jokoNavPencil.css';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
@@ -93,16 +94,20 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     };
   }, [activeSection]);
   const labels = copy[language];
-  const logoUrl = usePublishedJokoLogo();
-
-  const navItems: NavItem[] = [
-    { key: 'home', label: labels.home, targetId: 'top', activeKey: 'today' },
-    { key: 'products', label: labels.products, page: 'products-bakery', activeKey: 'bakery' },
-    { key: 'other-products', label: labels.otherProducts, page: 'products-non-bakery', activeKey: 'bakery' },
-    { key: 'how-it-works', label: labels.howItWorks, targetId: 'how-it-works' },
-    { key: 'pickup', label: labels.pickup, targetId: 'pickup' },
-    { key: 'about', label: labels.about, targetId: 'about', activeKey: 'about' },
-  ];
+  const { logoUrl, branding } = usePublishedJokoBranding();
+  // Public Header and mobile drawer resolve the exact same published menu.
+  // Routes remain code-defined; admins may change labels, visibility or order.
+  const targets: Record<NavItem['key'], Omit<NavItem, 'key' | 'label'>> = {
+    home: { targetId: 'top', activeKey: 'today' },
+    products: { page: 'products-bakery', activeKey: 'bakery' },
+    'other-products': { page: 'products-non-bakery', activeKey: 'bakery' },
+    'how-it-works': { targetId: 'how-it-works' },
+    pickup: { targetId: 'pickup' },
+    about: { targetId: 'about', activeKey: 'about' },
+  };
+  const navItems: NavItem[] = resolveTopMenu(branding.topMenu)
+    .filter((item) => item.visible)
+    .map((item) => ({ key: item.key, label: getTopMenuLabel(item, language), ...targets[item.key] }));
 
   const handleHomeSection = (targetId: string) => {
     const isTop = targetId === 'top';
@@ -169,7 +174,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
           <div className="flex min-h-20 items-center justify-between gap-5 py-3 lg:min-h-24">
             <button
               type="button"
-              onClick={() => handleNav(navItems[0])}
+              onClick={() => handleHomeSection('top')}
               className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#CFE3DF]"
               aria-label="JOKO TODAY home"
             >

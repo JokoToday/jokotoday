@@ -3,14 +3,16 @@ import { ArrowRight, Leaf, MapPin, PlayCircle } from 'lucide-react';
 import { Container } from '../../../design-system';
 import type {
   BuilderAction,
-  BuilderRichTextColor,
   BuilderSiteIdentity,
   HomeHeroSection,
 } from '../../contracts';
 import type { BuilderHeroMediaProvider, BuilderMedia } from '../../providers';
 import { localize } from '../localize';
-import { localizeRichText, richTextToPlainText } from '../../richText';
+import { localizeRichText } from '../../richText';
 import { JokoHeroNotebookNote } from '../../../../components/JokoHeroNotebookNote';
+import { HeroTypography } from '../../HeroTypography';
+import { resolveTopMenu, getTopMenuLabel } from '../../topMenu';
+import { resolveJokoHomepageBranding } from '../../branding';
 
 interface HomeHeroSectionRendererProps {
   section: HomeHeroSection;
@@ -19,6 +21,7 @@ interface HomeHeroSectionRendererProps {
   provider: BuilderHeroMediaProvider;
   onAction?: (action: BuilderAction) => void;
   interactive?: boolean;
+  branding?: ReturnType<typeof resolveJokoHomepageBranding>;
 }
 
 export function HomeHeroSectionRenderer({
@@ -28,6 +31,7 @@ export function HomeHeroSectionRenderer({
   provider,
   onAction,
   interactive = true,
+  branding,
 }: HomeHeroSectionRendererProps) {
   const [media, setMedia] = useState<BuilderMedia | null>(null);
 
@@ -43,6 +47,8 @@ export function HomeHeroSectionRenderer({
   const title = localize(section.props.title, locale, fallbackLocale);
   const titleRichText = localizeRichText(section.props.titleRichText, locale, fallbackLocale, title);
   const subtitle = localize(section.props.subtitle, locale, fallbackLocale);
+  const subtitleRuns = localizeRichText(section.props.subtitleRichText, locale, fallbackLocale, subtitle);
+  const eyebrow = section.props.eyebrow?.[locale]?.trim() || null;
   const notebookNote = section.props.notebookNote;
   const notebookTitle = notebookNote?.title ? localize(notebookNote.title, locale, fallbackLocale) : '';
   const notebookBody = notebookNote?.body ? localize(notebookNote.body, locale, fallbackLocale) : '';
@@ -53,21 +59,18 @@ export function HomeHeroSectionRenderer({
   const logoUrl = section.props.logoUrl || '/assets/brand/joko-today-logo-v0.4.webp';
   const chrome = locale === 'th'
     ? {
-        nav: ['หน้าแรก', 'ขนมอบ', 'ของดีอื่น ๆ', 'วิธีสั่งซื้อ', 'จุดรับสินค้า', 'เกี่ยวกับเรา'],
-        eyebrow: 'เบเกอรี่อาร์ติซาน · เชียงใหม่ · อบทีละน้อย',
+        eyebrow: 'เบเกอรี่ทำมือ • เรื่องราวใกล้ตัว • วันที่อ่อนโยนกว่า',
         smallBatch: 'อบทีละน้อย',
         pickup: 'รับสินค้าในเชียงใหม่',
       }
     : locale === 'zh'
     ? {
-        nav: ['首页', '烘焙好物', '其他好物', '如何订购', '取货', '关于我们'],
-        eyebrow: '手作烘焙 · 清迈 · 小批量制作',
+        eyebrow: '手作烘焙 • 身边故事 • 更温柔的一天',
         smallBatch: '小批量烘焙',
         pickup: '清迈取货',
       }
     : {
-        nav: ['Home', 'Baked Goodies', 'Other Goodies', 'How It Works', 'Pick Up', 'About'],
-        eyebrow: 'Artisan bakery · Chiang Mai · Small batches',
+        eyebrow: 'Artisan bakery • Local stories • A kinder day',
         smallBatch: 'Small-batch baking',
         pickup: 'Pickup in Chiang Mai',
       };
@@ -88,7 +91,7 @@ export function HomeHeroSectionRenderer({
         <div className="mb-3 flex min-h-16 items-center border-b border-[#55766F]/15 py-2">
           <img src={logoUrl} alt={site.name} className="w-auto object-contain mix-blend-multiply" style={{ height: 'calc(3rem * var(--joko-logo-scale, 1.2))' }} />
           <div className="ml-auto hidden gap-4 font-medium text-[#303532]/72 xl:gap-5 lg:flex" style={{ fontSize: 'var(--joko-size-nav, 16px)' }}>
-            {chrome.nav.map((label) => <span key={label}>{label}</span>)}
+            {resolveTopMenu(branding?.topMenu).filter((item) => item.visible).map((item) => <span key={item.key}>{getTopMenuLabel(item, locale)}</span>)}
           </div>
         </div>
 
@@ -110,39 +113,13 @@ export function HomeHeroSectionRenderer({
           )}
 
           <div className="relative z-20 max-w-[31rem] lg:pt-7">
-            <p className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>
-              {chrome.eyebrow}
-            </p>
-            <h1
-              className="mt-4 whitespace-pre-line leading-[.93] tracking-[-0.042em]"
-              style={{ fontFamily: 'var(--joko-font-display)', fontWeight: 'var(--joko-font-display-weight, 700)', fontSize: 'clamp(2.7rem, 5vw, var(--joko-size-hero, 65px))', color: 'var(--joko-brand-text, #292D2B)' }}
-              aria-label={richTextToPlainText(titleRichText)}
-            >
-              {titleRichText.map((run, index) => {
-                const color = run.marks?.color as BuilderRichTextColor | undefined;
-                const semanticColor = color === 'accent'
-                  ? 'var(--joko-brand-accent, #C76624)'
-                  : color === 'turquoise'
-                    ? 'var(--joko-brand-turquoise, #DAEBE8)'
-                    : color === 'text'
-                      ? 'var(--joko-brand-text, #292D2B)'
-                      : undefined;
-                return (
-                  <span
-                    key={`${index}-${run.text}`}
-                    style={{
-                      color: semanticColor,
-                      fontWeight: run.marks?.bold ? 700 : undefined,
-                      fontStyle: run.marks?.italic ? 'italic' : undefined,
-                    }}
-                  >
-                    {run.text}
-                  </span>
-                );
-              })}
-            </h1>
+            <HeroTypography as="p" kind="eyebrow" value={[{ text: eyebrow ?? chrome.eyebrow }]}
+              style={section.props.eyebrowStyle} className="uppercase tracking-[0.25em]" />
+            <HeroTypography as="h1" kind="headline" value={titleRichText} style={section.props.titleStyle}
+              lineStyles={section.props.titleLineStyles?.[locale]} className="mt-4 leading-[.93] tracking-[-0.042em]" />
             <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
-            <p className="mt-5 leading-7 text-[#303532]/78" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>{subtitle}</p>
+            <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
+              style={section.props.subtitleStyle} className="mt-5 leading-7" />
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               <button

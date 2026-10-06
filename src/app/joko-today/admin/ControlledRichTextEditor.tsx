@@ -5,7 +5,7 @@ import type {
   BuilderRichTextMarks,
   BuilderRichTextRun,
 } from '../../../platform/builder';
-import { normalizeBuilderRichText } from '../../../platform/builder';
+import { normalizeBuilderRichText, heroFontFamily } from '../../../platform/builder';
 
 interface ControlledRichTextEditorProps {
   value: BuilderRichText;
@@ -31,15 +31,17 @@ function colorToRgb(color: string): string {
 function createRunNode(run: BuilderRichTextRun, ownerDocument: Document, colors: ControlledRichTextEditorProps['colors']): Node {
   const text = ownerDocument.createTextNode(run.text);
   const marks = run.marks;
-  if (!marks?.bold && !marks?.italic && !marks?.color) return text;
+  if (marks?.bold === undefined && marks?.italic === undefined && !marks?.color && !marks?.font && !marks?.size) return text;
 
   const span = ownerDocument.createElement('span');
-  if (marks.bold) span.style.fontWeight = '700';
-  if (marks.italic) span.style.fontStyle = 'italic';
+  if (marks.bold !== undefined) { span.style.fontWeight = marks.bold ? '700' : '400'; span.dataset.jokoBold = String(marks.bold); }
+  if (marks.italic !== undefined) { span.style.fontStyle = marks.italic ? 'italic' : 'normal'; span.dataset.jokoItalic = String(marks.italic); }
   if (marks.color) {
     span.dataset.jokoColor = marks.color;
     span.style.color = colors[marks.color];
   }
+  if (marks.font) { span.dataset.jokoFont = marks.font; span.style.fontFamily = heroFontFamily(marks.font); }
+  if (marks.size) { span.dataset.jokoSize = String(marks.size); span.style.fontSize = `${marks.size}px`; }
   span.appendChild(text);
   return span;
 }
@@ -52,7 +54,7 @@ function appendRun(
   if (!text) return;
   runs.push({
     text,
-    ...(marks.bold || marks.italic || marks.color ? { marks } : {}),
+    ...(marks.bold !== undefined || marks.italic !== undefined || marks.color || marks.font || marks.size ? { marks } : {}),
   });
 }
 
@@ -76,6 +78,8 @@ function serializeEditor(
     const tag = node.tagName.toLowerCase();
     if (tag === 'strong' || tag === 'b' || node.style.fontWeight === '700' || node.style.fontWeight === 'bold') marks.bold = true;
     if (tag === 'em' || tag === 'i' || node.style.fontStyle === 'italic') marks.italic = true;
+    if (node.dataset.jokoBold === 'false' || node.style.fontWeight === '400') marks.bold = false;
+    if (node.dataset.jokoItalic === 'false' || node.style.fontStyle === 'normal') marks.italic = false;
 
     const dataColor = node.dataset.jokoColor as BuilderRichTextColor | undefined;
     if (dataColor && ['text', 'accent', 'turquoise'].includes(dataColor)) {
@@ -84,6 +88,13 @@ function serializeEditor(
       const rawColor = (node.getAttribute('color') || node.style.color || '').toLowerCase();
       const matched = semanticColors.find(([, hex, rgb]) => rawColor === hex || rawColor === rgb);
       if (matched) marks.color = matched[0];
+    }
+
+    if (node.dataset.jokoFont && ['inherit', 'display', 'body', 'handwritten'].includes(node.dataset.jokoFont)) {
+      marks.font = node.dataset.jokoFont as BuilderRichTextMarks['font'];
+    }
+    if (node.dataset.jokoSize && Number.isFinite(Number(node.dataset.jokoSize))) {
+      marks.size = Number(node.dataset.jokoSize);
     }
 
     if (tag === 'br') {

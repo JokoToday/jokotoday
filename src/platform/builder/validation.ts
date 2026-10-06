@@ -142,9 +142,18 @@ function validateLocalizedRichText(
         if (!isRecord(run.marks)) {
           pushIssue(issues, `${path}.${locale}[${index}].marks`, 'Rich text marks must be an object.');
           valid = false;
-        } else if (run.marks.color !== undefined && !['text', 'accent', 'turquoise'].includes(String(run.marks.color))) {
-          pushIssue(issues, `${path}.${locale}[${index}].marks.color`, 'Unsupported rich text color.');
-          valid = false;
+        } else {
+          const marks = run.marks;
+          if (marks.color !== undefined && !['text', 'accent', 'turquoise'].includes(String(marks.color))) {
+            pushIssue(issues, `${path}.${locale}[${index}].marks.color`, 'Unsupported rich text color.');
+            valid = false;
+          }
+          if (marks.font !== undefined && !['inherit', 'display', 'body', 'handwritten'].includes(String(marks.font))) {
+            pushIssue(issues, `${path}.${locale}[${index}].marks.font`, 'Unsupported text font.');
+          }
+          if (marks.size !== undefined && (typeof marks.size !== 'number' || !Number.isInteger(marks.size) || marks.size < 12 || marks.size > 108)) {
+            pushIssue(issues, `${path}.${locale}[${index}].marks.size`, 'Word font size must be 12–108px.');
+          }
         }
       }
     });
@@ -234,6 +243,30 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.topMenu !== undefined) {
+    if (!Array.isArray(value.topMenu) || value.topMenu.length !== 6) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must have all six fixed destinations.');
+    } else {
+      const allowed = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
+      const keys = new Set<string>();
+      value.topMenu.forEach((item: unknown, index: number) => {
+        const path = `branding.topMenu[${index}]`;
+        if (!isRecord(item) || !allowed.includes(String(item.key)) || keys.has(String(item.key))) {
+          pushIssue(issues, path, 'Unknown or duplicate menu destination.');
+          return;
+        }
+        keys.add(String(item.key));
+        if (typeof item.visible !== 'boolean') pushIssue(issues, `${path}.visible`, 'Visibility must be a boolean.');
+        if (item.labels !== undefined) {
+          validateOptionalLocalizedText(item.labels, `${path}.labels`, issues, ['en', 'th', 'zh']);
+          if (isRecord(item.labels) && Object.values(item.labels).some((label) => typeof label !== 'string' || !label.trim() || label.length > 50)) {
+            pushIssue(issues, `${path}.labels`, 'Menu labels must be 1–50 characters.');
+          }
+        }
+      });
+    }
+  }
+
   if (!isRecord(value.colors)) {
     pushIssue(issues, 'branding.colors', 'Brand colors must be an object.');
   } else {
@@ -311,6 +344,24 @@ function validateCommonSection(
   }
 
   return value.type;
+}
+
+function validateHeroTextStyle(value: unknown, path: string, issues: BuilderValidationIssue[]) {
+  if (!isRecord(value)) { pushIssue(issues, path, 'Expected typography settings.'); return; }
+  if (value.font !== undefined && !['inherit', 'display', 'body', 'handwritten'].includes(String(value.font))) {
+    pushIssue(issues, `${path}.font`, 'Unsupported font.');
+  }
+  const min = path.endsWith('.eyebrowStyle') ? 9 : 12;
+  const max = path.endsWith('.eyebrowStyle') || path.endsWith('.subtitleStyle') ? 42 : 108;
+  if (value.size !== undefined && (typeof value.size !== 'number' || !Number.isInteger(value.size) || value.size < min || value.size > max)) {
+    pushIssue(issues, `${path}.size`, `Font size must be ${min}–108px.`);
+  }
+  if (value.align !== undefined && !['left', 'center', 'right'].includes(String(value.align))) {
+    pushIssue(issues, `${path}.align`, 'Unsupported alignment.');
+  }
+  for (const mark of ['bold', 'italic']) {
+    if (value[mark] !== undefined && typeof value[mark] !== 'boolean') pushIssue(issues, `${path}.${mark}`, 'Expected boolean.');
+  }
 }
 
 function validateSection(
@@ -402,6 +453,22 @@ function validateSection(
             pushIssue(issues, `${path}.props.notebookNote.linkUrl`, 'Hero notebook link must be an internal path, hash, or HTTPS URL.');
           }
         }
+      }
+      if (value.props.eyebrow !== undefined) validateOptionalLocalizedText(value.props.eyebrow, `${path}.props.eyebrow`, issues, locales);
+      for (const field of ['eyebrowStyle', 'titleStyle', 'subtitleStyle']) {
+        if (value.props[field] !== undefined) validateHeroTextStyle(value.props[field], `${path}.props.${field}`, issues);
+      }
+      if (value.props.titleLineStyles !== undefined) {
+        if (!isRecord(value.props.titleLineStyles)) {
+          pushIssue(issues, `${path}.props.titleLineStyles`, 'Expected localized line styles.');
+        } else for (const [locale, styles] of Object.entries(value.props.titleLineStyles)) {
+          if ((locales && !locales.includes(locale)) || !Array.isArray(styles) || styles.length > 12) {
+            pushIssue(issues, `${path}.props.titleLineStyles.${locale}`, 'Expected up to twelve localized line styles.');
+          } else styles.forEach((style: unknown, line: number) => validateHeroTextStyle(style, `${path}.props.titleLineStyles.${locale}[${line}]`, issues));
+        }
+      }
+      if (value.props.subtitleRichText !== undefined) {
+        validateLocalizedRichText(value.props.subtitleRichText, `${path}.props.subtitleRichText`, issues, locales);
       }
       validateLocalizedText(value.props.title, `${path}.props.title`, issues, locales);
       if (value.props.titleRichText !== undefined) {
