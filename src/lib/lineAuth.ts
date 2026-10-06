@@ -1,5 +1,4 @@
 import type { User } from '@supabase/supabase-js';
-import type { Language } from '../translations';
 
 // Supabase Auth custom OAuth2 provider. Hidden until reviewed and configured.
 // Existing customers may link LINE before public LINE sign-in is released.
@@ -11,10 +10,10 @@ export function hasLinkedLINE(user: User | null | undefined): boolean {
   return Boolean(user?.identities?.some((identity) => identity.provider === LINE_PROVIDER));
 }
 
-export function lineRedirectTo(destination: 'home' | 'profile', language: Language): string {
-  // Do not let an old VITE_APP_URL redirect tokens to the retired Bolt host.
-  const callback = new URL('/auth/callback', window.location.origin);
-  callback.searchParams.set('lang', language);
-  if (destination === 'profile') callback.searchParams.set('next', 'profile');
-  return callback.toString();
+export const LINE_OAUTH_DESTINATION_KEY = 'jt_line_oauth_destination';
+
+export function lineRedirectTo(): string {
+  // Keep one exact, allowlisted callback for both modes. LINE return
+  // navigation and language preference live in sessionStorage, not URL params.
+  return new URL('/auth/callback', window.location.origin).toString();
 }
