@@ -11,7 +11,9 @@ assert.ok(auth.includes('auth.signInWithOAuth({') && auth.includes('auth.linkIde
 assert.ok(auth.includes('provider: LINE_PROVIDER'));
 assert.ok(helper.includes("'custom:line'"));
 assert.ok(helper.includes("VITE_ENABLE_LINE_LOGIN === 'true'"));
+assert.ok(helper.includes("VITE_ENABLE_LINE_LINKING === 'true'"));
 assert.ok(modal.includes('LINE_LOGIN_ENABLED'));
+assert.ok(source('src/pages/MyProfilePage.tsx').includes('LINE_LINKING_ENABLED'));
 assert.ok(!app.includes('line_user_id'));
 assert.ok(!existsSync('src/components/LineCallback.tsx'));
 assert.ok(!existsSync('supabase/functions/line-callback/index.ts'));
