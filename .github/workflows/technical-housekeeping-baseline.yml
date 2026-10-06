@@ -35,6 +35,9 @@ jobs:
       - name: LINE onboarding contract
         run: npm run audit:line-onboarding
 
+      - name: Authentication email hook contract
+        run: npm run audit:auth-email-hook
+
       - name: Typecheck
         run: npm run typecheck
 
