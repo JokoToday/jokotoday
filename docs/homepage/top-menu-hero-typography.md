@@ -48,3 +48,10 @@ The preset modifies only the **English draft headline and tagline**, never the s
 ### Verified browser behavior
 
 Local Chromium preview was checked at 1440px desktop and 390px mobile. The existing published hero and tagline remained visible, all six existing desktop navigation labels were unchanged, and the mobile menu opened with the identical labels. Separate logic tests passed for English three-line word styling, legacy document compatibility, safe menu reorder/hide and strict input validation.
+
+## October 6 – defaults and discoverability
+
+- The **Site identity** label is a small label at the top of the **left-hand pane** in Admin → Website / Homepage Builder (not a separate Admin navigation tab). It now reads **Top Menu & Branding** beneath that label, with the **Top Menu** expanded immediately below it before the logo and typography controls. On desktop, use the small `›` arrow to reopen that pane if collapsed.
+- Default English menu labels are now **Baked** and **Beyond**. Thai and Chinese remain unchanged, as do the fixed navigation destinations. If an Admin has published customized menu labels, those still take precedence.
+- Default English hero tagline is now **Love for Baking. Shared with Everyone.**. This is the fallback when the published hero has no English tagline; explicit published text still takes precedence. The default is aligned across public hero, Builder preview and the optional English-only preset. Display respects the specified capitalization (no forced uppercase).
+- No Homepage Builder draft or published database revisions are changed by these default updates. They take effect on the public site only after production deployment.
