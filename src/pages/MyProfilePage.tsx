@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
-import { hasLinkedLINE, LINE_LOGIN_ENABLED } from '../lib/lineAuth';
+import { hasLinkedLINE, LINE_LINKING_ENABLED } from '../lib/lineAuth';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
@@ -317,7 +317,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               </div>
             </section>
 
-            {LINE_LOGIN_ENABLED && (
+            {LINE_LINKING_ENABLED && (
               <section className="border-t border-[#55766F]/14 pt-7">
                 <h3 className="mb-2 text-lg font-semibold text-[#303532]">LINE Login</h3>
                 {hasLinkedLINE(user) ? (
