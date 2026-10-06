@@ -29,6 +29,9 @@ jobs:
       - name: Static asset egress audit
         run: npm run audit:static-assets
 
+      - name: LINE OAuth safety contract
+        run: npm run audit:line-auth
+
       - name: Typecheck
         run: npm run typecheck
 
