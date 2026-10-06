@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
-import { LINE_LOGIN_ENABLED, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
+import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 
@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const linkLINE = async () => {
-    if (!LINE_LOGIN_ENABLED) throw new Error('LINE Login is not enabled yet.');
+    if (!LINE_LINKING_ENABLED) throw new Error('LINE linking is not enabled yet.');
     if (!user) throw new Error('Sign in to your JOKO account before linking LINE.');
 
     const { data, error: identitiesError } = await supabase.auth.getUserIdentities();
@@ -337,7 +337,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // On redirect the React user state may lag the newly created session.
     const { data, error } = await supabase.auth.getUser();
     if (error) throw error;
-    if (data.user) await fetchUserProfile(data.user.id);
+    if (data.user) {
+      setUser(data.user);
+      await fetchUserProfile(data.user.id);
+    }
   };
 
   return (
