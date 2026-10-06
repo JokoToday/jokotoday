@@ -56,6 +56,60 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     }
   };
 
+  // Temporary link-only preview test tool; NEVER merge this branch.
+  // The Supabase call operates solely on the signed-in user's own identity.
+  const isLineTestCustomer = import.meta.env.VITE_ENABLE_LINE_TEST_TOOLS === 'true'
+    && user?.email?.toLowerCase() === 'aiagentready@gmail.com'
+    && userProfile?.id === user?.id
+    && userProfile?.name === 'AI Agent Ready'
+    && userProfile?.role === 'customer';
+
+  const disconnectTestLINE = async () => {
+    if (!isLineTestCustomer || !user) return;
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      const { data: authUserData, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUserData.user || authUserData.user.id !== user.id
+        || authUserData.user.email?.toLowerCase() !== 'aiagentready@gmail.com') {
+        throw new Error('Test account verification failed. No change made.');
+      }
+
+      const { data, error: identitiesError } = await supabase.auth.getUserIdentities();
+      if (identitiesError) throw identitiesError;
+      const line = data.identities.find(identity => identity.provider === 'custom:line');
+      if (!line || !data.identities.some(identity => identity.provider === 'email')
+        || data.identities.length < 2) {
+        throw new Error('Email fallback or LINE identity missing. No change made.');
+      }
+
+      const typed = window.prompt(
+        'TEST ONLY: LINE will be disconnected from AI Agent Ready so we can test new signup. ' +
+        'Its email login, customer ID, QR pass, and orders remain. ' +
+        'Enter DISCONNECT TEST LINE to confirm:'
+      );
+      if (typed !== 'DISCONNECT TEST LINE') return;
+
+      const { error: unlinkError } = await supabase.auth.unlinkIdentity(line);
+      if (unlinkError) throw unlinkError;
+
+      const { data: after, error: verifyError } = await supabase.auth.getUserIdentities();
+      if (verifyError) throw verifyError;
+      if (after.identities.some(identity => identity.provider === 'custom:line')
+        || !after.identities.some(identity => identity.provider === 'email')) {
+        throw new Error('Identity verification is inconsistent. Stop the test and investigate.');
+      }
+
+      await refreshProfile();
+      setSuccess('LINE disconnected from AI Agent Ready. Sign out to test new LINE signup.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'LINE could not be safely disconnected.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setFormData((current) => ({
       ...current,
@@ -321,11 +375,20 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               <section className="border-t border-[#55766F]/14 pt-7">
                 <h3 className="mb-2 text-lg font-semibold text-[#303532]">LINE Login</h3>
                 {hasLinkedLINE(user) ? (
+                  <>
                   <p className="text-sm text-[#3F665E]">
                     {language === 'en' ? 'LINE is connected to this JOKO account.'
                       : language === 'th' ? 'เชื่อม LINE กับบัญชี JOKO นี้แล้ว'
                         : 'LINE 已关联此 JOKO 账户。'}
                   </p>
+                  {isLineTestCustomer && (
+                    <button type="button" disabled={loading}
+                      onClick={() => void disconnectTestLINE()}
+                      className="mt-4 rounded-xl border border-amber-500/60 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
+                      Test only: Disconnect LINE from AI Agent Ready
+                    </button>
+                  )}
+                  </>
                 ) : (
                   <>
                     <p className="mb-3 text-sm text-gray-600">
