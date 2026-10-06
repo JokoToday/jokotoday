@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "audit:line-auth": "node scripts/audit-line-auth.mjs",
     "audit:line-onboarding": "node scripts/audit-line-onboarding.mjs",
+    "audit:auth-email-hook": "node scripts/audit-auth-email-hook.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "audit:design-system": "node scripts/audit-design-system.mjs",
