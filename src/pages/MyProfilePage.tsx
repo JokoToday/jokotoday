@@ -5,6 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { hasLinkedLINE, LINE_LINKING_ENABLED } from '../lib/lineAuth';
+import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
@@ -18,6 +20,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const { getLabel } = useCMSLabels();
 
   const [loading, setLoading] = useState(false);
+  const [lineLinked, setLineLinked] = useState<boolean | null>(null);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -35,14 +38,28 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   useEffect(() => {
     if (!userProfile) return;
     setFormData({
-      name: userProfile.name || '',
+      name: userProfile.name || lineDisplayName(user) || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
       whatsapp: userProfile.whatsapp || '',
       wechat_id: userProfile.wechat_id || '',
     });
     setProfilePicture(userProfile.profile_picture_url || null);
-  }, [userProfile]);
+  }, [userProfile, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLineLinked(null);
+    if (!user) return;
+    // Check the server's linked identities, not potentially stale
+    // session metadata (notably after disconnect/relink operations).
+    void supabase.auth.getUserIdentities().then(({ data, error: identitiesError }) => {
+      if (!cancelled && !identitiesError) {
+        setLineLinked(data.identities.some((identity) => identity.provider === 'custom:line'));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, user?.identities]);
 
   const handleLinkLINE = async () => {
     setError('');
@@ -98,7 +115,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setError(getLabel('profile.phone_required_error', language, 'Phone number is required'));
       return;
     }
-    if (!formData.line_id && !formData.whatsapp && !formData.wechat_id) {
+    if (!formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim() && lineLinked !== true) {
       setError(getLabel('profile.contact_required_error', language, 'At least one contact method is required'));
       return;
     }
@@ -291,22 +308,40 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.email_label', language, 'Email Address')}
-                  <input type="email" value={user.email || ''} className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#55766F]/14 bg-[#F4EFE5]/55 px-4 py-3 text-[#303532]/60" disabled />
-                  <span className="block text-xs text-gray-500 mt-1">{user.email
-                    ? getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')
-                    : language === 'en' ? 'No verified email yet. LINE does not provide your email; email order receipts are unavailable until one is verified.'
-                      : language === 'th' ? 'ยังไม่มีอีเมลที่ยืนยันแล้ว LINE ไม่ส่งอีเมลให้ จึงยังรับใบยืนยันคำสั่งซื้อทางอีเมลไม่ได้'
-                        : '尚未验证邮箱。LINE 不会提供邮箱，因此暂时无法接收邮件订单确认。'}</span>
+                  <input type="email" value={hasVerifiedEmail(user) ? (user.email || '') : ''}
+                    placeholder={hasVerifiedEmail(user) ? '' : '—'}
+                    className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#55766F]/14 bg-[#F4EFE5]/55 px-4 py-3 text-[#303532]/60" disabled />
+                  <span className="block text-xs text-gray-500 mt-1">
+                    {hasVerifiedEmail(user)
+                      ? getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')
+                      : language === 'th' ? 'ยังไม่มีอีเมลที่ยืนยันแล้ว' : language === 'zh'
+                        ? '尚无已验证邮箱' : 'No verified email yet.'}
+                  </span>
                 </label>
+                {!hasVerifiedEmail(user) && <EmailVerificationPanel />}
               </div>
             </section>
 
             <section className="border-t border-[#55766F]/14 pt-7">
               <h3 className="mb-2 text-lg font-semibold text-[#303532]">{getLabel('profile_page.contact_methods', language, 'Contact Methods')}</h3>
               <p className="text-sm text-gray-600 mb-4">{getLabel('profile_page.contact_help', language, 'How can we reach you with order updates?')}</p>
+              {lineLinked === true && (
+                <div className="mb-4 rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
+                  <p className="font-semibold">
+                    {language === 'th' ? 'บัญชี LINE: เชื่อมต่อแล้ว'
+                      : language === 'zh' ? 'LINE 账号：已连接' : 'LINE account: Connected'}
+                    {lineDisplayName(user) ? ` · ${lineDisplayName(user)}` : ''}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    {language === 'th' ? 'LINE Login ไม่แสดง LINE ID ที่ค้นหาได้ และยังไม่ยืนยันสิทธิ์ส่งข้อความจากบัญชีทางการ'
+                      : language === 'zh' ? 'LINE 登录不会提供可搜索的 LINE ID，也不代表已允许官方账号发送消息。'
+                        : 'LINE does not share your searchable LINE ID. Messaging through our Official Account requires a separate connection.'}
+                  </p>
+                </div>
+              )}
               <div className="space-y-3">
                 {[
-                  ['line_id', getLabel('profile_page.line_label', language, 'LINE ID')],
+                  ['line_id', getLabel('profile_page.line_label', language, 'LINE ID (optional)')],
                   ['whatsapp', getLabel('profile_page.whatsapp_label', language, 'WhatsApp')],
                   ['wechat_id', getLabel('profile_page.wechat_label', language, 'WeChat ID')],
                 ].map(([name, label]) => (
@@ -320,7 +355,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             {LINE_LINKING_ENABLED && (
               <section className="border-t border-[#55766F]/14 pt-7">
                 <h3 className="mb-2 text-lg font-semibold text-[#303532]">LINE Login</h3>
-                {hasLinkedLINE(user) ? (
+                {(lineLinked ?? hasLinkedLINE(user)) ? (
                   <p className="text-sm text-[#3F665E]">
                     {language === 'en' ? 'LINE is connected to this JOKO account.'
                       : language === 'th' ? 'เชื่อม LINE กับบัญชี JOKO นี้แล้ว'
