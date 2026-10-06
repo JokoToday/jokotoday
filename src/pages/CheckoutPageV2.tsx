@@ -23,6 +23,7 @@ import {
 } from '../lib/pickupV2PreferredSelection';
 import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderServiceV2';
 import { supabase } from '../lib/supabase';
+import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 
 interface CheckoutPageV2Props {
   onNavigate: (page: string) => void;
@@ -283,6 +284,17 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     }
     if (!user || !userProfile) {
       setIsAuthModalOpen(true);
+      return;
+    }
+
+    // Recheck the authenticated customer immediately before creating an
+    // order, independent of the checkout router's visual gate.
+    const { data: verifiedAuth, error: verifiedError } = await supabase.auth.getUser();
+    if (verifiedError || !verifiedAuth.user || verifiedAuth.user.id !== user.id
+      || needsLINEEmailForCheckout(verifiedAuth.user)) {
+      setSubmitError(language === 'th' ? 'กรุณายืนยันอีเมลก่อนสั่งซื้อ'
+        : language === 'zh' ? '请先验证邮箱再下单。'
+          : 'Please verify your email in My Profile before placing an order.');
       return;
     }
 
