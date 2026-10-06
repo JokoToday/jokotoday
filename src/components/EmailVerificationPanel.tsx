@@ -14,6 +14,7 @@ const copy = {
     send: 'Send verification email',
     sending: 'Sending…',
     sent: 'We sent a verification link to your address. Open it, then return here and refresh your status. Check spam if necessary.',
+    sendFailed: 'Email verification is temporarily unavailable. Nothing was changed. Please try again later.',
     refresh: 'I verified my email — refresh status',
     checking: 'Checking…',
     notVerified: 'Not verified yet. Please open the email link first.',
@@ -28,6 +29,7 @@ const copy = {
     send: 'ส่งอีเมลยืนยัน',
     sending: 'กำลังส่ง…',
     sent: 'ส่งลิงก์ยืนยันแล้ว โปรดเปิดอีเมล จากนั้นกลับมาที่นี่และตรวจสอบสถานะอีกครั้ง',
+    sendFailed: 'ไม่สามารถส่งอีเมลยืนยันได้ในขณะนี้ ยังไม่มีการเปลี่ยนแปลง กรุณาลองใหม่ภายหลัง',
     refresh: 'ยืนยันแล้ว — ตรวจสอบสถานะ',
     checking: 'กำลังตรวจสอบ…',
     notVerified: 'ยังไม่ยืนยัน กรุณาเปิดลิงก์ในอีเมลก่อน',
@@ -42,6 +44,7 @@ const copy = {
     send: '发送验证邮件',
     sending: '正在发送…',
     sent: '验证邮件已发送。请点击邮件中的链接，然后返回此处刷新状态。',
+    sendFailed: '暂时无法发送验证邮件。账号没有改变，请稍后重试。',
     refresh: '已验证 — 刷新状态',
     checking: '正在检查…',
     notVerified: '邮箱尚未验证，请先点击邮件中的链接。',
@@ -91,7 +94,14 @@ export function EmailVerificationPanel({ forCheckout = false }: { forCheckout?: 
       setSent(true);
       setNotice(t.sent);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send email verification.');
+      const responseError = err as { message?: unknown; code?: string; status?: number } | null;
+      const message = responseError && typeof responseError.message === 'string'
+        ? responseError.message.trim()
+        : '';
+      const serviceFailure = (responseError?.status ?? 0) >= 500
+        || responseError?.code === 'unexpected_failure'
+        || message === '{}' || message === '[object Object]' || !message;
+      setError(serviceFailure ? t.sendFailed : message);
     } finally {
       setBusy(null);
     }
