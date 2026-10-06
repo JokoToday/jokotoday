@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
+import { LINE_LOGIN_ENABLED, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 
@@ -58,6 +59,7 @@ interface AuthContextType {
   signInWithQR: (qrToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithLINE: () => Promise<void>;
+  linkLINE: () => Promise<void>;
   completeProfile: (data: ProfileDetails) => Promise<void>;
   updateProfileDetails: (data: ProfileDetails) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -227,27 +229,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithLINE = async () => {
-    const lineChannelId = import.meta.env.VITE_LINE_CHANNEL_ID;
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!LINE_LOGIN_ENABLED) throw new Error('LINE Login is not enabled yet.');
 
-    if (!lineChannelId || !supabaseUrl) {
-      throw new Error('LINE credentials not configured');
-    }
-
-    const state = Math.random().toString(36).substring(7);
-    sessionStorage.setItem('line_oauth_state', state);
-
-    const redirectUri = `${supabaseUrl}/functions/v1/line-callback`;
-
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: lineChannelId,
-      redirect_uri: redirectUri,
-      state,
-      scope: 'openid profile',
+    // Supabase Auth handles PKCE, state, LINE tokens and trusted sessions.
+    // Never synthesize an email/password from a LINE user ID.
+    sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, language);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: LINE_PROVIDER,
+      options: {
+        redirectTo: lineRedirectTo('home', language),
+        scopes: 'openid profile',
+      },
     });
+    if (error) {
+      sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      throw error;
+    }
+  };
 
-    window.location.href = `https://web.line.me/web/login?${params.toString()}`;
+  const linkLINE = async () => {
+    if (!LINE_LOGIN_ENABLED) throw new Error('LINE Login is not enabled yet.');
+    if (!user) throw new Error('Sign in to your JOKO account before linking LINE.');
+
+    const { data, error: identitiesError } = await supabase.auth.getUserIdentities();
+    if (identitiesError) throw identitiesError;
+    if (data.identities.some((identity) => identity.provider === LINE_PROVIDER)) return;
+
+    // Only a signed-in account holder can request identity linking.
+    // Never merge JOKO accounts by unverified names, phones, or LINE IDs.
+    sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, language);
+    const { error } = await supabase.auth.linkIdentity({
+      provider: LINE_PROVIDER,
+      options: {
+        redirectTo: lineRedirectTo('profile', language),
+        scopes: 'openid profile',
+      },
+    });
+    if (error) {
+      sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      throw error;
+    }
   };
 
   const completeProfile = async (data: ProfileDetails) => {
@@ -313,8 +334,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async (): Promise<void> => {
-    if (!user) return;
-    await fetchUserProfile(user.id);
+    // On redirect the React user state may lag the newly created session.
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (data.user) await fetchUserProfile(data.user.id);
   };
 
   return (
@@ -331,6 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithQR,
         signOut,
         signInWithLINE,
+        linkLINE,
         completeProfile,
         updateProfileDetails,
         refreshProfile,
