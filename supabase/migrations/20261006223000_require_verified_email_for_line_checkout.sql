@@ -4,7 +4,8 @@
 -- Frontend checkout gates alone are bypassable via direct RPC calls. Both
 -- create_online_order and create_online_order_v2 insert into public.orders,
 -- so a narrowly scoped BEFORE INSERT guard protects LINE-authenticated
--- customer online orders without changing staff-created walk-ins/desk sales.
+-- customers even if an API caller tries to spoof purchase_type. It does
+-- not change staff-created walk-ins/desk sales.
 --
 -- Rollback:
 -- DROP TRIGGER IF EXISTS require_line_email_for_online_order ON public.orders;
@@ -17,10 +18,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  -- Only customer-initiated online INSERTs. Staff/POS orders where staff
-  -- author is not the customer, guest desk orders and updates are untouched.
-  IF NEW.purchase_type IS DISTINCT FROM 'online'
-     OR auth.uid() IS NULL
+  -- Only customer-initiated INSERTs. Do not trust purchase_type as a
+  -- client can spoof it. Staff/POS orders where the staff is the actor
+  -- rather than the customer, and guest desk orders are untouched.
+  IF auth.uid() IS NULL
      OR NEW.customer_id IS DISTINCT FROM auth.uid() THEN
     RETURN NEW;
   END IF;
@@ -51,4 +52,4 @@ BEFORE INSERT ON public.orders
 FOR EACH ROW EXECUTE FUNCTION public.require_line_email_for_online_order();
 
 COMMENT ON FUNCTION public.require_line_email_for_online_order() IS
-  'Require auth.users-confirmed email for customer-initiated online orders on LINE-linked accounts; staff walk-ins unaffected.';
+  'Require confirmed email for customer-created orders using LINE identity; staff-created walk-ins unaffected.';
