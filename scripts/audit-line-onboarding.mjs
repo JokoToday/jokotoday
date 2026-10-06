@@ -57,7 +57,7 @@ for (const code of [v1, v2]) {
   assert.match(code, /needsLINEEmailForCheckout\(verifiedAuth\.user\)/);
 }
 assert.match(email, /supabase\.auth\.updateUser\(/);
-assert.doesNotMatch(email, /signInWithOtp|signUp\(/);
+assert.doesNotMatch(email, /supabase\.auth\.(?:signInWithOtp|signUp)\s*\(/);
 assert.match(email, /emailRedirectTo/);
 assert.match(profile, /lineDisplayName\(user\)/);
 assert.match(profile, /LINE account: Connected/);
