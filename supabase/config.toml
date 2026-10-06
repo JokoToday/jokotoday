@@ -7,9 +7,6 @@ project_id = "jokotoday"
 [functions.customer-lookup]
 verify_jwt = true
 
-[functions.line-callback]
-verify_jwt = false
-
 [functions.qr-login]
 verify_jwt = false
 
