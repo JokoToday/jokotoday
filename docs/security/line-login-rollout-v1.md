@@ -8,7 +8,10 @@ Status: **PR only. No production rollout/configuration change in this PR.**
 - **Supabase Auth** performs OAuth code exchange, PKCE/state verification, stores the provider identity, and creates trusted sessions. No LINE user ID–derived passwords or fake email addresses; no client inserts into `line_users`.
 - Supabase custom OAuth provider: `custom:line` (Manual **OAuth2**). LINE's userinfo endpoint returns stable `sub`. LINE Login web ID tokens may be HS256, so do not assume OIDC/JWKS verification will work interchangeably.
 - Existing email OTP, QR login, staff/admin authorization, customer IDs, loyalty and orders remain unchanged.
-- The LINE sign-in and identity-link buttons are **OFF by default**. Build with `VITE_ENABLE_LINE_LOGIN=true` only when tested and ready. This is **not a server-side signup restriction**.
+- LINE buttons are **OFF by default**, with separate build flags:
+  - `VITE_ENABLE_LINE_LINKING=true`: show *Connect LINE* only to signed-in JOKO customers.
+  - `VITE_ENABLE_LINE_LOGIN=true`: show *Continue with LINE* and enable linking.
+  - Start link-only UI pilot with `VITE_ENABLE_LINE_LINKING=true`, `VITE_ENABLE_LINE_LOGIN=false`. **These are UI gates, not server-side signup prevention**.
 
 ## Step 1 — Configure Supabase custom OAuth provider (trusted dashboard only)
 
@@ -48,7 +51,7 @@ Optional later: only after separate testing, use LINE's `bot_prompt=normal` auth
 
 **New customer:** direct Continue with LINE creates a new Supabase Auth user if it has never been linked. Existing JOKO profile requirements (name, phone and a reachable social contact) still apply. Because LINE does not provide a verified email in the current configuration, do not promise email order confirmations; obtain and verify an email later through Supabase Auth if needed.
 
-**Limitation:** without a verified email or pre-existing link, there is no trustworthy automatic way to recognize that a LINE-only login belongs to an existing email customer. Never merge by name, phone, manually entered LINE ID, profile picture or unverified email. The UI warns existing customers to link first. This is a *user-flow safeguard*, not a guarantee against duplicate signup. If zero duplicates is required during migration, keep direct LINE signup disabled at the Auth service level (separate backend signup policy) and run a link-only pilot. An already-linked LINE identity must not be linked to another user.
+**Limitation:** without a verified email or pre-existing link, there is no trustworthy automatic way to recognize that a LINE-only login belongs to an existing email customer. Never merge by name, phone, manually entered LINE ID, profile picture or unverified email. The UI warns existing customers to link first. This is a *user-flow safeguard*, not a guarantee against duplicate signup. Start with the link-only UI pilot while sign-in is hidden. If zero duplicates is required during migration, a separate server-side Auth signup policy is still necessary; hidden UI buttons alone do not prevent direct OAuth requests. An already-linked LINE identity must not be linked to another user.
 
 ## Step 4 — Staged tests before production
 
@@ -63,6 +66,7 @@ Optional later: only after separate testing, use LINE's `bot_prompt=normal` auth
 - [ ] Already-used LINE identity cannot link to another account.
 - [ ] Test desktop and mobile LINE app/browser; no stale `bolt.host` redirect.
 - [ ] Verify that absent email does not break checkout and that no email confirmation is promised.
+- [ ] Link-only UI pilot: set `VITE_ENABLE_LINE_LINKING=true` and keep `VITE_ENABLE_LINE_LOGIN=false` in a controlled preview.
 - [ ] Only after successful pilot, set `VITE_ENABLE_LINE_LOGIN=true` on approved production build, deploy, and smoke test.
 
 ## Retire legacy Edge function (separate backend action)
