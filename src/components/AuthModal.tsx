@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { QRScanner } from './QRScanner';
 import jsQR from 'jsqr';
 import { normalizeQrLoginTarget } from '../lib/qrNavigation';
+import { LINE_LOGIN_ENABLED } from '../lib/lineAuth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -83,8 +84,23 @@ const otpAuthText = {
   },
 };
 
+const lineText = {
+  en: {
+    button: 'Continue with LINE',
+    existing: 'Already have a JOKO account? Sign in with email or QR first, then connect LINE in My Profile so your orders and rewards stay together.',
+  },
+  th: {
+    button: 'ดำเนินการต่อด้วย LINE',
+    existing: 'มีบัญชี JOKO แล้ว? กรุณาเข้าสู่ระบบด้วยอีเมลหรือ QR ก่อน แล้วเชื่อม LINE ในโปรไฟล์ เพื่อเก็บประวัติคำสั่งซื้อและรางวัลไว้ในบัญชีเดิม',
+  },
+  zh: {
+    button: '使用 LINE 继续',
+    existing: '已有 JOKO 账户？请先用邮箱或二维码登录，再在个人资料中绑定 LINE，以保留原有订单与奖励。',
+  },
+};
+
 export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthModalProps) {
-  const { sendEmailOtp, verifyEmailOtp } = useAuth();
+  const { sendEmailOtp, verifyEmailOtp, signInWithLINE } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const [action, setAction] = useState<AuthAction>(initialAction);
   const [email, setEmail] = useState('');
@@ -101,6 +117,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
 
   const qrCopy = qrAuthText[language];
   const otpCopy = otpAuthText[language];
+  const lineCopy = lineText[language];
   const displayedError = Object.values(otpAuthText).some((copy) => error === copy.expiredCode)
     ? otpCopy.expiredCode
     : Object.values(otpAuthText).some((copy) => error === copy.invalidCode)
@@ -183,6 +200,18 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
         setError(t.auth.errorGeneric);
       }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLineLogin = async () => {
+    setError('');
+    setNotice('');
+    setLoading(true);
+    try {
+      await signInWithLINE();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.auth.errorGeneric);
       setLoading(false);
     }
   };
@@ -450,6 +479,19 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                   </div>
 
                   <div className="space-y-3">
+                    {LINE_LOGIN_ENABLED && (
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleLineLogin()}
+                          disabled={loading}
+                          className="w-full rounded-xl bg-[#06C755] px-4 py-3.5 font-semibold text-white transition hover:bg-[#05AD49] disabled:opacity-50"
+                        >
+                          {lineCopy.button}
+                        </button>
+                        <p className="text-xs leading-relaxed text-gray-500">{lineCopy.existing}</p>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowQRScanner(true)}
                       disabled={loading}
