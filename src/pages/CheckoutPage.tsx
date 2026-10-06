@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
+import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSuggestions';
@@ -140,6 +141,15 @@ export default function CheckoutPage({ onNavigate }: CheckoutPageProps) {
     }
     if (!user || !userProfile) {
       alert('You must be logged in to place an order.');
+      return;
+    }
+
+    // A fresh network Auth check prevents stale client/session metadata from
+    // bypassing the LINE email-verification requirement.
+    const { data: verifiedAuth, error: verifiedError } = await supabase.auth.getUser();
+    if (verifiedError || !verifiedAuth.user || verifiedAuth.user.id !== user.id
+      || needsLINEEmailForCheckout(verifiedAuth.user)) {
+      alert('Please verify your email in My Profile before placing an order.');
       return;
     }
 
