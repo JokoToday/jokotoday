@@ -13,7 +13,8 @@ import type { NotebookRouteTarget } from '../../../platform/notebook';
 import {
   localize,
   localizeRichText,
-  type BuilderRichTextColor,
+  HeroTypography,
+  type BuilderRichText,
   type HomeTopLikedSection,
 } from '../../../platform/builder';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
@@ -96,6 +97,18 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const heroIntro = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.subtitle, lang, 'en')
     : labels.intro;
+  const eyebrow = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.props.eyebrow?.[lang]?.trim() || labels.kicker
+    : labels.kicker;
+  const headlineFallback: BuilderRichText = [
+    { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
+    { text: labels.headlineAccent, marks: { color: 'accent' } },
+    ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
+  ];
+  const titleRuns = publishedTitleRichText ?? headlineFallback;
+  const subtitleRuns = publishedHero?.type === 'home.hero.v1'
+    ? localizeRichText(publishedHero.props.subtitleRichText, lang, 'en', heroIntro)
+    : [{ text: heroIntro }];
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
@@ -162,10 +175,6 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
     onNavigate('how-it-works');
   };
 
-  const heroSerif = {
-    fontFamily: 'var(--joko-font-display)',
-    fontSize: 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))',
-  };
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -209,51 +218,24 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
             <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(21rem,.72fr)_minmax(39rem,1.48fr)] xl:items-start xl:gap-4">
               <div className="relative max-w-[31rem] xl:pt-10 2xl:pt-12">
-                <p className="font-semibold uppercase tracking-[0.25em] text-[#3F665E]" style={{ fontSize: 'var(--joko-size-label, 11px)' }}>
-                  {labels.kicker}
-                </p>
+                <HeroTypography
+                  as="p" kind="eyebrow" value={[{ text: eyebrow }]}
+                  style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.eyebrowStyle : undefined}
+                  className="uppercase tracking-[0.25em]"
+                />
 
-                <h1
-                  className="mt-4 whitespace-pre-line leading-[.92] tracking-[-0.042em] text-[var(--joko-brand-text,#292D2B)]"
-                  style={{ ...heroSerif, fontWeight: 'var(--joko-font-display-weight, 700)' }}
-                >
-                  {publishedTitleRichText ? publishedTitleRichText.map((run, index) => {
-                    const color = run.marks?.color as BuilderRichTextColor | undefined;
-                    const semanticColor = color === 'accent'
-                      ? 'var(--joko-brand-accent, #C85F22)'
-                      : color === 'turquoise'
-                        ? 'var(--joko-brand-turquoise, #DAEBE8)'
-                        : color === 'text'
-                          ? 'var(--joko-brand-text, #292D2B)'
-                          : undefined;
-                    return (
-                      <span
-                        key={`${index}-${run.text}`}
-                        style={{
-                          color: semanticColor,
-                          fontWeight: run.marks?.bold ? 700 : undefined,
-                          fontStyle: run.marks?.italic ? 'italic' : undefined,
-                        }}
-                      >
-                        {run.text}
-                      </span>
-                    );
-                  }) : (
-                    <>
-                      <span className="block">{labels.headline1}</span>
-                      <span className="block">
-                        {labels.headline2}{' '}
-                        <span className="text-[var(--joko-brand-accent,#C85F22)]">{labels.headlineAccent}</span>
-                      </span>
-                      {labels.headline3 && <span className="block">{labels.headline3}</span>}
-                    </>
-                  )}
-                </h1>
+                <HeroTypography
+                  as="h1" kind="headline" value={titleRuns}
+                  style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.titleStyle : undefined}
+                  lineStyles={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.titleLineStyles?.[lang] : undefined}
+                  className="mt-4 leading-[.92] tracking-[-0.042em]"
+                />
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
-                <p className="mt-5 max-w-[29rem] leading-7 text-[var(--joko-brand-text,#303532)]/80" style={{ fontSize: 'var(--joko-size-body, 16px)' }}>
-                  {heroIntro}
-                </p>
+                <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
+                  style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.subtitleStyle : undefined}
+                  className="mt-5 max-w-[29rem] leading-7"
+                />
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
                   <button

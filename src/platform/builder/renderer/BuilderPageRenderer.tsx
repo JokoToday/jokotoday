@@ -29,7 +29,7 @@ export interface BuilderPageRendererProps {
 
 function renderSection(
   section: BuilderSection,
-  props: Omit<BuilderPageRendererProps, 'document' | 'onValidationError'>,
+  props: Omit<BuilderPageRendererProps, 'document' | 'onValidationError'> & { branding: ReturnType<typeof resolveJokoHomepageBranding> },
 ) {
   const common = {
     locale: props.locale,
@@ -44,6 +44,7 @@ function renderSection(
           section={section}
           provider={props.providers.heroMedia}
           interactive={!props.onSectionSelect}
+          branding={props.branding}
           {...common}
         />
       );
@@ -125,6 +126,7 @@ export function BuilderPageRenderer({
                 providers,
                 onAction,
                 onSectionError,
+                branding,
               })}
             </BuilderSectionErrorBoundary>
           </div>

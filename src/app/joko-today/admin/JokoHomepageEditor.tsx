@@ -35,10 +35,15 @@ import {
   type HomeHeroNotebookNote,
   type HomeAboutCardImage,
   type HomeAboutCardKey,
+  type TopMenuItem,
+  TOP_MENU_DEFAULT_LABELS,
+  resolveTopMenu,
+  HeroTypography,
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
+import { HeroLineStyleControls, HeroStyleControls, HeroWordStyleEditor } from './HeroTypographyControls';
 import { uploadGalleryImage } from '../../../lib/mediaService';
 
 interface JokoHomepageEditorProps {
@@ -891,6 +896,41 @@ export function JokoHomepageEditor({
           </details>
 
           <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
+            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">Top menu — desktop & mobile</summary>
+            <p className="mt-2 text-[11px] leading-4 text-[#303532]/60">Labels use the active editing language. Reorder or hide items; the destinations stay safely fixed. Save draft, preview and publish to make changes public.</p>
+            <div className="mt-3 space-y-2">
+              {resolveTopMenu(branding.topMenu).map((item, index, menu) => {
+                const changeMenu = (next: TopMenuItem[]) => updateBranding({ ...branding, topMenu: next });
+                return <div key={item.key} className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE] p-2.5">
+                  <div className="flex items-center gap-2">
+                    <input aria-label={`Show ${item.key} in top menu`} type="checkbox" checked={item.visible}
+                      onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? { ...entry, visible: event.target.checked } : entry))} />
+                    <span className="flex-1 text-xs font-medium text-[#304B45]">{item.key}</span>
+                    <button type="button" disabled={index === 0} aria-label={`Move ${item.key} up`}
+                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
+                      onClick={() => {
+                        const next = [...menu]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; changeMenu(next);
+                      }}>↑</button>
+                    <button type="button" disabled={index === menu.length - 1} aria-label={`Move ${item.key} down`}
+                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
+                      onClick={() => {
+                        const next = [...menu]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; changeMenu(next);
+                      }}>↓</button>
+                  </div>
+                  <input aria-label={`${item.key} ${locale} menu label`} className="mt-2 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    maxLength={50} value={item.labels?.[locale] ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, labels: { ...entry.labels, [locale]: event.target.value.trim() || TOP_MENU_DEFAULT_LABELS[item.key][locale] },
+                    } : entry))} />
+                </div>;
+              })}
+            </div>
+            <button type="button" onClick={() => updateBranding({ ...branding, topMenu: resolveTopMenu(undefined) })}
+              className="mt-3 text-xs font-semibold text-[#A44F1D] underline">Restore default menu</button>
+            <p className="mt-1 text-[11px] text-[#303532]/50">Default "Home" stays available through the logo even when hidden in the menu.</p>
+          </details>
+
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
             <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#303532]">
               <ImagePlus className="h-4 w-4 text-[#55766F]" />
               About JOKO — card images
@@ -1173,12 +1213,54 @@ function SectionEditor({
   if (section.type === 'home.hero.v1') {
     const props = section.props;
     const patch = (next: Partial<typeof props>) => onChange({ ...section, props: { ...props, ...next } });
+    const applyBakedBeyondPreset = () => {
+      // English only; leave the existing Thai/Chinese text, notebook and
+      // subtitle intact until Admin chooses to edit those translations.
+      const en = 'Baked & Beyond\nfor a\nBrighter Today';
+      patch({
+        eyebrow: { ...props.eyebrow, en: 'GOOD BAKING. ACCESSIBLE TO EVERYONE.' },
+        title: { ...props.title, en },
+        titleRichText: {
+          ...props.titleRichText,
+          en: [
+            { text: 'Baked & Beyond\nfor a\n' },
+            { text: 'Brighter', marks: { font: 'handwritten', italic: true, color: 'accent' } },
+            { text: ' ' },
+            { text: 'Today', marks: { color: 'text', bold: false, italic: false, font: 'display' } },
+          ],
+        },
+        titleLineStyles: {
+          ...props.titleLineStyles,
+          en: [
+            { align: 'center', size: 58 },
+            { align: 'center', size: 30 },
+            { align: 'center', size: 61 },
+          ],
+        },
+      });
+    };
     return (
       <div>
         {editorHeader}
         <div className="space-y-4">
+          {locale === 'en' && (
+            <div className="rounded-xl border border-[#C76624]/25 bg-[#FFF1E5]/65 p-3">
+              <p className="text-xs text-[#304B45]">Use JOKO’s proposed three-line hero as an editable starting point.</p>
+              <button type="button" className="mt-2 rounded-lg bg-[#C76624] px-3 py-2 text-xs font-semibold text-white"
+                onClick={applyBakedBeyondPreset}>Apply “Baked & Beyond” preset (EN)</button>
+              <p className="mt-2 text-[11px] text-[#304B45]/65">Replaces English headline and tagline only. Save Draft and Publish separately.</p>
+            </div>
+          )}
           <div>
-            <FieldLabel>Headline</FieldLabel>
+            <TextField label="Head tagline (above main title)" value={
+              props.eyebrow?.[locale] ?? ''
+            } onChange={(value) => patch({ eyebrow: withOptionalLocale(props.eyebrow, locale, value) })} />
+            <p className="mt-1 text-[11px] text-[#303532]/55">Leave blank to keep the existing public tagline for this language.</p>
+            <HeroStyleControls label="Tagline typography" defaultBold value={props.eyebrowStyle}
+              onChange={(value) => patch({ eyebrowStyle: value })} min={9} max={42} />
+          </div>
+          <div>
+            <FieldLabel>Main headline — select text, then style words below</FieldLabel>
             <ControlledRichTextEditor
               ariaLabel="Hero headline rich text"
               value={localizeRichText(
@@ -1194,7 +1276,45 @@ function SectionEditor({
               })}
             />
           </div>
-          <TextField label="Subtitle" multiline value={localized(props.subtitle, locale, fallbackLocale)} onChange={(value) => patch({ subtitle: withLocale(props.subtitle, locale, value) })} />
+          <HeroStyleControls label="Headline base typography" defaultBold value={props.titleStyle}
+            onChange={(value) => patch({ titleStyle: value })} />
+          <HeroLineStyleControls
+            value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
+            styles={props.titleLineStyles?.[locale]}
+            onChange={(styles) => patch({ titleLineStyles: { ...props.titleLineStyles, [locale]: styles } })}
+          />
+          <HeroWordStyleEditor
+            value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
+            colors={branding.colors}
+            onChange={(value) => patch({
+              title: withLocale(props.title, locale, richTextToPlainText(value)),
+              titleRichText: withLocaleRichText(props.titleRichText, locale, value),
+            })}
+          />
+          <div>
+            <FieldLabel>Subtitle — formatted text</FieldLabel>
+            <ControlledRichTextEditor ariaLabel="Hero subtitle rich text" colors={branding.colors}
+              value={localizeRichText(props.subtitleRichText, locale, fallbackLocale, localized(props.subtitle, locale, fallbackLocale))}
+              onChange={(value) => patch({
+                subtitle: withLocale(props.subtitle, locale, richTextToPlainText(value)),
+                subtitleRichText: withLocaleRichText(props.subtitleRichText, locale, value),
+              })} />
+            <HeroStyleControls label="Subtitle typography" value={props.subtitleStyle}
+              onChange={(value) => patch({ subtitleStyle: value })} min={12} max={42} />
+          </div>
+          <div className="rounded-xl border border-[#55766F]/14 bg-[#D8EAE6] px-4 py-4">
+            <p className="mb-3 text-[11px] font-semibold uppercase text-[#3F665E]">Hero typography draft preview ({locale.toUpperCase()})</p>
+            <HeroTypography as="p" kind="eyebrow"
+              value={[{ text: (props.eyebrow?.[locale]?.trim() || 'Artisan bakery · Local stories · A kinder day') }]}
+              style={props.eyebrowStyle} className="uppercase tracking-[0.2em]" />
+            <HeroTypography as="h1" kind="headline"
+              value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
+              style={props.titleStyle} lineStyles={props.titleLineStyles?.[locale]}
+              className="mt-3 leading-[.92] tracking-[-0.04em]" />
+            <HeroTypography as="p" kind="subtitle"
+              value={localizeRichText(props.subtitleRichText, locale, fallbackLocale, localized(props.subtitle, locale, fallbackLocale))}
+              style={props.subtitleStyle} className="mt-4 leading-6" />
+          </div>
           <TextField label="Primary button" value={localized(props.primaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ primaryActionLabel: withLocale(props.primaryActionLabel, locale, value) })} />
           <TextField label="Secondary button" value={localized(props.secondaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ secondaryActionLabel: withLocale(props.secondaryActionLabel, locale, value) })} />
           <HeroNotebookNoteEditor

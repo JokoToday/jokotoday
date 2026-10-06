@@ -1,4 +1,7 @@
 export * from './branding';
+export * from './topMenu';
+export * from './HeroTypography';
+export * from './heroTypographyUtils';
 export * from './contracts';
 export * from './fixtures';
 export * from './providers';
