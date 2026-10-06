@@ -33,7 +33,7 @@ Go to Supabase JOKO Today Auth Providers (project `xvhualoeboobulwgmkla`) and cr
 
 If the dashboard cannot set `email_optional=true`, **stop** and use the documented Supabase Auth Admin API from a trusted environment. Never expose a service-role key or LINE secret in frontend, `VITE_*` or GitHub.
 
-Enable Supabase's **manual identity linking** setting for `linkIdentity()`. Add exact allowlisted **Redirect URLs** for `https://joko.today/auth/callback` and separately the staging host's `/auth/callback` used in a staged pilot (avoid broad wildcards). Test the provider returns a verified Supabase session with an identity whose provider is `custom:line`, including when LINE supplies no email.
+Enable Supabase's **manual identity linking** setting for `linkIdentity()`. Add exact allowlisted **Redirect URLs** for `https://joko.today/auth/callback` and separately the staging host's `/auth/callback` used in a staged pilot (avoid broad wildcards). LINE OAuth uses the *exact* callback URL without query parameters; its home/profile return intent and language preference are kept in same-browser `sessionStorage` during the redirect. Test the provider returns a verified Supabase session with an identity whose provider is `custom:line`, including when LINE supplies no email.
 
 ## Step 2 — Set LINE Developers callback
 
@@ -58,7 +58,7 @@ Optional later: only after separate testing, use LINE's `bot_prompt=normal` auth
 - [ ] PR CI passes typecheck, ESLint, build, dependency audit, LINE security contract.
 - [ ] Feature OFF baseline: email OTP, QR sign-in, checkout and staff/admin login still work.
 - [ ] Add the custom OAuth provider with `email_optional=true` and manual identity linking in a safe environment.
-- [ ] Allowlist exact Supabase and frontend callback URLs. Verify LINE and Supabase client credentials remain server-side.
+- [ ] Allowlist exact Supabase and frontend callback URLs (no extra `?lang=` or `?next=` URLs are required for LINE). Verify LINE and Supabase client credentials remain server-side.
 - [ ] Existing customer email/QR → Connect LINE → callback → same UUID/QR/orders/loyalty.
 - [ ] Sign out → Continue with LINE → same customer account.
 - [ ] New LINE user → customer profile/QR allocation; check no confirmed email is assumed.
