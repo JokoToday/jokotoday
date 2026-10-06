@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "audit:line-auth": "node scripts/audit-line-auth.mjs",
+    "audit:line-onboarding": "node scripts/audit-line-onboarding.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "audit:design-system": "node scripts/audit-design-system.mjs",
