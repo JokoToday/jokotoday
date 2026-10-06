@@ -743,7 +743,7 @@ export function JokoHomepageEditor({
           <div className="sticky top-0 z-10 -mx-4 -mt-4 flex items-start justify-between gap-3 border-b border-[#55766F]/12 bg-[#FFF9EE]/95 px-4 pb-3 pt-4 backdrop-blur-sm">
             <div>
               <p className="joko-admin-eyebrow">Site identity</p>
-              <h2 className="mt-1 text-lg font-semibold text-[#303532]">Brand & typography</h2>
+              <h2 className="mt-1 text-lg font-semibold text-[#303532]">Top Menu & Branding</h2>
             </div>
             <button
               type="button"
@@ -755,6 +755,42 @@ export function JokoHomepageEditor({
               ‹
             </button>
           </div>
+
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
+            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">Top Menu — desktop & mobile</summary>
+            <p className="mt-2 text-[11px] leading-4 text-[#303532]/60">Labels use the active editing language. Reorder or hide items; the destinations stay safely fixed. Save draft, preview and publish to make changes public.</p>
+            <div className="mt-3 space-y-2">
+              {resolveTopMenu(branding.topMenu).map((item, index, menu) => {
+                const changeMenu = (next: TopMenuItem[]) => updateBranding({ ...branding, topMenu: next });
+                return <div key={item.key} className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE] p-2.5">
+                  <div className="flex items-center gap-2">
+                    <input aria-label={`Show ${item.key} in top menu`} type="checkbox" checked={item.visible}
+                      onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? { ...entry, visible: event.target.checked } : entry))} />
+                    <span className="flex-1 text-xs font-medium text-[#304B45]">{item.key}</span>
+                    <button type="button" disabled={index === 0} aria-label={`Move ${item.key} up`}
+                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
+                      onClick={() => {
+                        const next = [...menu]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; changeMenu(next);
+                      }}>↑</button>
+                    <button type="button" disabled={index === menu.length - 1} aria-label={`Move ${item.key} down`}
+                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
+                      onClick={() => {
+                        const next = [...menu]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; changeMenu(next);
+                      }}>↓</button>
+                  </div>
+                  <input aria-label={`${item.key} ${locale} menu label`} className="mt-2 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    maxLength={50} value={item.labels?.[locale] ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, labels: { ...entry.labels, [locale]: event.target.value.trim() || TOP_MENU_DEFAULT_LABELS[item.key][locale] },
+                    } : entry))} />
+                </div>;
+              })}
+            </div>
+            <button type="button" onClick={() => updateBranding({ ...branding, topMenu: resolveTopMenu(undefined) })}
+              className="mt-3 text-xs font-semibold text-[#A44F1D] underline">Restore default menu</button>
+            <p className="mt-1 text-[11px] text-[#303532]/50">Default "Home" stays available through the logo even when hidden in the menu.</p>
+          </details>
+
 
           {hero?.type === 'home.hero.v1' && (
             <HomepageLogoUploader
@@ -893,41 +929,6 @@ export function JokoHomepageEditor({
               <ColorField label="Accent" value={branding.colors.accent} onChange={(accent) => updateColors({ accent })} />
               <ColorField label="Turquoise" value={branding.colors.turquoise} onChange={(turquoise) => updateColors({ turquoise })} />
             </div>
-          </details>
-
-          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
-            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">Top menu — desktop & mobile</summary>
-            <p className="mt-2 text-[11px] leading-4 text-[#303532]/60">Labels use the active editing language. Reorder or hide items; the destinations stay safely fixed. Save draft, preview and publish to make changes public.</p>
-            <div className="mt-3 space-y-2">
-              {resolveTopMenu(branding.topMenu).map((item, index, menu) => {
-                const changeMenu = (next: TopMenuItem[]) => updateBranding({ ...branding, topMenu: next });
-                return <div key={item.key} className="rounded-xl border border-[#55766F]/15 bg-[#FFF9EE] p-2.5">
-                  <div className="flex items-center gap-2">
-                    <input aria-label={`Show ${item.key} in top menu`} type="checkbox" checked={item.visible}
-                      onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? { ...entry, visible: event.target.checked } : entry))} />
-                    <span className="flex-1 text-xs font-medium text-[#304B45]">{item.key}</span>
-                    <button type="button" disabled={index === 0} aria-label={`Move ${item.key} up`}
-                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
-                      onClick={() => {
-                        const next = [...menu]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; changeMenu(next);
-                      }}>↑</button>
-                    <button type="button" disabled={index === menu.length - 1} aria-label={`Move ${item.key} down`}
-                      className="rounded border border-[#55766F]/15 px-2 py-1 text-xs disabled:opacity-30"
-                      onClick={() => {
-                        const next = [...menu]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; changeMenu(next);
-                      }}>↓</button>
-                  </div>
-                  <input aria-label={`${item.key} ${locale} menu label`} className="mt-2 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
-                    maxLength={50} value={item.labels?.[locale] ?? ''}
-                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
-                      ...entry, labels: { ...entry.labels, [locale]: event.target.value.trim() || TOP_MENU_DEFAULT_LABELS[item.key][locale] },
-                    } : entry))} />
-                </div>;
-              })}
-            </div>
-            <button type="button" onClick={() => updateBranding({ ...branding, topMenu: resolveTopMenu(undefined) })}
-              className="mt-3 text-xs font-semibold text-[#A44F1D] underline">Restore default menu</button>
-            <p className="mt-1 text-[11px] text-[#303532]/50">Default "Home" stays available through the logo even when hidden in the menu.</p>
           </details>
 
           <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
@@ -1218,7 +1219,7 @@ function SectionEditor({
       // subtitle intact until Admin chooses to edit those translations.
       const en = 'Baked & Beyond\nfor a\nBrighter Today';
       patch({
-        eyebrow: { ...props.eyebrow, en: 'GOOD BAKING. ACCESSIBLE TO EVERYONE.' },
+        eyebrow: { ...props.eyebrow, en: 'Love for Baking. Shared with Everyone.' },
         title: { ...props.title, en },
         titleRichText: {
           ...props.titleRichText,
@@ -1305,8 +1306,8 @@ function SectionEditor({
           <div className="rounded-xl border border-[#55766F]/14 bg-[#D8EAE6] px-4 py-4">
             <p className="mb-3 text-[11px] font-semibold uppercase text-[#3F665E]">Hero typography draft preview ({locale.toUpperCase()})</p>
             <HeroTypography as="p" kind="eyebrow"
-              value={[{ text: (props.eyebrow?.[locale]?.trim() || 'Artisan bakery · Local stories · A kinder day') }]}
-              style={props.eyebrowStyle} className="uppercase tracking-[0.2em]" />
+              value={[{ text: (props.eyebrow?.[locale]?.trim() || 'Love for Baking. Shared with Everyone.') }]}
+              style={props.eyebrowStyle} className="tracking-[0.15em]" />
             <HeroTypography as="h1" kind="headline"
               value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
               style={props.titleStyle} lineStyles={props.titleLineStyles?.[locale]}

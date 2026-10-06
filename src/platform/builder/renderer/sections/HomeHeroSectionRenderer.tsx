@@ -70,7 +70,7 @@ export function HomeHeroSectionRenderer({
         pickup: '清迈取货',
       }
     : {
-        eyebrow: 'Artisan bakery • Local stories • A kinder day',
+        eyebrow: 'Love for Baking. Shared with Everyone.',
         smallBatch: 'Small-batch baking',
         pickup: 'Pickup in Chiang Mai',
       };
@@ -114,7 +114,7 @@ export function HomeHeroSectionRenderer({
 
           <div className="relative z-20 max-w-[31rem] lg:pt-7">
             <HeroTypography as="p" kind="eyebrow" value={[{ text: eyebrow ?? chrome.eyebrow }]}
-              style={section.props.eyebrowStyle} className="uppercase tracking-[0.25em]" />
+              style={section.props.eyebrowStyle} className="tracking-[0.15em]" />
             <HeroTypography as="h1" kind="headline" value={titleRichText} style={section.props.titleStyle}
               lineStyles={section.props.titleLineStyles?.[locale]} className="mt-4 leading-[.93] tracking-[-0.042em]" />
             <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />

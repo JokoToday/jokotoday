@@ -37,7 +37,7 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 
 const copy = {
   en: {
-    kicker: 'Artisan bakery • Local stories • A kinder day',
+    kicker: 'Love for Baking. Shared with Everyone.',
     headline1: 'Good bread',
     headline2: 'for a',
     headlineAccent: 'brighter',
@@ -221,7 +221,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
                 <HeroTypography
                   as="p" kind="eyebrow" value={[{ text: eyebrow }]}
                   style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.eyebrowStyle : undefined}
-                  className="uppercase tracking-[0.25em]"
+                  className="tracking-[0.15em]"
                 />
 
                 <HeroTypography

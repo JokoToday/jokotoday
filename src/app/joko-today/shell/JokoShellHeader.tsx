@@ -29,8 +29,8 @@ type NavItem = {
 const copy = {
   en: {
     home: 'Home',
-    products: 'Baked Goodies',
-    otherProducts: 'Other Goodies',
+    products: 'Baked',
+    otherProducts: 'Beyond',
     howItWorks: 'How It Works',
     pickup: 'Pick Up',
     about: 'About',
