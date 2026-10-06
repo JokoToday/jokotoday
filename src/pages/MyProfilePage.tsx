@@ -81,7 +81,15 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       const line = data.identities.find(identity => identity.provider === 'custom:line');
       if (!line || !data.identities.some(identity => identity.provider === 'email')
         || data.identities.length < 2) {
-        throw new Error('Email fallback or LINE identity missing. No change made.');
+        // Diagnostic categories only: never display identity IDs or tokens.
+        const providers = data.identities.map(identity => identity.provider).join(', ') || 'none';
+        const sessionProviders = authUserData.user.identities
+          ?.map(identity => identity.provider).join(', ') || 'none';
+        throw new Error(
+          'No change made. Supabase returned ' + data.identities.length +
+          ' identities (' + providers + '); session reports (' + sessionProviders + '). ' +
+          'An independent email fallback and LINE identity must both exist.'
+        );
       }
 
       const typed = window.prompt(
