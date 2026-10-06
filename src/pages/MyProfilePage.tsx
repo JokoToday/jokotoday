@@ -62,7 +62,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     && user?.email?.toLowerCase() === 'aiagentready@gmail.com'
     && userProfile?.id === user?.id
     && userProfile?.name === 'AI Agent Ready'
-    && userProfile?.role === 'customer';
+    && String(userProfile?.role) === 'customer';
 
   const disconnectTestLINE = async () => {
     if (!isLineTestCustomer || !user) return;
