@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, QrCode, Camera, Upload, X, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, QrCode, Camera, Upload, X, CheckCircle2, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
@@ -7,6 +7,13 @@ import { supabase } from '../lib/supabase';
 import { LINE_LINKING_ENABLED } from '../lib/lineAuth';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import {
+  LINE_OFFICIAL_ACCOUNT_URL,
+  dismissLINEFriendInvite,
+  getCachedLINEFriendshipStatus,
+  refreshLINEFriendshipStatus,
+  type LINEFriendshipStatus,
+} from '../lib/lineOfficialAccount';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
@@ -21,6 +28,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   const [loading, setLoading] = useState(false);
   const [lineLinked, setLineLinked] = useState<boolean | null>(null);
+  const [lineFriendship, setLineFriendship] = useState<LINEFriendshipStatus>('unknown');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -60,6 +68,28 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     });
     return () => { cancelled = true; };
   }, [user?.id, user?.identities]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setLineFriendship('unknown');
+      return;
+    }
+
+    setLineFriendship(getCachedLINEFriendshipStatus(user.id));
+    if (lineLinked !== true) return;
+
+    // A provider token may still be present immediately after LINE OAuth.
+    // If not, keep the most recent cached status; the permanent Add Friend
+    // CTA remains available regardless.
+    void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
+      if (cancelled || sessionError || !data.session?.provider_token) return;
+      const status = await refreshLINEFriendshipStatus(data.session.provider_token, user.id);
+      if (!cancelled) setLineFriendship(status);
+    });
+
+    return () => { cancelled = true; };
+  }, [lineLinked, user?.id]);
 
   const handleLinkLINE = async () => {
     setError('');
@@ -386,10 +416,56 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                         </p>
                         {lineDisplayName(user) && <p className="mt-1">{lineDisplayName(user)}</p>}
                         <p className="mt-1 text-xs">
-                          {language === 'th' ? 'ใช้เข้าสู่ระบบได้ แต่ไม่ยืนยันว่าเพิ่มเพื่อนบัญชีทางการ JOKO TODAY แล้ว'
-                            : language === 'zh' ? '可用于登录，但不表示已关注 JOKO TODAY 官方账号或允许消息发送。'
-                              : 'Available for sign-in. This does not confirm Official Account friendship or messaging permission.'}
+                          {language === 'th' ? 'ใช้ LINE เพื่อเข้าสู่ระบบบัญชี JOKO นี้ได้อย่างปลอดภัย'
+                            : language === 'zh' ? '可使用 LINE 安全登录此 JOKO 账号。'
+                              : 'Available for secure sign-in to this JOKO account.'}
                         </p>
+
+                        <div className="mt-4 border-t border-[#06C755]/20 pt-4">
+                          <p className="font-semibold text-[#303532]">
+                            {language === 'th' ? 'บัญชีทางการ JOKO Today'
+                              : language === 'zh' ? 'JOKO Today 官方账号' : 'JOKO Today Official Account'}
+                            {lineFriendship === 'friend' && (
+                              <span className="ml-2 text-[#285A39]">
+                                {language === 'th' ? '· เป็นเพื่อนแล้ว ✓'
+                                  : language === 'zh' ? '· 已添加好友 ✓' : '· Friend ✓'}
+                              </span>
+                            )}
+                          </p>
+                          {lineFriendship === 'friend' ? (
+                            <p className="mt-1 text-xs text-[#285A39]">
+                              {language === 'th' ? 'พร้อมรับข่าวจาก JOKO ทาง LINE เมื่อเราเปิดใช้งานการแจ้งเตือน'
+                                : language === 'zh' ? '已准备好在我们启用通知后通过 LINE 接收 JOKO 更新。'
+                                  : 'Ready for JOKO updates on LINE as we roll out messaging.'}
+                            </p>
+                          ) : (
+                            <>
+                              <p className="mt-1 text-xs text-[#303532]/70">
+                                {language === 'th' ? 'เพิ่มเราเป็นเพื่อนเพื่อรับข่าวจากเบเกอรี่ และเตรียมพร้อมสำหรับการแจ้งเตือนรับสินค้าและคำสั่งซื้อทาง LINE'
+                                  : language === 'zh' ? '添加我们为好友，获取烘焙店动态，并为未来的取货和订单 LINE 通知做好准备。'
+                                    : 'Add us as a friend for bakery news and future pickup and order updates on LINE.'}
+                              </p>
+                              <a
+                                href={LINE_OFFICIAL_ACCOUNT_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => user?.id && dismissLINEFriendInvite(user.id)}
+                                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#06C755] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                              >
+                                <MessageCircle aria-hidden="true" className="h-4 w-4" />
+                                {language === 'th' ? 'เพิ่ม JOKO Today ใน LINE'
+                                  : language === 'zh' ? '在 LINE 添加 JOKO Today' : 'Add JOKO Today on LINE'}
+                              </a>
+                              {lineFriendship === 'unknown' && (
+                                <p className="mt-2 text-[11px] text-[#303532]/55">
+                                  {language === 'th' ? 'ยังไม่สามารถยืนยันสถานะเพื่อนได้จากเซสชันนี้'
+                                    : language === 'zh' ? '当前会话尚无法确认好友状态。'
+                                      : 'Friendship status is not confirmed in this session.'}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
