@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
+import { hasLinkedLINE, LINE_LINKING_ENABLED } from '../lib/lineAuth';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
@@ -12,7 +13,7 @@ interface MyProfilePageProps {
 }
 
 export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
-  const { user, userProfile, updateProfileDetails, refreshProfile } = useAuth();
+  const { user, userProfile, updateProfileDetails, refreshProfile, linkLINE } = useAuth();
   const { language, setLanguage } = useLanguage();
   const { getLabel } = useCMSLabels();
 
@@ -43,6 +44,18 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     });
     setProfilePicture(userProfile.profile_picture_url || null);
   }, [userProfile]);
+
+  const handleLinkLINE = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      await linkLINE();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not link LINE');
+      setLoading(false);
+    }
+  };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setProfileSaved(false);
@@ -281,7 +294,11 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.email_label', language, 'Email Address')}
                   <input type="email" value={user.email || ''} className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#55766F]/14 bg-[#F4EFE5]/55 px-4 py-3 text-[#303532]/60" disabled />
-                  <span className="block text-xs text-gray-500 mt-1">{getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')}</span>
+                  <span className="block text-xs text-gray-500 mt-1">{user.email
+                    ? getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')
+                    : language === 'en' ? 'No verified email yet. LINE does not provide your email; email order receipts are unavailable until one is verified.'
+                      : language === 'th' ? 'ยังไม่มีอีเมลที่ยืนยันแล้ว LINE ไม่ส่งอีเมลให้ จึงยังรับใบยืนยันคำสั่งซื้อทางอีเมลไม่ได้'
+                        : '尚未验证邮箱。LINE 不会提供邮箱，因此暂时无法接收邮件订单确认。'}</span>
                 </label>
               </div>
             </section>
@@ -301,6 +318,31 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 ))}
               </div>
             </section>
+
+            {LINE_LINKING_ENABLED && (
+              <section className="border-t border-[#55766F]/14 pt-7">
+                <h3 className="mb-2 text-lg font-semibold text-[#303532]">LINE Login</h3>
+                {hasLinkedLINE(user) ? (
+                  <p className="text-sm text-[#3F665E]">
+                    {language === 'en' ? 'LINE is connected to this JOKO account.'
+                      : language === 'th' ? 'เชื่อม LINE กับบัญชี JOKO นี้แล้ว'
+                        : 'LINE 已关联此 JOKO 账户。'}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mb-3 text-sm text-gray-600">
+                      {language === 'en' ? 'Connect your LINE identity here before using LINE Login. Your orders, QR pass and rewards will stay on this account.'
+                        : language === 'th' ? 'เชื่อมบัญชี LINE ที่นี่ก่อนใช้ LINE Login เพื่อเก็บคำสั่งซื้อ บัตร QR และรางวัลในบัญชีเดิม'
+                          : '请先在此绑定 LINE，再使用 LINE 登录。订单、二维码会员卡和奖励将保留在此账户。'}
+                    </p>
+                    <button type="button" onClick={() => void handleLinkLINE()} disabled={loading}
+                      className="rounded-xl bg-[#06C755] px-5 py-3 font-semibold text-white transition hover:bg-[#05AD49] disabled:opacity-50">
+                      {language === 'en' ? 'Connect LINE' : language === 'th' ? 'เชื่อมต่อ LINE' : '绑定 LINE'}
+                    </button>
+                  </>
+                )}
+              </section>
+            )}
 
             <section className="border-t border-[#55766F]/14 pt-7">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.preferences', language, 'Preferences')}</h3>

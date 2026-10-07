@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { generateQRToken } from '../lib/qrTokenGenerator';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { LINE_OAUTH_DESTINATION_KEY } from '../lib/lineAuth';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
 type CallbackLanguage = 'en' | 'th' | 'zh';
@@ -55,6 +57,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
   const callbackStartedRef = useRef(false);
   const navigateRef = useRef(onNavigate);
   const { language, setLanguage } = useLanguage();
+  const { refreshProfile } = useAuth();
   const text = callbackText[language];
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
     const failAndRedirect = (kind: 'failed' | 'unexpected') => {
       if (abortController.signal.aborted) return;
       sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
+      sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
       clearCallbackParameters();
       setErrorKind(kind);
       redirectTimer = window.setTimeout(() => navigateRef.current('home'), 3000);
@@ -79,8 +83,24 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const callbackLanguage = searchParams.get('lang');
-      const callbackNext = searchParams.get('next') === 'product-staff' ? 'product-staff' : 'home';
+      const requestedNext = searchParams.get('next');
       const code = searchParams.get('code');
+      const pendingLineIntent = sessionStorage.getItem(LINE_OAUTH_DESTINATION_KEY);
+      let isRecentLINELink = false;
+      if (code && pendingLineIntent) {
+        try {
+          const intent = JSON.parse(pendingLineIntent) as { destination?: string; startedAt?: number };
+          isRecentLINELink = intent.destination === 'profile'
+            && typeof intent.startedAt === 'number'
+            && Date.now() - intent.startedAt >= 0
+            && Date.now() - intent.startedAt < 15 * 60 * 1000;
+        } catch {
+          isRecentLINELink = false;
+        }
+      }
+      const callbackNext = requestedNext === 'product-staff' || requestedNext === 'profile'
+        ? requestedNext
+        : isRecentLINELink ? 'profile' : 'home';
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const callbackType: CallbackType = code
@@ -92,6 +112,12 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       if (isSupportedLanguage(callbackLanguage)) {
         sessionStorage.setItem(AUTH_LANGUAGE_STORAGE_KEY, callbackLanguage);
         setLanguage(callbackLanguage);
+      }
+
+      // Failed or cancelled OAuth must not fall through to an existing session.
+      if (searchParams.has('error') || hashParams.has('error')) {
+        failAndRedirect('failed');
+        return;
       }
 
       console.info(`[auth-callback] callback type detected: ${callbackType}`);
@@ -150,16 +176,18 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           .eq('id', userId)
           .maybeSingle();
         logSupabaseError('user_profiles select failed', profileSelectError);
+        if (profileSelectError) throw profileSelectError;
 
         if (!existingProfile) {
           const qrToken = generateQRToken();
           const { data: shortCodeData, error: shortCodeError } = await supabase.rpc('generate_next_short_code');
           logSupabaseError('generate_next_short_code failed', shortCodeError);
+          if (shortCodeError) throw shortCodeError;
 
           const { error: profileInsertError } = await supabase.from('user_profiles').insert({
             id: userId,
             email: userEmail,
-            name: session.user.user_metadata?.full_name ?? null,
+            name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? null,
             phone: '',
             profile_completed: false,
             role: 'customer',
@@ -168,6 +196,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
             ...(isSupportedLanguage(callbackLanguage) ? { preferred_language: callbackLanguage } : {}),
           });
           logSupabaseError('profile insert failed', profileInsertError);
+          if (profileInsertError) throw profileInsertError;
         } else if (!existingProfile.profile_completed && userEmail) {
           const { error: profileUpdateError } = await supabase
             .from('user_profiles')
@@ -176,7 +205,11 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           logSupabaseError('profile update failed', profileUpdateError);
         }
 
-        const destinationPath = callbackNext === 'product-staff' ? '/product-staff' : '/';
+        await refreshProfile();
+        sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
+        const destinationPath = callbackNext === 'product-staff' ? '/product-staff'
+          : callbackNext === 'profile' ? '/my-profile'
+            : '/';
         window.history.replaceState({}, document.title, destinationPath);
         navigateRef.current(callbackNext);
       } catch (error) {

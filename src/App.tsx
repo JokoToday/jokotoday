@@ -24,7 +24,6 @@ const HowItWorksPage = lazy(() => import('./pages/HowItWorksPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })));
 const ProductStaffPage = lazy(() => import('./pages/ProductStaffPage').then(({ ProductStaffPage }) => ({ default: ProductStaffPage })));
 const CreativeLabPage = lazy(() => import('./app/creative-lab/CreativeLabPage'));
-const LineCallback = lazy(() => import('./components/LineCallback').then(({ LineCallback }) => ({ default: LineCallback })));
 const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
 const StaffScannerPage = lazy(() => import('./pages/StaffScannerPage').then(({ StaffScannerPage }) => ({ default: StaffScannerPage })));
 const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage').then(({ StaffLoginPage }) => ({ default: StaffLoginPage })));
@@ -158,11 +157,6 @@ function AppContent() {
       if (qrCustomerMatch) {
         setQrToken(qrCustomerMatch[1]);
         setCurrentPage('customer-account');
-        return;
-      }
-
-      if (params.has('line_user_id') && params.has('code')) {
-        setCurrentPage('line-callback');
         return;
       }
 
@@ -377,10 +371,6 @@ function AppContent() {
   const renderPage = () => {
     if (currentPage === 'auth-callback') {
       return <AuthCallbackPage onNavigate={handleNavigate} />;
-    }
-
-    if (currentPage === 'line-callback') {
-      return <LineCallback onNavigate={handleNavigate} />;
     }
 
     if (currentPage === 'qr-resolve' && qrToken) {
