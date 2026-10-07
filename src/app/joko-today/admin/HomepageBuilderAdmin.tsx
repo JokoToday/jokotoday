@@ -492,6 +492,7 @@ export function HomepageBuilderAdmin() {
             key={editorRevision}
             document={draftDocument}
             locale={language}
+            onLocaleChange={setLanguage}
             site={jokoTodayBuilderSite}
             providers={providers}
             onAction={handlePreviewAction}
@@ -514,6 +515,7 @@ export function HomepageBuilderAdmin() {
           </div>
           <div className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
             <BuilderPageRenderer
+              experienceHeroPreview
               document={draftDocument}
               locale={language}
               site={jokoTodayBuilderSite}
