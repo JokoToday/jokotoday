@@ -31,6 +31,13 @@ export function HeroStyleControls({
           onChange={(event) => set({ size: event.target.value ? Math.max(min, Math.min(max, Number(event.target.value))) : undefined })} />
       </label>
     </div>
+    <label className="mt-3 block text-xs text-[#304B45]">Line spacing (× font size)
+      <input aria-label={`${label} line spacing`} className={input} type="number" min={0.8} max={2.5} step={0.05}
+        placeholder="Use existing spacing" value={value?.lineHeight ?? ''}
+        onChange={(event) => set({ lineHeight: event.target.value
+          ? Math.min(2.5, Math.max(0.8, Number(event.target.value))) : undefined })} />
+      <span className="mt-1 block text-[11px] text-[#303532]/55">For example, 0.9 is compact; 1.5 is spacious.</span>
+    </label>
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={value?.bold ?? defaultBold}
         onChange={(event) => set({ bold: event.target.checked })} />Bold</label>
@@ -79,18 +86,31 @@ export function HeroLineStyleControls({ value, styles, onChange }: {
 }
 
 interface WordToken { text: string; marks?: BuilderRichTextMarks }
-function tokensFromRuns(runs: BuilderRichText): WordToken[] {
-  return runs.flatMap((run) => (run.text.match(/\s+|[^\s]+/gu) || []).map((text) => ({ text, marks: run.marks })));
+function tokensFromRuns(runs: BuilderRichText, locale: string): WordToken[] {
+  // Unlike whitespace splitting, word segmentation works for Thai and Chinese.
+  // Browsers without Intl.Segmenter keep the existing whitespace fallback.
+  type Segment = { segment: string };
+  const segmenterCtor = (Intl as unknown as {
+    Segmenter?: new (lang: string, options: { granularity: 'word' }) => { segment: (text: string) => Iterable<Segment> };
+  }).Segmenter;
+  const segmenter = segmenterCtor ? new segmenterCtor(locale, { granularity: 'word' }) : null;
+  return runs.flatMap((run) => {
+    const pieces = segmenter
+      ? Array.from(segmenter.segment(run.text), (entry) => entry.segment)
+      : run.text.match(/\s+|[^\s]+/gu) || [];
+    return pieces.map((text) => ({ text, marks: run.marks }));
+  });
 }
 
 /** Click a word, not a DOM selection: reliable editing even across line breaks. */
-export function HeroWordStyleEditor({ value, onChange, colors }: {
+export function HeroWordStyleEditor({ value, onChange, colors, locale }: {
   value: BuilderRichText;
   onChange: (value: BuilderRichText) => void;
   colors: { text: string; accent: string; turquoise: string };
+  locale: string;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const tokens = tokensFromRuns(value);
+  const tokens = tokensFromRuns(value, locale);
   const token = selected !== null ? tokens[selected] : undefined;
   const marks = token?.marks;
   const update = (patch: Partial<BuilderRichTextMarks>) => {
@@ -101,7 +121,7 @@ export function HeroWordStyleEditor({ value, onChange, colors }: {
   };
   return <div className="rounded-xl border border-[#55766F]/14 bg-[#FFF9EE]/75 p-3">
     <p className="text-xs font-semibold text-[#304B45]">Individual word styling</p>
-    <p className="mt-1 text-[11px] text-[#303532]/60">Choose a word below, then set its font, size, bold, italic and brand color. Line breaks stay intact.</p>
+    <p className="mt-1 text-[11px] text-[#303532]/60">Choose a word below, then set its font, size, bold, italic and brand color. Thai and Chinese words can also be selected. Line breaks stay intact.</p>
     <div className="my-3 flex flex-wrap items-center gap-y-1 rounded-lg border border-[#55766F]/12 bg-white p-2 text-sm leading-7">
       {tokens.map((entry, index) => /\s+/u.test(entry.text) && entry.text.trim() === ''
         ? <span key={index} className="whitespace-pre-wrap">{entry.text}</span>
