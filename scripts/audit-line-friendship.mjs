@@ -34,7 +34,7 @@ const helper = await import(
 );
 
 assert.equal(helper.LINE_OFFICIAL_ACCOUNT_ID, '@jokotoday');
-assert.match(helper.LINE_OFFICIAL_ACCOUNT_URL, /^https:\\/\\/line\\.me\\/R\\/ti\\/p\\/%40jokotoday$/);
+assert.equal(helper.LINE_OFFICIAL_ACCOUNT_URL, 'https://line.me/R/ti/p/%40jokotoday');
 
 let seenAuthorization = '';
 globalThis.fetch = async (url, options) => {
