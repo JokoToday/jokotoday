@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { BuilderRichText, BuilderRichTextMarks, HeroFontPreset } from './contracts';
+import type { BuilderRichText, BuilderRichTextMarks, HeroFontPreset, HeroTextStyle } from './contracts';
 
 export const HERO_FONT_OPTIONS = [
   { value: 'inherit', label: 'Use JOKO font' },
@@ -43,11 +43,11 @@ export function heroRichTextStyle(marks?: BuilderRichTextMarks): CSSProperties {
 }
 
 /** Prefer locale settings, preserving the shared legacy style as fallback. */
-export function resolveHeroLocaleStyle<T extends { [key: string]: unknown }>(
-  shared: T | undefined,
-  styles: Readonly<Record<string, T>> | undefined,
+export function resolveHeroLocaleStyle(
+  shared: HeroTextStyle | undefined,
+  styles: Readonly<Record<string, HeroTextStyle>> | undefined,
   locale: string,
-): T | undefined {
+): HeroTextStyle | undefined {
   const specific = styles?.[locale];
-  return specific ? { ...shared, ...specific } as T : shared;
+  return specific ? { ...shared, ...specific } : shared;
 }
