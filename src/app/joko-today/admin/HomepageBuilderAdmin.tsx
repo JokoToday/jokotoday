@@ -492,6 +492,7 @@ export function HomepageBuilderAdmin() {
             key={editorRevision}
             document={draftDocument}
             locale={language}
+            onLocaleChange={setLanguage}
             site={jokoTodayBuilderSite}
             providers={providers}
             onAction={handlePreviewAction}
