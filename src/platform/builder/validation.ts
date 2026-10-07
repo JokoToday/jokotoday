@@ -352,7 +352,8 @@ function validateHeroTextStyle(value: unknown, path: string, issues: BuilderVali
     pushIssue(issues, `${path}.font`, 'Unsupported font.');
   }
   const min = path.endsWith('.eyebrowStyle') ? 9 : 12;
-  const max = path.endsWith('.eyebrowStyle') || path.endsWith('.subtitleStyle') ? 42 : 108;
+  const max = path.endsWith('.eyebrowStyle') || path.endsWith('.subtitleStyle')
+    || path.includes('.subtitleLocaleStyles.') ? 42 : 108;
   if (value.size !== undefined && (typeof value.size !== 'number' || !Number.isInteger(value.size) || value.size < min || value.size > max)) {
     pushIssue(issues, `${path}.size`, `Font size must be ${min}–108px.`);
   }
