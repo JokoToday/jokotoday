@@ -5,6 +5,8 @@ import { generateQRToken } from '../lib/qrTokenGenerator';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { LINE_OAUTH_DESTINATION_KEY } from '../lib/lineAuth';
+import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { queueLINEFriendInvite, refreshLINEFriendshipStatus } from '../lib/lineOfficialAccount';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
 type CallbackLanguage = 'en' | 'th' | 'zh';
@@ -86,15 +88,17 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       const requestedNext = searchParams.get('next');
       const code = searchParams.get('code');
       const pendingLineIntent = sessionStorage.getItem(LINE_OAUTH_DESTINATION_KEY);
+      let isRecentLINEOAuth = false;
       let isRecentLINELink = false;
-      if (code && pendingLineIntent) {
+      if (pendingLineIntent) {
         try {
           const intent = JSON.parse(pendingLineIntent) as { destination?: string; startedAt?: number };
-          isRecentLINELink = intent.destination === 'profile'
-            && typeof intent.startedAt === 'number'
-            && Date.now() - intent.startedAt >= 0
-            && Date.now() - intent.startedAt < 15 * 60 * 1000;
+          const age = typeof intent.startedAt === 'number' ? Date.now() - intent.startedAt : Number.POSITIVE_INFINITY;
+          isRecentLINEOAuth = (intent.destination === 'home' || intent.destination === 'profile')
+            && age >= 0 && age < 15 * 60 * 1000;
+          isRecentLINELink = isRecentLINEOAuth && intent.destination === 'profile';
         } catch {
+          isRecentLINEOAuth = false;
           isRecentLINELink = false;
         }
       }
@@ -170,9 +174,10 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
 
         const userId = session.user.id;
         const userEmail = session.user.email ?? null;
+        const importedLINEName = lineDisplayName(session.user);
         const { data: existingProfile, error: profileSelectError } = await supabase
           .from('user_profiles')
-          .select('id, profile_completed')
+          .select('id, profile_completed, name, email')
           .eq('id', userId)
           .maybeSingle();
         logSupabaseError('user_profiles select failed', profileSelectError);
@@ -187,7 +192,7 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           const { error: profileInsertError } = await supabase.from('user_profiles').insert({
             id: userId,
             email: userEmail,
-            name: session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? null,
+            name: importedLINEName || session.user.user_metadata?.full_name || session.user.user_metadata?.name || null,
             phone: '',
             profile_completed: false,
             role: 'customer',
@@ -197,15 +202,40 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           });
           logSupabaseError('profile insert failed', profileInsertError);
           if (profileInsertError) throw profileInsertError;
-        } else if (!existingProfile.profile_completed && userEmail) {
-          const { error: profileUpdateError } = await supabase
-            .from('user_profiles')
-            .update({ email: userEmail })
-            .eq('id', userId);
-          logSupabaseError('profile update failed', profileUpdateError);
+        } else {
+          // A profile can already exist before OAuth returns (e.g. from a
+          // database trigger). Fill LINE's name only if the user has not yet
+          // completed their profile and has not chosen a name of their own.
+          const updates: { name?: string; email?: string } = {};
+          if (!existingProfile.profile_completed && !existingProfile.name?.trim() && importedLINEName) {
+            updates.name = importedLINEName;
+          }
+          if (hasVerifiedEmail(session.user) && userEmail && existingProfile.email !== userEmail) {
+            updates.email = userEmail;
+          }
+          if (Object.keys(updates).length > 0) {
+            const { error: profileUpdateError } = await supabase
+              .from('user_profiles')
+              .update(updates)
+              .eq('id', userId);
+            logSupabaseError('profile update failed', profileUpdateError);
+          }
         }
 
         await refreshProfile();
+
+        if (isRecentLINEOAuth) {
+          // Supabase exposes LINE's provider token only on the fresh OAuth
+          // session. Use it immediately to ask LINE whether the customer is
+          // already an OA friend, then discard it. The token is never stored.
+          const friendshipStatus = await refreshLINEFriendshipStatus(
+            session.provider_token,
+            userId,
+            abortController.signal,
+          );
+          queueLINEFriendInvite(userId, friendshipStatus);
+        }
+
         sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
         const destinationPath = callbackNext === 'product-staff' ? '/product-staff'
           : callbackNext === 'profile' ? '/my-profile'

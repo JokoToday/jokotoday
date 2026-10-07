@@ -1,10 +1,19 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
-import { hasLinkedLINE, LINE_LINKING_ENABLED } from '../lib/lineAuth';
+import { LINE_LINKING_ENABLED } from '../lib/lineAuth';
+import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import {
+  LINE_OFFICIAL_ACCOUNT_URL,
+  dismissLINEFriendInvite,
+  getCachedLINEFriendshipStatus,
+  refreshLINEFriendshipStatus,
+  type LINEFriendshipStatus,
+} from '../lib/lineOfficialAccount';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
 
@@ -18,6 +27,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const { getLabel } = useCMSLabels();
 
   const [loading, setLoading] = useState(false);
+  const [lineLinked, setLineLinked] = useState<boolean | null>(null);
+  const [lineFriendship, setLineFriendship] = useState<LINEFriendshipStatus>('unknown');
   const [success, setSuccess] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
   const [error, setError] = useState('');
@@ -36,14 +47,50 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   useEffect(() => {
     if (!userProfile) return;
     setFormData({
-      name: userProfile.name || '',
+      name: userProfile.name || lineDisplayName(user) || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
       whatsapp: userProfile.whatsapp || '',
       wechat_id: userProfile.wechat_id || '',
     });
     setProfilePicture(userProfile.profile_picture_url || null);
-  }, [userProfile]);
+  }, [userProfile, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLineLinked(null);
+    if (!user) return;
+    // Check the server's linked identities, not potentially stale
+    // session metadata (notably after disconnect/relink operations).
+    void supabase.auth.getUserIdentities().then(({ data, error: identitiesError }) => {
+      if (!cancelled && !identitiesError) {
+        setLineLinked(data.identities.some((identity) => identity.provider === 'custom:line'));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, user?.identities]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id) {
+      setLineFriendship('unknown');
+      return;
+    }
+
+    setLineFriendship(getCachedLINEFriendshipStatus(user.id));
+    if (lineLinked !== true) return;
+
+    // A provider token may still be present immediately after LINE OAuth.
+    // If not, keep the most recent cached status; the permanent Add Friend
+    // CTA remains available regardless.
+    void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
+      if (cancelled || sessionError || !data.session?.provider_token) return;
+      const status = await refreshLINEFriendshipStatus(data.session.provider_token, user.id);
+      if (!cancelled) setLineFriendship(status);
+    });
+
+    return () => { cancelled = true; };
+  }, [lineLinked, user?.id]);
 
   const handleLinkLINE = async () => {
     setError('');
@@ -101,7 +148,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setError(getLabel('profile.phone_required_error', language, 'Phone number is required'));
       return;
     }
-    if (!formData.line_id && !formData.whatsapp && !formData.wechat_id) {
+    if (!formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim() && lineLinked !== true) {
       setError(getLabel('profile.contact_required_error', language, 'At least one contact method is required'));
       return;
     }
@@ -292,54 +339,159 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.phone_label', language, 'Phone Number')} <span className="text-red-500">*</span>
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
-                <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.email_label', language, 'Email Address')}
-                  <input type="email" value={user.email || ''} className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#55766F]/14 bg-[#F4EFE5]/55 px-4 py-3 text-[#303532]/60" disabled />
-                  <span className="block text-xs text-gray-500 mt-1">{user.email
-                    ? getLabel('profile_page.email_readonly', language, '(verified, cannot be changed here)')
-                    : language === 'en' ? 'No verified email yet. LINE does not provide your email; email order receipts are unavailable until one is verified.'
-                      : language === 'th' ? 'ยังไม่มีอีเมลที่ยืนยันแล้ว LINE ไม่ส่งอีเมลให้ จึงยังรับใบยืนยันคำสั่งซื้อทางอีเมลไม่ได้'
-                        : '尚未验证邮箱。LINE 不会提供邮箱，因此暂时无法接收邮件订单确认。'}</span>
-                </label>
               </div>
             </section>
 
             <section className="border-t border-[#55766F]/14 pt-7">
-              <h3 className="mb-2 text-lg font-semibold text-[#303532]">{getLabel('profile_page.contact_methods', language, 'Contact Methods')}</h3>
-              <p className="text-sm text-gray-600 mb-4">{getLabel('profile_page.contact_help', language, 'How can we reach you with order updates?')}</p>
+              <h3 className="mb-2 text-lg font-semibold text-[#303532]">
+                {getLabel('profile_page.contact_methods', language, 'Contact Methods')}
+              </h3>
+              <p className="mb-4 text-sm text-gray-600">
+                {getLabel('profile_page.contact_help', language, 'How can we reach you with order updates?')}
+              </p>
+              {hasVerifiedEmail(user) ? (
+                <div className="mb-4 rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {language === 'th' ? 'อีเมล: ยืนยันแล้ว'
+                          : language === 'zh' ? '邮箱：已验证' : 'Email: Verified'}
+                      </p>
+                      <p className="mt-1 break-all">{user?.email}</p>
+                      <p className="mt-1 text-xs">
+                        {language === 'th' ? 'สามารถรับอีเมลยืนยันคำสั่งซื้อได้'
+                          : language === 'zh' ? '可以接收订单确认邮件'
+                            : 'Ready to receive order confirmations'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-5">
+                  <EmailVerificationPanel />
+                </div>
+              )}
               <div className="space-y-3">
                 {[
-                  ['line_id', getLabel('profile_page.line_label', language, 'LINE ID')],
+                  ['line_id', language === 'th' ? 'LINE ID (ไม่บังคับ)'
+                    : language === 'zh' ? 'LINE ID（选填）' : 'LINE ID (optional)'],
                   ['whatsapp', getLabel('profile_page.whatsapp_label', language, 'WhatsApp')],
                   ['wechat_id', getLabel('profile_page.wechat_label', language, 'WeChat ID')],
                 ].map(([name, label]) => (
-                  <label key={name} className="block text-sm text-gray-600">{label}
-                    <input type="text" name={name} value={formData[name as keyof typeof formData]} onChange={handleChange} className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} />
+                  <label key={name} className="block text-sm text-gray-600">
+                    {label}
+                    <input type="text" name={name}
+                      value={formData[name as keyof typeof formData]}
+                      onChange={handleChange}
+                      className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
+                      disabled={loading} />
                   </label>
                 ))}
+                <p className="text-xs text-gray-500">
+                  {language === 'th' ? 'LINE Login ไม่เปิดเผย LINE ID ที่ค้นหาได้ หากต้องการระบุ LINE ID กรุณากรอกด้วยตัวเอง'
+                    : language === 'zh' ? 'LINE 登录不会提供可搜索的 LINE ID。如需填写，请手动输入。'
+                      : 'LINE Login does not share a searchable LINE ID. Enter yours manually only if needed.'}
+                </p>
               </div>
             </section>
 
             {LINE_LINKING_ENABLED && (
               <section className="border-t border-[#55766F]/14 pt-7">
-                <h3 className="mb-2 text-lg font-semibold text-[#303532]">LINE Login</h3>
-                {hasLinkedLINE(user) ? (
-                  <p className="text-sm text-[#3F665E]">
-                    {language === 'en' ? 'LINE is connected to this JOKO account.'
-                      : language === 'th' ? 'เชื่อม LINE กับบัญชี JOKO นี้แล้ว'
-                        : 'LINE 已关联此 JOKO 账户。'}
-                  </p>
-                ) : (
-                  <>
+                <h3 className="mb-2 text-lg font-semibold text-[#303532]">
+                  {language === 'th' ? 'บัญชีที่เชื่อมต่อ'
+                    : language === 'zh' ? '已关联的账号' : 'Connected Accounts'}
+                </h3>
+                <p className="mb-4 text-sm text-gray-600">
+                  {language === 'th' ? 'ใช้บัญชีเหล่านี้เข้าสู่ระบบ JOKO โดยไม่สร้างบัญชีลูกค้าใหม่'
+                    : language === 'zh' ? '将登录方式关联到同一个 JOKO 客户账号'
+                      : 'Link sign-in methods to your existing JOKO customer account.'}
+                </p>
+                {lineLinked === true ? (
+                  <div className="rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-semibold">
+                          {language === 'th' ? 'LINE · เชื่อมต่อแล้ว'
+                            : language === 'zh' ? 'LINE · 已关联' : 'LINE · Connected'}
+                        </p>
+                        {lineDisplayName(user) && <p className="mt-1">{lineDisplayName(user)}</p>}
+                        <p className="mt-1 text-xs">
+                          {language === 'th' ? 'ใช้ LINE เพื่อเข้าสู่ระบบบัญชี JOKO นี้ได้อย่างปลอดภัย'
+                            : language === 'zh' ? '可使用 LINE 安全登录此 JOKO 账号。'
+                              : 'Available for secure sign-in to this JOKO account.'}
+                        </p>
+
+                        <div className="mt-4 border-t border-[#06C755]/20 pt-4">
+                          <p className="font-semibold text-[#303532]">
+                            {language === 'th' ? 'บัญชีทางการ JOKO Today'
+                              : language === 'zh' ? 'JOKO Today 官方账号' : 'JOKO Today Official Account'}
+                            {lineFriendship === 'friend' && (
+                              <span className="ml-2 text-[#285A39]">
+                                {language === 'th' ? '· เป็นเพื่อนแล้ว ✓'
+                                  : language === 'zh' ? '· 已添加好友 ✓' : '· Friend ✓'}
+                              </span>
+                            )}
+                          </p>
+                          {lineFriendship === 'friend' ? (
+                            <p className="mt-1 text-xs text-[#285A39]">
+                              {language === 'th' ? 'พร้อมรับข่าวจาก JOKO ทาง LINE เมื่อเราเปิดใช้งานการแจ้งเตือน'
+                                : language === 'zh' ? '已准备好在我们启用通知后通过 LINE 接收 JOKO 更新。'
+                                  : 'Ready for JOKO updates on LINE as we roll out messaging.'}
+                            </p>
+                          ) : (
+                            <>
+                              <p className="mt-1 text-xs text-[#303532]/70">
+                                {language === 'th' ? 'เพิ่มเราเป็นเพื่อนเพื่อรับข่าวจากเบเกอรี่ และเตรียมพร้อมสำหรับการแจ้งเตือนรับสินค้าและคำสั่งซื้อทาง LINE'
+                                  : language === 'zh' ? '添加我们为好友，获取烘焙店动态，并为未来的取货和订单 LINE 通知做好准备。'
+                                    : 'Add us as a friend for bakery news and future pickup and order updates on LINE.'}
+                              </p>
+                              <a
+                                href={LINE_OFFICIAL_ACCOUNT_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => user?.id && dismissLINEFriendInvite(user.id)}
+                                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#06C755] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                              >
+                                <MessageCircle aria-hidden="true" className="h-4 w-4" />
+                                {language === 'th' ? 'เพิ่ม JOKO Today ใน LINE'
+                                  : language === 'zh' ? '在 LINE 添加 JOKO Today' : 'Add JOKO Today on LINE'}
+                              </a>
+                              {lineFriendship === 'unknown' && (
+                                <p className="mt-2 text-[11px] text-[#303532]/55">
+                                  {language === 'th' ? 'ยังไม่สามารถยืนยันสถานะเพื่อนได้จากเซสชันนี้'
+                                    : language === 'zh' ? '当前会话尚无法确认好友状态。'
+                                      : 'Friendship status is not confirmed in this session.'}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : lineLinked === false ? (
+                  <div className="rounded-xl border border-[#55766F]/20 bg-white/50 p-4">
+                    <p className="mb-3 font-semibold text-[#303532]">
+                      {language === 'th' ? 'LINE · ยังไม่เชื่อมต่อ'
+                        : language === 'zh' ? 'LINE · 尚未关联' : 'LINE · Not connected'}
+                    </p>
                     <p className="mb-3 text-sm text-gray-600">
-                      {language === 'en' ? 'Connect your LINE identity here before using LINE Login. Your orders, QR pass and rewards will stay on this account.'
-                        : language === 'th' ? 'เชื่อมบัญชี LINE ที่นี่ก่อนใช้ LINE Login เพื่อเก็บคำสั่งซื้อ บัตร QR และรางวัลในบัญชีเดิม'
-                          : '请先在此绑定 LINE，再使用 LINE 登录。订单、二维码会员卡和奖励将保留在此账户。'}
+                      {language === 'th' ? 'เชื่อม LINE ก่อนใช้ LINE Login เพื่อเก็บคำสั่งซื้อ บัตร QR และรางวัลในบัญชีเดิม'
+                        : language === 'zh' ? '请先关联 LINE 账号，以保留现有订单、二维码会员卡及奖励。'
+                          : 'Connect LINE before signing in with it, to preserve your existing orders, QR pass and rewards.'}
                     </p>
                     <button type="button" onClick={() => void handleLinkLINE()} disabled={loading}
                       className="rounded-xl bg-[#06C755] px-5 py-3 font-semibold text-white transition hover:bg-[#05AD49] disabled:opacity-50">
                       {language === 'en' ? 'Connect LINE' : language === 'th' ? 'เชื่อมต่อ LINE' : '绑定 LINE'}
                     </button>
-                  </>
+                  </div>
+                ) : (
+                  <p role="status" className="text-sm text-gray-600">
+                    {language === 'th' ? 'กำลังตรวจสอบบัญชีที่เชื่อมต่อ…'
+                      : language === 'zh' ? '正在检查已关联的账号…' : 'Checking linked accounts…'}
+                  </p>
                 )}
               </section>
             )}

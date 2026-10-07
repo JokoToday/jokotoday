@@ -3,7 +3,8 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
-import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, LINE_PROVIDER, lineRedirectTo } from '../lib/lineAuth';
+import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, LINE_PROVIDER, hasLinkedLINE, lineRedirectTo } from '../lib/lineAuth';
+import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 
@@ -37,11 +38,11 @@ function isSupportedLanguage(value: unknown): value is Language {
   return value === 'en' || value === 'th' || value === 'zh';
 }
 
-function hasRequiredProfileDetails(data: ProfileDetails): boolean {
+function hasRequiredProfileDetails(data: ProfileDetails, lineConnected: boolean): boolean {
   return Boolean(
     data.name.trim() &&
     data.phone.trim() &&
-    (data.line_id?.trim() || data.whatsapp?.trim() || data.wechat_id?.trim())
+    (lineConnected || data.line_id?.trim() || data.whatsapp?.trim() || data.wechat_id?.trim())
   );
 }
 
@@ -88,6 +89,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       if (data) {
+        // The profile trigger can create a blank profile before OAuth finishes.
+        // Respect any previously chosen name, including for existing users.
+        if (!data.profile_completed && !data.name?.trim()) {
+          const { data: identityData, error: identityError } = await supabase.auth.getUser();
+          if (!identityError && identityData.user?.id === userId) {
+            const suggestedName = lineDisplayName(identityData.user);
+            if (suggestedName) {
+              const { error: nameError } = await supabase.from('user_profiles')
+                .update({ name: suggestedName }).eq('id', userId);
+              if (!nameError) data.name = suggestedName;
+            }
+          }
+        }
+
         setUserRole(data.role === 'admin' || data.role === 'staff' || data.role === 'product_staff' ? data.role : null);
 
         const pendingAuthLanguage = sessionStorage.getItem(AUTH_LANGUAGE_STORAGE_KEY);
@@ -240,6 +255,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
+        // Because the LINE Login channel is linked to the JOKO Today
+        // Official Account, ask LINE to show the optional Add Friend
+        // choice on the normal consent screen.
+        queryParams: { bot_prompt: 'normal' },
       },
     });
     if (error) {
@@ -266,6 +285,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
+        // Because the LINE Login channel is linked to the JOKO Today
+        // Official Account, ask LINE to show the optional Add Friend
+        // choice on the normal consent screen.
+        queryParams: { bot_prompt: 'normal' },
       },
     });
     if (error) {
@@ -302,7 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
-        profile_completed: hasRequiredProfileDetails(data),
+        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -325,7 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         line_id: data.line_id || null,
         whatsapp: data.whatsapp || null,
         wechat_id: data.wechat_id || null,
-        profile_completed: hasRequiredProfileDetails(data),
+        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -343,6 +366,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
     if (data.user) {
       setUser(data.user);
+      // Verified auth email is authoritative. Do not copy unverified
+      // pending addresses into customer contact or order receipts.
+      if (hasVerifiedEmail(data.user) && data.user.email) {
+        const { data: saved } = await supabase.from('user_profiles')
+          .select('email').eq('id', data.user.id).maybeSingle();
+        if (saved && saved.email !== data.user.email) {
+          const { error: emailSyncError } = await supabase.from('user_profiles')
+            .update({ email: data.user.email }).eq('id', data.user.id);
+          if (emailSyncError) console.warn('Verified email could not be synced to profile.');
+        }
+      }
       await fetchUserProfile(data.user.id);
     }
   };

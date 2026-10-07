@@ -32,6 +32,15 @@ jobs:
       - name: LINE OAuth safety contract
         run: npm run audit:line-auth
 
+      - name: LINE onboarding contract
+        run: npm run audit:line-onboarding
+
+      - name: Authentication email hook contract
+        run: npm run audit:auth-email-hook
+
+      - name: LINE Official Account friendship contract
+        run: npm run audit:line-friendship
+
       - name: Typecheck
         run: npm run typecheck
 

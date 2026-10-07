@@ -2,6 +2,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "npm:standardwebhooks@1.0.0";
 import { Resend } from "npm:resend";
 import {
+  recipientsForAuthEmail,
+  type AuthEmailEvent,
+  type AuthEmailRecipient,
+} from "../_shared/auth-email-routing.ts";
+import {
   buildTransactionalEmailShell,
   escapeHtml,
   JOKO_EMAIL_THEME,
@@ -18,23 +23,6 @@ const corsHeaders = {
 
 type Language = TransactionalEmailLanguage;
 
-interface AuthEmailPayload {
-  user: {
-    id: string;
-    email: string;
-    user_metadata?: Record<string, unknown>;
-  };
-  email_data: {
-    token: string;
-    token_hash: string;
-    redirect_to: string;
-    email_action_type: string;
-    site_url: string;
-    token_new?: string;
-    token_hash_new?: string;
-  };
-}
-
 const copy = {
   en: {
     welcome: "Welcome",
@@ -49,6 +37,11 @@ const copy = {
     genericBody: "Use the button below to continue with JOKO TODAY. The link expires in 1 hour and can only be used once.",
     genericButton: "Continue to JOKO TODAY",
     genericSubject: "Your JOKO TODAY secure link",
+    emailChangeSubject: "Your JOKO TODAY email verification",
+    emailChangeHeading: "Verify your email address",
+    emailChangeBody: "Confirm this email address to receive JOKO TODAY order updates and receipts.",
+    emailChangeCurrentBody: "Someone requested an email change for your JOKO TODAY account. Confirm this request only if it was you.",
+    emailChangeButton: "Verify email address",
     copyLink: "Or copy this link:",
     ignore: "If you did not request this, you can ignore this email.",
     footer: "A secure message from JOKO TODAY",
@@ -66,6 +59,11 @@ const copy = {
     genericBody: "ใช้ปุ่มด้านล่างเพื่อดำเนินการต่อกับ JOKO TODAY ลิงก์นี้จะหมดอายุภายใน 1 ชั่วโมงและใช้ได้เพียงครั้งเดียว",
     genericButton: "ดำเนินการต่อไปยัง JOKO TODAY",
     genericSubject: "ลิงก์ที่ปลอดภัยของ JOKO TODAY",
+    emailChangeSubject: "ยืนยันอีเมล JOKO TODAY",
+    emailChangeHeading: "ยืนยันที่อยู่อีเมลของคุณ",
+    emailChangeBody: "ยืนยันอีเมลนี้เพื่อรับข้อมูลคำสั่งซื้อและใบเสร็จจาก JOKO TODAY",
+    emailChangeCurrentBody: "มีคำขอเปลี่ยนอีเมลในบัญชี JOKO TODAY โปรดยืนยันเฉพาะเมื่อคุณเป็นผู้ขอ",
+    emailChangeButton: "ยืนยันอีเมล",
     copyLink: "หรือคัดลอกลิงก์นี้:",
     ignore: "หากคุณไม่ได้ร้องขออีเมลนี้ คุณสามารถละเว้นข้อความนี้ได้",
     footer: "ข้อความที่ปลอดภัยจาก JOKO TODAY",
@@ -83,6 +81,11 @@ const copy = {
     genericBody: "请使用下方按钮继续使用 JOKO TODAY。此链接将在 1 小时后过期，并且只能使用一次。",
     genericButton: "继续前往 JOKO TODAY",
     genericSubject: "您的 JOKO TODAY 安全链接",
+    emailChangeSubject: "验证 JOKO TODAY 电子邮箱",
+    emailChangeHeading: "验证您的邮箱地址",
+    emailChangeBody: "请验证此邮箱地址，以接收 JOKO TODAY 订单更新和收据。",
+    emailChangeCurrentBody: "有人请求更改您的 JOKO TODAY 邮箱。仅在您本人提出请求时确认。",
+    emailChangeButton: "验证邮箱",
     copyLink: "或复制此链接：",
     ignore: "如果这不是您本人请求的，请忽略此邮件。",
     footer: "来自 JOKO TODAY 的安全邮件",
@@ -103,6 +106,7 @@ function buildAuthEmail(
   token: string,
   confirmUrl: string,
   language: Language,
+  audience: AuthEmailRecipient["audience"] = "standard",
 ): { subject: string; html: string; text: string } {
   const c = copy[language];
   const isOtpFlow = actionType === "signup" || actionType === "magiclink";
@@ -151,10 +155,16 @@ function buildAuthEmail(
     return { subject, html, text };
   }
 
-  const subject = c.genericSubject;
+  const isEmailChange = actionType === "email_change";
+  const subject = isEmailChange ? c.emailChangeSubject : c.genericSubject;
+  const heading = isEmailChange ? c.emailChangeHeading : c.genericHeading;
+  const body = isEmailChange
+    ? (audience === "email_change_current" ? c.emailChangeCurrentBody : c.emailChangeBody)
+    : c.genericBody;
+  const button = isEmailChange ? c.emailChangeButton : c.genericButton;
   const contentHtml = `
-    <p style="margin:0 0 26px;font-size:15px;line-height:${language === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(c.genericBody)}</p>
-    <div style="margin:0 0 26px;text-align:center;">${renderPrimaryButton(confirmUrl, c.genericButton)}</div>
+    <p style="margin:0 0 26px;font-size:15px;line-height:${language === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(body)}</p>
+    <div style="margin:0 0 26px;text-align:center;">${renderPrimaryButton(confirmUrl, button)}</div>
     <div style="margin:0 0 24px;padding:15px 16px;background:${JOKO_EMAIL_THEME.paper};border:1px solid ${JOKO_EMAIL_THEME.border};border-radius:8px;">
       <div style="margin:0 0 6px;font-size:12px;font-weight:700;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(c.copyLink)}</div>
       <div style="font-size:11px;line-height:1.55;color:${JOKO_EMAIL_THEME.muted};word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">${escapeHtml(confirmUrl)}</div>
@@ -164,9 +174,9 @@ function buildAuthEmail(
   const html = buildTransactionalEmailShell({
     language,
     title: subject,
-    preheader: c.genericBody,
+    preheader: body,
     eyebrow,
-    heading: c.genericHeading,
+    heading,
     contentHtml,
     footerText: c.footer,
     maxWidth: 520,
@@ -174,11 +184,11 @@ function buildAuthEmail(
 
   const text = [
     "JOKO TODAY",
-    c.genericHeading,
+    heading,
     "",
-    c.genericBody,
+    body,
     "",
-    c.genericButton,
+    button,
     confirmUrl,
     "",
     c.ignore,
@@ -218,9 +228,9 @@ Deno.serve(async (req: Request) => {
     const secret = hookSecret.replace("v1,whsec_", "");
     const wh = new Webhook(secret);
 
-    let payload: AuthEmailPayload;
+    let payload: AuthEmailEvent;
     try {
-      payload = wh.verify(rawBody, headers) as AuthEmailPayload;
+      payload = wh.verify(rawBody, headers) as AuthEmailEvent;
     } catch (err) {
       console.error("Webhook verification failed:", String(err));
       return new Response(
@@ -229,17 +239,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { user, email_data } = payload;
-    if (!user?.email || !email_data) {
-      console.error("Missing user.email or email_data in payload");
+    const { email_data } = payload;
+    if (!payload.user || !email_data) {
+      console.error("Auth email hook missing user or email_data");
       return new Response(
         JSON.stringify({ error: { http_code: 400, message: "Invalid payload structure" } }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const { email_action_type, token, token_hash, redirect_to, site_url } = email_data;
-
+    const { email_action_type, redirect_to, site_url } = email_data;
     if (email_action_type === "recovery") {
       console.warn("Password recovery email blocked because JOKO TODAY uses passwordless authentication");
       return new Response(
@@ -248,9 +257,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const isOtpFlow = email_action_type === "signup" || email_action_type === "magiclink";
-    if (!token_hash || (isOtpFlow && !token)) {
-      console.error("Missing required auth email token data");
+    // Verify webhook signature before selecting addresses. LINE users have
+    // no current email, so email_change must use verified user.new_email.
+    let recipients: AuthEmailRecipient[];
+    try {
+      recipients = recipientsForAuthEmail(payload);
+    } catch {
+      console.error("Invalid auth email routing fields", { actionType: email_action_type });
       return new Response(
         JSON.stringify({ error: { http_code: 400, message: "Invalid auth email payload" } }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -278,31 +291,39 @@ Deno.serve(async (req: Request) => {
     const language = getLanguage(redirectUrl);
     console.log("Auth email request received", { actionType: email_action_type, language });
 
-    const confirmUrl = `${supabaseUrl}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${encodeURIComponent(redirectUrl)}`;
-    const email = buildAuthEmail(email_action_type, token, confirmUrl, language);
-
     const resend = new Resend(resendKey);
-    const { error: emailError } = await resend.emails.send({
-      from: "JOKO TODAY <noreply@joko.today>",
-      to: user.email,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      attachments: [jokoEmailLogoAttachment()],
-    });
-
-    if (emailError) {
-      console.error("Auth email delivery failed", {
-        name: emailError.name,
-        statusCode: emailError.statusCode,
-      });
-      return new Response(
-        JSON.stringify({ error: { http_code: 500, message: "Failed to send email" } }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    for (const recipient of recipients) {
+      // Supabase email-change fields are inverted for compatibility:
+      // old email => token_hash_new; new email => token_hash.
+      const confirmUrl = `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(recipient.tokenHash)}&type=${encodeURIComponent(email_action_type)}&redirect_to=${encodeURIComponent(redirectUrl)}`;
+      const email = buildAuthEmail(
+        email_action_type, recipient.token, confirmUrl, language, recipient.audience,
       );
+      const { error: emailError } = await resend.emails.send({
+        from: "JOKO TODAY <noreply@joko.today>",
+        to: recipient.address,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        attachments: [jokoEmailLogoAttachment()],
+      });
+      if (emailError) {
+        console.error("Auth email delivery failed", {
+          actionType: email_action_type,
+          audience: recipient.audience,
+          name: emailError.name,
+          statusCode: emailError.statusCode,
+        });
+        return new Response(
+          JSON.stringify({ error: { http_code: 500, message: "Failed to send email" } }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
-    console.log("Auth email sent successfully", { actionType: email_action_type, language });
+    console.log("Auth email sent successfully", {
+      actionType: email_action_type, language, recipientCount: recipients.length,
+    });
     return new Response(JSON.stringify({}), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

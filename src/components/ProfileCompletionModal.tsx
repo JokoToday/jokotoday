@@ -5,6 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { PostSignupCelebration } from './PostSignupCelebration';
+import { hasLinkedLINE } from '../lib/lineAuth';
+import { lineDisplayName } from '../lib/lineProfile';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -30,7 +32,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebration = false, onNavigate }: ProfileCompletionModalProps) {
-  const { completeProfile, userProfile } = useAuth();
+  const { completeProfile, userProfile, user } = useAuth();
   const { t, language } = useLanguage();
   const { getLabel } = useCMSLabels();
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     if (!isOpen) return;
 
     setFormData({
-      name: userProfile?.name || '',
+      name: userProfile?.name || lineDisplayName(user) || '',
       phone: userProfile?.phone || '',
       line_id: userProfile?.line_id || '',
       whatsapp: userProfile?.whatsapp || '',
@@ -57,7 +59,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     });
     setError('');
     setShowCelebrationModal(showCelebration);
-  }, [isOpen, showCelebration, userProfile]);
+  }, [isOpen, showCelebration, userProfile, user]);
 
   if (!isOpen) return null;
 
@@ -75,7 +77,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       return;
     }
 
-    if (!formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim()) {
+    if (!hasLinkedLINE(user) && !formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim()) {
       setError(getLabel('profile.contact_required_error', language, t.profile.contactRequired));
       return;
     }
@@ -237,8 +239,15 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
             </p>
 
             <div className="space-y-3">
+              {hasLinkedLINE(user) && (
+                <p className="rounded-lg border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
+                  {language === 'th' ? 'เชื่อมต่อบัญชี LINE แล้ว ไม่จำเป็นต้องกรอก LINE ID'
+                    : language === 'zh' ? 'LINE 账号已连接，无需填写 LINE ID。'
+                      : 'LINE account connected. You do not need to enter a LINE ID.'}
+                </p>
+              )}
               <div>
-                <label className="block text-sm text-gray-600 mb-1">LINE ID</label>
+                <label className="block text-sm text-gray-600 mb-1">LINE ID (optional)</label>
                 <input
                   type="text"
                   name="line_id"

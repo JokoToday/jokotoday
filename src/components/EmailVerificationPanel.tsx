@@ -1,0 +1,180 @@
+import { useEffect, useState } from 'react';
+import { MailCheck, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { hasVerifiedEmail } from '../lib/lineProfile';
+import { supabase } from '../lib/supabase';
+
+const copy = {
+  en: {
+    heading: 'Verify your email',
+    description: 'LINE does not provide your email address. Add one so we can send order confirmations.',
+    checkout: 'A verified email is required before placing your first order. Your cart will be saved.',
+    label: 'Email address',
+    placeholder: 'you@example.com',
+    send: 'Send verification email',
+    sending: 'Sending…',
+    sentHeading: 'Verification email sent',
+    sent: 'Please open the link in your email, then return here to confirm verification. Check spam if necessary.',
+    sendFailed: 'Email verification is temporarily unavailable. Nothing was changed. Please try again later.',
+    refresh: 'I verified my email — refresh status',
+    checking: 'Checking…',
+    notVerified: 'Not verified yet. Please open the email link first.',
+    already: 'Your email address is verified.',
+  },
+  th: {
+    heading: 'ยืนยันอีเมลของคุณ',
+    description: 'LINE ไม่ส่งอีเมลของคุณให้เรา โปรดเพิ่มอีเมลเพื่อรับการยืนยันคำสั่งซื้อ',
+    checkout: 'ต้องยืนยันอีเมลก่อนสั่งซื้อครั้งแรก สินค้าในตะกร้าจะยังอยู่',
+    label: 'อีเมล',
+    placeholder: 'you@example.com',
+    send: 'ส่งอีเมลยืนยัน',
+    sending: 'กำลังส่ง…',
+    sentHeading: 'ส่งอีเมลยืนยันแล้ว',
+    sent: 'กรุณาเปิดลิงก์ในอีเมล จากนั้นกลับมาที่นี่เพื่อตรวจสอบสถานะ และตรวจสอบโฟลเดอร์สแปมด้วย',
+    sendFailed: 'ไม่สามารถส่งอีเมลยืนยันได้ในขณะนี้ ยังไม่มีการเปลี่ยนแปลง กรุณาลองใหม่ภายหลัง',
+    refresh: 'ยืนยันแล้ว — ตรวจสอบสถานะ',
+    checking: 'กำลังตรวจสอบ…',
+    notVerified: 'ยังไม่ยืนยัน กรุณาเปิดลิงก์ในอีเมลก่อน',
+    already: 'ยืนยันอีเมลแล้ว',
+  },
+  zh: {
+    heading: '验证电子邮箱',
+    description: 'LINE 不会提供您的邮箱地址。请添加邮箱以接收订单确认。',
+    checkout: '首次下单前需要验证邮箱。购物车中的商品会保留。',
+    label: '电子邮箱',
+    placeholder: 'you@example.com',
+    send: '发送验证邮件',
+    sending: '正在发送…',
+    sentHeading: '验证邮件已发送',
+    sent: '请点击邮箱中的验证链接，再返回这里检查验证状态，也可查看垃圾邮件。',
+    sendFailed: '暂时无法发送验证邮件。账号没有改变，请稍后重试。',
+    refresh: '已验证 — 刷新状态',
+    checking: '正在检查…',
+    notVerified: '邮箱尚未验证，请先点击邮件中的链接。',
+    already: '邮箱已验证',
+  },
+};
+
+export function EmailVerificationPanel({ forCheckout = false }: { forCheckout?: boolean }) {
+  const { user, refreshProfile } = useAuth();
+  const { language } = useLanguage();
+  const t = copy[language];
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState<'send' | 'refresh' | null>(null);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    setEmail('');
+    setError('');
+    setNotice('');
+    setSent(false);
+  }, [user?.id]);
+
+  if (!user || hasVerifiedEmail(user)) {
+    return user ? <p className="text-sm text-[#3F665E]">{t.already}</p> : null;
+  }
+
+  const sendVerification = async () => {
+    const address = email.trim().toLowerCase();
+    if (!address || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+      setError(language === 'th' ? 'กรุณากรอกอีเมลให้ถูกต้อง'
+        : language === 'zh' ? '请输入有效的邮箱地址' : 'Enter a valid email address.');
+      return;
+    }
+    setError('');
+    setNotice('');
+    setSent(false);
+    setBusy('send');
+    try {
+      // This updates the signed-in LINE account. Do not call signUp/signInWithOtp:
+      // those could create or enter a separate JOKO customer identity.
+      const { error: updateError } = await supabase.auth.updateUser(
+        { email: address },
+        { emailRedirectTo: new URL('/auth/callback', window.location.origin).toString() },
+      );
+      if (updateError) throw updateError;
+      setSent(true);
+      setNotice(t.sent);
+    } catch (err) {
+      const responseError = err as { message?: unknown; code?: string; status?: number } | null;
+      const message = responseError && typeof responseError.message === 'string'
+        ? responseError.message.trim()
+        : '';
+      const serviceFailure = (responseError?.status ?? 0) >= 500
+        || responseError?.code === 'unexpected_failure'
+        || message === '{}' || message === '[object Object]' || !message;
+      setError(serviceFailure ? t.sendFailed : message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const refreshVerification = async () => {
+    setError('');
+    setNotice('');
+    setBusy('refresh');
+    try {
+      // getUser() is network-backed, unlike stale user/session metadata.
+      await refreshProfile();
+      const { data, error: getError } = await supabase.auth.getUser();
+      if (getError) throw getError;
+      if (!hasVerifiedEmail(data.user)) setNotice(t.notVerified);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not refresh email status.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section aria-label={t.heading} className="space-y-3 rounded-2xl border border-[#55766F]/20 bg-white/55 p-4 sm:p-5">
+      <h3 className="font-semibold text-[#303532]">{t.heading}</h3>
+      <p className="text-sm text-[#303532]/75">{forCheckout ? t.checkout : t.description}</p>
+      <label className="block text-sm font-medium text-[#303532]">
+        {t.label}
+        <input type="email" autoComplete="email" maxLength={254}
+          placeholder={t.placeholder} value={email} onChange={(event) => setEmail(event.target.value)}
+          className="mt-2 block w-full rounded-xl border border-[#55766F]/20 bg-white px-4 py-3 text-[#303532]"
+          disabled={busy !== null} />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => void sendVerification()} disabled={busy !== null}
+          className="rounded-xl bg-[#3F665E] px-4 py-2.5 font-semibold text-white disabled:opacity-60">
+          {busy === 'send' ? t.sending : t.send}
+        </button>
+        <button type="button" onClick={() => void refreshVerification()} disabled={busy !== null}
+          className="rounded-xl border border-[#55766F]/25 px-4 py-2.5 font-semibold text-[#3F665E] disabled:opacity-60">
+          {busy === 'refresh' ? t.checking : t.refresh}
+        </button>
+      </div>
+      {sent && notice === t.sent && (
+        <div role="status" aria-live="polite"
+          className="rounded-xl border border-[#06C755]/35 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
+          <div className="flex items-start gap-2">
+            <MailCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-bold">{t.sentHeading}</p>
+              <p className="mt-1">{t.sent}</p>
+              <p className="mt-1 break-all font-medium">{email.trim().toLowerCase()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {notice && notice !== t.sent && (
+        <div role="status" className="flex items-start gap-2 rounded-xl border border-[#55766F]/25 bg-[#F4EFE5] p-3 text-sm text-[#304B45]">
+          <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+    </section>
+  );
+}
