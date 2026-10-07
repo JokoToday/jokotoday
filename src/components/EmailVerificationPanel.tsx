@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MailCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { hasVerifiedEmail } from '../lib/lineProfile';
@@ -13,7 +14,8 @@ const copy = {
     placeholder: 'you@example.com',
     send: 'Send verification email',
     sending: 'Sending…',
-    sent: 'We sent a verification link to your address. Open it, then return here and refresh your status. Check spam if necessary.',
+    sentHeading: 'Verification email sent',
+    sent: 'Please open the link in your email, then return here to confirm verification. Check spam if necessary.',
     sendFailed: 'Email verification is temporarily unavailable. Nothing was changed. Please try again later.',
     refresh: 'I verified my email — refresh status',
     checking: 'Checking…',
@@ -28,7 +30,8 @@ const copy = {
     placeholder: 'you@example.com',
     send: 'ส่งอีเมลยืนยัน',
     sending: 'กำลังส่ง…',
-    sent: 'ส่งลิงก์ยืนยันแล้ว โปรดเปิดอีเมล จากนั้นกลับมาที่นี่และตรวจสอบสถานะอีกครั้ง',
+    sentHeading: 'ส่งอีเมลยืนยันแล้ว',
+    sent: 'กรุณาเปิดลิงก์ในอีเมล จากนั้นกลับมาที่นี่เพื่อตรวจสอบสถานะ และตรวจสอบโฟลเดอร์สแปมด้วย',
     sendFailed: 'ไม่สามารถส่งอีเมลยืนยันได้ในขณะนี้ ยังไม่มีการเปลี่ยนแปลง กรุณาลองใหม่ภายหลัง',
     refresh: 'ยืนยันแล้ว — ตรวจสอบสถานะ',
     checking: 'กำลังตรวจสอบ…',
@@ -43,7 +46,8 @@ const copy = {
     placeholder: 'you@example.com',
     send: '发送验证邮件',
     sending: '正在发送…',
-    sent: '验证邮件已发送。请点击邮件中的链接，然后返回此处刷新状态。',
+    sentHeading: '验证邮件已发送',
+    sent: '请点击邮箱中的验证链接，再返回这里检查验证状态，也可查看垃圾邮件。',
     sendFailed: '暂时无法发送验证邮件。账号没有改变，请稍后重试。',
     refresh: '已验证 — 刷新状态',
     checking: '正在检查…',
@@ -82,6 +86,7 @@ export function EmailVerificationPanel({ forCheckout = false }: { forCheckout?: 
     }
     setError('');
     setNotice('');
+    setSent(false);
     setBusy('send');
     try {
       // This updates the signed-in LINE account. Do not call signUp/signInWithOtp:
@@ -145,9 +150,31 @@ export function EmailVerificationPanel({ forCheckout = false }: { forCheckout?: 
           {busy === 'refresh' ? t.checking : t.refresh}
         </button>
       </div>
-      {sent && !notice && <p className="text-sm text-[#3F665E]">{t.sent}</p>}
-      {notice && <p role="status" className="text-sm text-[#3F665E]">{notice}</p>}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {sent && notice === t.sent && (
+        <div role="status" aria-live="polite"
+          className="rounded-xl border border-[#06C755]/35 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
+          <div className="flex items-start gap-2">
+            <MailCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-bold">{t.sentHeading}</p>
+              <p className="mt-1">{t.sent}</p>
+              <p className="mt-1 break-all font-medium">{email.trim().toLowerCase()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {notice && notice !== t.sent && (
+        <div role="status" className="flex items-start gap-2 rounded-xl border border-[#55766F]/25 bg-[#F4EFE5] p-3 text-sm text-[#304B45]">
+          <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
     </section>
   );
 }
