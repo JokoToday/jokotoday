@@ -23,6 +23,7 @@ import {
   getBuilderComponentDefinition,
   localizeRichText,
   resolveJokoHomepageBranding,
+  resolveHeroLocaleStyle,
   richTextToPlainText,
   type BuilderAction,
   type BuilderDocument,
@@ -52,6 +53,7 @@ interface JokoHomepageEditorProps {
   site: BuilderSiteIdentity;
   providers: HomepageBuilderProviders;
   onDocumentChange: (document: BuilderDocument) => void;
+  onLocaleChange?: (locale: 'en' | 'th' | 'zh') => void;
   onAction?: (action: BuilderAction) => void;
   onUploadingChange?: (uploading: boolean) => void;
   onValidationError?: (issues: string[]) => void;
@@ -506,6 +508,7 @@ export function JokoHomepageEditor({
   site,
   providers,
   onDocumentChange,
+  onLocaleChange,
   onAction,
   onUploadingChange,
   onValidationError,
@@ -1133,6 +1136,7 @@ export function JokoHomepageEditor({
               branding={branding}
               onUploadingChange={(uploading) => reportUploadState('hero-notebook', uploading)}
               onNotebookNoteChange={(notePatch) => updateHeroNotebookNote(selectedSection.id, notePatch)}
+              onLocaleChange={onLocaleChange}
               onChange={(next) => updateSection(selectedSection.id, () => next)}
             />
           ) : (
@@ -1153,6 +1157,7 @@ function SectionEditor({
   onChange,
   onUploadingChange,
   onNotebookNoteChange,
+  onLocaleChange,
 }: {
   section: BuilderSection;
   locale: string;
@@ -1161,6 +1166,7 @@ function SectionEditor({
   onChange: (section: BuilderSection) => void;
   onUploadingChange?: (uploading: boolean) => void;
   onNotebookNoteChange?: (patch: Partial<HomeHeroNotebookNote>) => void;
+  onLocaleChange?: (locale: 'en' | 'th' | 'zh') => void;
 }) {
   const definition = getBuilderComponentDefinition(section.type);
   const setVisible = (visible: boolean) => onChange({ ...section, visible } as BuilderSection);
@@ -1214,6 +1220,8 @@ function SectionEditor({
   if (section.type === 'home.hero.v1') {
     const props = section.props;
     const patch = (next: Partial<typeof props>) => onChange({ ...section, props: { ...props, ...next } });
+    const headlineStyle = resolveHeroLocaleStyle(props.titleStyle, props.titleLocaleStyles, locale);
+    const subtitleStyle = resolveHeroLocaleStyle(props.subtitleStyle, props.subtitleLocaleStyles, locale);
     const applyBakedBeyondPreset = () => {
       // English only; leave the existing Thai/Chinese text, notebook and
       // subtitle intact until Admin chooses to edit those translations.
@@ -1244,6 +1252,23 @@ function SectionEditor({
       <div>
         {editorHeader}
         <div className="space-y-4">
+          <div className="rounded-xl border border-[#55766F]/20 bg-[#E2ECE6]/75 p-3">
+            <p className="text-xs font-semibold text-[#304B45]">Headline & subtitle language</p>
+            <div className="mt-2 grid grid-cols-3 gap-1.5" role="group" aria-label="Hero text editing language">
+              {([
+                ['en', 'EN · English'],
+                ['th', 'TH · ไทย'],
+                ['zh', '中文 · 简体'],
+              ] as const).map(([code, label]) => (
+                <button key={code} type="button" aria-pressed={locale === code}
+                  onClick={() => onLocaleChange?.(code)}
+                  className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${locale === code
+                    ? 'border-[#55766F] bg-white text-[#304B45] shadow-sm'
+                    : 'border-[#55766F]/15 bg-white/50 text-[#304B45]/65 hover:bg-white'}`}>{label}</button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-4 text-[#304B45]/65">Each language has its own headline, subtitle, line arrangement and spacing. The draft preview switches with these tabs.</p>
+          </div>
           {locale === 'en' && (
             <div className="rounded-xl border border-[#C76624]/25 bg-[#FFF1E5]/65 p-3">
               <p className="text-xs text-[#304B45]">Use JOKO’s proposed three-line hero as an editable starting point.</p>
@@ -1261,9 +1286,10 @@ function SectionEditor({
               onChange={(value) => patch({ eyebrowStyle: value })} min={9} max={42} />
           </div>
           <div>
-            <FieldLabel>Main headline — select text, then style words below</FieldLabel>
+            <FieldLabel>Main headline ({locale.toUpperCase()}) — select text, then style words below</FieldLabel>
             <ControlledRichTextEditor
-              ariaLabel="Hero headline rich text"
+              key={`hero-headline-${locale}`}
+              ariaLabel={`Hero headline rich text (${locale.toUpperCase()})`}
               value={localizeRichText(
                 props.titleRichText,
                 locale,
@@ -1277,14 +1303,14 @@ function SectionEditor({
               })}
             />
           </div>
-          <HeroStyleControls label="Headline base typography" defaultBold value={props.titleStyle}
-            onChange={(value) => patch({ titleStyle: value })} />
+          <HeroStyleControls label={`Headline typography (${locale.toUpperCase()})`} defaultBold value={headlineStyle}
+            onChange={(value) => patch({ titleLocaleStyles: { ...props.titleLocaleStyles, [locale]: value } })} />
           <HeroLineStyleControls
             value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
             styles={props.titleLineStyles?.[locale]}
             onChange={(styles) => patch({ titleLineStyles: { ...props.titleLineStyles, [locale]: styles } })}
           />
-          <HeroWordStyleEditor
+          <HeroWordStyleEditor key={`hero-words-${locale}`} locale={locale}
             value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
             colors={branding.colors}
             onChange={(value) => patch({
@@ -1293,28 +1319,31 @@ function SectionEditor({
             })}
           />
           <div>
-            <FieldLabel>Subtitle — formatted text</FieldLabel>
-            <ControlledRichTextEditor ariaLabel="Hero subtitle rich text" colors={branding.colors}
+            <FieldLabel>Subtitle ({locale.toUpperCase()}) — formatted text</FieldLabel>
+            <ControlledRichTextEditor key={`hero-subtitle-${locale}`} ariaLabel={`Hero subtitle rich text (${locale.toUpperCase()})`} colors={branding.colors}
               value={localizeRichText(props.subtitleRichText, locale, fallbackLocale, localized(props.subtitle, locale, fallbackLocale))}
               onChange={(value) => patch({
                 subtitle: withLocale(props.subtitle, locale, richTextToPlainText(value)),
                 subtitleRichText: withLocaleRichText(props.subtitleRichText, locale, value),
               })} />
-            <HeroStyleControls label="Subtitle typography" value={props.subtitleStyle}
-              onChange={(value) => patch({ subtitleStyle: value })} min={12} max={42} />
+            <HeroStyleControls label={`Subtitle typography (${locale.toUpperCase()})`} value={subtitleStyle}
+              onChange={(value) => patch({ subtitleLocaleStyles: { ...props.subtitleLocaleStyles, [locale]: value } })} min={12} max={42} />
           </div>
           <div className="rounded-xl border border-[#55766F]/14 bg-[#D8EAE6] px-4 py-4">
             <p className="mb-3 text-[11px] font-semibold uppercase text-[#3F665E]">Hero typography draft preview ({locale.toUpperCase()})</p>
             <HeroTypography as="p" kind="eyebrow"
-              value={[{ text: (props.eyebrow?.[locale]?.trim() || 'Love for Baking. Shared with Everyone.') }]}
+              value={[{ text: (props.eyebrow?.[locale]?.trim() || (locale === 'th'
+                ? 'เบเกอรี่ทำมือ • เรื่องราวใกล้ตัว • วันที่อ่อนโยนกว่า'
+                : locale === 'zh' ? '手作烘焙 • 身边故事 • 更温柔的一天'
+                  : 'Love for Baking. Shared with Everyone.')) }]}
               style={props.eyebrowStyle} className="tracking-[0.15em]" />
             <HeroTypography as="h1" kind="headline"
               value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
-              style={props.titleStyle} lineStyles={props.titleLineStyles?.[locale]}
-              className="mt-3 leading-[.92] tracking-[-0.04em]" />
+              style={headlineStyle} lineStyles={props.titleLineStyles?.[locale]}
+              className="mt-4 leading-[.92] tracking-[-0.042em]" />
             <HeroTypography as="p" kind="subtitle"
               value={localizeRichText(props.subtitleRichText, locale, fallbackLocale, localized(props.subtitle, locale, fallbackLocale))}
-              style={props.subtitleStyle} className="mt-4 leading-6" />
+              style={subtitleStyle} className="mt-5 max-w-[29rem] leading-7" />
           </div>
           <TextField label="Primary button" value={localized(props.primaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ primaryActionLabel: withLocale(props.primaryActionLabel, locale, value) })} />
           <TextField label="Secondary button" value={localized(props.secondaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ secondaryActionLabel: withLocale(props.secondaryActionLabel, locale, value) })} />
