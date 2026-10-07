@@ -10,19 +10,21 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { Container } from '../../../platform/design-system';
 import { JOKO_BAKERY_HERO_ASSET } from '../../../lib/staticAssetPolicy';
 import type { NotebookRouteTarget } from '../../../platform/notebook';
-import {
-  localize,
-  localizeRichText,
-  HeroTypography,
-  type BuilderRichText,
-  type HomeTopLikedSection,
-} from '../../../platform/builder';
+import { localize } from '../../../platform/builder/renderer/localize';
+import { localizeRichText } from '../../../platform/builder/richText';
+import { HeroTypography } from '../../../platform/builder/HeroTypography';
+import { resolveHeroLocaleStyle } from '../../../platform/builder/heroTypographyUtils';
+import type { BuilderRichText, HomeHeroSection, HomeTopLikedSection } from '../../../platform/builder/contracts';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
+  /** Use the real public hero layout for Builder drafts; never fetch draft data. */
+  previewHero?: HomeHeroSection;
+  previewLocale?: 'en' | 'th' | 'zh';
+  heroOnly?: boolean;
   notebookTarget?: NotebookRouteTarget;
   notebookClosed?: boolean;
   onNotebookNavigate?: (target: NotebookRouteTarget) => void;
@@ -80,13 +82,20 @@ const copy = {
   },
 } as const;
 
-export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePageProps) {
+export function HomepageExperiencePage({
+  onNavigate,
+  previewHero,
+  previewLocale,
+  heroOnly = false,
+}: HomepageExperiencePageProps) {
   const { language } = useLanguage();
   const { document: publishedHomepage } = usePublishedJokoBranding();
-  const lang: LanguageCode = language === 'th' || language === 'zh' ? language : 'en';
+  const selectedLocale = previewLocale || language;
+  const lang: LanguageCode = selectedLocale === 'th' || selectedLocale === 'zh' ? selectedLocale : 'en';
   const labels = copy[lang];
-  const publishedHero = publishedHomepage?.sections.find((section) => section.type === 'home.hero.v1');
-  const publishedTitleRichText = publishedHero?.type === 'home.hero.v1' && publishedHero.props.titleRichText
+  const publishedHero = previewHero ?? publishedHomepage?.sections.find((section) => section.type === 'home.hero.v1');
+  // Even unformatted Thai/Chinese headlines must use their saved plain text.
+  const publishedTitleRichText = publishedHero?.type === 'home.hero.v1'
     ? localizeRichText(
         publishedHero.props.titleRichText,
         lang,
@@ -121,7 +130,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
   const configuredHeroNotebookNote = publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.notebookNote
     : undefined;
-  const isBranchPreview = typeof window !== 'undefined'
+  const isBranchPreview = !previewHero && typeof window !== 'undefined'
     && window.location.hostname.endsWith('.jokotoday-preview.pages.dev');
   const heroNotebookNote = configuredHeroNotebookNote ?? (isBranchPreview
     ? {
@@ -182,7 +191,7 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
   return (
     <>
-      <section className="joko-mineral-field joko-bakery-hero-field pb-8 pt-2 sm:pb-10 sm:pt-3 xl:pb-8">
+      <section className="joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8">
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             {showHeroNotebookNote && (
@@ -226,14 +235,18 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
 
                 <HeroTypography
                   as="h1" kind="headline" value={titleRuns}
-                  style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.titleStyle : undefined}
+                  style={publishedHero?.type === 'home.hero.v1'
+                    ? resolveHeroLocaleStyle(publishedHero.props.titleStyle, publishedHero.props.titleLocaleStyles, lang)
+                    : undefined}
                   lineStyles={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.titleLineStyles?.[lang] : undefined}
                   className="mt-4 leading-[.92] tracking-[-0.042em]"
                 />
                 <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
 
                 <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
-                  style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.subtitleStyle : undefined}
+                  style={publishedHero?.type === 'home.hero.v1'
+                    ? resolveHeroLocaleStyle(publishedHero.props.subtitleStyle, publishedHero.props.subtitleLocaleStyles, lang)
+                    : undefined}
                   className="mt-5 max-w-[29rem] leading-7"
                 />
 
@@ -305,11 +318,11 @@ export function HomepageExperiencePage({ onNavigate }: HomepageExperiencePagePro
           </div>
         </Container>
       </section>
-      <HomepageLowerSections
+      {!heroOnly && <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}
         publishedTopLiked={publishedTopLiked}
-      />
+      />}
     </>
   );
 }

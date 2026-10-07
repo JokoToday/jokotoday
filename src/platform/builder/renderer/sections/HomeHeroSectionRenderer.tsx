@@ -13,6 +13,7 @@ import { JokoHeroNotebookNote } from '../../../../components/JokoHeroNotebookNot
 import { HeroTypography } from '../../HeroTypography';
 import { resolveTopMenu, getTopMenuLabel } from '../../topMenu';
 import { resolveJokoHomepageBranding } from '../../branding';
+import { HomepageExperiencePage } from '../../../../app/joko-today/home/HomepageExperiencePage';
 
 interface HomeHeroSectionRendererProps {
   section: HomeHeroSection;
@@ -22,9 +23,25 @@ interface HomeHeroSectionRendererProps {
   onAction?: (action: BuilderAction) => void;
   interactive?: boolean;
   branding?: ReturnType<typeof resolveJokoHomepageBranding>;
+  /** Reuse the production Experience hero for Admin preview (not Builder-only mode). */
+  experiencePreview?: boolean;
 }
 
-export function HomeHeroSectionRenderer({
+export function HomeHeroSectionRenderer(props: HomeHeroSectionRendererProps) {
+  if (props.experiencePreview) {
+    // Same composition, layout, image, media queries and typography as public
+    // HomepageExperiencePage. Draft content comes only from props.section.
+    return <HomepageExperiencePage
+      onNavigate={() => { /* No real navigation in Admin preview. */ }}
+      previewHero={props.section}
+      previewLocale={props.locale === 'th' || props.locale === 'zh' ? props.locale : 'en'}
+      heroOnly
+    />;
+  }
+  return <BuilderHeroSectionRenderer {...props} />;
+}
+
+function BuilderHeroSectionRenderer({
   section,
   locale,
   site,

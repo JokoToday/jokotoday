@@ -1,3 +1,12 @@
+/* Share the non-bakery mineral shade with the two About media cards. */
+.joko-home-shell {
+  --joko-curation-turquoise: #ACCEC8;
+}
+
+.joko-home-shell .joko-about-curation-card {
+  background-color: var(--joko-curation-turquoise);
+}
+
 .joko-home-shell .joko-shell-header-organic,
 .joko-home-shell header.relative.z-40 {
   position: relative;
@@ -113,7 +122,7 @@
 /* Non-bakery curation: a deeper mineral turquoise than the airy hero and
    How It Works band. Retain the hand-drawn connection artwork above it. */
 .joko-home-shell #not-bread.joko-mineral-field {
-  background-color: #ACCEC8;
+  background-color: var(--joko-curation-turquoise);
   background-image:
     radial-gradient(ellipse at 10% 14%, rgba(232,246,241,.23), transparent 36%),
     radial-gradient(ellipse at 84% 12%, rgba(230,245,242,.16), transparent 45%);
@@ -385,11 +394,7 @@
   }
 }
 
-@media (max-width: 1279px) {
-  .joko-home-shell .joko-bakery-hero-field {
-    padding-top: .75rem;
-  }
-}
+/* The Hero meets the navigation directly at mobile and desktop widths. */
 
 /* Bakery / Products page: carry the homepage mineral field into commerce
    without changing product, pickup, cart, likes, or availability behaviour. */

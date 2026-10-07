@@ -634,7 +634,7 @@ export function HomepageLowerSections({
           </div>
 
           <div className="mt-7 grid items-stretch gap-4 lg:grid-cols-2">
-            <article id="gallery-preview" className="min-w-0 rounded-3xl border border-[#55766F]/15 bg-[#E2ECE6]/55 p-5 scroll-mt-24 sm:p-6">
+            <article id="gallery-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.galleryTitle}</h3>
@@ -674,7 +674,7 @@ export function HomepageLowerSections({
               )}
             </article>
 
-            <article id="what-people-say-preview" className="min-w-0 rounded-3xl border border-[#55766F]/15 bg-[#E2ECE6]/55 p-5 scroll-mt-24 sm:p-6">
+            <article id="what-people-say-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.peopleSayTitle}</h3>

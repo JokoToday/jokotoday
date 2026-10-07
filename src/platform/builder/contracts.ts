@@ -17,6 +17,8 @@ export interface HeroTextStyle {
   align?: HeroTextAlign;
   bold?: boolean;
   italic?: boolean;
+  /** Unitless multiplier (0.8–2.5); applies to text lines and wraps. */
+  lineHeight?: number;
 }
 
 export interface HeroTitleLineStyle {
@@ -155,8 +157,11 @@ export interface HomeHeroProps {
   titleLineStyles?: Readonly<Record<LocaleCode, readonly HeroTitleLineStyle[]>>;
   /** Base headline font/size/weight/alignment. Word overrides live in titleRichText. */
   titleStyle?: HeroTextStyle;
+  /** Independent overrides for EN, TH and ZH; old shared styles remain as fallback. */
+  titleLocaleStyles?: Readonly<Record<LocaleCode, HeroTextStyle>>;
   subtitleRichText?: LocalizedRichText;
   subtitleStyle?: HeroTextStyle;
+  subtitleLocaleStyles?: Readonly<Record<LocaleCode, HeroTextStyle>>;
   primaryActionLabel: LocalizedText;
   primaryAction: BuilderAction;
   secondaryActionLabel: LocalizedText;

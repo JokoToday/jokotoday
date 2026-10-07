@@ -19,6 +19,8 @@ export function HeroTypography({ as, value, kind, style, lineStyles, className =
     fontFamily: heroFontFamily(style?.font, headline ? 'var(--joko-font-display)' : 'var(--joko-font-body)'),
     fontWeight: style?.bold !== undefined ? (style.bold ? 700 : 400) : (headline || eyebrow ? 700 : 400),
     fontStyle: style?.italic ? 'italic' : 'normal',
+    // Inline value wins over Tailwind leading classes in both public and draft.
+    ...(style?.lineHeight !== undefined ? { lineHeight: style.lineHeight } : {}),
     textAlign: style?.align || 'left',
     color: eyebrow ? '#3F665E' : 'var(--joko-brand-text,#303532)',
     ...(kind === 'subtitle' ? { opacity: 0.8 } : {}),

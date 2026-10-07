@@ -25,6 +25,8 @@ export interface BuilderPageRendererProps {
   onSectionError?: (sectionId: string, error: Error) => void;
   selectedSectionId?: string | null;
   onSectionSelect?: (sectionId: string) => void;
+  /** Admin previews use the public Experience hero, not the approximate Builder-only hero. */
+  experienceHeroPreview?: boolean;
 }
 
 function renderSection(
@@ -44,6 +46,7 @@ function renderSection(
           section={section}
           provider={props.providers.heroMedia}
           interactive={!props.onSectionSelect}
+          experiencePreview={props.experienceHeroPreview}
           branding={props.branding}
           {...common}
         />
@@ -82,6 +85,7 @@ export function BuilderPageRenderer({
   onSectionError,
   selectedSectionId = null,
   onSectionSelect,
+  experienceHeroPreview = false,
 }: BuilderPageRendererProps) {
   const validation = validateBuilderDocument(document, {
     supportedLocales: site.supportedLocales,
@@ -127,6 +131,7 @@ export function BuilderPageRenderer({
                 onAction,
                 onSectionError,
                 branding,
+                experienceHeroPreview,
               })}
             </BuilderSectionErrorBoundary>
           </div>
