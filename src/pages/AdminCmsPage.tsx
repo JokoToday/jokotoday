@@ -9,6 +9,7 @@ import { CutoffRulesManagement } from '../components/CutoffRulesManagement';
 import { CutoffRulesOverrides } from '../components/CutoffRulesOverrides';
 import { CategoryForm } from '../components/CategoryForm';
 import { PageForm } from '../components/PageForm';
+import { LEGAL_PAGES, legalPagePreset, type LegalPageKind } from '../app/joko-today/legal/legalPages';
 import { LabelForm } from '../components/LabelForm';
 import { SettingForm } from '../components/SettingForm';
 import { LocationForm } from '../components/LocationForm';
@@ -535,6 +536,13 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
     setShowForm(true);
   };
 
+  const openLegalEditor = (kind: LegalPageKind) => {
+    const existing = pages.find((page) => page.page_key === LEGAL_PAGES[kind].pageKey) || null;
+    setEditing(existing);
+    setPreset(existing ? null : legalPagePreset(kind));
+    setShowForm(true);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -580,11 +588,34 @@ function PagesTab({ pages, onRefresh }: PagesTabProps) {
         </div>
       </div>
 
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        {(['terms', 'privacy'] as const).map((kind) => {
+          const config = LEGAL_PAGES[kind];
+          const exists = pages.some((page) => page.page_key === config.pageKey);
+          return (
+            <div key={kind} className="rounded-2xl border border-[#55766F]/18 bg-[#F7F1E7]/70 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#55766F]">Public legal page</p>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">{config.copy.en.title}</h3>
+              <p className="mt-1 text-sm text-gray-600">
+                {config.href} · {exists ? 'Edit English, Thai and Chinese content.' : 'Ready for content. Shows a placeholder until you create the page.'}
+              </p>
+              <p className="mt-2 text-xs text-amber-900">Saving changes makes them public immediately. Replace the placeholder with your approved policy first.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={config.href} target="_blank" rel="noreferrer" className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Open page</a>
+                <button type="button" onClick={() => openLegalEditor(kind)} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                  {exists ? 'Edit' : 'Create'} {config.copy.en.title}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {showForm && (
         <PageForm
           page={editing}
           preset={preset}
-          lockPageKey={Boolean(preset?.page_key === 'our_story')}
+          lockPageKey={Boolean(preset?.page_key)}
           onSave={() => {
             setShowForm(false);
             setEditing(null);
