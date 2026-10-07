@@ -128,7 +128,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       <div className="joko-mineral-field min-h-screen px-4 py-8 sm:py-12">
         <div className="mx-auto max-w-5xl">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate('home-dashboard')}
             className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
           >
             <ArrowLeft className="w-4 h-4" />
