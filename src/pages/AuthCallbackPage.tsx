@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { LINE_OAUTH_DESTINATION_KEY } from '../lib/lineAuth';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { queueLINEFriendInvite, refreshLINEFriendshipStatus } from '../lib/lineOfficialAccount';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
 type CallbackLanguage = 'en' | 'th' | 'zh';
@@ -87,15 +88,17 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       const requestedNext = searchParams.get('next');
       const code = searchParams.get('code');
       const pendingLineIntent = sessionStorage.getItem(LINE_OAUTH_DESTINATION_KEY);
+      let isRecentLINEOAuth = false;
       let isRecentLINELink = false;
-      if (code && pendingLineIntent) {
+      if (pendingLineIntent) {
         try {
           const intent = JSON.parse(pendingLineIntent) as { destination?: string; startedAt?: number };
-          isRecentLINELink = intent.destination === 'profile'
-            && typeof intent.startedAt === 'number'
-            && Date.now() - intent.startedAt >= 0
-            && Date.now() - intent.startedAt < 15 * 60 * 1000;
+          const age = typeof intent.startedAt === 'number' ? Date.now() - intent.startedAt : Number.POSITIVE_INFINITY;
+          isRecentLINEOAuth = (intent.destination === 'home' || intent.destination === 'profile')
+            && age >= 0 && age < 15 * 60 * 1000;
+          isRecentLINELink = isRecentLINEOAuth && intent.destination === 'profile';
         } catch {
+          isRecentLINEOAuth = false;
           isRecentLINELink = false;
         }
       }
@@ -220,6 +223,19 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
         }
 
         await refreshProfile();
+
+        if (isRecentLINEOAuth) {
+          // Supabase exposes LINE's provider token only on the fresh OAuth
+          // session. Use it immediately to ask LINE whether the customer is
+          // already an OA friend, then discard it. The token is never stored.
+          const friendshipStatus = await refreshLINEFriendshipStatus(
+            session.provider_token,
+            userId,
+            abortController.signal,
+          );
+          queueLINEFriendInvite(userId, friendshipStatus);
+        }
+
         sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
         const destinationPath = callbackNext === 'product-staff' ? '/product-staff'
           : callbackNext === 'profile' ? '/my-profile'
