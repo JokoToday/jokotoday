@@ -72,5 +72,14 @@ assert.match(migration, /auth\.identities/);
 assert.match(migration, /email_confirmed_at IS NOT NULL/);
 assert.match(migration, /BEFORE INSERT ON public\.orders/);
 assert.doesNotMatch(migration, /NEW\.purchase_type IS DISTINCT FROM/);
+const customerGuard = get('supabase/migrations/20261007031108_line_customer_auth_contact_guard.sql');
+assert.match(customerGuard, /CREATE TRIGGER guard_customer_contact_auth/);
+assert.match(customerGuard, /auth\.identities/);
+assert.match(customerGuard, /provider = 'custom:line'/);
+assert.match(customerGuard, /NEW\.line_id IS NULL/);
+assert.match(customerGuard, /DROP CONSTRAINT at_least_one_contact/);
+assert.match(customerGuard, /CREATE OR REPLACE FUNCTION public\.sync_completed_user_profile_to_customer/);
+assert.doesNotMatch(customerGuard, /NEW\.line_id\s*:=/);
+
 
 console.log('LINE Onboarding v1.1 contract checks passed.');
