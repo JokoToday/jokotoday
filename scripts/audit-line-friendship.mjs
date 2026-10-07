@@ -33,8 +33,8 @@ const helper = await import(
   'data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64')
 );
 
-assert.equal(helper.LINE_OFFICIAL_ACCOUNT_ID, '@699gekag');
-assert.match(helper.LINE_OFFICIAL_ACCOUNT_URL, /^https:\/\/line\.me\/R\/ti\/p\/%40699gekag$/);
+assert.equal(helper.LINE_OFFICIAL_ACCOUNT_ID, '@jokotoday');
+assert.match(helper.LINE_OFFICIAL_ACCOUNT_URL, /^https:\\/\\/line\\.me\\/R\\/ti\\/p\\/%40jokotoday$/);
 
 let seenAuthorization = '';
 globalThis.fetch = async (url, options) => {
