@@ -5,7 +5,6 @@ import { useLanguage } from '../context/LanguageContext';
 import {
   LINE_FRIEND_INVITE_EVENT,
   LINE_OFFICIAL_ACCOUNT_URL,
-  clearPendingLINEFriendInvite,
   dismissLINEFriendInvite,
   hasPendingLINEFriendInvite,
 } from '../lib/lineOfficialAccount';
