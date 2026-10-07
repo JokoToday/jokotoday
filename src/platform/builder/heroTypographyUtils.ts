@@ -41,3 +41,13 @@ export function heroRichTextStyle(marks?: BuilderRichTextMarks): CSSProperties {
     ...(marks?.size ? { fontSize: `clamp(12px, 12vw, ${marks.size}px)` } : {}),
   };
 }
+
+/** Prefer locale settings, preserving the shared legacy style as fallback. */
+export function resolveHeroLocaleStyle<T extends { [key: string]: unknown }>(
+  shared: T | undefined,
+  styles: Readonly<Record<string, T>> | undefined,
+  locale: string,
+): T | undefined {
+  const specific = styles?.[locale];
+  return specific ? { ...shared, ...specific } as T : shared;
+}
