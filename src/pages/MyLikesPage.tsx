@@ -179,7 +179,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     <div className="joko-mineral-field min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <button
-          onClick={() => onNavigate('home')}
+          onClick={() => onNavigate('home-dashboard')}
           className="mb-8 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]"
         >
           <ArrowLeft className="w-5 h-5" />

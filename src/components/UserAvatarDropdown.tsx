@@ -30,6 +30,13 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
   }, []);
 
   useEffect(() => {
+    // JOKO account-page Back buttons return to the homepage with this menu open.
+    const openDashboard = () => setIsOpen(true);
+    window.addEventListener('joko-open-user-dashboard', openDashboard);
+    return () => window.removeEventListener('joko-open-user-dashboard', openDashboard);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     supabase
       .from('customers')
@@ -69,6 +76,9 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        type="button"
+        aria-label={language === 'th' ? 'เมนูบัญชีผู้ใช้' : language === 'zh' ? '用户菜单' : 'User dashboard'}
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105 overflow-hidden"
       >

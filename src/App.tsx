@@ -253,6 +253,12 @@ function AppContent() {
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
+    if (page === 'home-dashboard') {
+      // Account-page Back links return home and reopen the existing avatar menu.
+      handleNavigate('home');
+      window.dispatchEvent(new Event('joko-open-user-dashboard'));
+      return;
+    }
     if (page === 'home') {
       setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
       setNotebookClosed(false);
