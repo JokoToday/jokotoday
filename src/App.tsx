@@ -6,6 +6,7 @@ import { LikesProvider } from './context/LikesContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
+import { LINEFriendInvite } from './components/LINEFriendInvite';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
 import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
 import JokoShell from './app/joko-today/shell/JokoShell';
@@ -506,6 +507,7 @@ function AppContent() {
           onStartShopping={() => handleNavigate('products')}
         />
       )}
+      <LINEFriendInvite />
     </div>
   );
 }
