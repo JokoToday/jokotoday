@@ -1036,6 +1036,7 @@ export function JokoHomepageEditor({
           <span className="text-[11px] font-medium text-[#304B45]/55">
             {previewWidth}px · {Math.round(previewScale * 100)}%
           </span>
+          <p className="basis-full text-[11px] text-[#304B45]/70">The Hero uses the live website's layout with draft content. The header lives outside the Hero; other sections remain Builder representations. Publish before comparing content on the public website.</p>
         </div>
 
         <div
@@ -1080,6 +1081,7 @@ export function JokoHomepageEditor({
             />
             {previewFrameDocument?.getElementById('joko-builder-preview-root') && createPortal(
               <BuilderPageRenderer
+                experienceHeroPreview
                 document={document}
                 locale={locale}
                 site={site}
