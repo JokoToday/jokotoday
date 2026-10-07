@@ -50,7 +50,7 @@ const profile = get('src/pages/MyProfilePage.tsx');
 const modal = get('src/components/ProfileCompletionModal.tsx');
 const auth = get('src/context/AuthContext.tsx');
 const callback = get('src/pages/AuthCallbackPage.tsx');
-const migration = get('supabase/migrations/20261006223000_require_verified_email_for_line_checkout.sql');
+const migration = get('supabase/migrations/20261007024123_require_verified_email_for_line_checkout.sql');
 assert.match(router, /needsLINEEmailForCheckout\(user\)/);
 for (const code of [v1, v2]) {
   assert.match(code, /supabase\.auth\.getUser\(\)/);
