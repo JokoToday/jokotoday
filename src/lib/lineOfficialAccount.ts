@@ -1,6 +1,6 @@
 export type LINEFriendshipStatus = 'friend' | 'not_friend' | 'unknown';
 
-export const LINE_OFFICIAL_ACCOUNT_ID = '@699gekag';
+export const LINE_OFFICIAL_ACCOUNT_ID = '@jokotoday';
 export const LINE_OFFICIAL_ACCOUNT_URL =
   `https://line.me/R/ti/p/${encodeURIComponent(LINE_OFFICIAL_ACCOUNT_ID)}`;
 
