@@ -9,6 +9,8 @@ const modal = source('src/components/AuthModal.tsx');
 
 assert.ok(auth.includes('auth.signInWithOAuth({') && auth.includes('auth.linkIdentity({'));
 assert.ok(auth.includes('provider: LINE_PROVIDER'));
+assert.equal((auth.match(/queryParams: \{ bot_prompt: 'normal' \}/g) || []).length, 2);
+assert.ok(auth.includes('auth.signInWithOAuth({') && auth.includes('auth.linkIdentity({'));
 assert.ok(helper.includes("'custom:line'"));
 assert.ok(helper.includes("VITE_ENABLE_LINE_LOGIN === 'true'"));
 assert.ok(helper.includes("VITE_ENABLE_LINE_LINKING === 'true'"));
