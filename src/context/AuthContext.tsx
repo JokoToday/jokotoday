@@ -255,6 +255,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
+        // Because the LINE Login channel is linked to the JOKO Today
+        // Official Account, ask LINE to show the optional Add Friend
+        // choice on the normal consent screen.
+        queryParams: { bot_prompt: 'normal' },
       },
     });
     if (error) {
@@ -281,6 +285,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         redirectTo: lineRedirectTo(),
         scopes: 'openid profile',
+        // Because the LINE Login channel is linked to the JOKO Today
+        // Official Account, ask LINE to show the optional Add Friend
+        // choice on the normal consent screen.
+        queryParams: { bot_prompt: 'normal' },
       },
     });
     if (error) {
