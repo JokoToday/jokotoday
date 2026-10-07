@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, QrCode, Camera, Upload, X, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
@@ -30,6 +30,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const [lineLinked, setLineLinked] = useState<boolean | null>(null);
   const [lineFriendship, setLineFriendship] = useState<LINEFriendshipStatus>('unknown');
   const [success, setSuccess] = useState('');
+  const [profileSaved, setProfileSaved] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
@@ -104,6 +105,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setProfileSaved(false);
     setFormData((current) => ({
       ...current,
       [event.target.name]: event.target.value,
@@ -136,6 +138,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     event.preventDefault();
     setError('');
     setSuccess('');
+    setProfileSaved(false);
 
     if (!formData.name.trim()) {
       setError(getLabel('profile.name_required_error', language, 'Name is required'));
@@ -159,8 +162,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
         whatsapp: formData.whatsapp.trim() || undefined,
         wechat_id: formData.wechat_id.trim() || undefined,
       });
-      setSuccess(getLabel('profile_page.saved', language, 'Changes saved!'));
-      window.setTimeout(() => setSuccess(''), 3000);
+      setProfileSaved(true);
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to update profile');
@@ -266,7 +268,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     <div className="joko-mineral-field min-h-screen">
       <Container width="wide" className="relative z-10 py-8 sm:py-12 lg:py-14">
         <div className="mx-auto max-w-4xl">
-          <button onClick={() => onNavigate('home')} className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]">
+          <button onClick={() => onNavigate('home-dashboard')} className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/78 px-4 py-2 text-sm font-semibold text-[#3F665E] transition hover:bg-[#FFF9EE]">
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
 
@@ -514,6 +516,12 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 <QrCode className="w-5 h-5" /> {getLabel('profile_page.view_qr', language, 'View QR')}
               </button>
             </div>
+            {profileSaved && (
+              <p role="status" aria-live="polite" className="flex items-center gap-2 rounded-xl border border-[#55766F]/25 bg-[#E2ECE6] px-4 py-3 text-sm font-semibold text-[#304B45]">
+                <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                {language === 'th' ? 'บันทึกการเปลี่ยนแปลงแล้ว' : language === 'zh' ? '更改已保存' : 'Changes Saved'}
+              </p>
+            )}
           </form>
         </div>
         </div>

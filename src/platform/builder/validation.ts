@@ -352,9 +352,13 @@ function validateHeroTextStyle(value: unknown, path: string, issues: BuilderVali
     pushIssue(issues, `${path}.font`, 'Unsupported font.');
   }
   const min = path.endsWith('.eyebrowStyle') ? 9 : 12;
-  const max = path.endsWith('.eyebrowStyle') || path.endsWith('.subtitleStyle') ? 42 : 108;
+  const max = path.endsWith('.eyebrowStyle') || path.endsWith('.subtitleStyle')
+    || path.includes('.subtitleLocaleStyles.') ? 42 : 108;
   if (value.size !== undefined && (typeof value.size !== 'number' || !Number.isInteger(value.size) || value.size < min || value.size > max)) {
     pushIssue(issues, `${path}.size`, `Font size must be ${min}–108px.`);
+  }
+  if (value.lineHeight !== undefined && (typeof value.lineHeight !== 'number' || !Number.isFinite(value.lineHeight) || value.lineHeight < 0.8 || value.lineHeight > 2.5)) {
+    pushIssue(issues, `${path}.lineHeight`, 'Line spacing must be 0.8–2.5.');
   }
   if (value.align !== undefined && !['left', 'center', 'right'].includes(String(value.align))) {
     pushIssue(issues, `${path}.align`, 'Unsupported alignment.');
@@ -457,6 +461,23 @@ function validateSection(
       if (value.props.eyebrow !== undefined) validateOptionalLocalizedText(value.props.eyebrow, `${path}.props.eyebrow`, issues, locales);
       for (const field of ['eyebrowStyle', 'titleStyle', 'subtitleStyle']) {
         if (value.props[field] !== undefined) validateHeroTextStyle(value.props[field], `${path}.props.${field}`, issues);
+      }
+      // Locale-specific style overrides may be absent in all legacy revisions.
+      // Validate entries independently so Thai and Chinese never borrow EN styles.
+      for (const field of ['titleLocaleStyles', 'subtitleLocaleStyles']) {
+        const localizedStyles = value.props[field];
+        if (localizedStyles === undefined) continue;
+        if (!isRecord(localizedStyles)) {
+          pushIssue(issues, `${path}.props.${field}`, 'Expected locale-keyed typography settings.');
+          continue;
+        }
+        for (const [locale, style] of Object.entries(localizedStyles)) {
+          if (locales && !locales.includes(locale)) {
+            pushIssue(issues, `${path}.props.${field}.${locale}`, 'Unsupported Site locale.');
+            continue;
+          }
+          validateHeroTextStyle(style, `${path}.props.${field}.${locale}`, issues);
+        }
       }
       if (value.props.titleLineStyles !== undefined) {
         if (!isRecord(value.props.titleLineStyles)) {

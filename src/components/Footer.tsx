@@ -64,6 +64,18 @@ export default function Footer({ onNavigate, variant = 'default' }: FooterProps)
   const handleAdminClick = () => onNavigate ? onNavigate('admin') : (window.location.hash = '#admin');
   const handleStaffClick = () => onNavigate ? onNavigate('staff') : (window.location.href = '/staff');
 
+  const legalLabels = language === 'th'
+    ? { terms: 'ข้อกำหนดการใช้งาน', privacy: 'นโยบายความเป็นส่วนตัว' }
+    : language === 'zh'
+      ? { terms: '使用条款', privacy: '隐私政策' }
+      : { terms: 'Terms of Use', privacy: 'Privacy Policy' };
+
+  const handleLegalLink = (event: React.MouseEvent<HTMLAnchorElement>, page: 'terms' | 'privacy') => {
+    if (!onNavigate || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    onNavigate(page);
+  };
+
   const staffLabel = language === 'th'
     ? 'เข้าสู่ระบบพนักงาน'
     : language === 'zh'
@@ -142,7 +154,13 @@ export default function Footer({ onNavigate, variant = 'default' }: FooterProps)
 
         <div className={`mt-8 border-t pt-8 ${dividerClass}`}>
           <div className={`flex flex-col items-center justify-between gap-4 text-sm md:flex-row ${mineral ? 'text-[#F4EFE5]/70' : 'text-primary-200'}`}>
-            <p>&copy; {new Date().getFullYear()} {t.footer.copyright}</p>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-5">
+              <p>&copy; {new Date().getFullYear()} {t.footer.copyright}</p>
+              <nav aria-label="Legal" className="flex items-center gap-4">
+                <a href="/terms" onClick={(event) => handleLegalLink(event, 'terms')} className={`underline-offset-4 transition hover:underline ${linkClass}`}>{legalLabels.terms}</a>
+                <a href="/privacy" onClick={(event) => handleLegalLink(event, 'privacy')} className={`underline-offset-4 transition hover:underline ${linkClass}`}>{legalLabels.privacy}</a>
+              </nav>
+            </div>
 
             {socialLinks.length > 0 && (
               <div className="flex items-center gap-3">

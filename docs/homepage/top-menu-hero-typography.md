@@ -55,3 +55,36 @@ Local Chromium preview was checked at 1440px desktop and 390px mobile. The exist
 - Default English menu labels are now **Baked** and **Beyond**. Thai and Chinese remain unchanged, as do the fixed navigation destinations. If an Admin has published customized menu labels, those still take precedence.
 - Default English hero tagline is now **Love for Baking. Shared with Everyone.**. This is the fallback when the published hero has no English tagline; explicit published text still takes precedence. The default is aligned across public hero, Builder preview and the optional English-only preset. Display respects the specified capitalization (no forced uppercase).
 - No Homepage Builder draft or published database revisions are changed by these default updates. They take effect on the public site only after production deployment.
+
+## 2026-10-07 — Preview fidelity, line spacing and EN/TH/ZH
+
+The **public Homepage** runs in Experience mode. Earlier Builder preview used a separate
+Hero mock with different layout breakpoints, section widths, image treatment, and
+headline spacing. Both **Live Draft** and **Preview Draft** now opt into rendering the
+*same* `HomepageExperiencePage` hero used on production, injected with the
+unsaved/saved Builder Hero section and active editor language. Only the Hero is
+guaranteed this shared composition: the website's outer navigation sits outside
+the Hero; other Builder section previews are still representations rather than
+pixel-exact Experience-mode reproductions.
+
+In the Bakery Hero section, use **Headline & subtitle language → EN / TH / 中文**.
+The tab switches the Builder preview language too. Each language has separate
+plain/rich headline and subtitle text, per-word formatting, line/font alignment,
+headline line styles, and **locale-specific headline and subtitle typography**
+(overriding legacy shared styles). Under each **Typography** control, set
+**Line spacing (× font size)**, from **0.8** to **2.5** (e.g., **0.9** tight,
+**1.5** airy), with blank preserving the previous style. Unitless CSS
+`line-height` applies consistently to natural text wrapping and explicit
+newlines in the actual public renderer.
+
+Thai/Chinese word formatting uses browser word segmentation where available;
+otherwise it falls back to whitespace segmentation. Text can still be styled
+in the rich-text selection editor on older browsers.
+
+Old published revisions remain valid: the extra fields are optional and
+legacy shared text styles still act as fallback. An existing Thai/Chinese
+plain headline is honored even without a `titleRichText` entry. No schema
+migration or changes to stored unpublished/published content are performed by
+this code change. As before, the public site shows the **published revision**,
+not unsaved or merely saved drafts. Content parity requires publishing and
+a matching locale/viewport.

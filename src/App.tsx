@@ -38,6 +38,7 @@ const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
+const LegalPage = lazy(() => import('./app/joko-today/legal/LegalPage'));
 
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
@@ -51,6 +52,8 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   gallery: '/gallery',
   'what-people-say': '/what-people-say',
   'how-it-works': '/how-it-works',
+  terms: '/terms',
+  privacy: '/privacy',
 };
 
 const PRIMARY_PATH_PAGES: Record<string, string> = Object.fromEntries(
@@ -201,6 +204,14 @@ function AppContent() {
         return;
       }
 
+      // Keep longer legal URLs valid for third-party integrations such as LINE.
+      if (path === '/terms-of-use' || path === '/privacy-policy') {
+        const canonical = path === '/terms-of-use' ? '/terms' : '/privacy';
+        window.history.replaceState({}, '', canonical);
+        setCurrentPage(path === '/terms-of-use' ? 'terms' : 'privacy');
+        return;
+      }
+
       const primaryPage = PRIMARY_PATH_PAGES[path];
       if (primaryPage) {
         setCurrentPage(primaryPage);
@@ -248,6 +259,12 @@ function AppContent() {
   }, [currentPage]);
 
   const handleNavigate = (page: string) => {
+    if (page === 'home-dashboard') {
+      // Account-page Back links return home and reopen the existing avatar menu.
+      handleNavigate('home');
+      window.dispatchEvent(new Event('joko-open-user-dashboard'));
+      return;
+    }
     if (page === 'home') {
       setNotebookTarget({ type: 'notebook.collection', slug: 'today' });
       setNotebookClosed(false);
@@ -414,6 +431,10 @@ function AppContent() {
         return <WhatPeopleSayPage onNavigate={handleNavigate} />;
       case 'how-it-works':
         return <HowItWorksPage onNavigate={handleNavigate} />;
+      case 'terms':
+        return <LegalPage kind="terms" onNavigate={handleNavigate} />;
+      case 'privacy':
+        return <LegalPage kind="privacy" onNavigate={handleNavigate} />;
       case 'admin':
         return <AdminPage onNavigate={handleNavigate} />;
       case 'product-staff':
@@ -451,7 +472,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
