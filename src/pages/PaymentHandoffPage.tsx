@@ -112,13 +112,15 @@ export default function PaymentHandoffPage({ token }: { token: string }) {
     return () => { cancelled = true; };
   }, [token]);
 
+  const handoffState = state?.state;
+
   useEffect(() => {
-    if (!state || !['pending', 'verifying'].includes(state.state)) return;
+    if (!handoffState || !['pending', 'verifying'].includes(handoffState)) return;
     const timer = window.setInterval(() => {
       void refresh().catch(() => undefined);
     }, 4000);
     return () => window.clearInterval(timer);
-  }, [refresh, state?.state]);
+  }, [handoffState, refresh]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
