@@ -368,6 +368,16 @@ function validateHeroTextStyle(value: unknown, path: string, issues: BuilderVali
   }
 }
 
+function validateHeroJourneyUrl(value: unknown, path: string, issues: BuilderValidationIssue[]) {
+  if (
+    !isNonEmptyString(value)
+    || (!value.startsWith('/') && !value.startsWith('#') && !/^https:\/\//i.test(value))
+  ) {
+    pushIssue(issues, path, 'Hero journey link must be an internal path, hash, or HTTPS URL.');
+  }
+}
+
+
 function validateSection(
   value: unknown,
   index: number,
@@ -455,6 +465,18 @@ function validateSection(
             )
           ) {
             pushIssue(issues, `${path}.props.notebookNote.linkUrl`, 'Hero notebook link must be an internal path, hash, or HTTPS URL.');
+          }
+        }
+      }
+      if (value.props.journeyLinks !== undefined) {
+        if (!isRecord(value.props.journeyLinks)) {
+          pushIssue(issues, `${path}.props.journeyLinks`, 'Hero journey links must be an object.');
+        } else {
+          for (const field of ['selectUrl', 'preorderUrl', 'pickupUrl']) {
+            const link = value.props.journeyLinks[field];
+            if (link !== undefined) {
+              validateHeroJourneyUrl(link, `${path}.props.journeyLinks.${field}`, issues);
+            }
           }
         }
       }
