@@ -2,6 +2,137 @@
 -- Direct PromptPay + EasySlip automated verification foundation.
 -- Customer-facing activation remains disabled by default in payment_settings.
 
+-- Extend the durable notification outbox for automatic payment confirmation.
+ALTER TABLE public.order_notification_events
+  DROP CONSTRAINT IF EXISTS order_notification_events_notification_type_check;
+
+ALTER TABLE public.order_notification_events
+  ADD CONSTRAINT order_notification_events_notification_type_check
+  CHECK (notification_type = ANY (ARRAY[
+    'customer_confirmation'::text,
+    'admin_new_order'::text,
+    'customer_cancellation'::text,
+    'payment_confirmation'::text
+  ]));
+
+CREATE OR REPLACE FUNCTION public.claim_order_notification(
+  p_order_id uuid,
+  p_notification_type text
+) RETURNS jsonb
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $
+DECLARE
+  v_event public.order_notification_events%ROWTYPE;
+BEGIN
+  IF p_order_id IS NULL
+     OR p_notification_type NOT IN (
+       'customer_confirmation',
+       'admin_new_order',
+       'customer_cancellation',
+       'payment_confirmation'
+     ) THEN
+    RETURN jsonb_build_object('outcome', 'invalid');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.orders o
+    WHERE o.id = p_order_id
+      AND COALESCE(o.purchase_type, 'online') = 'online'
+      AND (
+        (p_notification_type = 'customer_cancellation' AND o.status = 'cancelled')
+        OR (p_notification_type = 'payment_confirmation' AND o.payment_status = 'paid')
+        OR p_notification_type IN ('customer_confirmation', 'admin_new_order')
+      )
+  ) THEN
+    RETURN jsonb_build_object('outcome', 'unavailable');
+  END IF;
+
+  SELECT * INTO v_event
+  FROM public.order_notification_events
+  WHERE order_id = p_order_id
+    AND notification_type = p_notification_type
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('outcome', 'unavailable');
+  END IF;
+
+  IF v_event.status = 'sent' THEN
+    RETURN jsonb_build_object(
+      'outcome', 'already_sent',
+      'event_id', v_event.id,
+      'attempt_count', v_event.attempt_count,
+      'language', v_event.language
+    );
+  END IF;
+
+  IF v_event.status = 'uncertain' THEN
+    RETURN jsonb_build_object(
+      'outcome', 'uncertain',
+      'event_id', v_event.id,
+      'attempt_count', v_event.attempt_count,
+      'language', v_event.language
+    );
+  END IF;
+
+  IF v_event.status = 'processing'
+     AND v_event.claimed_at IS NOT NULL
+     AND v_event.claimed_at > now() - interval '5 minutes' THEN
+    RETURN jsonb_build_object(
+      'outcome', 'processing',
+      'event_id', v_event.id,
+      'attempt_count', v_event.attempt_count,
+      'language', v_event.language
+    );
+  END IF;
+
+  IF v_event.status = 'processing'
+     AND v_event.first_attempt_at IS NOT NULL
+     AND v_event.first_attempt_at <= now() - interval '23 hours' THEN
+    UPDATE public.order_notification_events
+    SET status = 'uncertain',
+        updated_at = now(),
+        last_error = COALESCE(
+          last_error,
+          'Processing outcome exceeded provider idempotency window'
+        )
+    WHERE id = v_event.id
+    RETURNING * INTO v_event;
+
+    RETURN jsonb_build_object(
+      'outcome', 'uncertain',
+      'event_id', v_event.id,
+      'attempt_count', v_event.attempt_count,
+      'language', v_event.language
+    );
+  END IF;
+
+  UPDATE public.order_notification_events
+  SET status = 'processing',
+      first_attempt_at = COALESCE(first_attempt_at, now()),
+      claimed_at = now(),
+      attempt_count = attempt_count + 1,
+      updated_at = now(),
+      last_error = NULL
+  WHERE id = v_event.id
+  RETURNING * INTO v_event;
+
+  RETURN jsonb_build_object(
+    'outcome', 'claimed',
+    'event_id', v_event.id,
+    'attempt_count', v_event.attempt_count,
+    'language', v_event.language
+  );
+END;
+$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) TO service_role;
+
 CREATE TABLE IF NOT EXISTS public.payment_settings (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
   online_promptpay_enabled boolean NOT NULL DEFAULT false,
@@ -275,6 +406,7 @@ DECLARE
   v_payment public.payment_transactions%ROWTYPE;
   v_order public.orders%ROWTYPE;
   v_redemption public.loyalty_redemptions%ROWTYPE;
+  v_language text := 'en';
   v_provider_ref text := NULLIF(btrim(COALESCE(p_provider_transaction_ref, '')), '');
 BEGIN
   IF v_role <> 'service_role' THEN
@@ -390,6 +522,28 @@ BEGIN
       updated_at = now()
   WHERE id = v_payment.id
   RETURNING * INTO v_payment;
+
+  SELECT CASE lower(COALESCE(up.preferred_language, 'en'))
+           WHEN 'th' THEN 'th'
+           WHEN 'zh' THEN 'zh'
+           ELSE 'en'
+         END
+  INTO v_language
+  FROM public.user_profiles up
+  WHERE up.id = v_order.customer_id;
+
+  v_language := COALESCE(v_language, 'en');
+
+  INSERT INTO public.order_notification_events (
+    order_id,
+    notification_type,
+    language
+  ) VALUES (
+    v_order.id,
+    'payment_confirmation',
+    v_language
+  )
+  ON CONFLICT (order_id, notification_type) DO NOTHING;
 
   RETURN jsonb_build_object(
     'payment', to_jsonb(v_payment),
