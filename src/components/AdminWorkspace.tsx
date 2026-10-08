@@ -14,6 +14,7 @@ import {
   QrCode,
   Rocket,
   Sparkles,
+  CreditCard,
   Users,
 } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
@@ -32,6 +33,7 @@ import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 import '../app/joko-today/admin/jokoAdmin.css';
 import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 import { InternalSignedInAccount } from './InternalSignedInAccount';
+import { EasySlipTestManagement } from './EasySlipTestManagement';
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
@@ -53,6 +55,7 @@ type WorkspaceTab =
   | 'pickup-dates'
   | 'pickup-rollout'
   | 'commerce-intelligence'
+  | 'payments-test'
   | 'loyalty';
 
 function workspaceTabFromLocation(): WorkspaceTab {
@@ -69,6 +72,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
   if (path.startsWith('/admin/pickup-dates')) return 'pickup-dates';
   if (path.startsWith('/admin/pickup-rollout')) return 'pickup-rollout';
   if (path.startsWith('/admin/commerce-intelligence')) return 'commerce-intelligence';
+  if (path.startsWith('/admin/payments-test')) return 'payments-test';
   if (path.startsWith('/admin/loyalty')) return 'loyalty';
   return 'cms';
 }
@@ -87,6 +91,7 @@ function workspacePath(tab: WorkspaceTab): string {
     case 'pickup-dates': return '/admin/pickup-dates';
     case 'pickup-rollout': return '/admin/pickup-rollout';
     case 'commerce-intelligence': return '/admin/commerce-intelligence';
+    case 'payments-test': return '/admin/payments-test';
     case 'loyalty': return '/admin/loyalty';
     case 'cms':
     default:
@@ -193,6 +198,10 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 <button type="button" onClick={() => selectWorkspaceTab('commerce-intelligence')} className={tabClass('commerce-intelligence')}>
                   <Sparkles className="h-4 w-4" />
                   Commerce Intelligence
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('payments-test')} className={tabClass('payments-test')}>
+                  <CreditCard className="h-4 w-4" />
+                  Payment Test
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('loyalty')} className={tabClass('loyalty')}>
                   <Gift className="h-4 w-4" />
@@ -308,6 +317,16 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             description="Configure pickup-aware recommendations and merchandising priorities without hard-coding commercial rules."
           >
             <CommerceIntelligenceManagement />
+          </AdminSection>
+        )}
+
+        {activeTab === 'payments-test' && (
+          <AdminSection
+            eyebrow="Payments"
+            title="EasySlip Verification Test"
+            description="Internal proof-of-concept for verifying a real payment slip against the registered JOKO receiving account. Test only; it does not update orders or payment status."
+          >
+            <EasySlipTestManagement />
           </AdminSection>
         )}
 
