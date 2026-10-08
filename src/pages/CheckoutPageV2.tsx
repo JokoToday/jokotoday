@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, Clock, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
 import { FitsYourPickupV2 } from '../components/FitsYourPickupV2';
 import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSuggestions';
@@ -91,6 +91,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [paymentVerified, setPaymentVerified] = useState(false);
 
   useEffect(() => {
     let cancelledLoad = false;
@@ -428,11 +429,25 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         <div className="w-full max-w-lg overflow-hidden rounded-[2.25rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/[.96] shadow-[0_18px_50px_rgba(59,74,69,0.08)]">
           <div className="border-b border-[#55766F]/[.12] bg-[#CFE3DF]/55 px-8 pb-6 pt-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/70 text-[#3F665E]">
-              <CheckCircle className="h-9 w-9" />
+              {onlinePaymentEnabled && !paymentVerified
+                ? <Clock className="h-8 w-8" />
+                : <CheckCircle className="h-9 w-9" />}
             </div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.confirmation.title}</h2>
-            <p className="mt-2 text-sm text-[#303532]/65">{t.confirmation.thankYou}</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
+              {onlinePaymentEnabled && !paymentVerified
+                ? (language === 'th' ? 'ดำเนินการชำระเงิน' : language === 'zh' ? '请完成付款' : 'Complete payment')
+                : t.confirmation.title}
+            </h2>
+            <p className="mt-2 text-sm text-[#303532]/65">
+              {onlinePaymentEnabled && !paymentVerified
+                ? (language === 'th'
+                    ? 'สินค้าได้รับการจองชั่วคราว คำสั่งซื้อจะยืนยันหลังตรวจสอบการชำระเงินเรียบร้อย'
+                    : language === 'zh'
+                      ? '商品已暂时保留。付款验证成功后，订单才会正式确认。'
+                      : 'Your items are temporarily reserved. The order is confirmed only after payment is verified.')
+                : t.confirmation.thankYou}
+            </p>
           </div>
 
           <div className="space-y-4 px-6 py-6 sm:px-8">
@@ -491,18 +506,21 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               <OnlinePromptPayPanel
                 orderId={orderId}
                 language={language}
+                onPaid={() => setPaymentVerified(true)}
               />
             )}
 
             {!onlinePaymentEnabled && (
               <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
             )}
-            <OrderPrintButtonById
-              orderId={orderId}
-              language={language}
-              getLabel={getLabel}
-              className="w-full justify-center py-3 text-sm"
-            />
+            {(!onlinePaymentEnabled || paymentVerified) && (
+              <OrderPrintButtonById
+                orderId={orderId}
+                language={language}
+                getLabel={getLabel}
+                className="w-full justify-center py-3 text-sm"
+              />
+            )}
             <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.confirmation.backToHome}</button>
             <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
           </div>
