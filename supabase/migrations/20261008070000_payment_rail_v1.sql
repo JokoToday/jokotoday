@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION public.claim_order_notification(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SET search_path TO 'public'
-AS $
+AS $payment$
 DECLARE
   v_event public.order_notification_events%ROWTYPE;
 BEGIN
@@ -126,7 +126,7 @@ BEGIN
     'language', v_event.language
   );
 END;
-$;
+$payment$;
 
 REVOKE EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.claim_order_notification(uuid,text) FROM anon;
@@ -564,7 +564,7 @@ CREATE OR REPLACE FUNCTION public.expire_payment_transaction_v1(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $
+AS $payment$
 DECLARE
   v_payment public.payment_transactions%ROWTYPE;
   v_order public.orders%ROWTYPE;
@@ -703,7 +703,7 @@ BEGIN
     'expired', true
   );
 END;
-$;
+$payment$;
 
 REVOKE ALL ON FUNCTION public.expire_payment_transaction_v1(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.expire_payment_transaction_v1(uuid) FROM anon;
@@ -715,7 +715,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $
+AS $payment$
 DECLARE
   v_row record;
   v_expired integer := 0;
@@ -740,7 +740,7 @@ BEGIN
 
   RETURN jsonb_build_object('expired', v_expired, 'skipped', v_skipped);
 END;
-$;
+$payment$;
 
 REVOKE ALL ON FUNCTION public.expire_unpaid_payment_transactions_v1() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.expire_unpaid_payment_transactions_v1() FROM anon;
