@@ -34,11 +34,15 @@ function formatPickupDate(dateString: string, language: 'en' | 'th' | 'zh'): str
 
 function getTerminalStatus(
   status: string,
-  language: 'en' | 'th' | 'zh'
+  language: 'en' | 'th' | 'zh',
+  cancellationReasonCode?: string | null
 ): { label: string; style: React.CSSProperties } | null {
   if (status === 'cancelled') {
+    const timedOut = cancellationReasonCode === 'payment_timeout';
     return {
-      label: language === 'th' ? 'ยกเลิกแล้ว' : language === 'zh' ? '已取消' : 'Cancelled',
+      label: timedOut
+        ? (language === 'th' ? 'ยกเลิกอัตโนมัติ: ไม่ชำระเงิน' : language === 'zh' ? '因未付款自动取消' : 'Cancelled automatically: unpaid')
+        : (language === 'th' ? 'ยกเลิกแล้ว' : language === 'zh' ? '已取消' : 'Cancelled'),
       style: { background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' },
     };
   }
@@ -63,7 +67,7 @@ function getTerminalStatus(
 export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps) {
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const total = isOnline ? order.total_amount : (order.walk_in_amount || order.total_amount);
-  const terminalStatus = getTerminalStatus(order.status, language);
+  const terminalStatus = getTerminalStatus(order.status, language, order.cancellation_reason_code);
   const unresolvedPastPickup = isOnline
     && ['pending', 'confirmed', 'ready'].includes(order.status)
     && isPickupDatePast(order.pickup_date);

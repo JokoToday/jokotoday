@@ -22,6 +22,8 @@ interface MyOrdersListProps {
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
   onPayRequest?: (order: Order) => void;
+  onReactivateRequest?: (order: Order) => void;
+  reactivatingOrderId?: string | null;
 }
 
 function isCurrentOrder(order: Order): boolean {
@@ -74,6 +76,8 @@ interface OrderColumnProps {
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
   onPayRequest?: (order: Order) => void;
+  onReactivateRequest?: (order: Order) => void;
+  reactivatingOrderId?: string | null;
   emptyMessage: string;
   sort: SortOption;
   onSortChange: (s: SortOption) => void;
@@ -95,6 +99,8 @@ function OrderColumn({
   onNavigate,
   onCancelRequest,
   onPayRequest,
+  onReactivateRequest,
+  reactivatingOrderId,
   emptyMessage,
   sort,
   onSortChange,
@@ -215,6 +221,11 @@ function OrderColumn({
                       && (order.purchase_type === 'online' || !order.purchase_type)
                       && order.payment_status !== 'paid'
                       && CURRENT_STATUSES.has(order.status);
+                    const showReactivate = Boolean(onReactivateRequest)
+                      && (order.purchase_type === 'online' || !order.purchase_type)
+                      && order.status === 'cancelled'
+                      && order.payment_status !== 'paid'
+                      && order.cancellation_reason_code === 'payment_timeout';
 
                     return (
                       <div key={order.id} className="space-y-1.5">
@@ -224,7 +235,7 @@ function OrderColumn({
                           getLabel={getLabel}
                           onClick={() => setSelectedOrder(order)}
                         />
-                        {(showPay || showPrint || showRepeat) && (
+                        {(showPay || showReactivate || showPrint || showRepeat) && (
                           <div className="flex justify-end gap-2 pr-1 flex-wrap">
                             {showPay && onPayRequest && (
                               <button
@@ -233,6 +244,18 @@ function OrderColumn({
                                 className="rounded-xl bg-[#C76624] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#A95120]"
                               >
                                 {language === 'th' ? 'ชำระเงิน' : language === 'zh' ? '完成付款' : 'Complete payment'}
+                              </button>
+                            )}
+                            {showReactivate && onReactivateRequest && (
+                              <button
+                                type="button"
+                                onClick={() => onReactivateRequest(order)}
+                                disabled={reactivatingOrderId === order.id}
+                                className="rounded-xl bg-[#3F665E] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#304B45] disabled:opacity-60"
+                              >
+                                {reactivatingOrderId === order.id
+                                  ? (language === 'th' ? 'กำลังเปิดใหม่…' : language === 'zh' ? '正在重新激活…' : 'Reactivating…')
+                                  : (language === 'th' ? 'เปิดคำสั่งซื้อนี้อีกครั้ง' : language === 'zh' ? '重新激活订单' : 'Reactivate order')}
                               </button>
                             )}
                             {showPrint && (
@@ -303,6 +326,8 @@ export function MyOrdersList({
   onNavigate,
   onCancelRequest,
   onPayRequest,
+  onReactivateRequest,
+  reactivatingOrderId,
 }: MyOrdersListProps) {
   const [currentSort, setCurrentSort] = useState<SortOption>('newest');
   const [pastSort, setPastSort] = useState<SortOption>('newest');
@@ -356,6 +381,8 @@ export function MyOrdersList({
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}
         onPayRequest={onPayRequest}
+        onReactivateRequest={onReactivateRequest}
+        reactivatingOrderId={reactivatingOrderId}
         emptyMessage={emptyCurrentMsg}
         sort={currentSort}
         onSortChange={setCurrentSort}
@@ -378,6 +405,8 @@ export function MyOrdersList({
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}
         onPayRequest={onPayRequest}
+        onReactivateRequest={onReactivateRequest}
+        reactivatingOrderId={reactivatingOrderId}
         emptyMessage={emptyPastMsg}
         sort={pastSort}
         onSortChange={setPastSort}
