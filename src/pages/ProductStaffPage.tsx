@@ -1,8 +1,9 @@
 import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ExternalLink, KeyRound, Loader2, LogOut, Mail, PackageSearch, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ExternalLink, KeyRound, Loader2, LogOut, Mail, PackageSearch, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { ProductEditor } from '../components/products/ProductEditor';
+import { ProductCatalogueFilters, filterProductCatalogue } from '../components/products/ProductCatalogueFilters';
 import { getCategories, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { getProductStaffProducts } from '../lib/productStaffService';
 import '../app/joko-today/admin/jokoAdmin.css';
@@ -47,16 +48,10 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
     if (user && canEnter) void refreshCatalogue();
   }, [user?.id, canEnter, refreshCatalogue]);
 
-  const filteredProducts = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return products.filter((product) => {
-      if (categoryId && product.category_id !== categoryId) return false;
-      if (!needle) return true;
-      return [product.name_en, product.name_th, product.name_zh, product.slug]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(needle));
-    });
-  }, [products, query, categoryId]);
+  const filteredProducts = useMemo(
+    () => filterProductCatalogue(products, query, categoryId),
+    [products, query, categoryId],
+  );
 
   if (loading || (user && profileLoading && !canEnter)) {
     return <ProductStaffGate><GateStatus message="Checking Product Staff access…" /></ProductStaffGate>;
@@ -131,30 +126,15 @@ export function ProductStaffPage({ onNavigate }: ProductStaffPageProps) {
             </p>
           </div>
 
-          <div className="joko-admin-paper-card p-4 sm:p-5">
-            <div className="grid gap-3 md:grid-cols-[1fr_260px]">
-              <label className="relative block">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search products…"
-                  className="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-3 text-sm focus:border-transparent focus:ring-2 focus:ring-[#55766F]"
-                />
-              </label>
-              <select
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-[#55766F]"
-              >
-                <option value="">All categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.title_en}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <ProductCatalogueFilters
+            query={query}
+            categoryId={categoryId}
+            categories={categories}
+            totalCount={products.length}
+            filteredCount={filteredProducts.length}
+            onQueryChange={setQuery}
+            onCategoryChange={setCategoryId}
+          />
 
           {catalogueError && (
             <div className="mt-5 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
