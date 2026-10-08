@@ -104,6 +104,13 @@ const DEFAULT_HERO_NOTE: HomeHeroNotebookNote = {
   bodySize: 14,
 };
 
+const DEFAULT_HERO_JOURNEY_LINKS = {
+  selectUrl: '/products',
+  preorderUrl: '/how-it-works',
+  pickupUrl: '/how-it-works',
+} as const;
+
+
 function localized(value: LocalizedText, locale: string, fallback: string): string {
   return value[locale] ?? value[fallback] ?? Object.values(value)[0] ?? '';
 }
@@ -1224,29 +1231,36 @@ function SectionEditor({
     const patch = (next: Partial<typeof props>) => onChange({ ...section, props: { ...props, ...next } });
     const headlineStyle = resolveHeroLocaleStyle(props.titleStyle, props.titleLocaleStyles, locale);
     const subtitleStyle = resolveHeroLocaleStyle(props.subtitleStyle, props.subtitleLocaleStyles, locale);
-    const applyBakedBeyondPreset = () => {
-      // English only; leave the existing Thai/Chinese text, notebook and
-      // subtitle intact until Admin chooses to edit those translations.
-      const en = 'Baked & Beyond\nfor a\nBrighter Today';
+    const applySelectedGoodnessPreset = () => {
+      // English only; leave Thai/Chinese translations untouched until Admin
+      // chooses to revise them for the broader Selected Goodness concept.
+      const en = 'Selected Goodness\nfor a\nBrighter Today';
+      const subtitle = 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.';
       patch({
-        eyebrow: { ...props.eyebrow, en: 'Love for Baking. Shared with Everyone.' },
+        eyebrow: { ...props.eyebrow, en: 'Love for good things. Shared with everyone.' },
         title: { ...props.title, en },
         titleRichText: {
           ...props.titleRichText,
           en: [
-            { text: 'Baked & Beyond\nfor a\n' },
-            { text: 'Brighter', marks: { font: 'handwritten', italic: true, color: 'accent' } },
-            { text: ' ' },
-            { text: 'Today', marks: { color: 'text', bold: false, italic: false, font: 'display' } },
+            { text: 'Selected Goodness\nfor a\n' },
+            { text: 'Brighter', marks: { italic: true, color: 'accent' } },
+            { text: ' Today' },
           ],
         },
         titleLineStyles: {
           ...props.titleLineStyles,
           en: [
-            { align: 'center', size: 58 },
+            { size: 54 },
             { align: 'center', size: 30 },
-            { align: 'center', size: 61 },
+            { size: 55 },
           ],
+        },
+        subtitle: { ...props.subtitle, en: subtitle },
+        subtitleRichText: { ...props.subtitleRichText, en: [{ text: subtitle }] },
+        journeyLinks: {
+          selectUrl: props.journeyLinks?.selectUrl || DEFAULT_HERO_JOURNEY_LINKS.selectUrl,
+          preorderUrl: props.journeyLinks?.preorderUrl || DEFAULT_HERO_JOURNEY_LINKS.preorderUrl,
+          pickupUrl: props.journeyLinks?.pickupUrl || DEFAULT_HERO_JOURNEY_LINKS.pickupUrl,
         },
       });
     };
@@ -1275,8 +1289,8 @@ function SectionEditor({
             <div className="rounded-xl border border-[#C76624]/25 bg-[#FFF1E5]/65 p-3">
               <p className="text-xs text-[#304B45]">Use JOKO’s proposed three-line hero as an editable starting point.</p>
               <button type="button" className="mt-2 rounded-lg bg-[#C76624] px-3 py-2 text-xs font-semibold text-white"
-                onClick={applyBakedBeyondPreset}>Apply “Baked & Beyond” preset (EN)</button>
-              <p className="mt-2 text-[11px] text-[#304B45]/65">Replaces English headline and tagline only. Save Draft and Publish separately.</p>
+                onClick={applySelectedGoodnessPreset}>Apply “Selected Goodness” preset (EN)</button>
+              <p className="mt-2 text-[11px] text-[#304B45]/65">Sets the English tagline, three-line headline, subtitle and default journey links. Save Draft and Publish separately.</p>
             </div>
           )}
           <div>
@@ -1337,7 +1351,7 @@ function SectionEditor({
               value={[{ text: (props.eyebrow?.[locale]?.trim() || (locale === 'th'
                 ? 'เบเกอรี่ทำมือ • เรื่องราวใกล้ตัว • วันที่อ่อนโยนกว่า'
                 : locale === 'zh' ? '手作烘焙 • 身边故事 • 更温柔的一天'
-                  : 'Love for Baking. Shared with Everyone.')) }]}
+                  : 'Love for good things. Shared with everyone.')) }]}
               style={props.eyebrowStyle} className="tracking-[0.15em]" />
             <HeroTypography as="h1" kind="headline"
               value={localizeRichText(props.titleRichText, locale, fallbackLocale, localized(props.title, locale, fallbackLocale))}
@@ -1349,6 +1363,49 @@ function SectionEditor({
           </div>
           <TextField label="Primary button" value={localized(props.primaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ primaryActionLabel: withLocale(props.primaryActionLabel, locale, value) })} />
           <TextField label="Secondary button" value={localized(props.secondaryActionLabel, locale, fallbackLocale)} onChange={(value) => patch({ secondaryActionLabel: withLocale(props.secondaryActionLabel, locale, value) })} />
+          <details className="rounded-xl border border-[#55766F]/12 bg-white/60 p-3" open>
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">
+              Select · Pre-Order · Pickup links
+            </summary>
+            <div className="mt-4 space-y-3">
+              <TextField
+                label="Select URL"
+                value={props.journeyLinks?.selectUrl || DEFAULT_HERO_JOURNEY_LINKS.selectUrl}
+                onChange={(selectUrl) => patch({
+                  journeyLinks: {
+                    ...DEFAULT_HERO_JOURNEY_LINKS,
+                    ...props.journeyLinks,
+                    selectUrl: selectUrl.trim(),
+                  },
+                })}
+              />
+              <TextField
+                label="Pre-Order URL"
+                value={props.journeyLinks?.preorderUrl || DEFAULT_HERO_JOURNEY_LINKS.preorderUrl}
+                onChange={(preorderUrl) => patch({
+                  journeyLinks: {
+                    ...DEFAULT_HERO_JOURNEY_LINKS,
+                    ...props.journeyLinks,
+                    preorderUrl: preorderUrl.trim(),
+                  },
+                })}
+              />
+              <TextField
+                label="Pickup URL"
+                value={props.journeyLinks?.pickupUrl || DEFAULT_HERO_JOURNEY_LINKS.pickupUrl}
+                onChange={(pickupUrl) => patch({
+                  journeyLinks: {
+                    ...DEFAULT_HERO_JOURNEY_LINKS,
+                    ...props.journeyLinks,
+                    pickupUrl: pickupUrl.trim(),
+                  },
+                })}
+              />
+              <p className="text-[11px] leading-4 text-[#303532]/55">
+                Use an internal path such as /products, a #section link, or an HTTPS URL. These destinations are shared across EN, TH and 中文.
+              </p>
+            </div>
+          </details>
           <HeroNotebookNoteEditor
             note={props.notebookNote}
             locale={locale}
