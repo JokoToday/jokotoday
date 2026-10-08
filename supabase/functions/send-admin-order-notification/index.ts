@@ -37,6 +37,8 @@ interface Order {
   notes: string | null;
   created_at: string;
   loyalty_points_earned: number | null;
+  payment_status: string;
+  payment_method?: string | null;
 }
 
 interface PickupLocation {
@@ -176,10 +178,29 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return jsonResponse(req, 400, { error: "Invalid JSON body" }); }
   const orderId = body.order_id;
   if (!isValidUuid(orderId)) return jsonResponse(req, 400, { error: "Invalid order_id" });
-  const { data: orderData, error: orderError } = await supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned").eq("id", orderId).eq("customer_id", user.id).eq("purchase_type", "online").maybeSingle();
+  const { data: orderData, error: orderError } = await supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned, payment_status, payment_method").eq("id", orderId).eq("customer_id", user.id).eq("purchase_type", "online").maybeSingle();
   if (orderError) { console.error("SEC-005: admin notification order lookup failed", orderError.message); return jsonResponse(req, 500, { error: "Notification service unavailable" }); }
   if (!orderData) return jsonResponse(req, 404, { error: "Order not found" });
   const order = orderData as Order;
+
+  const { data: paymentSetting, error: paymentSettingError } = await supabase
+    .from("payment_settings")
+    .select("online_promptpay_enabled")
+    .eq("id", true)
+    .maybeSingle();
+
+  if (paymentSettingError && paymentSettingError.code !== "PGRST116") {
+    console.warn("Admin notification payment setting lookup failed", paymentSettingError.message);
+  }
+
+  if (paymentSetting?.online_promptpay_enabled === true && order.payment_status !== "paid") {
+    return jsonResponse(req, 202, {
+      success: true,
+      status: "payment_pending",
+      message: "Admin order notification is held until online payment is verified.",
+    });
+  }
+
   const claimMode = await claimNotification(supabase, order.id, TYPE);
   let eventId: string | null = null;
   if (claimMode.mode === "error") { console.error("SEC-005: admin notification claim failed", claimMode.error); return jsonResponse(req, 500, { error: "Notification service unavailable" }); }
