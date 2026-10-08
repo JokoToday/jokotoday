@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
@@ -8,6 +8,8 @@ import { CMSProduct } from '../lib/cmsService';
 import { cancelOnlineOrderCompatible } from '../lib/orderServiceV2';
 import { Order, PickupDay, PickupLocation } from '../components/orders/OrderTypes';
 import { MyOrdersList } from '../components/orders/MyOrdersList';
+import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
+import { getPaymentSettings } from '../lib/paymentService';
 
 interface MyOrdersPageProps {
   onNavigate: (page: string) => void;
@@ -26,9 +28,31 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
   const [cancelError, setCancelError] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [paymentTarget, setPaymentTarget] = useState<Order | null>(null);
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
 
   useEffect(() => {
     if (user) loadAll();
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setOnlinePaymentEnabled(false);
+      return;
+    }
+
+    void getPaymentSettings()
+      .then((settings) => {
+        if (!cancelled) setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setOnlinePaymentEnabled(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const loadAll = async () => {
@@ -160,11 +184,32 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
                 getLabel={getLabel}
                 onNavigate={onNavigate}
                 onCancelRequest={openCancelModal}
+                onPayRequest={onlinePaymentEnabled ? setPaymentTarget : undefined}
               />
             )}
           </div>
         </div>
       </div>
+
+      {paymentTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+          <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-[#FFF9EE] p-4 shadow-2xl sm:p-6">
+            <button
+              type="button"
+              onClick={() => setPaymentTarget(null)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/80 p-2 text-[#303532]/65 transition hover:bg-white"
+              aria-label="Close payment"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <OnlinePromptPayPanel
+              orderId={paymentTarget.id}
+              language={language}
+              onPaid={() => void loadAll()}
+            />
+          </div>
+        </div>
+      )}
 
       {cancelTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
