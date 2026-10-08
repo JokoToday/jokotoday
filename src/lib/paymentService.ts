@@ -125,3 +125,86 @@ export async function verifyPaymentSlip(
 
   return payload;
 }
+
+
+export type PaymentHandoff = {
+  handoffUrl: string;
+  expiresAt: string;
+  amount: number;
+  currency: string;
+  orderNumber: string;
+};
+
+export type PaymentHandoffState = {
+  state: 'pending' | 'verifying' | 'verified' | 'expired' | 'cancelled';
+  orderNumber: string;
+  amount: number;
+  currency: string;
+  expiresAt: string;
+  pickupDate?: string | null;
+};
+
+export async function createPaymentHandoff(paymentTransactionId: string): Promise<PaymentHandoff> {
+  const { data, error } = await supabase.functions.invoke('create-payment-handoff', {
+    body: { paymentTransactionId },
+  });
+
+  if (error) throw error;
+  if (!data?.handoffUrl) throw new Error(data?.error || 'Could not create phone payment handoff.');
+  return data as PaymentHandoff;
+}
+
+export async function getPaymentTransactionStatus(paymentTransactionId: string): Promise<PaymentTransaction['status']> {
+  const { data, error } = await supabase
+    .from('payment_transactions')
+    .select('status')
+    .eq('id', paymentTransactionId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.status) throw new Error('Payment status is unavailable.');
+  return data.status as PaymentTransaction['status'];
+}
+
+export async function resolvePaymentHandoff(token: string): Promise<PaymentHandoffState> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvhualoeboobulwgmkla.supabase.co';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const response = await fetch(`${supabaseUrl}/functions/v1/resolve-payment-handoff`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(anonKey ? { apikey: anonKey } : {}),
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const payload = await response.json().catch(() => null) as (PaymentHandoffState & { error?: string }) | null;
+  if (!payload || !response.ok) throw new Error(payload?.error || 'Could not open this payment handoff.');
+  return payload;
+}
+
+export async function verifyPaymentHandoffSlip(
+  token: string,
+  image: File,
+): Promise<PaymentVerificationResult> {
+  const formData = new FormData();
+  formData.append('token', token);
+  formData.append('image', image);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvhualoeboobulwgmkla.supabase.co';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const response = await fetch(`${supabaseUrl}/functions/v1/verify-payment-handoff-slip`, {
+    method: 'POST',
+    headers: anonKey ? { apikey: anonKey } : undefined,
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => null) as PaymentVerificationResult | null;
+  if (!payload) throw new Error('Payment verification did not return a response.');
+
+  if (!response.ok && response.status !== 202) {
+    throw new Error(payload.message || payload.error || 'Payment verification failed.');
+  }
+
+  return payload;
+}
