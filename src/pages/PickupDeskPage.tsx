@@ -99,7 +99,7 @@ const getBangkokToday = () => {
 };
 
 const paymentComplete = (order: Order) => (
-  order.payment_status === 'paid' && ['cash', 'qr_code', 'qr'].includes(order.payment_method || '')
+  order.payment_status === 'paid' && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method || '')
 );
 
 const amountDue = (order: Order) => Math.max(
