@@ -288,9 +288,19 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {copy.title}
+            {intent?.qrMode === 'kshop_easyslip'
+              ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
+              : copy.title}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-[#303532]/65">{copy.intro}</p>
+          <p className="mt-1 text-sm leading-6 text-[#303532]/65">
+            {intent?.qrMode === 'kshop_easyslip'
+              ? (language === 'th'
+                  ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
+                  : language === 'zh'
+                    ? '扫描商户二维码完成付款，然后上传银行回执。交易验证成功后，JOKO 才会确认订单。'
+                    : 'Scan the merchant QR, complete the transfer, then upload the bank slip. JOKO confirms the order only after the banking transaction is verified.')
+              : copy.intro}
+          </p>
         </div>
       </div>
 
@@ -376,7 +386,15 @@ export function OnlinePromptPayPanel({
           </div>
         )}
 
-        <p className="mt-3 text-xs leading-5 text-[#303532]/50">{copy.secure}</p>
+        <p className="mt-3 text-xs leading-5 text-[#303532]/50">
+          {intent?.qrMode === 'kshop_easyslip'
+            ? (language === 'th'
+                ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
+                : language === 'zh'
+                  ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
+                  : 'This K SHOP QR is tied to the registered merchant account; EasySlip automatically checks the receiver, exact amount and duplicate use.')
+            : copy.secure}
+        </p>
       </div>
     </div>
   );
