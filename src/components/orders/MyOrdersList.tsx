@@ -21,6 +21,7 @@ interface MyOrdersListProps {
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
+  onPayRequest?: (order: Order) => void;
 }
 
 function isCurrentOrder(order: Order): boolean {
@@ -72,6 +73,7 @@ interface OrderColumnProps {
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
+  onPayRequest?: (order: Order) => void;
   emptyMessage: string;
   sort: SortOption;
   onSortChange: (s: SortOption) => void;
@@ -92,6 +94,7 @@ function OrderColumn({
   getLabel,
   onNavigate,
   onCancelRequest,
+  onPayRequest,
   emptyMessage,
   sort,
   onSortChange,
@@ -208,6 +211,10 @@ function OrderColumn({
                   {dayOrders.map(order => {
                     const showPrint = canPrintOrder(order);
                     const showRepeat = allowRepeatOrder && canRepeatOrder(order);
+                    const showPay = Boolean(onPayRequest)
+                      && (order.purchase_type === 'online' || !order.purchase_type)
+                      && order.payment_status !== 'paid'
+                      && CURRENT_STATUSES.has(order.status);
 
                     return (
                       <div key={order.id} className="space-y-1.5">
@@ -217,8 +224,17 @@ function OrderColumn({
                           getLabel={getLabel}
                           onClick={() => setSelectedOrder(order)}
                         />
-                        {(showPrint || showRepeat) && (
+                        {(showPay || showPrint || showRepeat) && (
                           <div className="flex justify-end gap-2 pr-1 flex-wrap">
+                            {showPay && onPayRequest && (
+                              <button
+                                type="button"
+                                onClick={() => onPayRequest(order)}
+                                className="rounded-xl bg-[#C76624] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#A95120]"
+                              >
+                                {language === 'th' ? 'ชำระเงิน' : language === 'zh' ? '完成付款' : 'Complete payment'}
+                              </button>
+                            )}
                             {showPrint && (
                               <PrintOrderConfirmationButton
                                 order={order}
@@ -286,6 +302,7 @@ export function MyOrdersList({
   getLabel,
   onNavigate,
   onCancelRequest,
+  onPayRequest,
 }: MyOrdersListProps) {
   const [currentSort, setCurrentSort] = useState<SortOption>('newest');
   const [pastSort, setPastSort] = useState<SortOption>('newest');
@@ -338,6 +355,7 @@ export function MyOrdersList({
         getLabel={getLabel}
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}
+        onPayRequest={onPayRequest}
         emptyMessage={emptyCurrentMsg}
         sort={currentSort}
         onSortChange={setCurrentSort}
@@ -359,6 +377,7 @@ export function MyOrdersList({
         getLabel={getLabel}
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}
+        onPayRequest={onPayRequest}
         emptyMessage={emptyPastMsg}
         sort={pastSort}
         onSortChange={setPastSort}
