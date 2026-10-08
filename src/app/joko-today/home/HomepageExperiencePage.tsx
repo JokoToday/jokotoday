@@ -1,9 +1,9 @@
 import {
   ArrowRight,
   PlayCircle,
-  Heart,
-  Leaf,
+  CalendarCheck,
   MapPin,
+  MousePointer2,
   ShoppingBasket,
 } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -44,12 +44,12 @@ const copy = {
     headline2: 'for a',
     headlineAccent: 'brighter',
     headline3: 'tomorrow.',
-    intro: 'Thoughtfully baked in small batches. Pre-order online and pick up fresh at our JOKO locations.',
+    intro: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
     products: 'Explore the Bakery',
     howItWorks: 'How it works',
-    realIngredients: 'Real ingredients',
-    preorderPickup: 'Small batches',
-    strongerCommunity: 'A kinder tomorrow',
+    select: 'Select',
+    preOrder: 'Pre-Order',
+    pickup: 'Pickup',
     bakeryAlt: 'Watercolor illustration of JOKO Bakery.',
   },
   th: {
@@ -61,9 +61,9 @@ const copy = {
     intro: 'อบอย่างตั้งใจเป็นล็อตเล็ก ๆ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของ JOKO',
     products: 'สำรวจเบเกอรี่',
     howItWorks: 'วิธีสั่งซื้อ',
-    realIngredients: 'วัตถุดิบจริง',
-    preorderPickup: 'อบล็อตเล็ก',
-    strongerCommunity: 'พรุ่งนี้ที่อ่อนโยนกว่า',
+    select: 'เลือก',
+    preOrder: 'สั่งล่วงหน้า',
+    pickup: 'รับสินค้า',
     bakeryAlt: 'ภาพสีน้ำของ JOKO Bakery',
   },
   zh: {
@@ -75,9 +75,9 @@ const copy = {
     intro: '小批量用心烘焙。线上预订，到 JOKO 取货点领取新鲜出炉的面包。',
     products: '探索烘焙坊',
     howItWorks: '如何订购',
-    realIngredients: '真实食材',
-    preorderPickup: '小批量烘焙',
-    strongerCommunity: '更温柔的明天',
+    select: '选择',
+    preOrder: '预订',
+    pickup: '取货',
     bakeryAlt: 'JOKO Bakery 的水彩插画',
   },
 } as const;
@@ -287,16 +287,16 @@ export function HomepageExperiencePage({
 
                 <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
                   <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
-                    <Leaf className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.realIngredients}</span>
+                    <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
+                    <span>{labels.select}</span>
                   </div>
                   <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
-                    <MapPin className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.preorderPickup}</span>
+                    <CalendarCheck className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
+                    <span>{labels.preOrder}</span>
                   </div>
                   <div className="flex items-center gap-2 px-1">
-                    <Heart className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.strongerCommunity}</span>
+                    <MapPin className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
+                    <span>{labels.pickup}</span>
                   </div>
                 </div>
 
