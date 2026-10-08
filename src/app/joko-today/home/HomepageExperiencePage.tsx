@@ -39,12 +39,12 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 
 const copy = {
   en: {
-    kicker: 'Love for Baking. Shared with Everyone.',
-    headline1: 'Good bread',
-    headline2: 'for a',
-    headlineAccent: 'brighter',
-    headline3: 'tomorrow.',
-    intro: 'Thoughtfully baked in small batches. Pre-order online and pick up fresh at our JOKO locations.',
+    kicker: 'Love for good things. Shared with everyone.',
+    headline1: 'Selected Goodness',
+    headline2: 'Today.',
+    headlineAccent: 'Brighter',
+    headline3: '',
+    intro: 'We make it - We find it - We find the people who make it',
     products: 'Explore the Bakery',
     howItWorks: 'How it works',
     realIngredients: 'Real ingredients',
@@ -109,11 +109,17 @@ export function HomepageExperiencePage({
   const eyebrow = publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.eyebrow?.[lang]?.trim() || labels.kicker
     : labels.kicker;
-  const headlineFallback: BuilderRichText = [
-    { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
-    { text: labels.headlineAccent, marks: { color: 'accent' } },
-    ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
-  ];
+  const headlineFallback: BuilderRichText = lang === 'en'
+    ? [
+        { text: labels.headline1 + '\n' },
+        { text: labels.headlineAccent, marks: { color: 'accent' } },
+        { text: ' ' + labels.headline2 },
+      ]
+    : [
+        { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
+        { text: labels.headlineAccent, marks: { color: 'accent' } },
+        ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
+      ];
   const titleRuns = publishedTitleRichText ?? headlineFallback;
   const subtitleRuns = publishedHero?.type === 'home.hero.v1'
     ? localizeRichText(publishedHero.props.subtitleRichText, lang, 'en', heroIntro)
