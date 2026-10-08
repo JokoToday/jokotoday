@@ -29,6 +29,7 @@ import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
 import { PaymentVerificationTest } from './PaymentVerificationTest';
+import { PaymentSettingsManagement } from './PaymentSettingsManagement';
 import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
 import '../app/joko-today/admin/jokoAdmin.css';
@@ -323,10 +324,13 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         {activeTab === 'payment-test' && (
           <AdminSection
             eyebrow="Payments"
-            title="EasySlip Verification Test"
-            description="Private proof-of-concept tool for verifying a real bank slip against the registered JOKO receiving account. This does not update orders."
+            title="Payments"
+            description="Control the PromptPay + EasySlip rollout and keep the private verification proof-of-concept available for diagnostics."
           >
-            <PaymentVerificationTest />
+            <div className="space-y-6">
+              <PaymentSettingsManagement />
+              <PaymentVerificationTest />
+            </div>
           </AdminSection>
         )}
 
