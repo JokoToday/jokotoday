@@ -102,9 +102,13 @@ const paymentComplete = (order: Order) => (
   order.payment_status === 'paid' && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method || '')
 );
 
-const paymentMethodLabel = (order: Order, language: 'en' | 'th') => {
-  if (order.payment_method === 'cash') return language === 'en' ? 'Cash' : 'เงินสด';
-  if (order.payment_method === 'promptpay_online') return language === 'en' ? 'PromptPay Online' : 'พร้อมเพย์ออนไลน์';
+const paymentMethodLabel = (order: Order, language: 'en' | 'th' | 'zh') => {
+  if (order.payment_method === 'cash') {
+    return language === 'th' ? 'เงินสด' : language === 'zh' ? '现金' : 'Cash';
+  }
+  if (order.payment_method === 'promptpay_online') {
+    return language === 'th' ? 'พร้อมเพย์ออนไลน์' : language === 'zh' ? 'PromptPay 在线' : 'PromptPay Online';
+  }
   return 'QR';
 };
 
