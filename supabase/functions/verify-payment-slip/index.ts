@@ -362,6 +362,33 @@ Deno.serve(async (req: Request) => {
       }, 409);
     }
 
+    try {
+      const notificationResponse = await fetch(
+        `${requiredEnv("SUPABASE_URL")}/functions/v1/send-payment-confirmation`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: authorization,
+            apikey: requiredEnv("SUPABASE_ANON_KEY"),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ order_id: order.id }),
+        },
+      );
+
+      if (!notificationResponse.ok && notificationResponse.status !== 202) {
+        console.error("Payment confirmation notification could not be sent", {
+          orderId: order.id,
+          status: notificationResponse.status,
+        });
+      }
+    } catch (notificationError) {
+      console.error("Payment confirmation notification failed after successful payment", {
+        orderId: order.id,
+        message: notificationError instanceof Error ? notificationError.message : String(notificationError),
+      });
+    }
+
     return jsonResponse({
       state: "verified",
       payment_status: finalized?.order?.payment_status || "paid",
