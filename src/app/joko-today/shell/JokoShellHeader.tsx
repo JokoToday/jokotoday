@@ -169,7 +169,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
 
   return (
     <>
-      <header className={`relative z-40 bg-[#CFE3DF] ${activeSection === 'today' ? '' : 'border-b border-[#55766F]/15'}`}>
+      <header className={`sticky top-0 z-40 bg-[#CFE3DF]/95 backdrop-blur-md ${activeSection === 'today' ? '' : 'border-b border-[#55766F]/15'}`}>
         <Container width="wide">
           <div className="flex min-h-20 items-center justify-between gap-5 py-3 lg:min-h-24">
             <button

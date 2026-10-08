@@ -185,8 +185,8 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             {language === 'th' ? 'กลับ' : language === 'zh' ? '返回' : 'Back'}
           </button>
 
-          <div className="mb-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <div className="mb-6 rounded-[2rem] border border-[#55766F]/15 bg-[#ACCEC8] p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#3F665E]">JOKO TODAY</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
               {getLabel('my_orders_page.my_orders_title', language, 'My Orders')}
             </h1>
