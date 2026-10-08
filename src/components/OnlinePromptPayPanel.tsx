@@ -288,12 +288,12 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {intent?.qrMode === 'kshop_easyslip'
+            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
               ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
               : copy.title}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            {intent?.qrMode === 'kshop_easyslip'
+            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
               ? (language === 'th'
                   ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
                   : language === 'zh'
@@ -387,12 +387,14 @@ export function OnlinePromptPayPanel({
         )}
 
         <p className="mt-3 text-xs leading-5 text-[#303532]/50">
-          {intent?.qrMode === 'kshop_easyslip'
+          {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
             ? (language === 'th'
                 ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
                 : language === 'zh'
                   ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
-                  : 'This K SHOP QR is tied to the registered merchant account; EasySlip automatically checks the receiver, exact amount and duplicate use.')
+                  : intent?.qrMode === 'kshop_master'
+                    ? 'This QR is derived from JOKO’s genuine K SHOP merchant QR; EasySlip still verifies the receiving account, exact amount and duplicate use.'
+                    : 'This K SHOP QR is generated through EasySlip; EasySlip also verifies the receiving account, exact amount and duplicate use.')
             : copy.secure}
         </p>
       </div>

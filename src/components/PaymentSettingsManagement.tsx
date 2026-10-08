@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip';
+type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master';
 
 type PaymentSettingsRow = {
   online_promptpay_enabled: boolean;
@@ -38,7 +38,7 @@ export function PaymentSettingsManagement() {
         const row = data as PaymentSettingsRow | null;
         setEnabled(Boolean(row?.online_promptpay_enabled));
         setMinutes(Number(row?.payment_window_minutes) || 60);
-        setQrMode(row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
+        setQrMode(row?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load payment settings.');
@@ -135,11 +135,12 @@ export function PaymentSettingsManagement() {
               }}
               className="joko-admin-field mt-2 w-full max-w-md"
             >
-              <option value="kshop_easyslip">K SHOP merchant QR via EasySlip</option>
+              <option value="kshop_master">K SHOP master QR (preferred)</option>
+              <option value="kshop_easyslip">K SHOP merchant QR via EasySlip (experimental)</option>
               <option value="promptpay_legacy">Legacy personal PromptPay (fallback)</option>
             </select>
             <p className="mt-1 text-xs leading-5 text-[#303532]/50">
-              K SHOP routes payment to the registered merchant/business account. Legacy PromptPay remains available so we can revert instantly if K SHOP testing fails.
+              K SHOP master QR preserves the genuine merchant identity from the QR issued by your K SHOP account and only injects the order amount. The EasySlip-generated K SHOP and legacy personal PromptPay modes remain available as fallbacks.
             </p>
           </label>
 
@@ -147,9 +148,11 @@ export function PaymentSettingsManagement() {
             <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                {qrMode === 'kshop_easyslip'
-                  ? 'K SHOP mode requires the EasySlip application to be linked to the registered K SHOP merchant account.'
-                  : 'Legacy PromptPay uses the existing server-side PROMPTPAY_ID secret and is retained only as a fallback.'}
+                {qrMode === 'kshop_master'
+                  ? 'Preferred test mode: the server derives each amount-specific QR from the genuine K SHOP master QR payload. Merchant fields are preserved exactly.'
+                  : qrMode === 'kshop_easyslip'
+                    ? 'Experimental mode: EasySlip generates the K SHOP QR. This previously produced a merchant ID that did not match your K SHOP registration.'
+                    : 'Legacy PromptPay uses the existing server-side PROMPTPAY_ID secret and is retained only as a fallback.'}
               </p>
             </div>
           )}

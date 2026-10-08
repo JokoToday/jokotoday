@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip';
+export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master';
 
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
@@ -62,7 +62,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
-    payment_qr_mode: data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
+    payment_qr_mode: data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
   };
 }
 
