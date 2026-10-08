@@ -3,7 +3,8 @@ import { AlertCircle, ExternalLink, KeyRound, Loader2, LogOut, Mail, PackageSear
 import { useAuth } from '../context/AuthContext';
 import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
 import { ProductEditor } from '../components/products/ProductEditor';
-import { ProductCatalogueFilters, filterProductCatalogue } from '../components/products/ProductCatalogueFilters';
+import { ProductCatalogueFilters } from '../components/products/ProductCatalogueFilters';
+import { filterProductCatalogue } from '../lib/productCatalogueFilter';
 import { getCategories, type CMSCategory, type CMSProduct } from '../lib/cmsService';
 import { getProductStaffProducts } from '../lib/productStaffService';
 import '../app/joko-today/admin/jokoAdmin.css';
