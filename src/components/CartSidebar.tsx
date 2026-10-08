@@ -8,6 +8,8 @@ import { AuthRequiredModal } from './AuthRequiredModal';
 import { FitsYourPickupV2 } from './FitsYourPickupV2';
 import { PickupFinderStateV2, PickupFinderV2 } from './PickupFinderV2';
 import { getPublicImageUrl } from '../lib/storage';
+import { jokoBrandingCssVariables } from '../platform/builder/branding';
+import { usePublishedJokoBranding } from '../app/joko-today/builder/usePublishedJokoLogo';
 
 type CartSidebarProps = {
   onCheckout: () => void;
@@ -26,6 +28,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { getLabel } = useCMSLabels();
+  const { branding } = usePublishedJokoBranding();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [pickupFinderState, setPickupFinderState] = useState<PickupFinderStateV2>(INITIAL_PICKUP_FINDER_STATE);
   const [pickupToolsOpen, setPickupToolsOpen] = useState(false);
@@ -69,6 +72,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
   );
   const checkoutBlockedByFinder = pickupFinderState.enabled
     && (pickupFinderState.loading || pickupFinderState.hasCommonDates === false);
+  const cartBrandingStyle = jokoBrandingCssVariables(branding, language);
 
   const keepShopping = () => {
     setIsCartOpen(false);
@@ -82,11 +86,17 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
         onClick={() => setIsCartOpen(false)}
       />
 
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-[#F4EFE5] shadow-2xl sm:w-96">
-        <div className="flex items-center justify-between border-b border-[#55766F]/15 bg-[#CFE3DF] p-4 sm:p-5">
+      <div
+        className="fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-[#F4EFE5] shadow-2xl sm:w-96"
+        style={{ ...cartBrandingStyle, fontFamily: 'var(--joko-font-shell)' }}
+      >
+        <div className="flex items-center justify-between border-b border-[#55766F]/15 bg-background p-4 sm:p-5">
           <h2
             className="flex items-center text-2xl font-semibold tracking-[-0.03em] text-[#292D2B]"
-            style={{ fontFamily: 'var(--joko-font-display)' }}
+            style={{
+              fontFamily: 'var(--joko-font-display)',
+              fontWeight: 'var(--joko-font-display-weight)',
+            }}
           >
             <ShoppingBag className="mr-2 h-5 w-5 text-[#C76624]" />
             {t.cart.title}
