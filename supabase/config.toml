@@ -42,3 +42,16 @@ verify_jwt = true
 # function performs its own bearer-key validation before exposing any route.
 [functions.joko-ai-gateway]
 verify_jwt = false
+
+
+[functions.create-payment-handoff]
+verify_jwt = true
+
+[functions.payment-handoff-status]
+verify_jwt = false
+
+# This function performs its own authentication. Normal browser uploads are
+# validated against the signed-in user; mobile handoff uploads are validated
+# against a short-lived, hashed bearer token tied to one payment transaction.
+[functions.verify-payment-slip]
+verify_jwt = false
