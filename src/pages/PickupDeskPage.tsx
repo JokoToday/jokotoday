@@ -102,6 +102,12 @@ const paymentComplete = (order: Order) => (
   order.payment_status === 'paid' && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method || '')
 );
 
+const paymentMethodLabel = (order: Order, language: 'en' | 'th') => {
+  if (order.payment_method === 'cash') return language === 'en' ? 'Cash' : 'เงินสด';
+  if (order.payment_method === 'promptpay_online') return language === 'en' ? 'PromptPay Online' : 'พร้อมเพย์ออนไลน์';
+  return 'QR';
+};
+
 const amountDue = (order: Order) => Math.max(
   0,
   Number(order.total_amount || 0) - Number(order.loyalty_discount_amount || 0)
@@ -893,7 +899,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                     : 'bg-amber-100 text-amber-700'
                                 }`}>
                                   {paymentComplete(order)
-                                    ? `${language === 'en' ? 'Paid' : 'ชำระแล้ว'} · ${order.payment_method === 'cash' ? (language === 'en' ? 'Cash' : 'เงินสด') : 'QR'}`
+                                    ? `${language === 'en' ? 'Paid' : 'ชำระแล้ว'} · ${paymentMethodLabel(order, language)}`
                                     : (language === 'en' ? 'Payment needed' : 'ต้องบันทึกการชำระเงิน')}
                                 </span>
                               </div>
@@ -975,8 +981,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 </p>
                                 <p className="mt-2 text-sm font-semibold text-amber-900">
                                   {language === 'en'
-                                    ? `Payment recorded: ${order.payment_method === 'cash' ? 'Cash' : 'QR'}.`
-                                    : `บันทึกการชำระเงินแล้ว: ${order.payment_method === 'cash' ? 'เงินสด' : 'QR'}`}
+                                    ? `Payment recorded: ${paymentMethodLabel(order, 'en')}.`
+                                    : `บันทึกการชำระเงินแล้ว: ${paymentMethodLabel(order, 'th')}`}
                                 </p>
                                 <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                   <button
