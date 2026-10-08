@@ -566,16 +566,11 @@ SECURITY DEFINER
 SET search_path TO 'public'
 AS $
 DECLARE
-  v_role text := COALESCE(auth.role(), '');
   v_payment public.payment_transactions%ROWTYPE;
   v_order public.orders%ROWTYPE;
   v_inventory public.product_date_inventory%ROWTYPE;
   v_item record;
 BEGIN
-  IF v_role <> 'service_role' THEN
-    RAISE EXCEPTION 'Service role required' USING ERRCODE = '42501';
-  END IF;
-
   SELECT * INTO v_payment
   FROM public.payment_transactions
   WHERE id = p_payment_transaction_id
@@ -722,15 +717,10 @@ SECURITY DEFINER
 SET search_path TO 'public'
 AS $
 DECLARE
-  v_role text := COALESCE(auth.role(), '');
   v_row record;
   v_expired integer := 0;
   v_skipped integer := 0;
 BEGIN
-  IF v_role <> 'service_role' THEN
-    RAISE EXCEPTION 'Service role required' USING ERRCODE = '42501';
-  END IF;
-
   FOR v_row IN
     SELECT id
     FROM public.payment_transactions
