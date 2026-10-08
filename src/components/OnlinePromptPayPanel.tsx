@@ -3,7 +3,9 @@ import { AlertTriangle, CheckCircle2, Clock, FileImage, Loader2, QrCode, ShieldC
 import { QRCodeSVG } from 'qrcode.react';
 import {
   createOrGetPaymentTransaction,
+  createPaymentHandoff,
   getPaymentSettings,
+  getPaymentTransactionStatus,
   getPromptPayIntent,
   verifyPaymentSlip,
   type PaymentTransaction,
@@ -137,6 +139,8 @@ export function OnlinePromptPayPanel({
   const [pendingMessage, setPendingMessage] = useState('');
   const [paid, setPaid] = useState(false);
   const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
+  const [handoffUrl, setHandoffUrl] = useState('');
+  const [handoffError, setHandoffError] = useState('');
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -160,7 +164,20 @@ export function OnlinePromptPayPanel({
         const nextIntent = await getPromptPayIntent(nextTransaction.id);
         if (cancelled) return;
         setIntent(nextIntent);
-        if (nextIntent.state === 'verified') setPaid(true);
+        if (nextIntent.state === 'verified') {
+          setPaid(true);
+        } else {
+          try {
+            const handoff = await createPaymentHandoff(nextTransaction.id);
+            if (!cancelled && handoff.handoffToken) {
+              setHandoffUrl(`${window.location.origin}/pay/handoff/${encodeURIComponent(handoff.handoffToken)}`);
+            }
+          } catch (handoffLoadError) {
+            if (!cancelled) {
+              setHandoffError(handoffLoadError instanceof Error ? handoffLoadError.message : 'Mobile slip handoff is unavailable.');
+            }
+          }
+        }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not prepare payment.');
@@ -179,6 +196,21 @@ export function OnlinePromptPayPanel({
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [intent?.expiresAt, paid]);
+
+  useEffect(() => {
+    if (!transaction?.id || paid) return;
+    const timer = window.setInterval(() => {
+      void getPaymentTransactionStatus(transaction.id)
+        .then((status) => {
+          if (status.status === 'verified') {
+            setPaid(true);
+            onPaid?.();
+          }
+        })
+        .catch(() => undefined);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [transaction?.id, paid, onPaid]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
@@ -335,6 +367,43 @@ export function OnlinePromptPayPanel({
       </div>
 
       <div className="mt-5 border-t border-[#55766F]/12 pt-5">
+        {handoffUrl && (
+          <div className="mb-5 rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/20 p-4">
+            <div className="grid gap-4 sm:grid-cols-[132px_1fr] sm:items-center">
+              <div className="mx-auto rounded-xl border border-[#55766F]/15 bg-white p-2">
+                <QRCodeSVG
+                  value={handoffUrl}
+                  size={112}
+                  level="M"
+                  includeMargin
+                  aria-label="Continue payment slip upload on phone"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#303532]">
+                  {language === 'th' ? 'สลิปอยู่ในโทรศัพท์?' : language === 'zh' ? '回执在手机上？' : 'Slip is on your phone?'}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[#303532]/60">
+                  {language === 'th'
+                    ? 'สแกน QR นี้ด้วยกล้องโทรศัพท์หรือ LINE QR Scanner แล้วเลือกสลิปจากโทรศัพท์ได้เลย ไม่ต้องส่งอีเมลหรือกรอกเลขคำสั่งซื้อ'
+                    : language === 'zh'
+                      ? '用手机相机或 LINE 扫码器扫描此二维码，直接从手机上传回执。无需发送邮件，也无需输入订单号。'
+                      : 'Scan this QR with your phone camera or LINE QR scanner, then choose the slip directly from your phone. No email and no order number.'}
+                </p>
+                <p className="mt-2 text-xs font-semibold text-[#3F665E]">
+                  {language === 'th' ? 'หน้าจอนี้จะอัปเดตอัตโนมัติเมื่อยืนยันการชำระเงิน' : language === 'zh' ? '付款验证后，此电脑页面会自动更新。' : 'This desktop screen updates automatically after verification.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {handoffError && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+            Mobile slip handoff is temporarily unavailable. You can still upload the slip on this device.
+          </div>
+        )}
+
         <p className="text-sm font-semibold text-[#303532]">{copy.upload}</p>
         <input
           ref={inputRef}
