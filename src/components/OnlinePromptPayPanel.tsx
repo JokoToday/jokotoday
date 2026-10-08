@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, FileImage, Loader2, QrCode, ShieldCheck, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, FileImage, Loader2, MessageCircle, QrCode, ShieldCheck, Smartphone, Upload } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   createOrGetPaymentTransaction,
+  createPaymentHandoff,
   getPaymentSettings,
+  getPaymentTransactionStatus,
   getPromptPayIntent,
   verifyPaymentSlip,
+  type PaymentHandoff,
   type PaymentTransaction,
   type PromptPayIntent,
 } from '../lib/paymentService';
@@ -36,6 +39,9 @@ type Copy = {
   reminder14: string;
   countdown: string;
   overdue: string;
+  phoneTitle: string;
+  phoneBody: string;
+  phoneHint: string;
 };
 
 const COPY: Record<Language, Copy> = {
@@ -60,6 +66,9 @@ const COPY: Record<Language, Copy> = {
     reminder14: 'Final reminder: payment is still outstanding.',
     countdown: 'Time remaining',
     overdue: 'Payment is still outstanding. This order is not confirmed.',
+    phoneTitle: 'Slip is on your phone?',
+    phoneBody: 'Scan this QR with your phone camera or LINE QR reader. The phone opens this exact payment, so you can upload the slip directly from Photos.',
+    phoneHint: 'Your desktop will update automatically after verification.',
   },
   th: {
     title: 'ชำระด้วยพร้อมเพย์',
@@ -82,6 +91,9 @@ const COPY: Record<Language, Copy> = {
     reminder14: 'แจ้งเตือนครั้งสุดท้าย: ยังไม่ได้ชำระเงิน',
     countdown: 'เวลาที่เหลือ',
     overdue: 'ยังไม่ได้ชำระเงิน คำสั่งซื้อนี้ยังไม่ได้รับการยืนยัน',
+    phoneTitle: 'สลิปอยู่ในโทรศัพท์ใช่ไหม?',
+    phoneBody: 'สแกน QR นี้ด้วยกล้องโทรศัพท์หรือ LINE QR reader โทรศัพท์จะเปิดรายการชำระเงินนี้โดยตรงเพื่ออัปโหลดสลิปจากรูปภาพ',
+    phoneHint: 'หน้าคอมพิวเตอร์จะอัปเดตอัตโนมัติหลังตรวจสอบสำเร็จ',
   },
   zh: {
     title: '使用 PromptPay 付款',
@@ -104,6 +116,9 @@ const COPY: Record<Language, Copy> = {
     reminder14: '最后提醒：付款仍未完成。',
     countdown: '剩余时间',
     overdue: '付款仍未完成。此订单尚未确认。',
+    phoneTitle: '回执在手机上？',
+    phoneBody: '用手机相机或 LINE 二维码扫描器扫描此码。手机会直接打开这笔付款，您可从相册上传回执。',
+    phoneHint: '验证成功后，电脑页面会自动更新。',
   },
 };
 
@@ -130,6 +145,8 @@ export function OnlinePromptPayPanel({
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [transaction, setTransaction] = useState<PaymentTransaction | null>(null);
   const [intent, setIntent] = useState<PromptPayIntent | null>(null);
+  const [handoff, setHandoff] = useState<PaymentHandoff | null>(null);
+  const [handoffError, setHandoffError] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -160,7 +177,16 @@ export function OnlinePromptPayPanel({
         const nextIntent = await getPromptPayIntent(nextTransaction.id);
         if (cancelled) return;
         setIntent(nextIntent);
-        if (nextIntent.state === 'verified') setPaid(true);
+        if (nextIntent.state === 'verified') {
+          setPaid(true);
+        } else {
+          try {
+            const nextHandoff = await createPaymentHandoff(nextTransaction.id);
+            if (!cancelled) setHandoff(nextHandoff);
+          } catch (handoffLoadError) {
+            if (!cancelled) setHandoffError(handoffLoadError instanceof Error ? handoffLoadError.message : 'Could not create phone handoff.');
+          }
+        }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not prepare payment.');
@@ -179,6 +205,29 @@ export function OnlinePromptPayPanel({
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [intent?.expiresAt, paid]);
+
+  useEffect(() => {
+    if (!transaction?.id || paid) return;
+
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const status = await getPaymentTransactionStatus(transaction.id);
+        if (!cancelled && status === 'verified') {
+          setPaid(true);
+          onPaid?.();
+        }
+      } catch {
+        // Keep the checkout usable if a background poll fails once.
+      }
+    };
+
+    const timer = window.setInterval(() => { void check(); }, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [transaction?.id, paid, onPaid]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
@@ -333,6 +382,41 @@ export function OnlinePromptPayPanel({
           )}
         </div>
       </div>
+
+      {handoff && !isOverdue && (
+        <div className="mt-5 rounded-2xl border border-[#06C755]/25 bg-[#F2FBF5] p-4">
+          <div className="flex items-start gap-3">
+            <span className="rounded-xl bg-white p-2 text-[#06A846]">
+              <Smartphone className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold text-[#303532]">{copy.phoneTitle}</h4>
+                <MessageCircle className="h-4 w-4 text-[#06C755]" />
+              </div>
+              <p className="mt-1 text-xs leading-5 text-[#303532]/65">{copy.phoneBody}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="shrink-0 rounded-xl border border-[#06C755]/20 bg-white p-2">
+              <QRCodeSVG
+                value={handoff.handoffUrl}
+                size={112}
+                level="M"
+                includeMargin
+                aria-label="Continue payment on phone QR code"
+              />
+            </div>
+            <p className="text-xs leading-5 text-[#303532]/55">{copy.phoneHint}</p>
+          </div>
+        </div>
+      )}
+
+      {handoffError && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Phone handoff is temporarily unavailable. You can still upload the slip on this device.
+        </div>
+      )}
 
       <div className="mt-5 border-t border-[#55766F]/12 pt-5">
         <p className="text-sm font-semibold text-[#303532]">{copy.upload}</p>

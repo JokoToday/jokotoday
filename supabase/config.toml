@@ -42,3 +42,16 @@ verify_jwt = true
 # function performs its own bearer-key validation before exposing any route.
 [functions.joko-ai-gateway]
 verify_jwt = false
+
+
+# Cross-device payment handoff.
+# Creation requires the signed-in customer. The resolver/uploader authenticate
+# with a 256-bit short-lived bearer token whose SHA-256 hash is stored in DB.
+[functions.create-payment-handoff]
+verify_jwt = true
+
+[functions.resolve-payment-handoff]
+verify_jwt = false
+
+[functions.verify-payment-handoff-slip]
+verify_jwt = false
