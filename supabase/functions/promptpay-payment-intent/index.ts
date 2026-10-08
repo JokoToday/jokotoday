@@ -92,6 +92,78 @@ async function buildKShopPayload(orderNumber: string, orderId: string, amount: n
   return result.data.payload;
 }
 
+type TlvField = { id: string; value: string };
+
+function parseTopLevelTlv(payload: string): TlvField[] {
+  const fields: TlvField[] = [];
+  let offset = 0;
+
+  while (offset + 4 <= payload.length) {
+    const id = payload.slice(offset, offset + 2);
+    const lengthRaw = payload.slice(offset + 2, offset + 4);
+    const length = Number(lengthRaw);
+    if (!/^\d{2}$/.test(lengthRaw) || !Number.isInteger(length) || length < 0) {
+      throw new Error("Invalid K SHOP master QR TLV length");
+    }
+
+    const valueStart = offset + 4;
+    const valueEnd = valueStart + length;
+    if (valueEnd > payload.length) {
+      throw new Error("Invalid K SHOP master QR TLV boundary");
+    }
+
+    fields.push({ id, value: payload.slice(valueStart, valueEnd) });
+    offset = valueEnd;
+  }
+
+  if (offset !== payload.length) {
+    throw new Error("Invalid trailing data in K SHOP master QR");
+  }
+
+  return fields;
+}
+
+function buildKShopMasterPayload(masterPayloadRaw: string, amount: number): string {
+  const masterPayload = masterPayloadRaw.trim();
+  if (!masterPayload) throw new Error("K SHOP master QR payload is empty");
+
+  const fields = parseTopLevelTlv(masterPayload);
+  const withoutCrc = fields.filter((entry) => entry.id !== "63");
+
+  const currency = withoutCrc.find((entry) => entry.id === "53")?.value;
+  const country = withoutCrc.find((entry) => entry.id === "58")?.value;
+  const initiation = withoutCrc.find((entry) => entry.id === "01")?.value;
+
+  if (currency !== "764" || country !== "TH") {
+    throw new Error("K SHOP master QR is not a Thai Baht merchant QR");
+  }
+
+  if (initiation !== "11") {
+    throw new Error("K SHOP master QR must preserve the original static point-of-initiation method");
+  }
+
+  const amountField = field("54", amount.toFixed(2));
+  let insertedAmount = false;
+  const rebuilt = withoutCrc
+    .filter((entry) => entry.id !== "54")
+    .map((entry) => {
+      const encoded = field(entry.id, entry.value);
+      if (entry.id === "53") {
+        insertedAmount = true;
+        return encoded + amountField;
+      }
+      return encoded;
+    })
+    .join("");
+
+  if (!insertedAmount) {
+    throw new Error("K SHOP master QR is missing currency field 53");
+  }
+
+  const base = rebuilt + "6304";
+  return base + crc16Ccitt(base);
+}
+
 function buildPromptPayPayload(targetRaw: string, amount: number): string {
   const target = normalizePromptPayTarget(targetRaw);
   const merchantAccount =
@@ -187,13 +259,17 @@ Deno.serve(async (req: Request) => {
 
     if (settingError) throw settingError;
 
-    const qrMode = setting?.payment_qr_mode === "kshop_easyslip"
-      ? "kshop_easyslip"
-      : "promptpay_legacy";
+    const qrMode = setting?.payment_qr_mode === "kshop_master"
+      ? "kshop_master"
+      : setting?.payment_qr_mode === "kshop_easyslip"
+        ? "kshop_easyslip"
+        : "promptpay_legacy";
 
-    const payload = qrMode === "kshop_easyslip"
-      ? await buildKShopPayload(order.order_number, order.id, amount)
-      : buildPromptPayPayload(requiredEnv("PROMPTPAY_ID"), amount);
+    const payload = qrMode === "kshop_master"
+      ? buildKShopMasterPayload(requiredEnv("KSHOP_MASTER_QR_PAYLOAD"), amount)
+      : qrMode === "kshop_easyslip"
+        ? await buildKShopPayload(order.order_number, order.id, amount)
+        : buildPromptPayPayload(requiredEnv("PROMPTPAY_ID"), amount);
 
     return jsonResponse({
       state: "pending",
