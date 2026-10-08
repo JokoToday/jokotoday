@@ -18,6 +18,8 @@ type VerificationResult = {
     bankNumberMasked?: string | null;
   } | null;
   amountInSlip?: number | null;
+  amountInOrder?: number | null;
+  isAmountMatched?: boolean | null;
   transRef?: string | null;
   transactionDate?: string | null;
 };
@@ -32,6 +34,7 @@ export function PaymentVerificationTest() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<VerificationResult | null>(null);
+  const [expectedAmount, setExpectedAmount] = useState('');
   const [error, setError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -77,6 +80,7 @@ export function PaymentVerificationTest() {
       const formData = new FormData();
       formData.append('image', file);
       formData.append('remark', 'JOKO-EASYSLIP-POC');
+      if (expectedAmount.trim()) formData.append('expectedAmount', expectedAmount.trim());
 
       const response = await fetch(`${supabaseUrl}/functions/v1/easyslip-payment-test`, {
         method: 'POST',
@@ -143,6 +147,33 @@ export function PaymentVerificationTest() {
         Choose payment slip
       </button>
 
+      <div className="mt-4">
+        <label className="block max-w-xs">
+          <span className="text-sm font-semibold text-[#303532]/75">Expected amount (optional)</span>
+          <div className="mt-2 flex items-center rounded-xl border border-[#55766F]/20 bg-white px-3">
+            <span className="text-sm text-[#303532]/55">฿</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              value={expectedAmount}
+              onChange={(event) => {
+                setExpectedAmount(event.target.value);
+                setResult(null);
+                setError('');
+              }}
+              placeholder="10.00"
+              disabled={isUploading}
+              className="w-full bg-transparent px-2 py-3 text-sm outline-none"
+            />
+          </div>
+          <p className="mt-1 text-xs text-[#303532]/50">
+            EasySlip will compare this value with the amount encoded in the bank transaction.
+          </p>
+        </label>
+      </div>
+
       {file && (
         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[#55766F]/15 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -196,6 +227,18 @@ export function PaymentVerificationTest() {
                   <dd className="font-semibold">฿{Number(result.amountInSlip || 0).toFixed(2)}</dd>
                 </div>
                 <div>
+                  <dt className="text-emerald-900/55">Expected amount</dt>
+                  <dd className="font-semibold">
+                    {result.amountInOrder == null ? 'Not tested' : `฿${Number(result.amountInOrder).toFixed(2)}`}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-emerald-900/55">Amount matched</dt>
+                  <dd className="font-semibold">
+                    {result.isAmountMatched == null ? 'Not tested' : result.isAmountMatched ? 'YES' : 'NO'}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-emerald-900/55">Duplicate</dt>
                   <dd className="font-semibold">{result.isDuplicate ? 'YES — already seen' : 'No'}</dd>
                 </div>
@@ -226,7 +269,7 @@ export function PaymentVerificationTest() {
       )}
 
       <p className="mt-4 text-xs leading-5 text-[#303532]/50">
-        Proof-of-concept only: this tool checks receiver matching and duplicate status. It does not
+        Proof-of-concept only: this tool checks receiver matching, amount matching and duplicate status. It does not
         change any JOKO order or payment state.
       </p>
     </div>
