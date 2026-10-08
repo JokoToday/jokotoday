@@ -78,21 +78,25 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40"
+        className="fixed inset-0 z-40 bg-[#303532]/35 backdrop-blur-[1px]"
         onClick={() => setIsCartOpen(false)}
       />
 
-      <div className="fixed right-0 top-0 h-full w-full sm:w-96 bg-background shadow-2xl z-50 flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-header font-bold text-primary-900 flex items-center">
-            <ShoppingBag className="h-5 w-5 mr-2" />
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-[#F4EFE5] shadow-2xl sm:w-96">
+        <div className="flex items-center justify-between border-b border-[#55766F]/15 bg-[#CFE3DF] p-4 sm:p-5">
+          <h2
+            className="flex items-center text-2xl font-semibold tracking-[-0.03em] text-[#292D2B]"
+            style={{ fontFamily: 'var(--joko-font-display)' }}
+          >
+            <ShoppingBag className="mr-2 h-5 w-5 text-[#C76624]" />
             {t.cart.title}
           </h2>
           <button
             onClick={() => setIsCartOpen(false)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="rounded-full p-2 text-[#303532]/70 transition-colors hover:bg-white/35 hover:text-[#303532]"
+            aria-label={language === 'th' ? 'ปิดตะกร้า' : language === 'zh' ? '关闭购物车' : 'Close cart'}
           >
-            <X className="h-6 w-6 text-gray-600" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
@@ -103,7 +107,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
               <p className="text-gray-500 mb-6">{t.cart.empty}</p>
               <button
                 onClick={keepShopping}
-                className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                className="rounded-xl bg-[#C76624] px-6 py-3 font-semibold text-white transition-colors hover:bg-[#A95120]"
               >
                 {startShoppingLabel}
               </button>
@@ -127,38 +131,38 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                 };
 
                 return (
-                  <div key={item.product.id} className="flex gap-4 bg-primary-50 p-3 rounded-lg">
+                  <div key={item.product.id} className="flex gap-4 rounded-2xl border border-[#55766F]/15 bg-[#FFF9EE] p-3 shadow-[0_8px_24px_rgba(48,75,69,0.06)]">
                     <img
                       src={getImageUrl()}
                       alt={productName}
-                      className="w-20 h-20 object-cover rounded"
+                      className="h-20 w-20 rounded-xl object-cover"
                       loading="lazy"
                     />
 
                     <div className="flex-1">
-                      <h3 className="font-semibold text-primary-900 text-sm">{productName}</h3>
-                      <p className="text-primary-700 font-bold mt-1">฿{item.product.price}</p>
+                      <h3 className="text-sm font-semibold text-[#292D2B]">{productName}</h3>
+                      <p className="mt-1 font-bold text-[#C76624]">฿{item.product.price}</p>
 
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            className="p-1 rounded bg-background hover:bg-primary-100 transition-colors"
+                            className="rounded-lg border border-[#55766F]/15 bg-white/70 p-1 transition-colors hover:bg-[#CFE3DF]/35"
                           >
-                            <Minus className="h-3 w-3 text-primary-900" />
+                            <Minus className="h-3 w-3 text-[#303532]" />
                           </button>
                           <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            className="p-1 rounded bg-background hover:bg-primary-100 transition-colors"
+                            className="rounded-lg border border-[#55766F]/15 bg-white/70 p-1 transition-colors hover:bg-[#CFE3DF]/35"
                           >
-                            <Plus className="h-3 w-3 text-primary-900" />
+                            <Plus className="h-3 w-3 text-[#303532]" />
                           </button>
                         </div>
 
                         <button
                           onClick={() => removeFromCart(item.product.id)}
-                          className="p-1.5 text-accent hover:bg-red-50 rounded transition-colors"
+                          className="rounded-lg p-1.5 text-[#C76624] transition-colors hover:bg-[#F9E9E5]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -204,16 +208,16 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-gray-200 p-4 space-y-3">
+          <div className="space-y-3 border-t border-[#55766F]/15 bg-[#FFF9EE] p-4">
             <div className="flex justify-between items-center text-lg font-bold">
-              <span className="text-gray-700">{t.cart.total}:</span>
-              <span className="text-primary-900">฿{totalPrice.toFixed(2)}</span>
+              <span className="text-[#303532]/75">{t.cart.total}:</span>
+              <span className="text-[#292D2B]">฿{totalPrice.toFixed(2)}</span>
             </div>
 
             <button
               type="button"
               onClick={keepShopping}
-              className="w-full bg-white border border-amber-200 text-amber-900 py-3 rounded-lg font-semibold hover:bg-amber-50 transition-colors"
+              className="w-full rounded-xl border border-[#C76624]/35 bg-white/65 py-3 font-semibold text-[#7F3F1D] transition-colors hover:bg-[#FFF2E2]"
             >
               {keepShoppingLabel}
             </button>
@@ -225,7 +229,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                   onCheckout();
                 }}
                 disabled={checkoutBlockedByFinder}
-                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition-colors hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {pickupFinderState.loading
                   ? (language === 'th' ? 'กำลังตรวจสอบวันรับสินค้า…' : language === 'zh' ? '正在检查取货日期…' : 'Checking pickup dates…')
@@ -235,7 +239,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
               <button
                 onClick={() => setIsAuthModalOpen(true)}
                 aria-haspopup="dialog"
-                className="w-full rounded-xl bg-primary-700 py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-primary-900/20 transition-colors hover:bg-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                className="w-full rounded-xl bg-[#C76624] py-3.5 text-sm font-bold tracking-[0.03em] text-white shadow-lg shadow-[#C76624]/20 transition-colors hover:bg-[#A95120] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C76624] focus-visible:ring-offset-2"
               >
                 {t.auth.signIn}
               </button>
