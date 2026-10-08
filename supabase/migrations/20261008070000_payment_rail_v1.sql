@@ -198,6 +198,10 @@ BEGIN
     RAISE EXCEPTION 'Only online orders can use online PromptPay';
   END IF;
 
+  IF v_order.pickup_date_id IS NULL THEN
+    RAISE EXCEPTION 'Online PromptPay requires the current pickup inventory flow';
+  END IF;
+
   IF v_order.status NOT IN ('pending','confirmed','ready') OR v_order.picked_up_at IS NOT NULL THEN
     RAISE EXCEPTION 'This order can no longer accept online payment';
   END IF;
@@ -399,6 +403,205 @@ REVOKE ALL ON FUNCTION public.finalize_verified_payment_v1(uuid,text,numeric,boo
 REVOKE ALL ON FUNCTION public.finalize_verified_payment_v1(uuid,text,numeric,boolean,boolean,boolean) FROM anon;
 REVOKE ALL ON FUNCTION public.finalize_verified_payment_v1(uuid,text,numeric,boolean,boolean,boolean) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.finalize_verified_payment_v1(uuid,text,numeric,boolean,boolean,boolean) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.expire_payment_transaction_v1(
+  p_payment_transaction_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $
+DECLARE
+  v_role text := COALESCE(auth.role(), '');
+  v_payment public.payment_transactions%ROWTYPE;
+  v_order public.orders%ROWTYPE;
+  v_inventory public.product_date_inventory%ROWTYPE;
+  v_item record;
+BEGIN
+  IF v_role <> 'service_role' THEN
+    RAISE EXCEPTION 'Service role required' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_payment
+  FROM public.payment_transactions
+  WHERE id = p_payment_transaction_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Payment transaction not found';
+  END IF;
+
+  SELECT * INTO v_order
+  FROM public.orders
+  WHERE id = v_payment.order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_payment.status = 'verified' OR v_order.payment_status = 'paid' THEN
+    RETURN jsonb_build_object(
+      'payment', to_jsonb(v_payment),
+      'order', to_jsonb(v_order),
+      'expired', false
+    );
+  END IF;
+
+  IF v_payment.status = 'cancelled' OR v_order.status = 'cancelled' THEN
+    UPDATE public.payment_transactions
+    SET status = CASE WHEN status = 'verified' THEN status ELSE 'cancelled' END,
+        updated_at = now()
+    WHERE id = v_payment.id
+    RETURNING * INTO v_payment;
+
+    RETURN jsonb_build_object(
+      'payment', to_jsonb(v_payment),
+      'order', to_jsonb(v_order),
+      'expired', false
+    );
+  END IF;
+
+  IF now() < v_payment.expires_at THEN
+    RETURN jsonb_build_object(
+      'payment', to_jsonb(v_payment),
+      'order', to_jsonb(v_order),
+      'expired', false
+    );
+  END IF;
+
+  IF v_order.status NOT IN ('pending','confirmed') OR v_order.picked_up_at IS NOT NULL THEN
+    RAISE EXCEPTION 'Order cannot be expired automatically in its current state';
+  END IF;
+
+  IF v_order.order_items IS NULL OR jsonb_typeof(v_order.order_items) <> 'array' THEN
+    RAISE EXCEPTION 'Order item snapshot is invalid';
+  END IF;
+
+  IF v_order.inventory_reserved THEN
+    FOR v_item IN
+      SELECT item.product_id, item.quantity
+      FROM jsonb_to_recordset(v_order.order_items) AS item(product_id uuid, quantity integer)
+      WHERE item.product_id IS NOT NULL
+        AND item.quantity IS NOT NULL
+        AND item.quantity > 0
+      ORDER BY item.product_id
+    LOOP
+      SELECT * INTO v_inventory
+      FROM public.product_date_inventory
+      WHERE pickup_date_id = v_order.pickup_date_id
+        AND product_id = v_item.product_id
+      FOR UPDATE;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Inventory record is missing for a product in this order';
+      END IF;
+
+      IF v_inventory.reserved_quantity < v_item.quantity THEN
+        RAISE EXCEPTION 'Inventory reservation ledger is inconsistent for this order';
+      END IF;
+
+      UPDATE public.product_date_inventory
+      SET reserved_quantity = reserved_quantity - v_item.quantity,
+          updated_at = now()
+      WHERE pickup_date_id = v_order.pickup_date_id
+        AND product_id = v_item.product_id;
+
+      INSERT INTO public.inventory_events (
+        pickup_date_id,
+        product_id,
+        order_id,
+        event_type,
+        reserved_delta,
+        actor_id,
+        reason
+      ) VALUES (
+        v_order.pickup_date_id,
+        v_item.product_id,
+        v_order.id,
+        'release',
+        -v_item.quantity,
+        NULL,
+        'payment_timeout'
+      );
+    END LOOP;
+  END IF;
+
+  PERFORM public.refund_reserved_order_loyalty_reward_v2(
+    v_order.id,
+    NULL,
+    'Online PromptPay payment window expired'
+  );
+
+  UPDATE public.orders
+  SET status = 'cancelled',
+      inventory_reserved = false,
+      updated_at = now()
+  WHERE id = v_order.id
+  RETURNING * INTO v_order;
+
+  UPDATE public.payment_transactions
+  SET status = 'expired',
+      last_error_code = 'PAYMENT_EXPIRED',
+      last_error_message = 'Payment was not verified before the payment deadline.',
+      updated_at = now()
+  WHERE id = v_payment.id
+  RETURNING * INTO v_payment;
+
+  RETURN jsonb_build_object(
+    'payment', to_jsonb(v_payment),
+    'order', to_jsonb(v_order),
+    'expired', true
+  );
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.expire_payment_transaction_v1(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.expire_payment_transaction_v1(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.expire_payment_transaction_v1(uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_payment_transaction_v1(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.expire_unpaid_payment_transactions_v1()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $
+DECLARE
+  v_role text := COALESCE(auth.role(), '');
+  v_row record;
+  v_expired integer := 0;
+  v_skipped integer := 0;
+BEGIN
+  IF v_role <> 'service_role' THEN
+    RAISE EXCEPTION 'Service role required' USING ERRCODE = '42501';
+  END IF;
+
+  FOR v_row IN
+    SELECT id
+    FROM public.payment_transactions
+    WHERE status IN ('pending','verifying','failed')
+      AND expires_at <= now()
+    ORDER BY expires_at
+    LIMIT 200
+  LOOP
+    BEGIN
+      PERFORM public.expire_payment_transaction_v1(v_row.id);
+      v_expired := v_expired + 1;
+    EXCEPTION WHEN OTHERS THEN
+      v_skipped := v_skipped + 1;
+      RAISE WARNING 'Could not expire payment transaction %: %', v_row.id, SQLERRM;
+    END;
+  END LOOP;
+
+  RETURN jsonb_build_object('expired', v_expired, 'skipped', v_skipped);
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.expire_unpaid_payment_transactions_v1() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.expire_unpaid_payment_transactions_v1() FROM anon;
+REVOKE ALL ON FUNCTION public.expire_unpaid_payment_transactions_v1() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_unpaid_payment_transactions_v1() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.confirm_order_pickup(p_order_id uuid)
 RETURNS SETOF public.orders
