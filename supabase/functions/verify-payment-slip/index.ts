@@ -56,6 +56,11 @@ function extensionFor(type: string): string {
   }
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
@@ -73,23 +78,63 @@ Deno.serve(async (req: Request) => {
 
   let attemptId: string | null = null;
   let paymentTransactionId: string | null = null;
+  let handoffId: string | null = null;
+  let authorizedCustomerId: string | null = null;
+  let isHandoff = false;
 
   try {
     const authorization = req.headers.get("Authorization");
-    const bearerMatch = authorization?.match(/^Bearer\s+(\S+)$/i);
-    if (!bearerMatch) return jsonResponse({ error: "Unauthorized" }, 401);
-
-    const { data: authData, error: authError } = await service.auth.getUser(bearerMatch[1]);
-    if (authError || !authData.user) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
-
     const incoming = await req.formData();
     const image = incoming.get("image");
     const transactionValue = incoming.get("paymentTransactionId");
+    const handoffValue = incoming.get("handoffToken");
     paymentTransactionId = typeof transactionValue === "string" ? transactionValue.trim() : "";
+    const handoffToken = typeof handoffValue === "string" ? handoffValue.trim() : "";
 
-    if (!paymentTransactionId) {
+    if (handoffToken) {
+      if (handoffToken.length < 32 || handoffToken.length > 128) {
+        return jsonResponse({ error: "Invalid payment handoff" }, 400);
+      }
+
+      const tokenHash = await sha256Hex(handoffToken);
+      const { data: handoff, error: handoffError } = await service
+        .from("payment_handoff_sessions")
+        .select("id, payment_transaction_id, customer_id, status, expires_at")
+        .eq("token_hash", tokenHash)
+        .maybeSingle();
+
+      if (handoffError) throw handoffError;
+      if (!handoff) return jsonResponse({ error: "Payment handoff not found" }, 404);
+      if (["expired", "cancelled", "verified"].includes(handoff.status) && handoff.status !== "verified") {
+        return jsonResponse({ state: "expired", error: "Payment handoff is no longer active" }, 410);
+      }
+      if (new Date(handoff.expires_at).getTime() <= Date.now()) {
+        await service.from("payment_handoff_sessions")
+          .update({ status: "expired", updated_at: new Date().toISOString() })
+          .eq("id", handoff.id);
+        return jsonResponse({ state: "expired", error: "Payment handoff has expired" }, 410);
+      }
+
+      if (paymentTransactionId && paymentTransactionId !== handoff.payment_transaction_id) {
+        return jsonResponse({ error: "Payment handoff does not match this transaction" }, 403);
+      }
+
+      paymentTransactionId = handoff.payment_transaction_id;
+      authorizedCustomerId = handoff.customer_id;
+      handoffId = handoff.id;
+      isHandoff = true;
+    } else {
+      const bearerMatch = authorization?.match(/^Bearer\s+(\S+)$/i);
+      if (!bearerMatch) return jsonResponse({ error: "Unauthorized" }, 401);
+
+      const { data: authData, error: authError } = await service.auth.getUser(bearerMatch[1]);
+      if (authError || !authData.user) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+      authorizedCustomerId = authData.user.id;
+    }
+
+    if (!paymentTransactionId || !authorizedCustomerId) {
       return jsonResponse({ error: "Payment transaction id is required" }, 400);
     }
 
@@ -113,7 +158,7 @@ Deno.serve(async (req: Request) => {
 
     if (paymentError) throw paymentError;
     if (!payment) return jsonResponse({ error: "Payment transaction not found" }, 404);
-    if (payment.customer_id !== authData.user.id) {
+    if (payment.customer_id !== authorizedCustomerId) {
       return jsonResponse({ error: "You may only verify payment for your own order" }, 403);
     }
 
@@ -124,7 +169,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (orderError) throw orderError;
-    if (!order || order.customer_id !== authData.user.id) {
+    if (!order || order.customer_id !== authorizedCustomerId) {
       return jsonResponse({ error: "Order not found" }, 404);
     }
 
@@ -153,7 +198,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const storagePath = [
-      authData.user.id,
+      authorizedCustomerId,
       order.id,
       payment.id,
       `${crypto.randomUUID()}.${extensionFor(image.type)}`,
@@ -174,7 +219,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         payment_transaction_id: payment.id,
         order_id: order.id,
-        customer_id: authData.user.id,
+        customer_id: authorizedCustomerId,
         provider: "easyslip",
         status: "verifying",
         storage_path: storagePath,
@@ -195,6 +240,12 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", payment.id);
+
+    if (handoffId) {
+      await service.from("payment_handoff_sessions")
+        .update({ status: "verifying", used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", handoffId);
+    }
 
     const easySlipForm = new FormData();
     easySlipForm.append("image", image, image.name || "payment-slip");
@@ -324,7 +375,7 @@ Deno.serve(async (req: Request) => {
 
     if (rejectionCode) {
       const message = rejectionCode === "ACCOUNT_MISMATCH"
-        ? "The PromptPay receiver does not match a JOKO receiving account registered in EasySlip."
+        ? "The payment receiver does not match a JOKO receiving account registered in EasySlip."
         : rejectionCode === "AMOUNT_MISMATCH"
           ? "The bank transfer amount does not match this order."
           : rejectionCode === "DUPLICATE_SLIP"
@@ -382,6 +433,13 @@ Deno.serve(async (req: Request) => {
       }, 409);
     }
 
+    if (handoffId) {
+      await service.from("payment_handoff_sessions")
+        .update({ status: "verified", used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", handoffId);
+    }
+
+    if (!isHandoff) {
     try {
       const notificationResponse = await fetch(
         `${requiredEnv("SUPABASE_URL")}/functions/v1/send-payment-confirmation`,
@@ -436,6 +494,8 @@ Deno.serve(async (req: Request) => {
           ? adminNotificationError.message
           : String(adminNotificationError),
       });
+    }
+
     }
 
     return jsonResponse({

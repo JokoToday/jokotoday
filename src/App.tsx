@@ -39,6 +39,7 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ A
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
 const LegalPage = lazy(() => import('./app/joko-today/legal/LegalPage'));
+const PaymentHandoffPage = lazy(() => import('./pages/PaymentHandoffPage'));
 
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
@@ -94,6 +95,7 @@ const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [paymentHandoffToken, setPaymentHandoffToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [productPublicCode, setProductPublicCode] = useState<string | null>(null);
   const [productEntrySource, setProductEntrySource] = useState<'qr' | 'web'>('web');
@@ -111,6 +113,13 @@ function AppContent() {
       const legacyProductMatch = path.match(/^\/product\/([^/]+)$/);
       const productDetailMatch = path.match(/^\/products\/([^/]+)$/);
       const productQrMatch = path.match(/^\/p\/([^/]+)$/);
+      const paymentHandoffMatch = path.match(/^\/pay\/handoff\/([^/]+)$/);
+
+      if (paymentHandoffMatch) {
+        setPaymentHandoffToken(paymentHandoffMatch[1]);
+        setCurrentPage('payment-handoff');
+        return;
+      }
 
       if (path === '/auth/callback') {
         setCurrentPage('auth-callback');
@@ -382,6 +391,10 @@ function AppContent() {
       return <CustomerAccountPage qrToken={qrToken} onNavigate={handleNavigate} />;
     }
 
+    if (currentPage === 'payment-handoff' && paymentHandoffToken) {
+      return <PaymentHandoffPage token={paymentHandoffToken} />;
+    }
+
     switch (currentPage) {
       case 'home':
         return (
@@ -501,6 +514,7 @@ function AppContent() {
     currentPage === 'scan' ||
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
+    currentPage === 'payment-handoff' ||
     isJokoShellPage;
   const showCartSidebar = !isStandalonePage || isJokoShellPage;
   const pageContent = (
