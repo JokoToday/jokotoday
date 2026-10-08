@@ -143,6 +143,12 @@ export interface HomeHeroNotebookNote {
   bodySize?: number;
 }
 
+export interface HomeHeroJourneyLinks {
+  selectUrl?: string;
+  preorderUrl?: string;
+  pickupUrl?: string;
+}
+
 export interface HomeHeroProps {
   /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
   logoUrl?: string;
@@ -162,6 +168,8 @@ export interface HomeHeroProps {
   subtitleRichText?: LocalizedRichText;
   subtitleStyle?: HeroTextStyle;
   subtitleLocaleStyles?: Readonly<Record<LocaleCode, HeroTextStyle>>;
+  /** Optional Admin-controlled destinations for the Select / Pre-Order / Pickup Hero journey links. */
+  journeyLinks?: HomeHeroJourneyLinks;
   primaryActionLabel: LocalizedText;
   primaryAction: BuilderAction;
   secondaryActionLabel: LocalizedText;

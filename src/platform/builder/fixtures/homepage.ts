@@ -45,15 +45,15 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
       props: {
         logoUrl: '/assets/brand/joko-today-logo-v0.4.webp',
         title: {
-          en: 'Good bread\nfor a brighter\ntomorrow.',
+          en: 'Selected Goodness\nfor a\nBrighter Today',
           th: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\nที่สดใสกว่า',
           zh: '好面包\n为了一个更明亮的\n明天。',
         },
         titleRichText: {
           en: [
-            { text: 'Good bread\nfor a ' },
-            { text: 'brighter', marks: { color: 'accent' } },
-            { text: '\ntomorrow.' },
+            { text: 'Selected Goodness\nfor a\n' },
+            { text: 'Brighter', marks: { color: 'accent', italic: true } },
+            { text: ' Today' },
           ],
           th: [
             { text: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\n' },
@@ -63,6 +63,16 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
             { text: '好面包\n为了一个' },
             { text: '更明亮的', marks: { color: 'accent' } },
             { text: '\n明天。' },
+          ],
+        },
+        eyebrow: {
+          en: 'Love for good things. Shared with everyone.',
+        },
+        titleLineStyles: {
+          en: [
+            { size: 54 },
+            { align: 'center', size: 30 },
+            { size: 55 },
           ],
         },
         subtitle: {
@@ -82,6 +92,11 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
           zh: '订购指南',
         },
         secondaryAction: { type: 'site.openHowItWorks' },
+        journeyLinks: {
+          selectUrl: '/products',
+          preorderUrl: '/how-it-works',
+          pickupUrl: '/how-it-works',
+        },
         mediaAlt: {
           en: 'JOKO Bakery',
           th: 'JOKO Bakery',

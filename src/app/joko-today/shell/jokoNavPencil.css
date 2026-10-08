@@ -41,3 +41,17 @@
 @media (prefers-reduced-motion: reduce) {
   .joko-nav-pencil::after { transition: none; }
 }
+
+
+/* Hero underline reuses the same hand-drawn ochre stroke as the top navigation. */
+.joko-hero-pencil-underline {
+  display: block;
+  width: 82%;
+  max-width: 22rem;
+  height: .55rem;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 12' preserveAspectRatio='none'%3E%3Cpath d='M2 8.4 Q24 6.2 48 7.9 T99 7.3 Q132 5.4 158 6.7' fill='none' stroke='%23C76624' stroke-width='2.6' stroke-linecap='round' opacity='.9'/%3E%3Cpath d='M9 10 Q55 9.2 91 9.7 T153 8.3' fill='none' stroke='%23C76624' stroke-width='.85' stroke-linecap='round' opacity='.42'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  transform: rotate(-.35deg);
+}

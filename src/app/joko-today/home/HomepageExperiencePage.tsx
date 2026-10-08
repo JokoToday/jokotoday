@@ -1,8 +1,6 @@
 import {
   ArrowRight,
   PlayCircle,
-  Heart,
-  Leaf,
   MapPin,
   MousePointer2,
   CalendarCheck,
@@ -20,6 +18,7 @@ import type { BuilderRichText, HomeHeroSection, HomeTopLikedSection } from '../.
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
+import '../shell/jokoNavPencil.css';
 
 interface HomepageExperiencePageProps {
   onNavigate: (page: string) => void;
@@ -41,11 +40,11 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 
 const copy = {
   en: {
-    kicker: 'Love for Baking. Shared with Everyone.',
-    headline1: 'Good bread',
+    kicker: 'Love for good things. Shared with everyone.',
+    headline1: 'Selected Goodness',
     headline2: 'for a',
-    headlineAccent: 'brighter',
-    headline3: 'tomorrow.',
+    headlineAccent: 'Brighter',
+    headline3: 'Today',
     intro: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
     products: 'Explore the Bakery',
     howItWorks: 'How it works',
@@ -111,12 +110,29 @@ export function HomepageExperiencePage({
   const eyebrow = publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.eyebrow?.[lang]?.trim() || labels.kicker
     : labels.kicker;
-  const headlineFallback: BuilderRichText = [
-    { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
-    { text: labels.headlineAccent, marks: { color: 'accent' } },
-    ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
-  ];
+  const headlineFallback: BuilderRichText = lang === 'en'
+    ? [
+        { text: labels.headline1 + '\n' + labels.headline2 + '\n' },
+        { text: labels.headlineAccent, marks: { color: 'accent', italic: true } },
+        { text: ' ' + labels.headline3 },
+      ]
+    : [
+        { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
+        { text: labels.headlineAccent, marks: { color: 'accent' } },
+        ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
+      ];
   const titleRuns = publishedTitleRichText ?? headlineFallback;
+  const headlineLineStyles = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.props.titleLineStyles?.[lang]
+    : lang === 'en'
+      ? [{}, { align: 'center' as const, size: 30 }, {}]
+      : undefined;
+  const heroJourneyLinks = publishedHero?.type === 'home.hero.v1'
+    ? publishedHero.props.journeyLinks
+    : undefined;
+  const selectUrl = heroJourneyLinks?.selectUrl || '/products';
+  const preorderUrl = heroJourneyLinks?.preorderUrl || '/how-it-works';
+  const pickupUrl = heroJourneyLinks?.pickupUrl || '/how-it-works';
   const subtitleRuns = publishedHero?.type === 'home.hero.v1'
     ? localizeRichText(publishedHero.props.subtitleRichText, lang, 'en', heroIntro)
     : [{ text: heroIntro }];
@@ -240,10 +256,10 @@ export function HomepageExperiencePage({
                   style={publishedHero?.type === 'home.hero.v1'
                     ? resolveHeroLocaleStyle(publishedHero.props.titleStyle, publishedHero.props.titleLocaleStyles, lang)
                     : undefined}
-                  lineStyles={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.titleLineStyles?.[lang] : undefined}
+                  lineStyles={headlineLineStyles}
                   className="mt-4 leading-[.92] tracking-[-0.042em]"
                 />
-                <span className="mt-3 block h-[3px] w-[82%] max-w-[22rem] -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
+                <span className="joko-hero-pencil-underline mt-2" aria-hidden="true" />
 
                 <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
                   style={publishedHero?.type === 'home.hero.v1'
@@ -288,18 +304,27 @@ export function HomepageExperiencePage({
                 )}
 
                 <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
-                  <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
+                  <a
+                    href={selectUrl}
+                    className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                  >
                     <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
                     <span>{labels.select}</span>
-                  </div>
-                  <div className="flex items-center gap-2 border-r border-[#55766F]/14 px-1">
+                  </a>
+                  <a
+                    href={preorderUrl}
+                    className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                  >
                     <CalendarCheck className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
                     <span>{labels.preorder}</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-1">
+                  </a>
+                  <a
+                    href={pickupUrl}
+                    className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                  >
                     <MapPin className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
                     <span>{labels.pickup}</span>
-                  </div>
+                  </a>
                 </div>
 
               </div>
