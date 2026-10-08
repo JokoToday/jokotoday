@@ -31,6 +31,11 @@ type Copy = {
   invalidImage: string;
   tooLarge: string;
   secure: string;
+  reminder5: string;
+  reminder10: string;
+  reminder14: string;
+  countdown: string;
+  overdue: string;
 };
 
 const COPY: Record<Language, Copy> = {
@@ -50,6 +55,11 @@ const COPY: Record<Language, Copy> = {
     invalidImage: 'Use a JPEG, PNG, GIF or WebP bank-slip image.',
     tooLarge: 'The bank-slip image must be 4 MB or smaller.',
     secure: 'The receiving account and exact amount are checked automatically with EasySlip.',
+    reminder5: 'Payment reminder: your order is still awaiting payment.',
+    reminder10: 'Payment reminder: please complete payment soon to keep this reservation.',
+    reminder14: 'Final reminder: payment is still outstanding.',
+    countdown: 'Time remaining',
+    overdue: 'Payment is still outstanding. This order is not confirmed.',
   },
   th: {
     title: 'ชำระด้วยพร้อมเพย์',
@@ -67,6 +77,11 @@ const COPY: Record<Language, Copy> = {
     invalidImage: 'กรุณาใช้รูปสลิป JPEG, PNG, GIF หรือ WebP',
     tooLarge: 'รูปสลิปต้องมีขนาดไม่เกิน 4 MB',
     secure: 'ระบบตรวจสอบบัญชีผู้รับและยอดเงินที่ถูกต้องโดยอัตโนมัติผ่าน EasySlip',
+    reminder5: 'แจ้งเตือนการชำระเงิน: คำสั่งซื้อของคุณยังรอการชำระเงิน',
+    reminder10: 'แจ้งเตือนการชำระเงิน: กรุณาชำระเงินเร็ว ๆ นี้เพื่อรักษาการจองนี้',
+    reminder14: 'แจ้งเตือนครั้งสุดท้าย: ยังไม่ได้ชำระเงิน',
+    countdown: 'เวลาที่เหลือ',
+    overdue: 'ยังไม่ได้ชำระเงิน คำสั่งซื้อนี้ยังไม่ได้รับการยืนยัน',
   },
   zh: {
     title: '使用 PromptPay 付款',
@@ -84,6 +99,11 @@ const COPY: Record<Language, Copy> = {
     invalidImage: '请使用 JPEG、PNG、GIF 或 WebP 格式的银行回执。',
     tooLarge: '银行回执图片不得超过 4 MB。',
     secure: '系统会通过 EasySlip 自动核对收款账户和准确金额。',
+    reminder5: '付款提醒：您的订单仍在等待付款。',
+    reminder10: '付款提醒：请尽快完成付款以保留本次预订。',
+    reminder14: '最后提醒：付款仍未完成。',
+    countdown: '剩余时间',
+    overdue: '付款仍未完成。此订单尚未确认。',
   },
 };
 
@@ -116,6 +136,8 @@ export function OnlinePromptPayPanel({
   const [error, setError] = useState('');
   const [pendingMessage, setPendingMessage] = useState('');
   const [paid, setPaid] = useState(false);
+  const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +149,7 @@ export function OnlinePromptPayPanel({
         const settings = await getPaymentSettings();
         if (cancelled) return;
         setEnabled(settings.online_promptpay_enabled);
+        setPaymentWindowMinutes(settings.payment_window_minutes);
 
         if (!settings.online_promptpay_enabled) return;
 
@@ -150,6 +173,12 @@ export function OnlinePromptPayPanel({
     void load();
     return () => { cancelled = true; };
   }, [orderId]);
+
+  useEffect(() => {
+    if (!intent?.expiresAt || paid) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [intent?.expiresAt, paid]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
@@ -227,6 +256,24 @@ export function OnlinePromptPayPanel({
     );
   }
 
+  const expiryMs = intent?.expiresAt ? new Date(intent.expiresAt).getTime() : NaN;
+  const remainingMs = Number.isFinite(expiryMs) ? expiryMs - nowMs : 0;
+  const elapsedMinutes = Number.isFinite(expiryMs)
+    ? paymentWindowMinutes - Math.max(0, remainingMs) / 60000
+    : 0;
+  const isOverdue = Number.isFinite(expiryMs) && remainingMs <= 0;
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const countdownText = `${String(Math.floor(remainingSeconds / 60)).padStart(2, '0')}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+  const reminderText = isOverdue
+    ? copy.overdue
+    : paymentWindowMinutes === 15 && elapsedMinutes >= 14
+      ? copy.reminder14
+      : paymentWindowMinutes === 15 && elapsedMinutes >= 10
+        ? copy.reminder10
+        : paymentWindowMinutes === 15 && elapsedMinutes >= 5
+          ? copy.reminder5
+          : '';
+
   if (!transaction || !intent?.promptPayPayload) {
     return error ? (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
@@ -241,9 +288,19 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {copy.title}
+            {intent?.qrMode === 'kshop_easyslip'
+              ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
+              : copy.title}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-[#303532]/65">{copy.intro}</p>
+          <p className="mt-1 text-sm leading-6 text-[#303532]/65">
+            {intent?.qrMode === 'kshop_easyslip'
+              ? (language === 'th'
+                  ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
+                  : language === 'zh'
+                    ? '扫描商户二维码完成付款，然后上传银行回执。交易验证成功后，JOKO 才会确认订单。'
+                    : 'Scan the merchant QR, complete the transfer, then upload the bank slip. JOKO confirms the order only after the banking transaction is verified.')
+              : copy.intro}
+          </p>
         </div>
       </div>
 
@@ -265,6 +322,15 @@ export function OnlinePromptPayPanel({
             <Clock className="h-4 w-4" />
             <span>{copy.expires}: {formatExpiry(intent.expiresAt, language)}</span>
           </div>
+          {paymentWindowMinutes === 15 && (
+            <div className={`mt-3 rounded-xl border p-3 text-sm ${isOverdue ? 'border-red-200 bg-red-50 text-red-700' : remainingSeconds <= 60 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-[#55766F]/15 bg-white/60 text-[#303532]/70'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">{isOverdue ? copy.overdue : copy.countdown}</span>
+                {!isOverdue && <span className="font-mono text-base font-bold">{countdownText}</span>}
+              </div>
+              {reminderText && !isOverdue && <p className="mt-1 text-xs leading-5">{reminderText}</p>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -320,7 +386,15 @@ export function OnlinePromptPayPanel({
           </div>
         )}
 
-        <p className="mt-3 text-xs leading-5 text-[#303532]/50">{copy.secure}</p>
+        <p className="mt-3 text-xs leading-5 text-[#303532]/50">
+          {intent?.qrMode === 'kshop_easyslip'
+            ? (language === 'th'
+                ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
+                : language === 'zh'
+                  ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
+                  : 'This K SHOP QR is tied to the registered merchant account; EasySlip automatically checks the receiver, exact amount and duplicate use.')
+            : copy.secure}
+        </p>
       </div>
     </div>
   );

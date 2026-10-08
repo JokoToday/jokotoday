@@ -49,6 +49,49 @@ function normalizePromptPayTarget(raw: string): { subTag: "01" | "02"; value: st
   throw new Error("PROMPTPAY_ID must be a Thai mobile number or 13-digit national/tax id");
 }
 
+type EasySlipQrResponse = {
+  status?: number;
+  message?: string;
+  data?: {
+    image?: string;
+    mime?: string;
+    payload?: string;
+  };
+};
+
+function sanitizeKShopRef(orderNumber: string, orderId: string): string {
+  const preferred = orderNumber.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20);
+  if (preferred) return preferred;
+  return orderId.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20) || "JOKOORDER";
+}
+
+async function buildKShopPayload(orderNumber: string, orderId: string, amount: number): Promise<string> {
+  const response = await fetch("https://api.easyslip.com/v1/qr/generate", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${requiredEnv("EASYSLIP_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "KSHOP",
+      ref1: sanitizeKShopRef(orderNumber, orderId),
+      amount: Number(amount.toFixed(2)),
+    }),
+  });
+
+  const result = await response.json().catch(() => null) as EasySlipQrResponse | null;
+  if (!response.ok || result?.status !== 200 || !result?.data?.payload) {
+    console.error("EasySlip K SHOP QR generation failed", {
+      status: response.status,
+      providerStatus: result?.status,
+      providerMessage: result?.message,
+    });
+    throw new Error("K SHOP QR generation failed");
+  }
+
+  return result.data.payload;
+}
+
 function buildPromptPayPayload(targetRaw: string, amount: number): string {
   const target = normalizePromptPayTarget(targetRaw);
   const merchantAccount =
@@ -136,7 +179,21 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Invalid payment amount" }, 409);
     }
 
-    const payload = buildPromptPayPayload(requiredEnv("PROMPTPAY_ID"), amount);
+    const { data: setting, error: settingError } = await service
+      .from("payment_settings")
+      .select("payment_qr_mode")
+      .eq("id", true)
+      .maybeSingle();
+
+    if (settingError) throw settingError;
+
+    const qrMode = setting?.payment_qr_mode === "kshop_easyslip"
+      ? "kshop_easyslip"
+      : "promptpay_legacy";
+
+    const payload = qrMode === "kshop_easyslip"
+      ? await buildKShopPayload(order.order_number, order.id, amount)
+      : buildPromptPayPayload(requiredEnv("PROMPTPAY_ID"), amount);
 
     return jsonResponse({
       state: "pending",
@@ -146,10 +203,11 @@ Deno.serve(async (req: Request) => {
       amount,
       currency: payment.currency,
       expiresAt: payment.expires_at,
+      qrMode,
       promptPayPayload: payload,
     });
   } catch (error) {
     console.error("promptpay-payment-intent failed", error);
-    return jsonResponse({ error: "Could not prepare PromptPay payment" }, 500);
+    return jsonResponse({ error: "Could not prepare payment QR" }, 500);
   }
 });

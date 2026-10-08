@@ -1,8 +1,11 @@
 import { supabase } from './supabase';
 
+export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip';
+
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
   payment_window_minutes: number;
+  payment_qr_mode: PaymentQrMode;
 };
 
 export type PaymentTransaction = {
@@ -30,6 +33,7 @@ export type PromptPayIntent = {
   currency: string;
   expiresAt: string;
   promptPayPayload?: string;
+  qrMode?: PaymentQrMode;
 };
 
 export type PaymentVerificationResult = {
@@ -49,7 +53,7 @@ export type PaymentVerificationResult = {
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const { data, error } = await supabase
     .from('payment_settings')
-    .select('online_promptpay_enabled, payment_window_minutes')
+    .select('online_promptpay_enabled, payment_window_minutes, payment_qr_mode')
     .eq('id', true)
     .maybeSingle();
 
@@ -58,6 +62,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
+    payment_qr_mode: data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
   };
 }
 

@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip';
+
 type PaymentSettingsRow = {
   online_promptpay_enabled: boolean;
   payment_window_minutes: number;
+  payment_qr_mode: PaymentQrMode;
 };
 
 export function PaymentSettingsManagement() {
   const [enabled, setEnabled] = useState(false);
   const [minutes, setMinutes] = useState(60);
+  const [qrMode, setQrMode] = useState<PaymentQrMode>('promptpay_legacy');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +28,7 @@ export function PaymentSettingsManagement() {
         setError('');
         const { data, error: loadError } = await supabase
           .from('payment_settings')
-          .select('online_promptpay_enabled, payment_window_minutes')
+          .select('online_promptpay_enabled, payment_window_minutes, payment_qr_mode')
           .eq('id', true)
           .maybeSingle();
 
@@ -34,6 +38,7 @@ export function PaymentSettingsManagement() {
         const row = data as PaymentSettingsRow | null;
         setEnabled(Boolean(row?.online_promptpay_enabled));
         setMinutes(Number(row?.payment_window_minutes) || 60);
+        setQrMode(row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load payment settings.');
@@ -66,6 +71,7 @@ export function PaymentSettingsManagement() {
         .update({
           online_promptpay_enabled: enabled,
           payment_window_minutes: nextMinutes,
+          payment_qr_mode: qrMode,
           updated_at: new Date().toISOString(),
         })
         .eq('id', true);
@@ -87,10 +93,9 @@ export function PaymentSettingsManagement() {
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="joko-admin-title text-xl font-semibold">Online PromptPay rollout</h2>
+          <h2 className="joko-admin-title text-xl font-semibold">Online QR payment rollout</h2>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            Controls the customer-facing PromptPay + EasySlip payment flow. Keep this off until the
-            production PromptPay identifier, payment functions and expiry automation are deployed and tested.
+            Controls the customer-facing QR + EasySlip payment flow. K SHOP merchant QR is the preferred business-account route; the original personal PromptPay generator remains available as a fallback.
           </p>
         </div>
       </div>
@@ -104,9 +109,9 @@ export function PaymentSettingsManagement() {
         <div className="space-y-5">
           <label className="flex items-start justify-between gap-4 rounded-xl border border-[#55766F]/15 bg-white/70 p-4">
             <div>
-              <p className="text-sm font-semibold text-[#303532]">Customer online PromptPay</p>
+              <p className="text-sm font-semibold text-[#303532]">Customer online QR payment</p>
               <p className="mt-1 text-xs leading-5 text-[#303532]/55">
-                When enabled, unpaid online orders receive an amount-specific PromptPay QR and bank-slip upload flow.
+                When enabled, unpaid online orders receive an amount-specific QR and bank-slip upload flow.
               </p>
             </div>
             <input
@@ -120,12 +125,31 @@ export function PaymentSettingsManagement() {
             />
           </label>
 
+          <label className="block">
+            <span className="text-sm font-semibold text-[#303532]">QR payment mode</span>
+            <select
+              value={qrMode}
+              onChange={(event) => {
+                setQrMode(event.target.value as PaymentQrMode);
+                setSaved(false);
+              }}
+              className="joko-admin-field mt-2 w-full max-w-md"
+            >
+              <option value="kshop_easyslip">K SHOP merchant QR via EasySlip</option>
+              <option value="promptpay_legacy">Legacy personal PromptPay (fallback)</option>
+            </select>
+            <p className="mt-1 text-xs leading-5 text-[#303532]/50">
+              K SHOP routes payment to the registered merchant/business account. Legacy PromptPay remains available so we can revert instantly if K SHOP testing fails.
+            </p>
+          </label>
+
           {enabled && (
             <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                Only enable this after the server-side <strong>PROMPTPAY_ID</strong> secret is configured
-                and the production payment rollout has passed its end-to-end test.
+                {qrMode === 'kshop_easyslip'
+                  ? 'K SHOP mode requires the EasySlip application to be linked to the registered K SHOP merchant account.'
+                  : 'Legacy PromptPay uses the existing server-side PROMPTPAY_ID secret and is retained only as a fallback.'}
               </p>
             </div>
           )}

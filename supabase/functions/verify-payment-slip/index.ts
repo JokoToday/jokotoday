@@ -324,7 +324,7 @@ Deno.serve(async (req: Request) => {
 
     if (rejectionCode) {
       const message = rejectionCode === "ACCOUNT_MISMATCH"
-        ? "The payment was not sent to the registered JOKO receiving account."
+        ? "The PromptPay receiver does not match a JOKO receiving account registered in EasySlip."
         : rejectionCode === "AMOUNT_MISMATCH"
           ? "The bank transfer amount does not match this order."
           : rejectionCode === "DUPLICATE_SLIP"
