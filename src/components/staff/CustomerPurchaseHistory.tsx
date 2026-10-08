@@ -219,6 +219,7 @@ export function CustomerPurchaseHistory({
   const paymentMethod = (method: string | null) => {
     if (method === 'cash') return language === 'en' ? 'Cash' : 'เงินสด';
     if (method === 'qr_code' || method === 'qr') return language === 'en' ? 'QR' : 'คิวอาร์';
+    if (method === 'promptpay_online') return language === 'en' ? 'PromptPay Online' : 'พร้อมเพย์ออนไลน์';
     return notRecorded;
   };
 
@@ -407,7 +408,7 @@ export function CustomerPurchaseHistory({
                     const handledBy = order.staff_id ? staffNames[order.staff_id] : undefined;
                     const items = Array.isArray(order.order_items) ? order.order_items : [];
                     const paymentComplete = order.payment_status === 'paid'
-                      && ['cash', 'qr_code', 'qr'].includes(order.payment_method ?? '');
+                      && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method ?? '');
 
                     return (
                       <div key={order.id} className={`rounded-xl border bg-white shadow-sm overflow-hidden ${isCancelled ? 'border-red-200' : 'border-slate-200'}`}>
