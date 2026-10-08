@@ -212,3 +212,11 @@ export async function getPaymentTransactionStatus(paymentTransactionId: string):
   if (!data) throw new Error('Payment transaction not found.');
   return data as Pick<PaymentTransaction, 'status' | 'verified_at'>;
 }
+
+
+export async function expireOwnPaymentTransaction(paymentTransactionId: string): Promise<void> {
+  const { error } = await supabase.rpc('expire_own_payment_transaction_v1', {
+    p_payment_transaction_id: paymentTransactionId,
+  });
+  if (error) throw new Error(error.message);
+}
