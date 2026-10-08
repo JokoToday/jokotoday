@@ -389,6 +389,35 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    try {
+      const adminNotificationResponse = await fetch(
+        `${requiredEnv("SUPABASE_URL")}/functions/v1/send-admin-order-notification`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: authorization,
+            apikey: requiredEnv("SUPABASE_ANON_KEY"),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ order_id: order.id }),
+        },
+      );
+
+      if (!adminNotificationResponse.ok && adminNotificationResponse.status !== 202) {
+        console.error("Admin order notification could not be released after payment", {
+          orderId: order.id,
+          status: adminNotificationResponse.status,
+        });
+      }
+    } catch (adminNotificationError) {
+      console.error("Admin order notification failed after successful payment", {
+        orderId: order.id,
+        message: adminNotificationError instanceof Error
+          ? adminNotificationError.message
+          : String(adminNotificationError),
+      });
+    }
+
     return jsonResponse({
       state: "verified",
       payment_status: finalized?.order?.payment_status || "paid",
