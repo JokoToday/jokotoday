@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Settings, Package, Tag, FileText, Type, MapPin, Zap, LogOut, ScanLine, Clock, Share2, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProductForm } from '../components/ProductManagement';
+import { ProductCatalogueFilters, filterProductCatalogue } from '../components/products/ProductCatalogueFilters';
 import ProductQRPanel from '../components/ProductQRPanel';
 import { QuickAddProduct } from '../components/QuickAddProduct';
 import { AdminPasswordProtection } from '../components/AdminPasswordProtection';
@@ -261,6 +262,13 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [editing, setEditing] = useState<CMSProduct | null>(null);
   const [qrProduct, setQrProduct] = useState<CMSProduct | null>(null);
+  const [query, setQuery] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+
+  const filteredProducts = useMemo(
+    () => filterProductCatalogue(products, query, categoryId),
+    [products, query, categoryId],
+  );
 
   const getCategoryName = (id: string) => {
     const category = categories.find((item) => item.id === id);
@@ -319,6 +327,18 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
         />
       )}
 
+      <div className="mb-5">
+        <ProductCatalogueFilters
+          query={query}
+          categoryId={categoryId}
+          categories={categories}
+          totalCount={products.length}
+          filteredCount={filteredProducts.length}
+          onQueryChange={setQuery}
+          onCategoryChange={setCategoryId}
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -336,7 +356,13 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
           <tbody>
             {products.length === 0 ? (
               <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-500 text-sm">No products yet. Add your first product!</td></tr>
-            ) : products.map((product) => (
+            ) : filteredProducts.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-12 text-center text-gray-500 text-sm">
+                  No products match this search or category.
+                </td>
+              </tr>
+            ) : filteredProducts.map((product) => (
               <tr key={product.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <button
