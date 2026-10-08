@@ -6,6 +6,7 @@ import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSug
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
+import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
@@ -466,6 +467,13 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 <span className="text-sm font-semibold text-[#304B45]">{language === 'th' ? 'แต้มที่ได้รับ' : language === 'zh' ? '本单获得积分' : 'Points earned'}</span>
                 <span className="font-bold text-[#304B45]">+{completedLoyaltyPoints}</span>
               </div>
+            )}
+
+            {orderId && (
+              <OnlinePromptPayPanel
+                orderId={orderId}
+                language={language}
+              />
             )}
 
             <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
