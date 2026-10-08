@@ -85,11 +85,23 @@ Deno.serve(async (req: Request) => {
       ? remarkValue.trim().slice(0, 255)
       : "JOKO-EASYSLIP-POC";
 
+    const expectedAmountValue = incoming.get("expectedAmount");
+    const expectedAmount = typeof expectedAmountValue === "string" && expectedAmountValue.trim()
+      ? Number(expectedAmountValue)
+      : null;
+
+    if (expectedAmount !== null && (!Number.isFinite(expectedAmount) || expectedAmount <= 0)) {
+      return jsonResponse({ error: "Expected amount must be a positive number" }, 400);
+    }
+
     const easySlipForm = new FormData();
     easySlipForm.append("image", image, image.name || "payment-slip");
     easySlipForm.append("remark", remark);
     easySlipForm.append("matchAccount", "true");
     easySlipForm.append("checkDuplicate", "true");
+    if (expectedAmount !== null) {
+      easySlipForm.append("matchAmount", expectedAmount.toFixed(2));
+    }
 
     const easySlipResponse = await fetch("https://api.easyslip.com/v2/verify/bank", {
       method: "POST",
@@ -105,7 +117,9 @@ Deno.serve(async (req: Request) => {
       error?: { code?: string; message?: string };
       data?: {
         isDuplicate?: boolean;
+        amountInOrder?: number;
         amountInSlip?: number;
+        isAmountMatched?: boolean;
         matchedAccount?: {
           bank?: { nameEn?: string; nameTh?: string; shortCode?: string };
           nameTh?: string;
@@ -162,10 +176,18 @@ Deno.serve(async (req: Request) => {
             bankNumberMasked: maskAccount(matchedAccount.bankNumber),
           }
         : null,
+      amountInOrder: Number.isFinite(Number(data.amountInOrder))
+        ? Number(data.amountInOrder)
+        : expectedAmount,
       amountInSlip: Number.isFinite(Number(data.amountInSlip))
         ? Number(data.amountInSlip)
         : Number.isFinite(Number(rawSlip.amount?.amount))
           ? Number(rawSlip.amount.amount)
+          : null,
+      isAmountMatched: typeof data.isAmountMatched === "boolean"
+        ? data.isAmountMatched
+        : expectedAmount === null
+          ? null
           : null,
       transRef: typeof rawSlip.transRef === "string" ? rawSlip.transRef : null,
       transactionDate: typeof rawSlip.date === "string" ? rawSlip.date : null,
