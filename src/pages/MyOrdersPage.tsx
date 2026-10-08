@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { CMSProduct } from '../lib/cmsService';
-import { cancelOnlineOrderCompatible } from '../lib/orderServiceV2';
+import { cancelOnlineOrderCompatible, reactivateExpiredOnlineOrder } from '../lib/orderServiceV2';
 import { Order, PickupDay, PickupLocation } from '../components/orders/OrderTypes';
 import { MyOrdersList } from '../components/orders/MyOrdersList';
 import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
@@ -30,6 +30,8 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<Order | null>(null);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [reactivatingOrderId, setReactivatingOrderId] = useState<string | null>(null);
+  const [reactivationError, setReactivationError] = useState('');
 
   useEffect(() => {
     if (user) loadAll();
@@ -37,7 +39,8 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user) {
+
+  if (!user) {
       setOnlinePaymentEnabled(false);
       return;
     }
@@ -63,7 +66,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned')
+          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),
@@ -129,6 +132,23 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
     }
   };
 
+  const handleReactivateOrder = async (order: Order) => {
+    setReactivationError('');
+    setReactivatingOrderId(order.id);
+    try {
+      await reactivateExpiredOnlineOrder(order.id);
+      await loadAll();
+      const refreshed = { ...order, status: 'pending', cancellation_reason_code: null, cancelled_at: null } as Order;
+      setPaymentTarget(refreshed);
+    } catch (error) {
+      console.error('Order reactivation failed:', error);
+      setReactivationError(error instanceof Error ? error.message : 'Could not reactivate this order.');
+    } finally {
+      setReactivatingOrderId(null);
+    }
+  };
+
+
   if (!user) {
     return (
       <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4">
@@ -166,6 +186,12 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             </h1>
           </div>
 
+          {reactivationError && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              {reactivationError}
+            </div>
+          )}
+
           <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/88 p-4 shadow-[0_18px_50px_rgba(59,74,69,0.06)] sm:p-6">
             {loading ? (
               <div className="py-20 text-center">
@@ -185,6 +211,8 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
                 onNavigate={onNavigate}
                 onCancelRequest={openCancelModal}
                 onPayRequest={onlinePaymentEnabled ? setPaymentTarget : undefined}
+                onReactivateRequest={onlinePaymentEnabled ? handleReactivateOrder : undefined}
+                reactivatingOrderId={reactivatingOrderId}
               />
             )}
           </div>

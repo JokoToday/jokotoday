@@ -61,7 +61,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: 'Payment reminder: please complete payment soon to keep this reservation.',
     reminder14: 'Final reminder: payment is still outstanding.',
     countdown: 'Time remaining',
-    overdue: 'Payment is still outstanding. This order is not confirmed.',
+    overdue: 'Payment time has ended. This unpaid order will be cancelled automatically and kept in My Orders.',
   },
   th: {
     title: 'ชำระด้วยพร้อมเพย์',
@@ -83,7 +83,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: 'แจ้งเตือนการชำระเงิน: กรุณาชำระเงินเร็ว ๆ นี้เพื่อรักษาการจองนี้',
     reminder14: 'แจ้งเตือนครั้งสุดท้าย: ยังไม่ได้ชำระเงิน',
     countdown: 'เวลาที่เหลือ',
-    overdue: 'ยังไม่ได้ชำระเงิน คำสั่งซื้อนี้ยังไม่ได้รับการยืนยัน',
+    overdue: 'หมดเวลาชำระเงินแล้ว คำสั่งซื้อที่ยังไม่ได้ชำระจะถูกยกเลิกโดยอัตโนมัติและยังคงอยู่ใน My Orders',
   },
   zh: {
     title: '使用 PromptPay 付款',
@@ -105,7 +105,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: '付款提醒：请尽快完成付款以保留本次预订。',
     reminder14: '最后提醒：付款仍未完成。',
     countdown: '剩余时间',
-    overdue: '付款仍未完成。此订单尚未确认。',
+    overdue: '付款时间已结束。未付款订单将自动取消，并保留在“我的订单”中。',
   },
 };
 
@@ -122,10 +122,12 @@ export function OnlinePromptPayPanel({
   orderId,
   language,
   onPaid,
+  onExpired,
 }: {
   orderId: string;
   language: Language;
   onPaid?: () => void;
+  onExpired?: () => void;
 }) {
   const copy = COPY[language];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,6 +145,7 @@ export function OnlinePromptPayPanel({
   const [handoffError, setHandoffError] = useState('');
   const [handoffExpanded, setHandoffExpanded] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const expiryNotifiedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +200,14 @@ export function OnlinePromptPayPanel({
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [intent?.expiresAt, paid]);
+
+  useEffect(() => {
+    if (!intent?.expiresAt || paid || expiryNotifiedRef.current) return;
+    if (new Date(intent.expiresAt).getTime() <= nowMs) {
+      expiryNotifiedRef.current = true;
+      onExpired?.();
+    }
+  }, [intent?.expiresAt, nowMs, paid, onExpired]);
 
   useEffect(() => {
     if (!transaction?.id || paid) return;

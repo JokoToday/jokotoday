@@ -642,6 +642,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   setPaymentVerified(true);
                   if (user?.id) clearActiveCheckout(user.id);
                 }}
+                onExpired={() => {
+                  if (user?.id) clearActiveCheckout(user.id);
+                }}
               />
             )}
 
