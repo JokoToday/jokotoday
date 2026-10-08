@@ -274,11 +274,31 @@ Deno.serve(async (req: Request) => {
     const amountMatched = data.isAmountMatched === true;
     const providerDuplicate = data.isDuplicate === true;
 
+    let samePaymentRetry = false;
+    if (providerDuplicate && transRef) {
+      const { data: priorAttempt, error: priorAttemptError } = await service
+        .from("payment_slip_verifications")
+        .select("id")
+        .eq("payment_transaction_id", payment.id)
+        .eq("provider_transaction_ref", transRef)
+        .eq("provider_duplicate", false)
+        .eq("account_matched", true)
+        .eq("amount_matched", true)
+        .neq("id", attemptId)
+        .limit(1)
+        .maybeSingle();
+
+      if (priorAttemptError) throw priorAttemptError;
+      samePaymentRetry = Boolean(priorAttempt);
+    }
+
+    const duplicateBlocksPayment = providerDuplicate && !samePaymentRetry;
+
     const rejectionCode = !accountMatched
       ? "ACCOUNT_MISMATCH"
       : !amountMatched
         ? "AMOUNT_MISMATCH"
-        : providerDuplicate
+        : duplicateBlocksPayment
           ? "DUPLICATE_SLIP"
           : !transRef
             ? "MISSING_TRANSACTION_REFERENCE"
@@ -336,7 +356,7 @@ Deno.serve(async (req: Request) => {
       p_amount_in_slip: amountInSlip,
       p_account_matched: accountMatched,
       p_amount_matched: amountMatched,
-      p_provider_duplicate: providerDuplicate,
+      p_provider_duplicate: duplicateBlocksPayment,
     });
 
     if (finalizeError) {
