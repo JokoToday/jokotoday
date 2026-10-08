@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, FileImage, Loader2, MessageCircle, ShieldCheck, Upload } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -88,11 +88,11 @@ export default function PaymentHandoffPage({ token }: { token: string }) {
   const [error, setError] = useState('');
   const [pendingMessage, setPendingMessage] = useState('');
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const next = await resolvePaymentHandoff(token);
     setState(next);
     return next;
-  };
+  }, [token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +118,7 @@ export default function PaymentHandoffPage({ token }: { token: string }) {
       void refresh().catch(() => undefined);
     }, 4000);
     return () => window.clearInterval(timer);
-  }, [state?.state, token]);
+  }, [refresh, state?.state]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
