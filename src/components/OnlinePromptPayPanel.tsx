@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   createOrGetPaymentTransaction,
   createPaymentHandoff,
+  expireOwnPaymentTransaction,
   getPaymentSettings,
   getPaymentTransactionStatus,
   getPromptPayIntent,
@@ -202,12 +203,14 @@ export function OnlinePromptPayPanel({
   }, [intent?.expiresAt, paid]);
 
   useEffect(() => {
-    if (!intent?.expiresAt || paid || expiryNotifiedRef.current) return;
+    if (!intent?.expiresAt || !transaction?.id || paid || expiryNotifiedRef.current) return;
     if (new Date(intent.expiresAt).getTime() <= nowMs) {
       expiryNotifiedRef.current = true;
-      onExpired?.();
+      void expireOwnPaymentTransaction(transaction.id)
+        .catch((expiryError) => console.error('Could not finalize payment expiry immediately:', expiryError))
+        .finally(() => onExpired?.());
     }
-  }, [intent?.expiresAt, nowMs, paid, onExpired]);
+  }, [intent?.expiresAt, transaction?.id, nowMs, paid, onExpired]);
 
   useEffect(() => {
     if (!transaction?.id || paid) return;

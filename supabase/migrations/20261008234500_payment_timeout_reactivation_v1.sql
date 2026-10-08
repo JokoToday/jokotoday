@@ -306,3 +306,40 @@ $reactivate$;
 REVOKE ALL ON FUNCTION public.reactivate_expired_online_order_v1(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.reactivate_expired_online_order_v1(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.reactivate_expired_online_order_v1(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.expire_own_payment_transaction_v1(
+  p_payment_transaction_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $expire_own$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_payment public.payment_transactions%ROWTYPE;
+BEGIN
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000'; END IF;
+
+  SELECT * INTO v_payment
+  FROM public.payment_transactions
+  WHERE id = p_payment_transaction_id;
+
+  IF NOT FOUND OR v_payment.customer_id IS DISTINCT FROM v_user_id THEN
+    RAISE EXCEPTION 'Payment transaction not found';
+  END IF;
+
+  IF v_payment.status = 'verified' THEN
+    RETURN jsonb_build_object('expired', false, 'status', 'verified');
+  END IF;
+
+  IF now() < v_payment.expires_at THEN
+    RAISE EXCEPTION 'Payment window has not expired';
+  END IF;
+
+  RETURN public.expire_payment_transaction_v1(v_payment.id);
+END;
+$expire_own$;
+
+REVOKE ALL ON FUNCTION public.expire_own_payment_transaction_v1(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.expire_own_payment_transaction_v1(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_own_payment_transaction_v1(uuid) TO service_role;
