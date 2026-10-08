@@ -1,6 +1,10 @@
 import { createClient, type SupabaseClient, type User } from "npm:@supabase/supabase-js@2";
 
-export type NotificationType = "customer_confirmation" | "admin_new_order" | "customer_cancellation";
+export type NotificationType =
+  | "customer_confirmation"
+  | "admin_new_order"
+  | "customer_cancellation"
+  | "payment_confirmation";
 export type NotificationOutcome =
   | "claimed"
   | "already_sent"

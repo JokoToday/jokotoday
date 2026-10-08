@@ -128,11 +128,15 @@ function money(value: unknown): number {
 
 type EmailCopy = {
   subjectPrefix: string;
+  subjectOutstanding: string;
   eyebrow: string;
+  eyebrowOutstanding: string;
   heading: string;
+  headingOutstanding: string;
   greetingPrefix: string;
   greetingSuffix: string;
   intro: string;
+  introOutstanding: string;
   customer: string;
   orderNumber: string;
   ordered: string;
@@ -146,6 +150,7 @@ type EmailCopy = {
   amountDue: string;
   paymentHeading: string;
   paymentUnpaid: string;
+  paymentUnpaidOnline: string;
   paymentPaid: string;
   paymentCancelled: string;
   paymentReview: string;
@@ -159,11 +164,15 @@ type EmailCopy = {
 const EMAIL_COPY: Record<Language, EmailCopy> = {
   en: {
     subjectPrefix: "Order confirmed",
+    subjectOutstanding: "Order received — payment needed",
     eyebrow: "Order confirmed",
+    eyebrowOutstanding: "Payment outstanding",
     heading: "Order confirmation",
+    headingOutstanding: "Complete your payment",
     greetingPrefix: "Hi ",
     greetingSuffix: ",",
     intro: "Thanks for your order. We have it and will have it ready for your selected pickup.",
+    introOutstanding: "Thanks for your order. Your pickup is reserved while you complete PromptPay and upload the bank slip. JOKO will confirm the order automatically after the banking transaction is verified.",
     customer: "Customer",
     orderNumber: "Order",
     ordered: "Ordered",
@@ -177,6 +186,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     amountDue: "Amount due",
     paymentHeading: "Payment",
     paymentUnpaid: "Pay ฿{{amount}} when you pick up. Cash or Thai QR payment is available.",
+    paymentUnpaidOnline: "Payment slip outstanding · ฿{{amount}}. Open My Orders to pay by PromptPay and upload the bank slip for automatic verification.",
     paymentPaid: "Paid · ฿{{amount}}",
     paymentCancelled: "This order was cancelled. No payment is due.",
     paymentReview: "Payment status is unresolved for this closed order. Please contact JOKO TODAY if needed.",
@@ -188,11 +198,15 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
   },
   th: {
     subjectPrefix: "ยืนยันคำสั่งซื้อแล้ว",
+    subjectOutstanding: "ได้รับคำสั่งซื้อแล้ว — กรุณาชำระเงิน",
     eyebrow: "ยืนยันคำสั่งซื้อแล้ว",
+    eyebrowOutstanding: "รอการชำระเงิน",
     heading: "ใบยืนยันคำสั่งซื้อ",
+    headingOutstanding: "ดำเนินการชำระเงินให้เสร็จ",
     greetingPrefix: "สวัสดีคุณ ",
     greetingSuffix: "",
     intro: "ขอบคุณสำหรับคำสั่งซื้อ เราได้รับออเดอร์เรียบร้อยแล้วและจะเตรียมไว้สำหรับวันรับสินค้าที่คุณเลือก",
+    introOutstanding: "เราได้รับคำสั่งซื้อแล้วและกันสินค้าไว้ชั่วคราว กรุณาชำระผ่านพร้อมเพย์และอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้ออัตโนมัติหลังตรวจสอบธุรกรรมธนาคาร",
     customer: "ลูกค้า",
     orderNumber: "คำสั่งซื้อ",
     ordered: "วันที่สั่งซื้อ",
@@ -206,6 +220,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     amountDue: "ยอดที่ต้องชำระ",
     paymentHeading: "การชำระเงิน",
     paymentUnpaid: "ชำระ ฿{{amount}} เมื่อรับสินค้า สามารถชำระด้วยเงินสดหรือ Thai QR ได้",
+    paymentUnpaidOnline: "ยังไม่ได้อัปโหลดสลิปชำระเงิน · ฿{{amount}} เปิด “คำสั่งซื้อของฉัน” เพื่อชำระผ่านพร้อมเพย์และอัปโหลดสลิปสำหรับการตรวจสอบอัตโนมัติ",
     paymentPaid: "ชำระแล้ว · ฿{{amount}}",
     paymentCancelled: "คำสั่งซื้อนี้ถูกยกเลิกแล้ว ไม่มียอดที่ต้องชำระ",
     paymentReview: "สถานะการชำระเงินของคำสั่งซื้อที่ปิดแล้วนี้ยังไม่ชัดเจน โปรดติดต่อ JOKO TODAY หากจำเป็น",
@@ -217,11 +232,15 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
   },
   zh: {
     subjectPrefix: "订单已确认",
+    subjectOutstanding: "已收到订单 — 请完成付款",
     eyebrow: "订单已确认",
+    eyebrowOutstanding: "等待付款",
     heading: "订单确认单",
+    headingOutstanding: "请完成付款",
     greetingPrefix: "您好，",
     greetingSuffix: "",
     intro: "感谢您的订购。我们已收到订单，并会在您选择的取货时间准备好。",
+    introOutstanding: "我们已收到订单，并暂时为您保留商品。请使用 PromptPay 付款并上传银行回执；银行交易验证成功后，JOKO 会自动确认订单。",
     customer: "客户",
     orderNumber: "订单",
     ordered: "下单日期",
@@ -235,6 +254,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     amountDue: "应付金额",
     paymentHeading: "付款",
     paymentUnpaid: "取货时支付 ฿{{amount}}。可使用现金或 Thai QR 付款。",
+    paymentUnpaidOnline: "付款回执尚未上传 · ฿{{amount}}。请打开“我的订单”，使用 PromptPay 付款并上传银行回执以自动验证。",
     paymentPaid: "已付款 · ฿{{amount}}",
     paymentCancelled: "此订单已取消，无需付款。",
     paymentReview: "此已关闭订单的付款状态尚未明确。如有需要，请联系 JOKO TODAY。",
@@ -289,9 +309,14 @@ function buildEmail(
   location: PickupLocation | null,
   pickupDay: PickupDay | null,
   lang: Language,
+  onlinePromptPayEnabled: boolean,
 ): { subject: string; html: string; text: string } {
   const copy = EMAIL_COPY[lang];
-  const subject = `${copy.subjectPrefix} · #${order.order_number}`;
+  const paymentOutstanding = onlinePromptPayEnabled
+    && order.payment_status !== "paid"
+    && order.status !== "cancelled"
+    && (order.status === "pending" || order.status === "confirmed" || order.status === "ready");
+  const subject = `${paymentOutstanding ? copy.subjectOutstanding : copy.subjectPrefix} · #${order.order_number}`;
   const locationName = getLocationName(location, lang);
   const pickupLabel = getPickupDayLabel(pickupDay, order.pickup_day, lang);
   const mapsLink = buildMapsLink(location?.maps_url ?? null, locationName);
@@ -303,6 +328,9 @@ function buildEmail(
   const itemRows = buildItemRows(items, lang, copy);
   const loyaltyBlock = buildLoyaltyBlock(points, copy);
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
+  const introText = paymentOutstanding ? copy.introOutstanding : copy.intro;
+  const eyebrowText = paymentOutstanding ? copy.eyebrowOutstanding : copy.eyebrow;
+  const headingText = paymentOutstanding ? copy.headingOutstanding : copy.heading;
   const orderedDate = formatDate(order.created_at, lang);
   const pickupDate = formatDate(order.pickup_date, lang, true);
   const preheader = `#${order.order_number} · ${pickupLabel} · ${locationName}`;
@@ -313,7 +341,8 @@ function buildEmail(
   } else if (order.payment_status === "paid") {
     paymentText = copy.paymentPaid.replace("{{amount}}", amountPaid.toFixed(2));
   } else if (order.status === "pending" || order.status === "confirmed" || order.status === "ready") {
-    paymentText = copy.paymentUnpaid.replace("{{amount}}", amountDue.toFixed(2));
+    paymentText = (paymentOutstanding ? copy.paymentUnpaidOnline : copy.paymentUnpaid)
+      .replace("{{amount}}", amountDue.toFixed(2));
   } else {
     paymentText = copy.paymentReview;
   }
@@ -340,7 +369,7 @@ function buildEmail(
 
   const contentHtml = `
     <p style="margin:0 0 8px;font-size:16px;line-height:${lang === "en" ? "1.55" : "1.8"};font-weight:650;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(greeting)}</p>
-    <p style="margin:0 0 26px;font-size:15px;line-height:${lang === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(copy.intro)}</p>
+    <p style="margin:0 0 26px;font-size:15px;line-height:${lang === "en" ? "1.65" : "1.85"};color:${JOKO_EMAIL_THEME.muted};">${escapeHtml(introText)}</p>
 
     <div style="margin:0 0 24px;padding:18px 20px;background:${JOKO_EMAIL_THEME.paper};border:1px solid ${JOKO_EMAIL_THEME.border};border-radius:9px;">
       <div style="font-size:11px;line-height:1.4;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${JOKO_EMAIL_THEME.sageDark};">${escapeHtml(copy.customer)}</div>
@@ -383,8 +412,8 @@ function buildEmail(
     language: lang,
     title: subject,
     preheader,
-    eyebrow: copy.eyebrow,
-    heading: copy.heading,
+    eyebrow: eyebrowText,
+    heading: headingText,
     contentHtml,
     footerText: copy.footer,
   });
@@ -399,10 +428,10 @@ function buildEmail(
 
   const text = [
     "JOKO TODAY",
-    copy.heading,
+    headingText,
     "",
     greeting,
-    copy.intro,
+    introText,
     "",
     `${copy.customer}: ${order.customer_name}`,
     `${copy.orderNumber}: #${order.order_number}`,
@@ -522,8 +551,21 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  const { data: paymentSetting } = await supabase
+    .from("payment_settings")
+    .select("online_promptpay_enabled")
+    .eq("id", true)
+    .maybeSingle();
+
   const items: OrderItem[] = Array.isArray(order.order_items) ? order.order_items : [];
-  const email = buildEmail(order, items, location, pickupDay, lang);
+  const email = buildEmail(
+    order,
+    items,
+    location,
+    pickupDay,
+    lang,
+    Boolean(paymentSetting?.online_promptpay_enabled),
+  );
 
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) {

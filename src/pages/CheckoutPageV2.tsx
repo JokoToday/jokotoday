@@ -6,6 +6,7 @@ import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSug
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
+import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +25,7 @@ import {
 import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderServiceV2';
 import { supabase } from '../lib/supabase';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
+import { getPaymentSettings } from '../lib/paymentService';
 
 interface CheckoutPageV2Props {
   onNavigate: (page: string) => void;
@@ -88,6 +90,23 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelledLoad = false;
+
+    void getPaymentSettings()
+      .then((settings) => {
+        if (!cancelledLoad) setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+      })
+      .catch(() => {
+        if (!cancelledLoad) setOnlinePaymentEnabled(false);
+      });
+
+    return () => {
+      cancelledLoad = true;
+    };
+  }, []);
 
   const requirements = useMemo(
     () => items.map((item) => ({
@@ -468,7 +487,16 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               </div>
             )}
 
-            <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
+            {orderId && (
+              <OnlinePromptPayPanel
+                orderId={orderId}
+                language={language}
+              />
+            )}
+
+            {!onlinePaymentEnabled && (
+              <p className="text-center text-xs leading-5 text-[#303532]/[.58]">{t.confirmation.paymentReminder}</p>
+            )}
             <OrderPrintButtonById
               orderId={orderId}
               language={language}

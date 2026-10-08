@@ -1,0 +1,122 @@
+import { supabase } from './supabase';
+
+export type PaymentSettings = {
+  online_promptpay_enabled: boolean;
+  payment_window_minutes: number;
+};
+
+export type PaymentTransaction = {
+  id: string;
+  order_id: string;
+  customer_id: string;
+  provider: string;
+  rail: string;
+  currency: string;
+  amount_due: number;
+  status: 'pending' | 'verifying' | 'verified' | 'failed' | 'expired' | 'cancelled';
+  provider_transaction_ref?: string | null;
+  expires_at: string;
+  verified_at?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+};
+
+export type PromptPayIntent = {
+  state: 'pending' | 'verified' | 'expired';
+  paymentTransactionId: string;
+  orderId: string;
+  orderNumber: string;
+  amount: number;
+  currency: string;
+  expiresAt: string;
+  promptPayPayload?: string;
+};
+
+export type PaymentVerificationResult = {
+  state: 'verified' | 'pending' | 'rejected' | 'expired';
+  payment_status?: string;
+  order_status?: string;
+  paymentTransactionId?: string;
+  amountPaid?: number;
+  amountInSlip?: number;
+  expectedAmount?: number;
+  transRef?: string | null;
+  code?: string;
+  message?: string;
+  error?: string;
+};
+
+export async function getPaymentSettings(): Promise<PaymentSettings> {
+  const { data, error } = await supabase
+    .from('payment_settings')
+    .select('online_promptpay_enabled, payment_window_minutes')
+    .eq('id', true)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return {
+    online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
+    payment_window_minutes: Number(data?.payment_window_minutes) || 60,
+  };
+}
+
+export async function createOrGetPaymentTransaction(orderId: string): Promise<PaymentTransaction> {
+  const { data, error } = await supabase.rpc('create_or_get_payment_transaction_v1', {
+    p_order_id: orderId,
+  });
+
+  if (error) throw error;
+  if (!data?.id) throw new Error('Could not prepare this payment.');
+
+  return {
+    ...data,
+    amount_due: Number(data.amount_due),
+  } as PaymentTransaction;
+}
+
+export async function getPromptPayIntent(paymentTransactionId: string): Promise<PromptPayIntent> {
+  const { data, error } = await supabase.functions.invoke('promptpay-payment-intent', {
+    body: { paymentTransactionId },
+  });
+
+  if (error) throw error;
+  if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare PromptPay QR.');
+
+  return data as PromptPayIntent;
+}
+
+export async function verifyPaymentSlip(
+  paymentTransactionId: string,
+  image: File,
+): Promise<PaymentVerificationResult> {
+  const formData = new FormData();
+  formData.append('paymentTransactionId', paymentTransactionId);
+  formData.append('image', image);
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Your session has expired. Please sign in again.');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvhualoeboobulwgmkla.supabase.co';
+  const response = await fetch(`${supabaseUrl}/functions/v1/verify-payment-slip`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => null) as PaymentVerificationResult | null;
+
+  if (!payload) {
+    throw new Error('Payment verification did not return a response.');
+  }
+
+  if (!response.ok && response.status !== 202) {
+    const error = new Error(payload.message || payload.error || 'Payment verification failed.');
+    Object.assign(error, { paymentResult: payload });
+    throw error;
+  }
+
+  return payload;
+}
