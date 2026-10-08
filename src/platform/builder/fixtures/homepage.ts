@@ -66,7 +66,7 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
           ],
         },
         subtitle: {
-          en: 'Thoughtfully baked in small batches. Pre-order online and pick up fresh at our JOKO locations.',
+          en: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
           th: 'อบอย่างตั้งใจเป็นล็อตเล็ก ๆ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของ JOKO',
           zh: '小批量用心烘焙。线上预订，到 JOKO 取货点领取新鲜出炉的面包。',
         },
