@@ -25,10 +25,49 @@ import {
 import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderServiceV2';
 import { supabase } from '../lib/supabase';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
-import { getPaymentSettings } from '../lib/paymentService';
+import { createOrGetPaymentTransaction, getPaymentSettings } from '../lib/paymentService';
 
 interface CheckoutPageV2Props {
   onNavigate: (page: string) => void;
+}
+
+type ActiveCheckoutSnapshot = {
+  orderId: string;
+  orderNumber: string;
+  orderPickupDateId: string | null;
+  completedPickupDate: string;
+  completedTotal: number;
+  completedItems: SecureOrderItem[];
+  completedLoyaltyPoints: number;
+  orderLocationName: string;
+  orderLocationMapsUrl: string;
+  expiresAt: string;
+};
+
+const activeCheckoutStorageKey = (userId: string) => `joko-active-checkout:${userId}`;
+
+function readActiveCheckout(userId: string): ActiveCheckoutSnapshot | null {
+  try {
+    const raw = localStorage.getItem(activeCheckoutStorageKey(userId));
+    if (!raw) return null;
+    const snapshot = JSON.parse(raw) as ActiveCheckoutSnapshot;
+    if (!snapshot?.orderId || !snapshot?.expiresAt || new Date(snapshot.expiresAt).getTime() <= Date.now()) {
+      localStorage.removeItem(activeCheckoutStorageKey(userId));
+      return null;
+    }
+    return snapshot;
+  } catch {
+    localStorage.removeItem(activeCheckoutStorageKey(userId));
+    return null;
+  }
+}
+
+function writeActiveCheckout(userId: string, snapshot: ActiveCheckoutSnapshot) {
+  localStorage.setItem(activeCheckoutStorageKey(userId), JSON.stringify(snapshot));
+}
+
+function clearActiveCheckout(userId: string) {
+  localStorage.removeItem(activeCheckoutStorageKey(userId));
 }
 
 interface SecureOrderItem {
@@ -91,14 +130,19 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [checkoutResumeResolved, setCheckoutResumeResolved] = useState(false);
 
   useEffect(() => {
     let cancelledLoad = false;
 
     void getPaymentSettings()
       .then((settings) => {
-        if (!cancelledLoad) setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+        if (!cancelledLoad) {
+          setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+          setPaymentWindowMinutes(settings.payment_window_minutes);
+        }
       })
       .catch(() => {
         if (!cancelledLoad) setOnlinePaymentEnabled(false);
@@ -108,6 +152,57 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       cancelledLoad = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || orderComplete || items.length > 0) {
+      if (!user?.id || items.length > 0) setCheckoutResumeResolved(true);
+      return;
+    }
+
+    const snapshot = readActiveCheckout(user.id);
+    if (!snapshot) {
+      setCheckoutResumeResolved(true);
+      return;
+    }
+
+    let cancelledResume = false;
+    const resume = async () => {
+      try {
+        const { data: order } = await supabase
+          .from('orders')
+          .select('id, payment_status, status')
+          .eq('id', snapshot.orderId)
+          .eq('customer_id', user.id)
+          .maybeSingle();
+
+        if (cancelledResume) return;
+        if (!order || order.status === 'cancelled') {
+          clearActiveCheckout(user.id);
+          setCheckoutResumeResolved(true);
+          return;
+        }
+
+        setOrderId(snapshot.orderId);
+        setOrderNumber(snapshot.orderNumber);
+        setOrderPickupDateId(snapshot.orderPickupDateId);
+        setCompletedPickupDate(snapshot.completedPickupDate);
+        setCompletedTotal(snapshot.completedTotal);
+        setCompletedItems(snapshot.completedItems);
+        setCompletedLoyaltyPoints(snapshot.completedLoyaltyPoints);
+        setOrderLocationName(snapshot.orderLocationName);
+        setOrderLocationMapsUrl(snapshot.orderLocationMapsUrl);
+        setPaymentVerified(order.payment_status === 'paid');
+        setOrderComplete(true);
+      } catch (error) {
+        console.error('Could not resume active checkout:', error);
+      } finally {
+        if (!cancelledResume) setCheckoutResumeResolved(true);
+      }
+    };
+
+    void resume();
+    return () => { cancelledResume = true; };
+  }, [user?.id, orderComplete, items.length]);
 
   const requirements = useMemo(
     () => items.map((item) => ({
@@ -354,6 +449,8 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         price_at_order: item.product.price,
       })));
 
+      let persistedLocationName = '';
+      let persistedLocationMapsUrl = '';
       const locationId = order.pickup_location_id || selection.pickupLocationId;
       if (locationId) {
         const { data: location } = await supabase
@@ -368,10 +465,44 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             : language === 'zh'
               ? location.name_zh
               : location.name_en;
-          setOrderLocationName(localizedName || location.name_en || '');
-          setOrderLocationMapsUrl(location.maps_url || '');
+          persistedLocationName = localizedName || location.name_en || '';
+          persistedLocationMapsUrl = location.maps_url || '';
+          setOrderLocationName(persistedLocationName);
+          setOrderLocationMapsUrl(persistedLocationMapsUrl);
         }
       }
+
+      let activePaymentExpiresAt = new Date(Date.now() + paymentWindowMinutes * 60 * 1000).toISOString();
+      if (onlinePaymentEnabled) {
+        try {
+          const paymentTransaction = await createOrGetPaymentTransaction(order.id);
+          activePaymentExpiresAt = paymentTransaction.expires_at;
+        } catch (paymentError) {
+          console.error('Could not pre-create payment transaction; payment panel will retry:', paymentError);
+        }
+      }
+
+      const persistedItems = serverItems.length > 0 ? serverItems : items.map((item) => ({
+        product_id: item.product.id,
+        product_name: item.product.name_en,
+        product_name_th: item.product.name_th,
+        product_name_zh: item.product.name_zh,
+        quantity: item.quantity,
+        price_at_order: item.product.price,
+      }));
+
+      writeActiveCheckout(user.id, {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        orderPickupDateId: order.pickup_date_id || selection.pickupDateId,
+        completedPickupDate: order.pickup_date || selection.pickupDate,
+        completedTotal: Number(order.total_amount) || totalPrice,
+        completedItems: persistedItems,
+        completedLoyaltyPoints: Number(order.loyalty_points_earned) || 0,
+        orderLocationName: persistedLocationName,
+        orderLocationMapsUrl: persistedLocationMapsUrl,
+        expiresAt: activePaymentExpiresAt,
+      });
 
       setOrderAttemptReference('');
       setOrderComplete(true);
@@ -398,6 +529,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     setIsCancelling(true);
     try {
       await cancelOnlineOrderByVersion(orderId, orderPickupDateId);
+      if (user?.id) clearActiveCheckout(user.id);
       setCancelled(true);
       setShowCancelModal(false);
     } catch (error) {
@@ -506,8 +638,15 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               <OnlinePromptPayPanel
                 orderId={orderId}
                 language={language}
-                onPaid={() => setPaymentVerified(true)}
+                onPaid={() => {
+                  setPaymentVerified(true);
+                  if (user?.id) clearActiveCheckout(user.id);
+                }}
               />
+            )}
+
+            {onlinePaymentEnabled && !paymentVerified && (
+              <button onClick={() => setShowCancelModal(true)} className="w-full rounded-xl border border-red-200 bg-white/70 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50">{t.confirmation.cancelOrder}</button>
             )}
 
             {!onlinePaymentEnabled && (
@@ -522,7 +661,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               />
             )}
             <button onClick={() => onNavigate('home')} className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120]">{t.confirmation.backToHome}</button>
-            <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
+            {(!onlinePaymentEnabled || paymentVerified) && (
+              <button onClick={() => setShowCancelModal(true)} className="w-full bg-white border border-red-200 text-red-600 py-2.5 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm">{t.confirmation.cancelOrder}</button>
+            )}
           </div>
         </div>
         </div>
@@ -584,6 +725,14 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
           onNavigate={onNavigate}
         />
       </>
+    );
+  }
+
+  if (!checkoutResumeResolved && user) {
+    return (
+      <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4 py-12">
+        <div className="text-sm font-medium text-[#55766F]">{language === 'th' ? 'กำลังเปิดคำสั่งซื้อของคุณ…' : language === 'zh' ? '正在恢复您的订单…' : 'Restoring your order…'}</div>
+      </div>
     );
   }
 
