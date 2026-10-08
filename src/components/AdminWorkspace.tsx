@@ -202,7 +202,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('payment-test')} className={tabClass('payment-test')}>
                   <ShieldCheck className="h-4 w-4" />
-                  Payment Test
+                  Payments
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('loyalty')} className={tabClass('loyalty')}>
                   <Gift className="h-4 w-4" />
