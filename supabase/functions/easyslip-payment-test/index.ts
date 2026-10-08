@@ -99,7 +99,27 @@ Deno.serve(async (req: Request) => {
       body: easySlipForm,
     });
 
-    const easySlipPayload = await easySlipResponse.json().catch(() => null) as Record<string, any> | null;
+    const easySlipPayload = await easySlipResponse.json().catch(() => null) as {
+      success?: boolean;
+      message?: string;
+      error?: { code?: string; message?: string };
+      data?: {
+        isDuplicate?: boolean;
+        amountInSlip?: number;
+        matchedAccount?: {
+          bank?: { nameEn?: string; nameTh?: string; shortCode?: string };
+          nameTh?: string;
+          nameEn?: string;
+          type?: string;
+          bankNumber?: string;
+        } | null;
+        rawSlip?: {
+          amount?: { amount?: number };
+          transRef?: string;
+          date?: string;
+        };
+      };
+    } | null;
 
     if (!easySlipResponse.ok || !easySlipPayload?.success) {
       const providerError = easySlipPayload?.error;
