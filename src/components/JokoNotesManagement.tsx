@@ -112,10 +112,10 @@ export function JokoNotesManagement() {
   }, []);
 
   useEffect(() => {
-    const registeredPlacement = pageDefinition.placements.some(
-      (placement) => placement.placementKey === existing?.placement_key,
+    const registeredPlacement = existing && pageDefinition.placements.some(
+      (placement) => placement.placementKey === existing.placement_key,
     )
-      ? existing?.placement_key
+      ? existing.placement_key
       : pageDefinition.placements[0].placementKey;
 
     setDraft(draftFromNote(existing, pageDefinition.pageKey, registeredPlacement));
