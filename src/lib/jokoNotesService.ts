@@ -34,24 +34,100 @@ export interface JokoNote {
 export type JokoNoteDraft = Omit<JokoNote, 'id' | 'created_at' | 'updated_at'>;
 
 export interface JokoNotePlacementDefinition {
-  pageKey: string;
   placementKey: string;
   label: string;
   description: string;
 }
 
+export interface JokoNotePageDefinition {
+  pageKey: string;
+  label: string;
+  description: string;
+  placements: readonly JokoNotePlacementDefinition[];
+}
+
 /**
- * JOKO Notes intentionally use code-owned placement slots.
- * Editorial content is flexible; page layout is not.
+ * JOKO Notes use fixed, code-owned safe zones.
+ * Admin chooses a page and one of its approved zones; arbitrary x/y positioning
+ * is intentionally not supported because it is fragile across breakpoints.
  */
-export const JOKO_NOTE_PLACEMENTS: readonly JokoNotePlacementDefinition[] = [
+export const JOKO_NOTE_PAGES: readonly JokoNotePageDefinition[] = [
+  {
+    pageKey: 'products',
+    label: 'Products',
+    description: 'Editorial note around the catalogue. The Products header center remains reserved for the separate brand-bubble system.',
+    placements: [
+      {
+        placementKey: 'below-browse-controls',
+        label: 'Below browse controls',
+        description: 'Between the Products/browse area and category filters.',
+      },
+      {
+        placementKey: 'below-categories',
+        label: 'Below categories',
+        description: 'Between category filters and the product catalogue.',
+      },
+      {
+        placementKey: 'after-catalogue',
+        label: 'After catalogue',
+        description: 'A closing note after the visible product catalogue.',
+      },
+    ],
+  },
   {
     pageKey: 'how-it-works',
-    placementKey: 'intro',
-    label: 'How It Works · Intro',
-    description: 'A single editorial note beside the How It Works introduction.',
+    label: 'How It Works',
+    description: 'A contextual note around the ordering journey.',
+    placements: [
+      {
+        placementKey: 'intro',
+        label: 'Below introduction',
+        description: 'Directly below the page heading and subtitle.',
+      },
+      {
+        placementKey: 'after-steps',
+        label: 'After the four steps',
+        description: 'Between the four-step overview and ordering details.',
+      },
+      {
+        placementKey: 'before-start-ordering',
+        label: 'Before Start Ordering',
+        description: 'After ordering details and before the final call to action.',
+      },
+    ],
+  },
+  {
+    pageKey: 'about',
+    label: 'About',
+    description: 'A personal editorial note around the JOKO story.',
+    placements: [
+      {
+        placementKey: 'intro',
+        label: 'Below page title',
+        description: 'Directly below the About heading.',
+      },
+      {
+        placementKey: 'after-story',
+        label: 'After story',
+        description: 'Between the story/mission card and the three value cards.',
+      },
+      {
+        placementKey: 'before-pickup',
+        label: 'Before pickup locations',
+        description: 'Between the value cards and pickup-location panel.',
+      },
+    ],
   },
 ] as const;
+
+export function getJokoNotePage(pageKey: string): JokoNotePageDefinition | undefined {
+  return JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
+}
+
+export function isRegisteredJokoNotePlacement(pageKey: string, placementKey: string): boolean {
+  const page = getJokoNotePage(pageKey);
+  return Boolean(page?.placements.some((placement) => placement.placementKey === placementKey));
+}
 
 function pickLocalized(
   language: 'en' | 'th' | 'zh',
