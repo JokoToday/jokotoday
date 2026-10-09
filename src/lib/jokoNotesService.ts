@@ -14,6 +14,8 @@ export interface JokoNote {
   placement_key: string;
   accent_type: JokoAccentType;
   bubble_size: JokoBubbleSize;
+  bubble_image_url: string | null;
+  bubble_alt: string | null;
   title_en: string | null;
   title_th: string | null;
   title_zh: string | null;
@@ -247,7 +249,7 @@ export async function adminSaveJokoNote(
   if (!isRegisteredJokoAccentPlacement(draft.page_key, draft.placement_key, draft.accent_type)) {
     throw new Error('Choose one of the registered safe zones for this page and accent type.');
   }
-  if (draft.accent_type === 'bubble' && !draft.image_url) {
+  if (draft.accent_type === 'bubble' && !draft.bubble_image_url) {
     throw new Error('Upload a bubble illustration before saving.');
   }
 
