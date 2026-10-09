@@ -4,6 +4,7 @@ import {
   type JokoBubbleSize,
   type JokoNote as JokoAccentRecord,
 } from '../lib/jokoNotesService';
+import { getActivePageAccentPreview } from '../lib/pageAccentPreview';
 
 const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
   small: 'max-w-[11rem] sm:max-w-[12rem]',
@@ -22,6 +23,28 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
 
   useEffect(() => {
     let active = true;
+    const preview = getActivePageAccentPreview(pageKey);
+
+    if (preview) {
+      const draft = preview.draft;
+      if (
+        draft.accent_type === 'bubble'
+        && draft.placement_key === placementKey
+        && draft.bubble_image_url
+      ) {
+        setBubble({
+          id: `preview-${preview.token}`,
+          created_at: '',
+          updated_at: '',
+          ...draft,
+        });
+      } else {
+        setBubble(null);
+      }
+      return () => {
+        active = false;
+      };
+    }
 
     getPublishedJokoBubble(pageKey, placementKey)
       .then((value) => {
