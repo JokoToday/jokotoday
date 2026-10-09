@@ -185,6 +185,10 @@ export async function adminSaveJokoNote(
   draft: JokoNoteDraft,
   id?: string,
 ): Promise<JokoNote> {
+  if (!isRegisteredJokoNotePlacement(draft.page_key, draft.placement_key)) {
+    throw new Error('Choose one of the registered JOKO Note safe zones for this page.');
+  }
+
   if (id) {
     const { data, error } = await supabase
       .from('site_joko_notes')
