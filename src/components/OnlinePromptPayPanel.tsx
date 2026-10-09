@@ -333,6 +333,7 @@ export function OnlineQrPaymentPanel({
   }
 
   const activeProvider = getPaymentProvider(transaction.payment_mode);
+  const displayedQrMode = intent.qrMode ?? transaction.payment_mode;
 
   return (
     <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-5 shadow-[0_18px_50px_rgba(59,74,69,0.06)] sm:p-6">
@@ -344,7 +345,7 @@ export function OnlineQrPaymentPanel({
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
             {activeProvider.capabilities.autoConfirmsWithoutSlip
               ? (language === 'th' ? 'ชำระด้วย Stripe PromptPay' : language === 'zh' ? '使用 Stripe PromptPay 付款' : 'Pay now with Stripe PromptPay')
-              : transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
+              : displayedQrMode === 'kshop_master' || displayedQrMode === 'kshop_easyslip'
                 ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
                 : copy.title}
           </h3>
@@ -355,7 +356,7 @@ export function OnlineQrPaymentPanel({
                   : language === 'zh'
                     ? '使用银行 App 扫描二维码并按显示金额付款。付款成功后 Stripe 会自动通知 JOKO，无需上传回执。'
                     : 'Scan the QR with your banking app and pay the exact amount shown. Stripe notifies JOKO automatically when payment succeeds — no slip upload needed.')
-              : transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
+              : displayedQrMode === 'kshop_master' || displayedQrMode === 'kshop_easyslip'
                 ? (language === 'th'
                     ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
                     : language === 'zh'
@@ -536,12 +537,12 @@ export function OnlineQrPaymentPanel({
         )}
 
         <p className="mt-3 text-xs leading-5 text-[#303532]/50">
-          {transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
+          {displayedQrMode === 'kshop_master' || displayedQrMode === 'kshop_easyslip'
             ? (language === 'th'
                 ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
                 : language === 'zh'
                   ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
-                  : transaction.payment_mode === 'kshop_master'
+                  : displayedQrMode === 'kshop_master'
                     ? 'This QR is derived from JOKO’s genuine K SHOP merchant QR; EasySlip still verifies the receiving account, exact amount and duplicate use.'
                     : 'This K SHOP QR is generated through EasySlip; EasySlip also verifies the receiving account, exact amount and duplicate use.')
             : copy.secure}
