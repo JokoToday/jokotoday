@@ -483,7 +483,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           <JokoBubbleSlot
             pageKey="products"
             placementKey="header-center"
-            className="mx-auto lg:hidden"
+            className="mx-auto lg:absolute lg:left-[39%] lg:top-7 lg:-translate-x-1/2 xl:left-[40%]"
           />
 
           <div className="min-w-0 lg:pt-1">
@@ -564,11 +564,6 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
           </div>
 
-          <JokoBubbleSlot
-            pageKey="products"
-            placementKey="header-center"
-            className="absolute left-[39%] top-7 hidden -translate-x-1/2 lg:block xl:left-[40%]"
-          />
         </div>
 
         <JokoNoteSlot
