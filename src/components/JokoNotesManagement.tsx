@@ -25,6 +25,11 @@ type LanguageCode = 'en' | 'th' | 'zh';
 const FIRST_PAGE = JOKO_NOTE_PAGES[0];
 const FIRST_PLACEMENT = FIRST_PAGE.placements[0];
 
+const PAGE_OPTIONS = [
+  { pageKey: 'home', label: 'Homepage' },
+  ...JOKO_NOTE_PAGES.map((page) => ({ pageKey: page.pageKey, label: page.label })),
+];
+
 const EMPTY_DRAFT: JokoNoteDraft = {
   site_key: JOKO_NOTES_SITE_KEY,
   page_key: FIRST_PAGE.pageKey,
@@ -54,12 +59,26 @@ const EMPTY_DRAFT: JokoNoteDraft = {
 
 function draftFromNote(note: JokoNote | null, pageKey: string): JokoNoteDraft {
   if (!note) {
-    const notePage = JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey) || FIRST_PAGE;
-    return {
-      ...EMPTY_DRAFT,
-      page_key: notePage.pageKey,
-      placement_key: notePage.placements[0].placementKey,
-    };
+    const notePage = JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
+    if (notePage) {
+      return {
+        ...EMPTY_DRAFT,
+        page_key: notePage.pageKey,
+        placement_key: notePage.placements[0].placementKey,
+      };
+    }
+
+    const bubblePage = JOKO_BUBBLE_PAGES.find((page) => page.pageKey === pageKey);
+    if (bubblePage) {
+      return {
+        ...EMPTY_DRAFT,
+        page_key: bubblePage.pageKey,
+        placement_key: bubblePage.placements[0].placementKey,
+        accent_type: 'bubble',
+      };
+    }
+
+    return { ...EMPTY_DRAFT };
   }
 
   return {
@@ -118,16 +137,26 @@ export function JokoNotesManagement() {
   );
 
   const notePageDefinition = useMemo(
-    () => JOKO_NOTE_PAGES.find((page) => page.pageKey === selectedPageKey) || FIRST_PAGE,
+    () => JOKO_NOTE_PAGES.find((page) => page.pageKey === selectedPageKey),
+    [selectedPageKey],
+  );
+
+  const bubblePageDefinition = useMemo(
+    () => getJokoBubblePage(selectedPageKey),
     [selectedPageKey],
   );
 
   const accentPageDefinition = useMemo(
-    () => getJokoAccentPage(selectedPageKey, draft.accent_type) || notePageDefinition,
-    [selectedPageKey, draft.accent_type, notePageDefinition],
+    () => getJokoAccentPage(selectedPageKey, draft.accent_type)
+      || bubblePageDefinition
+      || notePageDefinition
+      || FIRST_PAGE,
+    [selectedPageKey, draft.accent_type, bubblePageDefinition, notePageDefinition],
   );
 
-  const bubbleSupported = Boolean(getJokoBubblePage(selectedPageKey));
+  const noteSupported = Boolean(notePageDefinition);
+  const bubbleSupported = Boolean(bubblePageDefinition);
+  const pageLabel = notePageDefinition?.label || bubblePageDefinition?.label || selectedPageKey;
 
   const load = async () => {
     setLoading(true);
@@ -236,11 +265,11 @@ export function JokoNotesManagement() {
 
       const accentLabel = draft.accent_type === 'bubble' ? 'Bubble' : 'JOKO Note';
       if (draft.is_published) {
-        setNotice(`${accentLabel} published successfully on ${notePageDefinition.label} → ${placementLabel}.`);
+        setNotice(`${accentLabel} published successfully on ${pageLabel} → ${placementLabel}.`);
       } else if (wasPublished) {
-        setNotice(`Saved successfully. The ${accentLabel} is now unpublished and hidden from ${notePageDefinition.label}.`);
+        setNotice(`Saved successfully. The ${accentLabel} is now unpublished and hidden from ${pageLabel}.`);
       } else {
-        setNotice(`${accentLabel} saved successfully as a draft for ${notePageDefinition.label} → ${placementLabel}.`);
+        setNotice(`${accentLabel} saved successfully as a draft for ${pageLabel} → ${placementLabel}.`);
       }
     } catch (err) {
       console.error('Could not save Page Accent', err);
@@ -284,7 +313,7 @@ export function JokoNotesManagement() {
             <p className="joko-admin-eyebrow">Website personality</p>
             <h2 className="joko-admin-title mt-1 text-2xl font-semibold">Page Accents</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62">
-              One accent per page: either a personal JOKO Note or an illustrated brand bubble. Safe zones are responsive and design-controlled, so there is no free dragging.
+              Ordinary pages use one accent: either a personal JOKO Note or an illustrated brand bubble. The long Homepage is the deliberate exception: its existing Hero note can coexist with one lower-page bubble. Safe zones remain responsive and design-controlled.
             </p>
           </div>
           <button type="button" onClick={() => void load()} disabled={loading || saving} className="joko-admin-secondary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
@@ -300,7 +329,7 @@ export function JokoNotesManagement() {
               onChange={(event) => setSelectedPageKey(event.target.value)}
               className="joko-admin-field mt-1 w-full max-w-md"
             >
-              {JOKO_NOTE_PAGES.map((page) => (
+              {PAGE_OPTIONS.map((page) => (
                 <option key={page.pageKey} value={page.pageKey}>{page.label}</option>
               ))}
             </select>
@@ -312,7 +341,8 @@ export function JokoNotesManagement() {
               <button
                 type="button"
                 onClick={() => changeAccentType('note')}
-                className={`rounded-2xl border p-4 text-left transition ${draft.accent_type === 'note'
+                disabled={!noteSupported}
+                className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${draft.accent_type === 'note'
                   ? 'border-[#55766F] bg-[#CFE3DF]/55 shadow-sm'
                   : 'border-[#55766F]/14 bg-white/45 hover:border-[#55766F]/30'}`}
                 aria-pressed={draft.accent_type === 'note'}
@@ -320,6 +350,7 @@ export function JokoNotesManagement() {
                 <span className="block font-semibold text-[#303532]">JOKO Note</span>
                 <span className="mt-1 block text-xs leading-5 text-[#303532]/55">
                   Joe & Phuttan’s contextual editorial voice. Localized EN / TH / ZH.
+                  {!noteSupported ? ' The Homepage Hero note remains managed in Homepage Builder.' : ''}
                 </span>
               </button>
 
@@ -375,7 +406,7 @@ export function JokoNotesManagement() {
               })}
             </div>
             <p className="mt-2 text-xs leading-5 text-[#303532]/48">
-              Changing accent type changes the available safe zones. One database row per page enforces the either/or rule.
+              Changing accent type changes the available safe zones. Ordinary pages keep one Page Accent row. On the Homepage, this lower-page accent is separate from the existing Builder-owned Hero note.
             </p>
           </div>
 
@@ -588,7 +619,7 @@ export function JokoNotesManagement() {
         <div className="mt-8 rounded-2xl border border-[#55766F]/12 bg-[#CFE3DF]/35 p-4 text-sm leading-6 text-[#303532]/70">
           <p className="font-semibold text-[#303532]">Either / or rule</p>
           <p className="mt-1">
-            A page can publish one JOKO Note or one speech bubble, never both. Notes are editorial and localized; bubbles are short brand expressions whose artwork stays in its original language.
+            Ordinary pages can publish one JOKO Note or one speech bubble, never both. The Homepage is the intentional exception: its existing Hero notebook note can coexist with one lower-page bubble because the two moments are separated by several sections of scrolling.
           </p>
           <p className="mt-2 text-xs text-[#303532]/50">
             Bubble safe zones currently registered: {JOKO_BUBBLE_PAGES.map((page) => page.label).join(', ')}.
