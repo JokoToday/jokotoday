@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
+import { normalizePaymentProviderMode, type PaymentProviderMode } from './paymentProviders';
 
-export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master' | 'stripe_promptpay';
+export type PaymentQrMode = PaymentProviderMode;
 
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
@@ -79,7 +80,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
-    payment_qr_mode: data?.payment_qr_mode === 'stripe_promptpay' ? 'stripe_promptpay' : data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
+    payment_qr_mode: normalizePaymentProviderMode(data?.payment_qr_mode),
   };
 }
 
