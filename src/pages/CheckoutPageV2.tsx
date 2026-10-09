@@ -6,7 +6,7 @@ import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSug
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
-import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
+import { OnlineQrPaymentPanel } from '../components/OnlinePromptPayPanel';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
@@ -635,7 +635,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             {orderId && (
-              <OnlinePromptPayPanel
+              <OnlineQrPaymentPanel
                 orderId={orderId}
                 language={language}
                 onPaid={() => {
