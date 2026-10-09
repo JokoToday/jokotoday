@@ -551,7 +551,17 @@ export function JokoNotesManagement() {
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[#3F665E] hover:bg-white/35">
                     {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
                     {uploading ? 'Uploading…' : 'Upload note image'}
-                    <input type="file" accept="image/jpeg,image/webp,image/png" className="sr-only" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0] || null, 'note')} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/webp,image/png"
+                      className="sr-only"
+                      disabled={uploading}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] || null;
+                        event.currentTarget.value = '';
+                        void upload(file, 'note');
+                      }}
+                    />
                   </label>
                   <p className="mt-2 text-center text-xs text-[#303532]/52">JPG, WebP or PNG. EXIF/GPS metadata is stripped before upload.</p>
                 </div>
@@ -666,7 +676,17 @@ export function JokoNotesManagement() {
                   <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-4 text-sm font-semibold text-[#A95120] transition hover:bg-white">
                     {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
                     {uploading ? 'Uploading to Bubble Library…' : 'Upload once to Bubble Library'}
-                    <input type="file" accept="image/jpeg,image/webp,image/png" className="sr-only" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0] || null, 'bubble')} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/webp,image/png"
+                      className="sr-only"
+                      disabled={uploading}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] || null;
+                        event.currentTarget.value = '';
+                        void upload(file, 'bubble');
+                      }}
+                    />
                   </label>
                 </div>
               </div>
