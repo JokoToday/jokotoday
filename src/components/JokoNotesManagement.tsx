@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { uploadGalleryImage } from '../lib/mediaService';
 import {
-  JOKO_NOTE_PLACEMENTS,
+  JOKO_NOTE_PAGES,
   JOKO_NOTES_SITE_KEY,
   adminDeleteJokoNote,
   adminListJokoNotes,
@@ -17,10 +17,13 @@ import { JokoNote as JokoNoteCard } from './JokoNote';
 
 type LanguageCode = 'en' | 'th' | 'zh';
 
+const FIRST_PAGE = JOKO_NOTE_PAGES[0];
+const FIRST_PLACEMENT = FIRST_PAGE.placements[0];
+
 const EMPTY_DRAFT: JokoNoteDraft = {
   site_key: JOKO_NOTES_SITE_KEY,
-  page_key: JOKO_NOTE_PLACEMENTS[0].pageKey,
-  placement_key: JOKO_NOTE_PLACEMENTS[0].placementKey,
+  page_key: FIRST_PAGE.pageKey,
+  placement_key: FIRST_PLACEMENT.placementKey,
   title_en: null,
   title_th: null,
   title_zh: null,
@@ -73,7 +76,7 @@ function nullable(value: string): string | null {
 
 export function JokoNotesManagement() {
   const [notes, setNotes] = useState<JokoNote[]>([]);
-  const [selectedPlacement, setSelectedPlacement] = useState(0);
+  const [selectedPageKey, setSelectedPageKey] = useState(FIRST_PAGE.pageKey);
   const [previewLanguage, setPreviewLanguage] = useState<LanguageCode>('en');
   const [draft, setDraft] = useState<JokoNoteDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
@@ -82,10 +85,13 @@ export function JokoNotesManagement() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const placement = JOKO_NOTE_PLACEMENTS[selectedPlacement];
+  const pageDefinition = useMemo(
+    () => JOKO_NOTE_PAGES.find((page) => page.pageKey === selectedPageKey) || FIRST_PAGE,
+    [selectedPageKey],
+  );
   const existing = useMemo(
-    () => notes.find((note) => note.page_key === placement.pageKey && note.placement_key === placement.placementKey) || null,
-    [notes, placement],
+    () => notes.find((note) => note.page_key === selectedPageKey) || null,
+    [notes, selectedPageKey],
   );
 
   const load = async () => {
@@ -106,10 +112,16 @@ export function JokoNotesManagement() {
   }, []);
 
   useEffect(() => {
-    setDraft(draftFromNote(existing, placement.pageKey, placement.placementKey));
+    const registeredPlacement = pageDefinition.placements.some(
+      (placement) => placement.placementKey === existing?.placement_key,
+    )
+      ? existing?.placement_key
+      : pageDefinition.placements[0].placementKey;
+
+    setDraft(draftFromNote(existing, pageDefinition.pageKey, registeredPlacement));
     setNotice('');
     setError('');
-  }, [existing, placement]);
+  }, [existing, pageDefinition]);
 
   const patch = (next: Partial<JokoNoteDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
@@ -200,7 +212,7 @@ export function JokoNotesManagement() {
             <p className="joko-admin-eyebrow">Editorial voice</p>
             <h2 className="joko-admin-title mt-1 text-2xl font-semibold">JOKO Notes</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62">
-              One quiet, contextual note per registered page slot. Notes add Joe & Phuttan’s voice; they must never carry information that customers need in order to complete a purchase.
+              One quiet, contextual note per page. Choose the page, then place it in one of that page’s fixed safe zones. Notes add Joe & Phuttan’s voice; they must never carry information that customers need in order to complete a purchase.
             </p>
           </div>
           <button type="button" onClick={() => void load()} disabled={loading || saving} className="joko-admin-secondary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
@@ -209,19 +221,61 @@ export function JokoNotesManagement() {
         </div>
 
         <div className="mt-6 space-y-5">
-          <label className="block text-sm font-medium text-[#303532]">
-            Page placement
-            <select
-              value={selectedPlacement}
-              onChange={(event) => setSelectedPlacement(Number(event.target.value))}
-              className="joko-admin-field mt-1 w-full"
-            >
-              {JOKO_NOTE_PLACEMENTS.map((item, index) => (
-                <option key={`${item.pageKey}:${item.placementKey}`} value={index}>{item.label}</option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs font-normal text-[#303532]/50">{placement.description}</span>
-          </label>
+          <div className="grid gap-4 lg:grid-cols-[minmax(14rem,.55fr)_minmax(22rem,1fr)]">
+            <label className="block text-sm font-medium text-[#303532]">
+              Page
+              <select
+                value={selectedPageKey}
+                onChange={(event) => setSelectedPageKey(event.target.value)}
+                className="joko-admin-field mt-1 w-full"
+              >
+                {JOKO_NOTE_PAGES.map((page) => (
+                  <option key={page.pageKey} value={page.pageKey}>{page.label}</option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs font-normal leading-5 text-[#303532]/50">
+                {pageDefinition.description}
+              </span>
+            </label>
+
+            <div>
+              <p className="text-sm font-medium text-[#303532]">Safe zone</p>
+              <div className="mt-1 grid gap-2">
+                {pageDefinition.placements.map((placement, index) => {
+                  const selected = draft.placement_key === placement.placementKey;
+                  return (
+                    <button
+                      key={placement.placementKey}
+                      type="button"
+                      onClick={() => patch({
+                        page_key: pageDefinition.pageKey,
+                        placement_key: placement.placementKey,
+                      })}
+                      className={`rounded-xl border px-3 py-3 text-left transition ${selected
+                        ? 'border-[#55766F] bg-[#CFE3DF]/55 shadow-sm'
+                        : 'border-[#55766F]/14 bg-white/45 hover:border-[#55766F]/30 hover:bg-white/65'}`}
+                      aria-pressed={selected}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${selected
+                          ? 'bg-[#55766F] text-white'
+                          : 'bg-[#CFE3DF]/65 text-[#3F665E]'}`}>
+                          {index + 1}
+                        </span>
+                        <span className="font-semibold text-[#303532]">{placement.label}</span>
+                      </span>
+                      <span className="mt-1.5 block pl-8 text-xs leading-5 text-[#303532]/52">
+                        {placement.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[#303532]/48">
+                These are responsive design-safe positions. Free dragging is intentionally disabled.
+              </p>
+            </div>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             {(['en', 'th', 'zh'] as const).map((language) => (
