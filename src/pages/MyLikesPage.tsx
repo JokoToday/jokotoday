@@ -186,11 +186,11 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           {t.back}
         </button>
 
-        <div className="mb-8 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-6 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#CFE3DF]/75">
+        <div className="mb-8 rounded-[2rem] border border-[#55766F]/15 bg-[#ACCEC8] p-6 text-center shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF9EE]/72">
             <Heart className="h-8 w-8 fill-[#C76624] text-[#C76624]" />
           </div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#3F665E]">JOKO TODAY</p>
           <h1 className="mb-2 mt-2 text-4xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
             {t.myLikes}
           </h1>

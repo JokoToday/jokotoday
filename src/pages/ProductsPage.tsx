@@ -8,6 +8,7 @@ import {
 } from '../components/PickupBrowseDateSelectorV2';
 import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
+import { JokoNoteSlot } from '../components/JokoNoteSlot';
 import { ProductPickupCalendarModalV2 } from '../components/ProductPickupCalendarModalV2';
 import { PickupBasketFitDisplay } from '../components/PickupIntelligenceBadges';
 import { useLanguage } from '../context/LanguageContext';
@@ -460,96 +461,107 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   return (
     <div className="joko-products-page joko-mineral-field min-h-screen">
       <div className="relative z-10 mx-auto max-w-[88rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-        <div className="mb-9 max-w-3xl sm:mb-11">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
-            JOKO TODAY
-          </p>
-          <h1
-            className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#292D2B] sm:text-5xl lg:text-6xl"
-            style={{ fontFamily: 'var(--joko-font-display)' }}
-          >
-            {t.nav.products}
-          </h1>
-          <span className="mt-3 block h-[3px] w-44 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
-          <p className="mt-4 max-w-2xl text-base leading-7 text-[#303532]/70 sm:text-lg">
-            {t.product.preOrderOnly}
-          </p>
-        </div>
-
-        {!rolloutResolved ? (
-          <div className="joko-products-control-card mx-auto mb-8 max-w-3xl py-12 text-center text-sm text-[#303532]/60">
-            {language === 'th' ? 'กำลังโหลดสินค้า…' : language === 'zh' ? '正在加载商品…' : 'Loading products…'}
+        <div className="mb-7 grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(32rem,1.28fr)] lg:gap-10 xl:gap-14">
+          <div className="max-w-2xl">
+            <button className="mb-4 rounded-full border border-[#758b78] px-4 py-2 text-sm" onClick={() => onNavigate?.('specials')}>JOKO Specials · Same-day pickup / รับวันนี้</button>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
+              JOKO TODAY
+            </p>
+            <h1
+              className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#292D2B] sm:text-5xl lg:text-6xl"
+              style={{ fontFamily: 'var(--joko-font-display)' }}
+            >
+              {t.nav.products}
+            </h1>
+            <span className="mt-3 block h-[3px] w-44 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
+            <p className="mt-4 max-w-2xl text-base leading-7 text-[#303532]/70 sm:text-lg">
+              {t.product.preOrderOnly}
+            </p>
           </div>
-        ) : pickupV2Enabled ? (
-          <>
-            <div className="joko-products-mode-switch mx-auto mb-5 grid max-w-3xl gap-1.5 p-1.5 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setBrowseMode('all')}
-                className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'all' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
-              >
-                <ShoppingBag className="w-4 h-4" />
-                {browseEverythingModeLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => setBrowseMode('pickup')}
-                className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'pickup' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
-              >
-                <CalendarDays className="w-4 h-4" />
-                {browseByPickupModeLabel}
-              </button>
-            </div>
 
-            {browseMode === 'all' ? (
-              <div className="joko-products-control-card mx-auto mb-8 max-w-3xl p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C76624]/18 bg-[#FFF9EE]/82">
-                      <ShoppingBag className="h-5 w-5 text-[#A44F1D]" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-[#303532]">{browseTitle}</h2>
-                      <p className="mt-1 text-sm leading-6 text-[#303532]/64">{browseHelper}</p>
-                    </div>
-                  </div>
+          <div className="min-w-0 lg:pt-1">
+            {!rolloutResolved ? (
+              <div className="joko-products-control-card py-12 text-center text-sm text-[#303532]/60">
+                {language === 'th' ? 'กำลังโหลดสินค้า…' : language === 'zh' ? '正在加载商品…' : 'Loading products…'}
+              </div>
+            ) : pickupV2Enabled ? (
+              <>
+                <div className="joko-products-mode-switch mb-4 grid gap-1.5 p-1.5 sm:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => void loadV2Availability(products.map((product) => product.id))}
-                    disabled={v2AvailabilityLoading || products.length === 0}
-                    className="shrink-0 rounded-lg border border-[#55766F]/18 bg-[#FFF9EE]/78 p-2 text-[#55766F] transition hover:bg-[#FFF9EE] disabled:opacity-40"
-                    aria-label="Refresh product availability"
+                    onClick={() => setBrowseMode('all')}
+                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'all' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
                   >
-                    <RefreshCw className={`w-4 h-4 ${v2AvailabilityLoading ? 'animate-spin' : ''}`} />
+                    <ShoppingBag className="w-4 h-4" />
+                    {browseEverythingModeLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBrowseMode('pickup')}
+                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${browseMode === 'pickup' ? 'bg-[#55766F] text-white shadow-sm' : 'text-[#303532]/76 hover:bg-[#FFF9EE]/72'}`}
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    {browseByPickupModeLabel}
                   </button>
                 </div>
-                {v2AvailabilityError && (
-                  <div className="mt-4 rounded-xl border border-[#B95C4B]/20 bg-[#F9E9E5]/72 px-4 py-3 text-sm text-[#944235]">
-                    {v2AvailabilityError}
+
+                {browseMode === 'all' ? (
+                  <div className="joko-products-control-card p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#C76624]/18 bg-[#FFF9EE]/82">
+                          <ShoppingBag className="h-5 w-5 text-[#A44F1D]" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-[#303532]">{browseTitle}</h2>
+                          <p className="mt-1 text-sm leading-6 text-[#303532]/64">{browseHelper}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void loadV2Availability(products.map((product) => product.id))}
+                        disabled={v2AvailabilityLoading || products.length === 0}
+                        className="shrink-0 rounded-lg border border-[#55766F]/18 bg-[#FFF9EE]/78 p-2 text-[#55766F] transition hover:bg-[#FFF9EE] disabled:opacity-40"
+                        aria-label="Refresh product availability"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${v2AvailabilityLoading ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+                    {v2AvailabilityError && (
+                      <div className="mt-4 rounded-xl border border-[#B95C4B]/20 bg-[#F9E9E5]/72 px-4 py-3 text-sm text-[#944235]">
+                        {v2AvailabilityError}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="joko-products-control-card p-4 sm:p-5">
+                    <PickupBrowseDateSelectorV2
+                      productIds={products.map((product) => product.id)}
+                      value={selectedPickupV2}
+                      onChange={handleBrowsePickupChange}
+                      onAvailabilityRowsChange={setV2AvailabilityRows}
+                    />
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <div className="joko-products-control-card mx-auto mb-8 max-w-4xl p-4 sm:p-5">
-                <PickupBrowseDateSelectorV2
-                  productIds={products.map((product) => product.id)}
-                  value={selectedPickupV2}
-                  onChange={handleBrowsePickupChange}
-                  onAvailabilityRowsChange={setV2AvailabilityRows}
+              <div className="joko-products-control-card p-4 sm:p-5">
+                <PickupDaySelector
+                  selectedPickupDay={selectedPickupDay}
+                  onPickupDayChange={setSelectedPickupDay}
+                  availableDays={availableDays}
+                  closedDays={closedDays}
                 />
               </div>
             )}
-          </>
-        ) : (
-          <div className="joko-products-control-card mx-auto mb-8 max-w-4xl p-4 sm:p-5">
-            <PickupDaySelector
-              selectedPickupDay={selectedPickupDay}
-              onPickupDayChange={setSelectedPickupDay}
-              availableDays={availableDays}
-              closedDays={closedDays}
-            />
           </div>
-        )}
+        </div>
+
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="below-browse-controls"
+          className="mb-9 ml-auto max-w-sm lg:mr-[7%]"
+        />
 
         <div className="mb-9">
           <div className="joko-products-category-strip flex flex-wrap gap-2.5 p-2.5 sm:gap-3 sm:p-3">
@@ -610,6 +622,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
         </div>
 
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="below-categories"
+          className="mb-10 max-w-sm"
+        />
+
         {loading || (pickupV2Enabled && v2AvailabilityLoading && v2AvailabilityRows.length === 0) ? (
           <div className="py-20 text-center">
             <div className="inline-block h-11 w-11 animate-spin rounded-full border-[3px] border-solid border-[#55766F] border-r-transparent"></div>
@@ -666,6 +684,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
             })}
           </div>
         )}
+
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="after-catalogue"
+          className="mx-auto mt-12 max-w-sm"
+        />
       </div>
 
       <AuthModal

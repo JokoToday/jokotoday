@@ -8,6 +8,10 @@ export interface OrderItem {
 }
 
 export interface Order {
+  online_payment_enabled?: boolean;
+  specials_checkout?: {inventory_state:string;financial_state:string;fulfillment_state:string} | null;
+  order_type?: 'regular' | 'specials';
+  specials_pickup_snapshot?: {name_en:string;name_th:string;name_zh:string|null;maps_url:string|null;start_at:string;end_at:string};
   id: string;
   order_number: string;
   customer_name?: string | null;
@@ -27,6 +31,8 @@ export interface Order {
   purchase_type?: 'online' | 'walk_in';
   walk_in_amount?: number;
   loyalty_points_earned?: number;
+  cancellation_reason_code?: string | null;
+  cancelled_at?: string | null;
 }
 
 export interface PickupLocation {

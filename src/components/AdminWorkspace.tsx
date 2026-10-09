@@ -15,6 +15,7 @@ import {
   Rocket,
   ShieldCheck,
   Sparkles,
+  StickyNote,
   Users,
 } from 'lucide-react';
 import { CommerceIntelligenceManagement } from './CommerceIntelligenceManagement';
@@ -22,6 +23,7 @@ import { ConcretePickupDateManagement } from './ConcretePickupDateManagement';
 import { CuriosityManagement } from './CuriosityManagement';
 import { CustomerExperienceManagement } from './CustomerExperienceManagement';
 import { LoyaltyRewardsManagement } from './LoyaltyRewardsManagement';
+import { JokoNotesManagement } from './JokoNotesManagement';
 import { GalleryManagement } from './GalleryManagement';
 import { NonBakeryManagement } from './NonBakeryManagement';
 import { WhatPeopleSayManagement } from './WhatPeopleSayManagement';
@@ -48,6 +50,7 @@ type WorkspaceTab =
   | 'specials'
   | 'cms'
   | 'homepage'
+  | 'joko-notes'
   | 'non-bakery'
   | 'gallery'
   | 'what-people-say'
@@ -66,6 +69,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/specials')) return 'specials';
   if (path.startsWith('/admin/homepage')) return 'homepage';
+  if (path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
@@ -86,6 +90,7 @@ function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'specials': return '/admin/specials';
     case 'homepage': return '/admin/homepage';
+    case 'joko-notes': return '/admin/joko-notes';
     case 'non-bakery': return '/admin/non-bakery';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
@@ -173,6 +178,10 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('joko-notes')} className={tabClass('joko-notes')}>
+                  <StickyNote className="h-4 w-4" />
+                  JOKO Notes
+                </button>
                 <button type="button" onClick={() => selectWorkspaceTab('non-bakery')} className={tabClass('non-bakery')}>
                   <ShoppingBasket className="h-4 w-4" />
                   Not Bread
@@ -248,6 +257,16 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
           <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
             <HomepageBuilderAdmin />
           </Suspense>
+        )}
+
+        {activeTab === 'joko-notes' && (
+          <AdminSection
+            eyebrow="Website editorial"
+            title="JOKO Notes"
+            description="Place a small number of personal notebook notes across registered website slots. Content is editable; placement and the paper treatment remain design-controlled."
+          >
+            <JokoNotesManagement />
+          </AdminSection>
         )}
 
         {activeTab === 'gallery' && (

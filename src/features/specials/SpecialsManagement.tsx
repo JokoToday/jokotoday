@@ -1,3 +1,4 @@
+import { SpecialsOperations } from './SpecialsOperations';
 import { specialsLabels } from "./copy";
 import {
   useCallback,
@@ -312,7 +313,7 @@ export function SpecialsManagement() {
             </button>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">{copy.stage}</p>
+        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Prepare counted stock, then publish checkout and preview your LINE announcement below.</p>
         {error && (
           <p
             role="alert"
@@ -708,7 +709,7 @@ export function SpecialsManagement() {
                   >
                     <option
                       value="in"
-                      disabled={!["draft", "prepared"].includes(batch.status)}
+                      disabled={!["draft", "prepared", "live"].includes(batch.status)}
                     >
                       {copy.in}
                     </option>
@@ -795,7 +796,7 @@ export function SpecialsManagement() {
                   {copy.prepare}
                 </button>
               )}
-              {["draft", "prepared"].includes(batch.status) && (
+              {["draft", "prepared", "live"].includes(batch.status) && (
                 <>
                   <button
                     disabled={locked}
@@ -856,6 +857,7 @@ export function SpecialsManagement() {
           </div>
         </>
       )}
+      <SpecialsOperations batch={batches.find(b => b.id === batchId) || null} onChanged={() => { void loadSpecialsWorkspace().then(data => setBatches(data.batches)); }} />
     </section>
   );
 }

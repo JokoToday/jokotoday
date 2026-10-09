@@ -15,6 +15,7 @@ import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const OurStoryPage = lazy(() => import('./pages/OurStoryPage'));
@@ -39,6 +40,7 @@ const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ A
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
 const HomepageExperiencePage = lazy(() => import('./app/joko-today/home/HomepageExperiencePage'));
 const LegalPage = lazy(() => import('./app/joko-today/legal/LegalPage'));
+const PaymentHandoffPage = lazy(() => import('./pages/PaymentHandoffPage'));
 
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
@@ -46,6 +48,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
   products: '/products',
   checkout: '/checkout',
+  specials: '/specials',
   about: '/about',
   'our-story': '/our-story',
   'meet-founders': '/meet-joe-and-phuttan',
@@ -94,6 +97,7 @@ const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [paymentHandoffToken, setPaymentHandoffToken] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [productPublicCode, setProductPublicCode] = useState<string | null>(null);
   const [productEntrySource, setProductEntrySource] = useState<'qr' | 'web'>('web');
@@ -111,6 +115,13 @@ function AppContent() {
       const legacyProductMatch = path.match(/^\/product\/([^/]+)$/);
       const productDetailMatch = path.match(/^\/products\/([^/]+)$/);
       const productQrMatch = path.match(/^\/p\/([^/]+)$/);
+      const paymentHandoffMatch = path.match(/^\/pay\/handoff\/([^/]+)$/);
+
+      if (paymentHandoffMatch) {
+        setPaymentHandoffToken(paymentHandoffMatch[1]);
+        setCurrentPage('payment-handoff');
+        return;
+      }
 
       if (path === '/auth/callback') {
         setCurrentPage('auth-callback');
@@ -382,6 +393,10 @@ function AppContent() {
       return <CustomerAccountPage qrToken={qrToken} onNavigate={handleNavigate} />;
     }
 
+    if (currentPage === 'payment-handoff' && paymentHandoffToken) {
+      return <PaymentHandoffPage token={paymentHandoffToken} />;
+    }
+
     switch (currentPage) {
       case 'home':
         return (
@@ -417,6 +432,8 @@ function AppContent() {
             onNavigate={handleNavigate}
           />
         );
+      case 'specials':
+        return <SpecialsPage onNavigate={handleNavigate} />;
       case 'checkout':
         return <CheckoutPage onNavigate={handleNavigate} />;
       case 'about':
@@ -472,7 +489,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
@@ -501,6 +518,7 @@ function AppContent() {
     currentPage === 'scan' ||
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
+    currentPage === 'payment-handoff' ||
     isJokoShellPage;
   const showCartSidebar = !isStandalonePage || isJokoShellPage;
   const pageContent = (

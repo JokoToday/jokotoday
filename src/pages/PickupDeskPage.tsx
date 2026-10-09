@@ -66,6 +66,8 @@ interface OrderItem {
 }
 
 interface Order {
+  order_type?: 'regular' | 'specials';
+  specials_pickup_snapshot?: {name_en:string;name_th:string;start_at:string;end_at:string};
   id: string;
   order_number: string;
   order_items: OrderItem[];
@@ -128,6 +130,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [upcomingOrders, setUpcomingOrders] = useState<Order[]>([]);
+  const [specialsDeskLocation, setSpecialsDeskLocation] = useState('');
   const [pickupLocations, setPickupLocations] = useState<Record<string, PickupLocation>>({});
   const [earlyPickupOrder, setEarlyPickupOrder] = useState<Order | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
@@ -368,6 +371,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   };
 
   const confirmPickup = async (order: Order, early: boolean) => {
+    if (order.order_type === 'specials' && (!specialsDeskLocation || specialsDeskLocation !== order.pickup_location_id || early)) { setActionError('Select the actual Specials pickup desk location. Early pickup is unavailable.'); return; }
     if (!paymentComplete(order)) {
       setActionError(language === 'en'
         ? 'Record payment by QR or Cash before confirming pickup.'
@@ -380,11 +384,10 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setActionError(null);
       setActionSuccess(null);
       setLastReceiptOrder(null);
-      const { data: pickupRows, error: pickupError } = await supabase.rpc('confirm_order_pickup', {
-        p_order_id: order.id,
-      });
+      const { data: pickupRows, error: pickupError } = await supabase.rpc(order.order_type === 'specials' ? 'specials_pickup_v1' : 'confirm_order_pickup', order.order_type === 'specials' ? {p_order: order.id, p_location: specialsDeskLocation} : {p_order_id: order.id});
       if (pickupError) throw pickupError;
 
+      if (order.order_type === 'specials' && (!Array.isArray(pickupRows) || !pickupRows[0])) throw new Error('Pickup was not confirmed');
       const returnedOrder = Array.isArray(pickupRows) && pickupRows[0]
         ? pickupRows[0] as Order
         : { ...order, status: 'picked_up', picked_up_at: new Date().toISOString() };
@@ -506,6 +509,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       </button>
 
       <div className="max-w-4xl mx-auto py-8">
+        <label className="mb-4 block rounded-xl bg-white p-4">Specials desk location / จุดรับ Specials
+          <select className="ml-3 rounded border p-2" value={specialsDeskLocation} onChange={e => setSpecialsDeskLocation(e.target.value)}>
+            <option value="">Choose your actual pickup desk</option>
+            {Object.values(pickupLocations).map(location => <option value={location.id} key={location.id}>{location.name_en} / {location.name_th}</option>)}
+          </select>
+        </label>
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-6">
             <div className="flex items-start justify-between gap-4">
@@ -680,7 +689,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   language={staffLanguage}
                   pickupOrders={[...orders, ...upcomingOrders]
                     .filter((order) => (
-                      ['pending', 'confirmed'].includes(order.status)
+                      order.order_type !== 'specials'
+                      && ['pending', 'confirmed'].includes(order.status)
                       && order.payment_status !== 'paid'
                       && !order.picked_up_at
                     ))
@@ -786,9 +796,9 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               language={staffLanguage}
                               logoUrl={publishedLogoUrl}
                               pickupLocationName={(() => {
-                                const location = order.pickup_location_id
+                                const location = order.specials_pickup_snapshot || (order.pickup_location_id
                                   ? pickupLocations[order.pickup_location_id]
-                                  : undefined;
+                                  : undefined);
                                 if (!location) return null;
                                 return language === 'th'
                                   ? location.name_th || location.name_en
@@ -810,12 +820,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
                           <div className="bg-slate-50 rounded-xl p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                              {language === 'en' ? 'Payment received' : 'รับชำระเงิน'}
+                              {order.order_type === 'specials' ? 'JOKO Specials — verified online payment required' : (language === 'en' ? 'Payment received' : 'รับชำระเงิน')}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
                               <button
                                 onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
+                                disabled={order.order_type === 'specials' || updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'qr_code'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -827,7 +837,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </button>
                               <button
                                 onClick={() => void recordPayment(order, 'cash')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
+                                disabled={order.order_type === 'specials' || updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'cash'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -843,7 +853,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                           {order.status !== 'picked_up' && (
                             <button
                               onClick={() => void confirmPickup(order, false)}
-                              disabled={updatingOrder === order.id || !paymentComplete(order)}
+                              disabled={updatingOrder === order.id || !paymentComplete(order) || (order.order_type === 'specials' && (specialsDeskLocation !== order.pickup_location_id || !order.specials_pickup_snapshot || Date.now() < new Date(order.specials_pickup_snapshot.start_at).getTime() || Date.now() >= new Date(order.specials_pickup_snapshot.end_at).getTime()))}
                               className="w-full mt-4 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                             >
                               {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -916,9 +926,9 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 language={staffLanguage}
                                 logoUrl={publishedLogoUrl}
                                 pickupLocationName={(() => {
-                                  const location = order.pickup_location_id
+                                  const location = order.specials_pickup_snapshot || (order.pickup_location_id
                                     ? pickupLocations[order.pickup_location_id]
-                                    : undefined;
+                                    : undefined);
                                   if (!location) return null;
                                   return language === 'th'
                                     ? location.name_th || location.name_en

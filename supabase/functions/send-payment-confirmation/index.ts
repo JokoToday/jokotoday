@@ -37,6 +37,7 @@ type Order = {
   payment_method?: string | null;
   status: string;
   pickup_date: string | null;
+  specials_pickup_snapshot?: {name_en:string;name_th:string;start_at:string;end_at:string};
 };
 
 type Copy = {
@@ -122,7 +123,8 @@ function buildEmail(order: Order, lang: Language) {
   const subject = `${copy.subject} · #${order.order_number}`;
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
   const amountPaid = Number(order.amount_paid ?? 0);
-  const pickupDate = formatPickupDate(order.pickup_date, lang);
+  const snapshot = order.specials_pickup_snapshot;
+  const pickupDate = snapshot ? `${snapshot.name_en} / ${snapshot.name_th} · ${new Date(snapshot.start_at).toLocaleString('en-GB',{timeZone:'Asia/Bangkok'})}–${new Date(snapshot.end_at).toLocaleTimeString('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'})} (Bangkok) · JOKO Specials` : formatPickupDate(order.pickup_date, lang);
 
   const contentHtml = `
     <p style="margin:0 0 8px;font-size:16px;line-height:${lang === "en" ? "1.55" : "1.8"};font-weight:650;color:${JOKO_EMAIL_THEME.charcoal};">${escapeHtml(greeting)}</p>
@@ -195,7 +197,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, payment_status, payment_method, status, pickup_date")
+    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, payment_status, payment_method, status, pickup_date, specials_pickup_snapshot")
     .eq("id", orderId)
     .eq("customer_id", user.id)
     .eq("purchase_type", "online")

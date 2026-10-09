@@ -2,7 +2,7 @@ export type SpecialsBatch = {
   id: string;
   title: string;
   business_date: string;
-  status: "draft" | "prepared" | "closed" | "cancelled";
+  status: "draft" | "prepared" | "live" | "closed" | "cancelled";
   pickup_location_id: string;
   sales_start_at: string;
   sales_end_at: string;

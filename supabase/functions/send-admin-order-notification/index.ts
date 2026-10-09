@@ -22,6 +22,7 @@ interface OrderItem {
 }
 
 interface Order {
+  specials_pickup_snapshot?: {name_en:string;name_th:string;maps_url:string|null;start_at:string;end_at:string};
   id: string;
   order_number: string;
   customer_id: string;
@@ -114,10 +115,10 @@ function buildEmail(order: Order, location: PickupLocation | null, pickupDay: Pi
   const subject = `New Order Received – Order #${order.order_number}`;
   const orderDate = formatDate(order.created_at);
   const orderDateTh = formatDateTh(order.created_at);
-  const locationNameEn = location?.name_en ?? "—";
-  const locationNameTh = location?.name_th ?? "—";
-  const pickupLabelEn = pickupDay?.label_en ?? pickupDay?.label ?? order.pickup_day ?? "—";
-  const pickupLabelTh = pickupDay?.label_th ?? pickupDay?.label ?? order.pickup_day ?? "—";
+  const locationNameEn = order.specials_pickup_snapshot?.name_en ?? location?.name_en ?? "—";
+  const locationNameTh = order.specials_pickup_snapshot?.name_th ?? location?.name_th ?? "—";
+  const pickupLabelEn = order.specials_pickup_snapshot ? `${new Date(order.specials_pickup_snapshot.start_at).toLocaleString('en-GB',{timeZone:'Asia/Bangkok'})}–${new Date(order.specials_pickup_snapshot.end_at).toLocaleTimeString('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'})} (Bangkok) · JOKO Specials` : pickupDay?.label_en ?? pickupDay?.label ?? order.pickup_day ?? "—";
+  const pickupLabelTh = order.specials_pickup_snapshot ? pickupLabelEn : pickupDay?.label_th ?? pickupDay?.label ?? order.pickup_day ?? "—";
   const mapsUrl = location?.maps_url ? location.maps_url : location?.name_en ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.name_en)}` : null;
   const orderTypeEn = order.purchase_type === "walk_in" ? "In-Store (Walk-In)" : "Online";
   const orderTypeTh = order.purchase_type === "walk_in" ? "หน้าร้าน (Walk-In)" : "ออนไลน์";
@@ -178,7 +179,7 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return jsonResponse(req, 400, { error: "Invalid JSON body" }); }
   const orderId = body.order_id;
   if (!isValidUuid(orderId)) return jsonResponse(req, 400, { error: "Invalid order_id" });
-  const { data: orderData, error: orderError } = await supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned, payment_status, payment_method").eq("id", orderId).eq("customer_id", user.id).eq("purchase_type", "online").maybeSingle();
+  const { data: orderData, error: orderError } = await supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned, payment_status, payment_method, specials_pickup_snapshot").eq("id", orderId).eq("customer_id", user.id).eq("purchase_type", "online").maybeSingle();
   if (orderError) { console.error("SEC-005: admin notification order lookup failed", orderError.message); return jsonResponse(req, 500, { error: "Notification service unavailable" }); }
   if (!orderData) return jsonResponse(req, 404, { error: "Order not found" });
   const order = orderData as Order;

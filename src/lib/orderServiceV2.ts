@@ -149,3 +149,22 @@ export async function cancelOnlineOrderByVersion(
     status: cancelledOrder.status || 'cancelled',
   };
 }
+
+export type ReactivatedOrderResult = {
+  order: OnlineOrderRpcResult & { cancellation_reason_code?: string | null };
+  payment: { id: string; status: string; expires_at: string };
+  reactivated: boolean;
+};
+
+export async function reactivateExpiredOnlineOrder(orderId: string): Promise<ReactivatedOrderResult> {
+  const { data, error } = await supabase.rpc('reactivate_expired_online_order_v1', {
+    p_order_id: orderId,
+  });
+
+  if (error) throw new Error(error.message);
+  const result = data as ReactivatedOrderResult | null;
+  if (!result?.reactivated || !result.order?.id || !result.payment?.id) {
+    throw new Error('Order reactivation returned an invalid result.');
+  }
+  return result;
+}

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, FileImage, Loader2, QrCode, ShieldCheck, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock, FileImage, Loader2, QrCode, ShieldCheck, Smartphone, Upload } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   createOrGetPaymentTransaction,
+  createPaymentHandoff,
+  expireOwnPaymentTransaction,
   getPaymentSettings,
+  getPaymentTransactionStatus,
   getPromptPayIntent,
   verifyPaymentSlip,
   type PaymentTransaction,
@@ -59,7 +62,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: 'Payment reminder: please complete payment soon to keep this reservation.',
     reminder14: 'Final reminder: payment is still outstanding.',
     countdown: 'Time remaining',
-    overdue: 'Payment is still outstanding. This order is not confirmed.',
+    overdue: 'Payment time has ended. This unpaid order will be cancelled automatically and kept in My Orders.',
   },
   th: {
     title: 'ชำระด้วยพร้อมเพย์',
@@ -81,7 +84,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: 'แจ้งเตือนการชำระเงิน: กรุณาชำระเงินเร็ว ๆ นี้เพื่อรักษาการจองนี้',
     reminder14: 'แจ้งเตือนครั้งสุดท้าย: ยังไม่ได้ชำระเงิน',
     countdown: 'เวลาที่เหลือ',
-    overdue: 'ยังไม่ได้ชำระเงิน คำสั่งซื้อนี้ยังไม่ได้รับการยืนยัน',
+    overdue: 'หมดเวลาชำระเงินแล้ว คำสั่งซื้อที่ยังไม่ได้ชำระจะถูกยกเลิกโดยอัตโนมัติและยังคงอยู่ใน My Orders',
   },
   zh: {
     title: '使用 PromptPay 付款',
@@ -103,7 +106,7 @@ const COPY: Record<Language, Copy> = {
     reminder10: '付款提醒：请尽快完成付款以保留本次预订。',
     reminder14: '最后提醒：付款仍未完成。',
     countdown: '剩余时间',
-    overdue: '付款仍未完成。此订单尚未确认。',
+    overdue: '付款时间已结束。未付款订单将自动取消，并保留在“我的订单”中。',
   },
 };
 
@@ -120,10 +123,12 @@ export function OnlinePromptPayPanel({
   orderId,
   language,
   onPaid,
+  onExpired,
 }: {
   orderId: string;
   language: Language;
   onPaid?: () => void;
+  onExpired?: () => void;
 }) {
   const copy = COPY[language];
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,7 +142,11 @@ export function OnlinePromptPayPanel({
   const [pendingMessage, setPendingMessage] = useState('');
   const [paid, setPaid] = useState(false);
   const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
+  const [handoffUrl, setHandoffUrl] = useState('');
+  const [handoffError, setHandoffError] = useState('');
+  const [handoffExpanded, setHandoffExpanded] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const expiryNotifiedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,7 +169,20 @@ export function OnlinePromptPayPanel({
         const nextIntent = await getPromptPayIntent(nextTransaction.id);
         if (cancelled) return;
         setIntent(nextIntent);
-        if (nextIntent.state === 'verified') setPaid(true);
+        if (nextIntent.state === 'verified') {
+          setPaid(true);
+        } else {
+          try {
+            const handoff = await createPaymentHandoff(nextTransaction.id);
+            if (!cancelled && handoff.handoffToken) {
+              setHandoffUrl(`${window.location.origin}/pay/handoff/${encodeURIComponent(handoff.handoffToken)}?lang=${language}`);
+            }
+          } catch (handoffLoadError) {
+            if (!cancelled) {
+              setHandoffError(handoffLoadError instanceof Error ? handoffLoadError.message : 'Mobile slip handoff is unavailable.');
+            }
+          }
+        }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not prepare payment.');
@@ -172,13 +194,38 @@ export function OnlinePromptPayPanel({
 
     void load();
     return () => { cancelled = true; };
-  }, [orderId]);
+  }, [orderId, language]);
 
   useEffect(() => {
     if (!intent?.expiresAt || paid) return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [intent?.expiresAt, paid]);
+
+  useEffect(() => {
+    if (!intent?.expiresAt || !transaction?.id || paid || expiryNotifiedRef.current) return;
+    if (new Date(intent.expiresAt).getTime() <= nowMs) {
+      expiryNotifiedRef.current = true;
+      void expireOwnPaymentTransaction(transaction.id)
+        .catch((expiryError) => console.error('Could not finalize payment expiry immediately:', expiryError))
+        .finally(() => onExpired?.());
+    }
+  }, [intent?.expiresAt, transaction?.id, nowMs, paid, onExpired]);
+
+  useEffect(() => {
+    if (!transaction?.id || paid) return;
+    const timer = window.setInterval(() => {
+      void getPaymentTransactionStatus(transaction.id)
+        .then((status) => {
+          if (status.status === 'verified') {
+            setPaid(true);
+            onPaid?.();
+          }
+        })
+        .catch(() => undefined);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [transaction?.id, paid, onPaid]);
 
   const chooseFile = (nextFile: File | null) => {
     setError('');
@@ -288,12 +335,12 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {intent?.qrMode === 'kshop_easyslip'
+            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
               ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
               : copy.title}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            {intent?.qrMode === 'kshop_easyslip'
+            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
               ? (language === 'th'
                   ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
                   : language === 'zh'
@@ -386,13 +433,74 @@ export function OnlinePromptPayPanel({
           </div>
         )}
 
+
+        {handoffUrl && (
+          <div className="mt-5 border-t border-[#55766F]/12 pt-4">
+            <button
+              type="button"
+              onClick={() => setHandoffExpanded((value) => !value)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#55766F]/15 bg-[#CFE3DF]/20 px-4 py-3 text-left transition hover:bg-[#CFE3DF]/35"
+              aria-expanded={handoffExpanded}
+            >
+              <span className="flex items-center gap-3">
+                <span className="rounded-lg bg-white/80 p-2 text-[#3F665E]"><Smartphone className="h-4 w-4" /></span>
+                <span>
+                  <span className="block text-sm font-semibold text-[#303532]">
+                    {language === 'th' ? 'สลิปอยู่ในมือถือ?' : language === 'zh' ? '回执在手机上？' : 'Is your slip on your mobile?'}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[#303532]/55">
+                    {language === 'th' ? 'แตะเพื่อเปิด QR สำหรับอัปโหลดจากโทรศัพท์' : language === 'zh' ? '点击显示手机上传二维码' : 'Tap to show the mobile upload QR'}
+                  </span>
+                </span>
+              </span>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-[#55766F] transition-transform ${handoffExpanded ? 'rotate-180' : ''}`} />
+            </button>
+
+            {handoffExpanded && (
+              <div className="mt-3 rounded-2xl border border-[#55766F]/15 bg-white/55 p-4">
+                <div className="grid gap-4 sm:grid-cols-[132px_1fr] sm:items-center">
+                  <div className="mx-auto rounded-xl border border-[#55766F]/15 bg-white p-2">
+                    <QRCodeSVG
+                      value={handoffUrl}
+                      size={112}
+                      level="M"
+                      includeMargin
+                      aria-label="Upload payment slip from phone"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs leading-5 text-[#303532]/60">
+                      {language === 'th'
+                        ? 'สแกน QR นี้ด้วยกล้องโทรศัพท์ แล้วเลือกสลิปจากโทรศัพท์ได้โดยตรง ไม่ต้องส่งอีเมลหรือกรอกเลขคำสั่งซื้อ'
+                        : language === 'zh'
+                          ? '用手机相机扫描此二维码，然后直接从手机选择付款回执。无需发送邮件，也无需输入订单号。'
+                          : 'Scan this QR with your phone camera, then choose the slip directly from your phone. No email and no order number.'}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold text-[#3F665E]">
+                      {language === 'th' ? 'หน้าจอนี้จะอัปเดตอัตโนมัติเมื่อยืนยันการชำระเงิน' : language === 'zh' ? '付款验证后，此页面会自动更新。' : 'This screen updates automatically after verification.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {handoffError && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+            {language === 'th' ? 'ขณะนี้ไม่สามารถเปิดการอัปโหลดจากมือถือได้ คุณยังสามารถอัปโหลดสลิปบนอุปกรณ์นี้ได้' : language === 'zh' ? '手机上传暂时不可用。您仍可在此设备上传回执。' : 'Mobile slip upload is temporarily unavailable. You can still upload the slip on this device.'}
+          </div>
+        )}
+
         <p className="mt-3 text-xs leading-5 text-[#303532]/50">
-          {intent?.qrMode === 'kshop_easyslip'
+          {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
             ? (language === 'th'
                 ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
                 : language === 'zh'
                   ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
-                  : 'This K SHOP QR is tied to the registered merchant account; EasySlip automatically checks the receiver, exact amount and duplicate use.')
+                  : intent?.qrMode === 'kshop_master'
+                    ? 'This QR is derived from JOKO’s genuine K SHOP merchant QR; EasySlip still verifies the receiving account, exact amount and duplicate use.'
+                    : 'This K SHOP QR is generated through EasySlip; EasySlip also verifies the receiving account, exact amount and duplicate use.')
             : copy.secure}
         </p>
       </div>

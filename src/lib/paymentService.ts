@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip';
+export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master';
 
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
@@ -50,6 +50,20 @@ export type PaymentVerificationResult = {
   error?: string;
 };
 
+export type PaymentHandoff = {
+  state: 'active' | 'verified' | 'expired';
+  handoffId?: string;
+  handoffToken?: string;
+  paymentTransactionId?: string;
+  orderNumber?: string;
+  amount?: number;
+  currency?: string;
+  expiresAt?: string;
+  paymentStatus?: string;
+  orderStatus?: string;
+  error?: string;
+};
+
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const { data, error } = await supabase
     .from('payment_settings')
@@ -62,7 +76,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
-    payment_qr_mode: data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
+    payment_qr_mode: data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
   };
 }
 
@@ -124,4 +138,85 @@ export async function verifyPaymentSlip(
   }
 
   return payload;
+}
+
+
+export async function createPaymentHandoff(paymentTransactionId: string): Promise<PaymentHandoff> {
+  const { data, error } = await supabase.functions.invoke('create-payment-handoff', {
+    body: { paymentTransactionId },
+  });
+
+  if (error) throw error;
+  if (!data?.handoffToken && data?.state !== 'verified') {
+    throw new Error(data?.error || 'Could not create mobile payment handoff.');
+  }
+  return data as PaymentHandoff;
+}
+
+export async function getPaymentHandoffStatus(token: string): Promise<PaymentHandoff> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvhualoeboobulwgmkla.supabase.co';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const response = await fetch(`${supabaseUrl}/functions/v1/payment-handoff-status`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(anonKey ? { apikey: anonKey } : {}),
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const payload = await response.json().catch(() => null) as PaymentHandoff | null;
+  if (!payload) throw new Error('Payment handoff did not return a response.');
+  if (!response.ok) throw new Error(payload.error || 'Could not load payment handoff.');
+  return payload;
+}
+
+export async function verifyPaymentSlipFromHandoff(
+  handoffToken: string,
+  image: File,
+): Promise<PaymentVerificationResult> {
+  const formData = new FormData();
+  formData.append('handoffToken', handoffToken);
+  formData.append('image', image);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvhualoeboobulwgmkla.supabase.co';
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const response = await fetch(`${supabaseUrl}/functions/v1/verify-payment-slip`, {
+    method: 'POST',
+    headers: {
+      ...(anonKey ? { apikey: anonKey } : {}),
+    },
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => null) as PaymentVerificationResult | null;
+  if (!payload) throw new Error('Payment verification did not return a response.');
+
+  if (!response.ok && response.status !== 202) {
+    const error = new Error(payload.message || payload.error || 'Payment verification failed.');
+    Object.assign(error, { paymentResult: payload });
+    throw error;
+  }
+
+  return payload;
+}
+
+export async function getPaymentTransactionStatus(paymentTransactionId: string): Promise<Pick<PaymentTransaction, 'status' | 'verified_at'>> {
+  const { data, error } = await supabase
+    .from('payment_transactions')
+    .select('status, verified_at')
+    .eq('id', paymentTransactionId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error('Payment transaction not found.');
+  return data as Pick<PaymentTransaction, 'status' | 'verified_at'>;
+}
+
+
+export async function expireOwnPaymentTransaction(paymentTransactionId: string): Promise<void> {
+  const { error } = await supabase.rpc('expire_own_payment_transaction_v1', {
+    p_payment_transaction_id: paymentTransactionId,
+  });
+  if (error) throw new Error(error.message);
 }

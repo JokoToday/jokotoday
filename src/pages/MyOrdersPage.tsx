@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, AlertTriangle, X } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Clock, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
 import { CMSProduct } from '../lib/cmsService';
-import { cancelOnlineOrderCompatible } from '../lib/orderServiceV2';
+import { cancelOnlineOrderCompatible, reactivateExpiredOnlineOrder } from '../lib/orderServiceV2';
 import { Order, PickupDay, PickupLocation } from '../components/orders/OrderTypes';
 import { MyOrdersList } from '../components/orders/MyOrdersList';
+import { SpecialsPaymentPanel } from '../features/specials/SpecialsPaymentPanel';
 import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
 import { getPaymentSettings } from '../lib/paymentService';
 
@@ -30,6 +31,10 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<Order | null>(null);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [reactivatingOrderId, setReactivatingOrderId] = useState<string | null>(null);
+  const [reactivationError, setReactivationError] = useState('');
+  const [reactivateTarget, setReactivateTarget] = useState<Order | null>(null);
+  const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
 
   useEffect(() => {
     if (user) loadAll();
@@ -37,14 +42,18 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user) {
+
+  if (!user) {
       setOnlinePaymentEnabled(false);
       return;
     }
 
     void getPaymentSettings()
       .then((settings) => {
-        if (!cancelled) setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+        if (!cancelled) {
+          setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+          setPaymentWindowMinutes(settings.payment_window_minutes);
+        }
       })
       .catch(() => {
         if (!cancelled) setOnlinePaymentEnabled(false);
@@ -63,7 +72,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned')
+          .select('specials_checkout:specials_checkouts(inventory_state,financial_state,fulfillment_state), order_type, specials_pickup_snapshot, id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),
@@ -72,7 +81,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
       if (ordersRes.error) throw ordersRes.error;
 
-      setOrders(ordersRes.data || []);
+      setOrders((ordersRes.data || []).map(row => ({...row, specials_checkout: Array.isArray(row.specials_checkout) ? row.specials_checkout[0] || null : row.specials_checkout})));
       setPickupDays(pickupRes.data || []);
 
       const locMap: Record<string, PickupLocation> = {};
@@ -129,6 +138,24 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
     }
   };
 
+  const handleReactivateOrder = async (order: Order) => {
+    setReactivationError('');
+    setReactivatingOrderId(order.id);
+    try {
+      await reactivateExpiredOnlineOrder(order.id);
+      await loadAll();
+      const refreshed = { ...order, status: 'pending', cancellation_reason_code: null, cancelled_at: null } as Order;
+      setReactivateTarget(null);
+      setPaymentTarget(refreshed);
+    } catch (error) {
+      console.error('Order reactivation failed:', error);
+      setReactivationError(error instanceof Error ? error.message : 'Could not reactivate this order.');
+    } finally {
+      setReactivatingOrderId(null);
+    }
+  };
+
+
   if (!user) {
     return (
       <div className="joko-mineral-field flex min-h-[70vh] items-center justify-center px-4">
@@ -159,12 +186,18 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             {language === 'th' ? 'กลับ' : language === 'zh' ? '返回' : 'Back'}
           </button>
 
-          <div className="mb-6 rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/94 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
+          <div className="mb-6 rounded-[2rem] border border-[#55766F]/15 bg-[#ACCEC8] p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] sm:p-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#3F665E]">JOKO TODAY</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
               {getLabel('my_orders_page.my_orders_title', language, 'My Orders')}
             </h1>
           </div>
+
+          {reactivationError && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+              {reactivationError}
+            </div>
+          )}
 
           <div className="rounded-[2rem] border border-[#55766F]/14 bg-[#FFF9EE]/88 p-4 shadow-[0_18px_50px_rgba(59,74,69,0.06)] sm:p-6">
             {loading ? (
@@ -176,7 +209,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
               </div>
             ) : (
               <MyOrdersList
-                orders={orders}
+                orders={orders.map(order => ({...order, online_payment_enabled:onlinePaymentEnabled}))}
                 language={language}
                 productMap={productMap}
                 pickupDays={pickupDays}
@@ -184,12 +217,55 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
                 getLabel={getLabel}
                 onNavigate={onNavigate}
                 onCancelRequest={openCancelModal}
-                onPayRequest={onlinePaymentEnabled ? setPaymentTarget : undefined}
+                onPayRequest={setPaymentTarget}
+                onReactivateRequest={onlinePaymentEnabled ? setReactivateTarget : undefined}
+                reactivatingOrderId={reactivatingOrderId}
               />
             )}
           </div>
         </div>
       </div>
+
+
+      {reactivateTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#CFE3DF]/55">
+              <Clock className="h-7 w-7 text-[#3F665E]" />
+            </div>
+            <h3 className="text-xl font-bold text-stone-900">
+              {language === 'th' ? 'เปิดคำสั่งซื้อนี้อีกครั้ง?' : language === 'zh' ? '重新激活此订单？' : 'Reactivate this order?'}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              {language === 'th'
+                ? `JOKO จะตรวจสอบสินค้าและวันรับเดิมอีกครั้ง หากยังพร้อม เราจะสำรองสินค้าให้อีก ${paymentWindowMinutes} นาทีเพื่อให้คุณชำระเงิน`
+                : language === 'zh'
+                  ? `JOKO 会重新检查原订单的库存和取货安排。若仍可用，我们会再次保留商品 ${paymentWindowMinutes} 分钟供您付款。`
+                  : `JOKO will recheck the original stock and pickup arrangement. If everything is still available, we’ll reserve it again for ${paymentWindowMinutes} minutes while you pay.`}
+            </p>
+            <div className="mt-6 space-y-3">
+              <button
+                type="button"
+                onClick={() => void handleReactivateOrder(reactivateTarget)}
+                disabled={reactivatingOrderId === reactivateTarget.id}
+                className="w-full rounded-xl bg-[#3F665E] py-3 font-semibold text-white transition hover:bg-[#304B45] disabled:opacity-60"
+              >
+                {reactivatingOrderId === reactivateTarget.id
+                  ? (language === 'th' ? 'กำลังเปิดใหม่…' : language === 'zh' ? '正在重新激活…' : 'Reactivating…')
+                  : (language === 'th' ? 'เปิดคำสั่งซื้ออีกครั้ง' : language === 'zh' ? '重新激活订单' : 'Reactivate order')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReactivateTarget(null)}
+                disabled={reactivatingOrderId === reactivateTarget.id}
+                className="w-full rounded-xl bg-stone-100 py-3 font-medium text-stone-700"
+              >
+                {language === 'th' ? 'ยังไม่ตอนนี้' : language === 'zh' ? '暂不' : 'Not now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {paymentTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
@@ -202,11 +278,11 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             >
               <X className="h-4 w-4" />
             </button>
-            <OnlinePromptPayPanel
+            {paymentTarget.order_type === 'specials' ? <SpecialsPaymentPanel orderId={paymentTarget.id} onPaid={() => void loadAll()} /> : <OnlinePromptPayPanel
               orderId={paymentTarget.id}
               language={language}
               onPaid={() => void loadAll()}
-            />
+            />}
           </div>
         </div>
       )}

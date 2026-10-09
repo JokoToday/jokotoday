@@ -1,5 +1,6 @@
 import { Heart, Users, Wheat } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { JokoNoteSlot } from '../components/JokoNoteSlot';
 
 export default function AboutPage() {
   const { t } = useLanguage();
@@ -10,6 +11,12 @@ export default function AboutPage() {
         <h1 className="text-4xl md:text-5xl font-header font-bold text-primary-900 mb-6 text-center">
           {t.about.title}
         </h1>
+
+        <JokoNoteSlot
+          pageKey="about"
+          placementKey="intro"
+          className="mx-auto mb-12 max-w-sm"
+        />
 
         <div className="bg-background rounded-2xl shadow-lg overflow-hidden mb-12">
           <div className="p-8 md:p-12">
@@ -27,6 +34,12 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
+
+        <JokoNoteSlot
+          pageKey="about"
+          placementKey="after-story"
+          className="mb-12 max-w-sm md:ml-auto md:mr-8"
+        />
 
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           <div className="bg-background rounded-lg shadow-md p-6 text-center">
@@ -59,6 +72,12 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
+
+        <JokoNoteSlot
+          pageKey="about"
+          placementKey="before-pickup"
+          className="mx-auto mb-12 max-w-sm"
+        />
 
         <div className="bg-primary-600 rounded-2xl p-8 md:p-12 text-white text-center">
           <h2 className="text-3xl font-header font-bold mb-4">{t.footer.pickupLocations}</h2>
