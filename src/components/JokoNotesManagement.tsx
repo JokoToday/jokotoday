@@ -233,27 +233,48 @@ export function JokoNotesManagement() {
       setError('Upload the bubble illustration before saving.');
       return;
     }
+    if (draft.accent_type === 'bubble' && !draft.bubble_alt?.trim()) {
+      setError('Add an accessibility label that accurately describes the bubble wording.');
+      return;
+    }
 
     setSaving(true);
     setError('');
     setNotice('');
     try {
-      const normalized: JokoNoteDraft = {
-        ...draft,
-        title_en: nullable(draft.title_en || ''),
-        title_th: nullable(draft.title_th || ''),
-        title_zh: nullable(draft.title_zh || ''),
-        body_en: nullable(draft.body_en || ''),
-        body_th: nullable(draft.body_th || ''),
-        body_zh: nullable(draft.body_zh || ''),
-        image_url: nullable(draft.image_url || ''),
-        image_alt_en: nullable(draft.image_alt_en || ''),
-        image_alt_th: nullable(draft.image_alt_th || ''),
-        image_alt_zh: nullable(draft.image_alt_zh || ''),
-        bubble_image_url: nullable(draft.bubble_image_url || ''),
-        bubble_alt: nullable(draft.bubble_alt || ''),
-        link_url: nullable(draft.link_url || ''),
-      };
+      const normalized: JokoNoteDraft = draft.accent_type === 'bubble'
+        ? {
+            ...draft,
+            title_en: null,
+            title_th: null,
+            title_zh: null,
+            body_en: null,
+            body_th: null,
+            body_zh: null,
+            image_url: null,
+            image_alt_en: null,
+            image_alt_th: null,
+            image_alt_zh: null,
+            bubble_image_url: nullable(draft.bubble_image_url || ''),
+            bubble_alt: nullable(draft.bubble_alt || ''),
+            link_url: nullable(draft.link_url || ''),
+          }
+        : {
+            ...draft,
+            title_en: nullable(draft.title_en || ''),
+            title_th: nullable(draft.title_th || ''),
+            title_zh: nullable(draft.title_zh || ''),
+            body_en: nullable(draft.body_en || ''),
+            body_th: nullable(draft.body_th || ''),
+            body_zh: nullable(draft.body_zh || ''),
+            image_url: nullable(draft.image_url || ''),
+            image_alt_en: nullable(draft.image_alt_en || ''),
+            image_alt_th: nullable(draft.image_alt_th || ''),
+            image_alt_zh: nullable(draft.image_alt_zh || ''),
+            bubble_image_url: null,
+            bubble_alt: null,
+            link_url: nullable(draft.link_url || ''),
+          };
 
       const wasPublished = existing?.is_published ?? false;
       const placementLabel = accentPageDefinition.placements.find(
