@@ -30,8 +30,6 @@ import { WhatPeopleSayManagement } from './WhatPeopleSayManagement';
 import { NotebookContentManagement } from './NotebookContentManagement';
 import { ProductPickupAvailabilityManagement } from './ProductPickupAvailabilityManagement';
 import { PickupV2RolloutManagement } from './PickupV2RolloutManagement';
-import { PaymentVerificationTest } from './PaymentVerificationTest';
-import { StripePromptPayTest } from './StripePromptPayTest';
 import { PaymentSettingsManagement } from './PaymentSettingsManagement';
 import { QrPassDesignerManagement } from './QrPassDesignerManagement';
 import { AdminPage as AdminCmsPage } from '../pages/AdminCmsPage';
@@ -345,13 +343,9 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
           <AdminSection
             eyebrow="Payments"
             title="Payments"
-            description="Control JOKO payment providers and run private EasySlip or Stripe sandbox diagnostics without changing the customer payment mode."
+            description="Control which payment provider new online orders use and configure the payment window."
           >
-            <div className="space-y-6">
-              <PaymentSettingsManagement />
-              <StripePromptPayTest />
-              <PaymentVerificationTest />
-            </div>
+            <PaymentSettingsManagement />
           </AdminSection>
         )}
 
