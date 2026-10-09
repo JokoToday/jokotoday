@@ -13,6 +13,7 @@ import {
   type PaymentTransaction,
   type PromptPayIntent,
 } from '../lib/paymentService';
+import { getPaymentProvider } from '../lib/paymentProviders';
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -120,7 +121,7 @@ function formatExpiry(value: string, language: Language): string {
   );
 }
 
-export function OnlinePromptPayPanel({
+export function OnlineQrPaymentPanel({
   orderId,
   language,
   onPaid,
@@ -167,14 +168,15 @@ export function OnlinePromptPayPanel({
         if (cancelled) return;
         setTransaction(nextTransaction);
 
-        const nextIntent = nextTransaction.payment_mode === 'stripe_promptpay'
+        const provider = getPaymentProvider(nextTransaction.payment_mode);
+        const nextIntent = provider.capabilities.autoConfirmsWithoutSlip
           ? await getStripePromptPayIntent(nextTransaction.id)
           : await getPromptPayIntent(nextTransaction.id);
         if (cancelled) return;
         setIntent(nextIntent);
         if (nextIntent.state === 'verified') {
           setPaid(true);
-        } else if (nextTransaction.payment_mode !== 'stripe_promptpay') {
+        } else if (provider.capabilities.supportsMobileHandoff) {
           try {
             const handoff = await createPaymentHandoff(nextTransaction.id);
             if (!cancelled && handoff.handoffToken) {
@@ -330,6 +332,8 @@ export function OnlinePromptPayPanel({
     ) : null;
   }
 
+  const activeProvider = getPaymentProvider(transaction.payment_mode);
+
   return (
     <div className="rounded-[2rem] border border-[#55766F]/[.14] bg-[#FFF9EE]/95 p-5 shadow-[0_18px_50px_rgba(59,74,69,0.06)] sm:p-6">
       <div className="flex items-start gap-3">
@@ -338,20 +342,20 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {intent?.qrMode === 'stripe_promptpay'
+            {activeProvider.capabilities.autoConfirmsWithoutSlip
               ? (language === 'th' ? 'ชำระด้วย Stripe PromptPay' : language === 'zh' ? '使用 Stripe PromptPay 付款' : 'Pay now with Stripe PromptPay')
-              : intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+              : transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
                 ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
                 : copy.title}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            {intent?.qrMode === 'stripe_promptpay'
+            {activeProvider.capabilities.autoConfirmsWithoutSlip
               ? (language === 'th'
                   ? 'สแกน QR ด้วยแอปธนาคารและชำระเงินตามยอดที่แสดง Stripe จะแจ้ง JOKO อัตโนมัติเมื่อชำระสำเร็จ ไม่ต้องอัปโหลดสลิป'
                   : language === 'zh'
                     ? '使用银行 App 扫描二维码并按显示金额付款。付款成功后 Stripe 会自动通知 JOKO，无需上传回执。'
                     : 'Scan the QR with your banking app and pay the exact amount shown. Stripe notifies JOKO automatically when payment succeeds — no slip upload needed.')
-              : intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+              : transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
                 ? (language === 'th'
                     ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
                     : language === 'zh'
@@ -392,7 +396,7 @@ export function OnlinePromptPayPanel({
         </div>
       </div>
 
-      {intent?.qrMode === 'stripe_promptpay' ? (
+      {activeProvider.capabilities.autoConfirmsWithoutSlip ? (
         <div className="mt-5 border-t border-[#55766F]/12 pt-5">
           <div className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/25 p-4">
             <div className="flex items-start gap-3">
@@ -532,12 +536,12 @@ export function OnlinePromptPayPanel({
         )}
 
         <p className="mt-3 text-xs leading-5 text-[#303532]/50">
-          {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+          {transaction.payment_mode === 'kshop_master' || transaction.payment_mode === 'kshop_easyslip'
             ? (language === 'th'
                 ? 'K SHOP QR นี้เชื่อมกับบัญชีร้านค้าที่ลงทะเบียน และ EasySlip จะตรวจสอบบัญชีผู้รับ ยอดเงิน และธุรกรรมซ้ำโดยอัตโนมัติ'
                 : language === 'zh'
                   ? '此 K SHOP QR 连接到已登记的商户账户；EasySlip 会自动核对收款账户、金额和重复交易。'
-                  : intent?.qrMode === 'kshop_master'
+                  : transaction.payment_mode === 'kshop_master'
                     ? 'This QR is derived from JOKO’s genuine K SHOP merchant QR; EasySlip still verifies the receiving account, exact amount and duplicate use.'
                     : 'This K SHOP QR is generated through EasySlip; EasySlip also verifies the receiving account, exact amount and duplicate use.')
             : copy.secure}
@@ -547,3 +551,6 @@ export function OnlinePromptPayPanel({
     </div>
   );
 }
+
+// Historical export retained temporarily for low-risk compatibility while callers migrate.
+export const OnlinePromptPayPanel = OnlineQrPaymentPanel;
