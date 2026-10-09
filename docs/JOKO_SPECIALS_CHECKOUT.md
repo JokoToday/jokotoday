@@ -73,3 +73,10 @@ npm run build
 The tests execute the migration unchanged and cover atomic checkout rollback, idempotency, RLS/function permissions, legacy bypass rejection, caps, cancellation/expiry conservation, timely grace after the regular expiry replacement, reactivation/handoff bypass rejection, receiver/amount validation, late money, refund records, staff authorization, location/window enforcement, no-shows, immutable receiver settings, and LINE lease/retry/acceptance behavior. The local fixture models commerce contracts; it is not a substitute for the full-schema deployment pilot or real concurrent sessions. No external banking/provider/LINE call is made by tests.
 
 Frontend lint has existing warnings; build has the existing large-chunk warning. Chromium is unavailable here, so responsive visual QA remains part of the pilot. Direct Deno dependency resolution is blocked at jsr.io; the new handlers are also checked against local Supabase dependencies with the runtime declaration import omitted in temporary copies. Full deployed dependency resolution still needs the disposable Supabase run.
+
+
+## Approved customer page and menu
+
+The dedicated `/specials` page follows the approved cream, mineral-turquoise and burnt-ochre layout: a pickup note with the actual Bangkok checkout cutoff, product images and current prices/availability, quantity controls and a separate Specials basket. It uses live catalog data, localized EN/TH/ZH interface copy, the existing payment panel, and saved checkout recovery. Empty/sold-out states do not display example products or times. Availability changes require the customer to adjust invalid quantities before continuing.
+
+Specials is a fixed route in the shared desktop/mobile menu. It defaults to the position after Beyond. Existing six-item published menus keep their labels, visibility and order; Specials is inserted automatically. The Homepage Editor can then rename, hide or reorder it, and seven-item documents pass validation. Explicit Admin settings persist. Run `node scripts/test-specials-menu.mjs` for 11 menu normalization and Builder validation regression assertions.

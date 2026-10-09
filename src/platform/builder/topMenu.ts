@@ -1,13 +1,14 @@
 import type { LocalizedText, TopMenuItem, TopMenuKey } from './contracts';
 
 export const TOP_MENU_KEYS: readonly TopMenuKey[] = [
-  'home', 'products', 'other-products', 'how-it-works', 'pickup', 'about',
+  'home', 'products', 'other-products', 'specials', 'how-it-works', 'pickup', 'about',
 ];
 
 export const TOP_MENU_DEFAULT_LABELS: Readonly<Record<TopMenuKey, LocalizedText>> = {
   home: { en: 'Home', th: 'หน้าแรก', zh: '首页' },
   products: { en: 'Baked', th: 'ขนมอบ', zh: '烘焙好物' },
   'other-products': { en: 'Beyond', th: 'ของดีอื่น ๆ', zh: '其他好物' },
+  specials: { en: 'Specials', th: 'ราคาพิเศษ', zh: '今日特惠' },
   'how-it-works': { en: 'How It Works', th: 'วิธีสั่งซื้อ', zh: '如何订购' },
   pickup: { en: 'Pick Up', th: 'จุดรับสินค้า', zh: '取货' },
   about: { en: 'About', th: 'เกี่ยวกับเรา', zh: '关于' },
@@ -36,7 +37,14 @@ export function resolveTopMenu(value: unknown): TopMenuItem[] {
     });
   }
   for (const key of TOP_MENU_KEYS) {
-    if (!used.has(key)) result.push({ key, visible: true, labels: { ...TOP_MENU_DEFAULT_LABELS[key] } });
+    if (!used.has(key)) {
+      const item = { key, visible: true, labels: { ...TOP_MENU_DEFAULT_LABELS[key] } };
+      if (key === 'specials') {
+        const beyond = result.findIndex((entry) => entry.key === 'other-products');
+        const how = result.findIndex((entry) => entry.key === 'how-it-works');
+        result.splice(beyond >= 0 ? beyond + 1 : how >= 0 ? how : result.length, 0, item);
+      } else result.push(item);
+    }
   }
   return result;
 }

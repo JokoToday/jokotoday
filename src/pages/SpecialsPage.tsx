@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, MapPin, Minus, Plus, ShoppingBag } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
+import { specialsCustomerCopy } from "../features/specials/customerCopy";
 import { useAuth } from "../context/AuthContext";
 import { SpecialsPaymentPanel } from "../features/specials/SpecialsPaymentPanel";
 import {
   specialsError,
   specialsRpc,
-  specialsTime,
   type SpecialsCatalog,
 } from "../features/specials/customer";
 export default function SpecialsPage({
@@ -13,6 +15,12 @@ export default function SpecialsPage({
   onNavigate: (page: string) => void;
 }) {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const copy = specialsCustomerCopy[language];
+  const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
+  const money = (satang: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'THB' }).format(satang / 100);
+  const time = (value: string) => new Date(value).toLocaleTimeString(locale, { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false });
+  const date = (value: string) => new Date(value).toLocaleDateString(locale, { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' });
   const [catalog, setCatalog] = useState<SpecialsCatalog>({}),
     [cart, setCart] = useState<Record<string, number>>({}),
     [order, setOrder] = useState<string | null>(
@@ -27,6 +35,7 @@ export default function SpecialsPage({
       setCatalog(await specialsRpc<SpecialsCatalog>("specials_catalog_v1"));
       setLoaded(true);
     } catch (e) {
+      setLoaded(true);
       setError(specialsError(e));
     }
   }, []);
@@ -84,154 +93,109 @@ export default function SpecialsPage({
       setBusy(false);
     }
   }
-  const total =
-    (catalog.items || []).reduce(
-      (sum, item) => sum + item.price_satang * (cart[item.id] || 0),
-      0,
-    ) / 100;
+  // A new daily batch starts a new selection; saved checkout retries keep their exact payload.
+  useEffect(() => setCart({}), [catalog.batch?.id]);
+  const items = catalog.items || [];
+  const batch = catalog.batch;
+  const selected = items.filter(item => (cart[item.id] || 0) > 0);
+  const total = selected.reduce((sum, item) => sum + item.price_satang * cart[item.id], 0);
+  const limit = (item: (typeof items)[number]) => Math.min(item.available, item.max_per_customer ?? item.available);
+  const invalid = selected.some(item => cart[item.id] > limit(item));
+  const pending = Boolean(user && localStorage.getItem(`specials-request:${user.id}`));
+  const name = (item: (typeof items)[number]) => language === 'th' ? item.name_th || item.name_en : item.name_en;
+  const location = batch ? (language === 'th' ? batch.location.name_th || batch.location.name_en : batch.location.name_en) : '';
+  const mapUrl = batch?.location.maps_url && /^https?:\/\//i.test(batch.location.maps_url) ? batch.location.maps_url : null;
+  function quantity(item: (typeof items)[number], value: number) {
+    if (busy || pending) return;
+    setCart(previous => ({ ...previous, [item.id]: Math.max(0, Math.min(limit(item), Math.floor(value || 0))) }));
+  }
+  const actionClass = 'min-h-11 rounded-xl bg-[#C76624] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A95120] disabled:opacity-50';
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-5 py-10">
-      <h1 className="text-3xl font-semibold">JOKO Specials / ขนมราคาพิเศษ</h1>
-      <p>
-        Made by JOKO. Limited surplus, special prices, same-day pickup only.
-        This checkout is separate from your regular bakery cart.
-      </p>
-      {user && order ? (
-        <>
-          <SpecialsPaymentPanel orderId={order} />
-          <button
-            className="underline"
-            onClick={() => {
-              localStorage.removeItem(`specials-order:${user.id}`);
-              setOrder(null);
-            }}
-          >
-            Browse today’s Specials
-          </button>
-          <button
-            className="ml-5 underline"
-            onClick={() => onNavigate("orders")}
-          >
-            My Orders
-          </button>
-        </>
-      ) : catalog.batch ? (
-        <>
-          <h2 className="text-xl">{catalog.batch.title}</h2>
-          <p>
-            {catalog.batch.location.name_en} / {catalog.batch.location.name_th}{" "}
-            · {specialsTime(catalog.batch.pickup_start_at)}–
-            {specialsTime(catalog.batch.pickup_end_at)} (Bangkok)
-          </p>
-          <div className="grid gap-5 sm:grid-cols-2">
-            {catalog.items?.map((item) => (
-              <article key={item.id} className="rounded-2xl border p-5">
-                {item.image && (
-                  <img
-                    className="mb-3 h-40 w-full rounded-xl object-cover"
-                    src={item.image}
-                    alt={item.name_en}
-                  />
-                )}
-                <h3 className="font-semibold">
-                  {item.name_en} / {item.name_th}
-                </h3>
-                <p>
-                  <s className="mr-3 opacity-50">
-                    ฿{(item.regular_price_satang / 100).toFixed(2)}
-                  </s>
-                  ฿{(item.price_satang / 100).toFixed(2)}
-                </p>
-                <p>{item.available} available</p>
-                <label>
-                  Quantity{" "}
-                  <input
-                    className="ml-3 w-20 rounded border p-2"
-                    type="number"
-                    min={0}
-                    max={Math.min(
-                      item.available,
-                      item.max_per_customer || item.available,
-                    )}
-                    value={cart[item.id] || 0}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setCart({
-                        ...cart,
-                        [item.id]: Math.max(
-                          0,
-                          Math.min(
-                            item.available,
-                            item.max_per_customer || item.available,
-                            Math.floor(Number(e.target.value) || 0),
-                          ),
-                        ),
-                      })
-                    }
-                  />
-                </label>
-              </article>
-            ))}
+    <main className="joko-mineral-field min-h-screen text-[#303532]">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 py-9 sm:px-6 sm:py-12 lg:px-8">
+        <div className="mb-8 grid items-center gap-7 md:grid-cols-[minmax(0,1fr)_17rem]">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55766F]">{copy.eyebrow}</p>
+            <h1 className="mt-3 text-4xl leading-tight tracking-[-0.035em] sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
+              {copy.heading}<br /><span className="text-[#C76624]">{copy.accent}</span>
+            </h1>
+            <span className="mt-4 block h-[3px] w-40 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#303532]/75">{copy.intro}</p>
           </div>
-          {user ? (
-            <button
-              className="rounded-xl bg-[#305c46] px-6 py-3 text-white disabled:opacity-50"
-              disabled={
-                busy ||
-                (total <= 0 &&
-                  !localStorage.getItem(`specials-request:${user.id}`))
-              }
-              onClick={() => void checkout()}
-            >
-              {localStorage.getItem(`specials-request:${user.id}`)
-                ? "Retry pending checkout"
-                : `Hold stock & pay ฿${total.toFixed(2)}`}
-            </button>
-          ) : (
-            <button className="underline" onClick={() => onNavigate("login")}>
-              Sign in to checkout / เข้าสู่ระบบ
-            </button>
-          )}
-          <p>
-            Your 15-minute hold begins when checkout succeeds. Availability and
-            prices are checked on the server.
-          </p>
-        </>
-      ) : (
-        <p>
-          {loaded
-            ? "No Specials are available now. Please check again later."
-            : "Loading today’s Specials…"}
-        </p>
-      )}
-      {user &&
-        !order &&
-        localStorage.getItem(`specials-request:${user.id}`) && (
-          <div className="rounded-xl border p-4">
-            <p>
-              A checkout request is awaiting confirmation. Retry the saved cart
-              before creating another checkout.
-            </p>
-            <button
-              className="underline"
-              disabled={busy}
-              onClick={() => void checkout()}
-            >
-              Recover saved checkout
-            </button>
-            <button
-              className="ml-4 underline"
-              onClick={() => onNavigate("orders")}
-            >
-              Check My Orders
-            </button>
+          {batch && <aside className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>
+            <h2 className="mt-3 text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{location}</h2>
+            <p className="mt-3 text-sm">{date(batch.pickup_start_at)} · {time(batch.pickup_start_at)}–{time(batch.pickup_end_at)}</p>
+            <p className="mt-2 text-xs text-[#303532]/70">{copy.closes} {time(new Date(new Date(batch.sales_end_at).getTime() - 15 * 60000).toISOString())} · {copy.timezone}</p>
+            {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-[#55766F] underline underline-offset-4"><MapPin className="h-4 w-4" />{copy.maps}</a>}
+          </aside>}
+        </div>
+        <div className="mb-8 flex flex-wrap gap-x-7 gap-y-3 border-y border-[#55766F]/20 py-4">
+          {copy.rules.map(rule => <span key={rule} className="inline-flex items-center gap-2 text-xs text-[#303532]/75"><Check className="h-4 w-4 text-[#55766F]" aria-hidden="true" />{rule}</span>)}
+        </div>
+        {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+        {user && order ? (
+          <section className="mx-auto max-w-3xl">
+            <SpecialsPaymentPanel orderId={order} />
+            <div className="mt-5 flex flex-wrap gap-4">
+              <button type="button" className="min-h-11 text-sm text-[#55766F] underline underline-offset-4" onClick={() => {
+                localStorage.removeItem(`specials-order:${user.id}`);
+                setOrder(null);
+              }}>{copy.browse}</button>
+              <button type="button" className="min-h-11 text-sm text-[#55766F] underline underline-offset-4" onClick={() => onNavigate('orders')}>{copy.orders}</button>
+            </div>
+          </section>
+        ) : (
+          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <section>
+              <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="text-2xl sm:text-3xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{batch?.title || copy.today}</h2>
+                {batch && <span className="text-xs text-[#303532]/65">{copy.lasts}</span>}
+              </div>
+              {batch && items.length ? <div className="grid gap-5 sm:grid-cols-2">
+                {items.map(item => <article key={item.id} className="overflow-hidden rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]">
+                  <div className="relative flex h-44 items-center justify-center bg-[#CFE3DF]/45 sm:h-48">
+                    {item.image ? <img src={item.image} alt={name(item)} loading="lazy" className="h-full w-full object-cover" /> : <ShoppingBag className="h-10 w-10 text-[#55766F]" aria-hidden="true" />}
+                    <span className="absolute left-3 top-3 rounded-full bg-[#FFF9EE] px-3 py-1.5 text-xs font-medium text-[#C76624]">{item.available > 0 ? copy.special : copy.soldOut}</span>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{name(item)}</h3>
+                    {language === 'en' && item.name_th && <p className="mt-1 text-xs text-[#303532]/65">{item.name_th}</p>}
+                    <p className="my-4 flex flex-wrap items-center gap-3"><span className="text-xl font-semibold text-[#C76624]">{money(item.price_satang)}</span>{item.regular_price_satang > item.price_satang && <s className="text-sm text-[#303532]/55">{money(item.regular_price_satang)}</s>}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-xs text-[#55766F]">{item.available > 0 ? `${item.available} ${copy.available}` : copy.soldOut}</span>
+                      {(cart[item.id] || 0) > 0 ? <div className="flex items-center gap-2">
+                        <button type="button" aria-label={`${copy.remove}: ${name(item)}`} disabled={busy || pending} onClick={() => quantity(item, cart[item.id] - 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#55766F]/25 disabled:opacity-50"><Minus className="h-4 w-4" /></button>
+                        <label className="sr-only" htmlFor={`specials-qty-${item.id}`}>{copy.quantity}: {name(item)}</label>
+                        <input id={`specials-qty-${item.id}`} type="number" min={0} max={limit(item)} value={cart[item.id]} disabled={busy || pending} aria-invalid={cart[item.id] > limit(item)} onChange={event => quantity(item, Number(event.target.value))} className="h-11 w-14 rounded-lg border border-[#55766F]/25 bg-[#FFF9EE] text-center text-base aria-[invalid=true]:border-red-600" />
+                        <button type="button" aria-label={`${copy.add}: ${name(item)}`} disabled={busy || pending || cart[item.id] >= limit(item)} onClick={() => quantity(item, cart[item.id] + 1)} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#55766F]/25 disabled:opacity-50"><Plus className="h-4 w-4" /></button>
+                      </div> : <button type="button" disabled={busy || pending || item.available <= 0} onClick={() => quantity(item, 1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#55766F]/25 px-4 text-sm disabled:opacity-50">{item.available > 0 ? copy.add : copy.soldOut}{item.available > 0 && <Plus className="h-4 w-4" aria-hidden="true" />}</button>}
+                    </div>
+                  </div>
+                </article>)}
+              </div> : <div className="rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]/80 p-7">
+                <h3 className="text-xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{loaded ? copy.noSpecials : copy.loading}</h3>
+                {loaded && <p className="mt-3 text-sm text-[#303532]/70">{copy.checkLater}</p>}
+              </div>}
+            </section>
+            <aside className="rounded-2xl border border-[#55766F]/20 bg-[#F4EFE5] p-6">
+              <h2 className="text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{copy.basket}</h2>
+              {batch && <p className="mt-2 text-xs text-[#303532]/70">{copy.pickup} · {location}</p>}
+              <div className="mt-5" aria-live="polite">
+                {selected.length ? selected.map(item => <div key={item.id} className="flex items-start justify-between gap-3 border-b border-[#55766F]/20 py-3 text-sm">
+                  <span className="min-w-0 break-words">{cart[item.id]} × {name(item)}</span><span className="shrink-0">{money(item.price_satang * cart[item.id])}</span>
+                </div>) : <p className="text-sm leading-6 text-[#303532]/70">{copy.emptyBasket}</p>}
+              </div>
+              <div className="my-6 flex justify-between gap-3"><span>{copy.total}</span><strong>{money(total)}</strong></div>
+              {invalid && <p role="alert" className="mb-4 text-sm text-red-800">{copy.changed}</p>}
+              {user ? <button type="button" className={`${actionClass} w-full`} disabled={busy || (!pending && (total <= 0 || invalid || !batch))} onClick={() => void checkout()}>{busy ? copy.busy : pending ? copy.retry : copy.pay}</button> : <button type="button" className={`${actionClass} w-full`} disabled={!batch} onClick={() => onNavigate('login')}>{copy.signIn}</button>}
+              <p className="mt-4 text-xs leading-6 text-[#303532]/70">{copy.hold}</p>
+              {pending && <div className="mt-5 border-t border-[#55766F]/20 pt-4"><p className="text-xs leading-6">{copy.pending}</p><button type="button" className="mt-2 min-h-11 text-sm underline underline-offset-4" onClick={() => onNavigate('orders')}>{copy.orders}</button></div>}
+            </aside>
           </div>
         )}
-      {error && (
-        <p role="alert" className="text-red-700">
-          {error}
-        </p>
-      )}
+        <p className="mt-8 border-t border-[#55766F]/20 pt-6 text-sm leading-7 text-[#303532]/70"><strong className="text-[#303532]">{copy.different}</strong> {copy.separate}</p>
+      </div>
     </main>
   );
 }
