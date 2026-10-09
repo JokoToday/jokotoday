@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { CheckCircle2, Eye, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { uploadGalleryImage } from '../lib/mediaService';
+import {
+  adminListPageAccentAssets,
+  adminSavePageAccentAsset,
+  type PageAccentAsset,
+} from '../lib/pageAccentAssetsService';
+import {
+  buildPageAccentPreviewUrl,
+  createPageAccentPreview,
+} from '../lib/pageAccentPreview';
 import {
   JOKO_BUBBLE_PAGES,
   JOKO_NOTE_PAGES,
@@ -122,12 +131,15 @@ const BUBBLE_PREVIEW_WIDTH: Record<JokoBubbleSize, string> = {
 
 export function JokoNotesManagement() {
   const [notes, setNotes] = useState<JokoNote[]>([]);
+  const [assets, setAssets] = useState<PageAccentAsset[]>([]);
   const [selectedPageKey, setSelectedPageKey] = useState(FIRST_PAGE.pageKey);
   const [previewLanguage, setPreviewLanguage] = useState<LanguageCode>('en');
   const [draft, setDraft] = useState<JokoNoteDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [newAssetName, setNewAssetName] = useState('');
+  const [newAssetAlt, setNewAssetAlt] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -162,7 +174,20 @@ export function JokoNotesManagement() {
     setLoading(true);
     setError('');
     try {
-      setNotes(await adminListJokoNotes());
+      const [notesResult, assetsResult] = await Promise.allSettled([
+        adminListJokoNotes(),
+        adminListPageAccentAssets(),
+      ]);
+
+      if (notesResult.status === 'rejected') throw notesResult.reason;
+      setNotes(notesResult.value);
+
+      if (assetsResult.status === 'fulfilled') {
+        setAssets(assetsResult.value);
+      } else {
+        console.warn('Could not load Page Accent asset library', assetsResult.reason);
+        setAssets([]);
+      }
     } catch (err) {
       console.error('Could not load Page Accents', err);
       setError(err instanceof Error ? err.message : 'Could not load Page Accents.');
@@ -202,6 +227,12 @@ export function JokoNotesManagement() {
 
   const upload = async (file: File | null, kind: 'note' | 'bubble') => {
     if (!file) return;
+
+    if (kind === 'bubble' && (!newAssetName.trim() || !newAssetAlt.trim())) {
+      setError('Add a library name and accessibility label before uploading a reusable bubble.');
+      return;
+    }
+
     setUploading(true);
     setError('');
     try {
@@ -209,9 +240,23 @@ export function JokoNotesManagement() {
         file,
         gallerySlot: kind === 'bubble' ? 'page-accents' : 'joko-notes',
       });
+
       if (kind === 'bubble') {
-        patch({ bubble_image_url: ticket.publicUrl });
-        setNotice('Bubble illustration uploaded. Save the Page Accent to keep this change.');
+        const asset = await adminSavePageAccentAsset({
+          site_key: JOKO_NOTES_SITE_KEY,
+          asset_type: 'bubble',
+          name: newAssetName.trim(),
+          image_url: ticket.publicUrl,
+          alt_text: newAssetAlt.trim(),
+        });
+        setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+        patch({
+          bubble_image_url: asset.image_url,
+          bubble_alt: asset.alt_text,
+        });
+        setNewAssetName('');
+        setNewAssetAlt('');
+        setNotice('Bubble added to the reusable library and selected for this page. Preview or save when ready.');
       } else {
         patch({ image_url: ticket.publicUrl });
         setNotice('Note image uploaded. Save the Page Accent to keep this change.');
@@ -222,6 +267,39 @@ export function JokoNotesManagement() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const chooseBubbleAsset = (asset: PageAccentAsset) => {
+    patch({
+      bubble_image_url: asset.image_url,
+      bubble_alt: asset.alt_text,
+    });
+    setNotice(`Using “${asset.name}” from the Bubble Library. Preview or save when ready.`);
+    setError('');
+  };
+
+  const previewOnPage = () => {
+    if (draft.accent_type === 'bubble' && !draft.bubble_image_url) {
+      setError('Choose a bubble from the library before previewing.');
+      return;
+    }
+    if (draft.accent_type === 'bubble' && !draft.bubble_alt?.trim()) {
+      setError('Add an accessibility label before previewing this bubble.');
+      return;
+    }
+    if (draft.accent_type === 'note' && !draft.title_en && !draft.body_en && !draft.image_url) {
+      setError('Add note content before previewing.');
+      return;
+    }
+
+    const token = createPageAccentPreview({
+      ...draft,
+      is_published: true,
+    });
+    const previewUrl = buildPageAccentPreviewUrl(selectedPageKey, token);
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    setNotice('Opened a real-page preview in a new tab. This preview is local to your browser and is not saved or published.');
+    setError('');
   };
 
   const save = async () => {
@@ -473,7 +551,17 @@ export function JokoNotesManagement() {
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[#3F665E] hover:bg-white/35">
                     {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
                     {uploading ? 'Uploading…' : 'Upload note image'}
-                    <input type="file" accept="image/jpeg,image/webp,image/png" className="sr-only" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0] || null, 'note')} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/webp,image/png"
+                      className="sr-only"
+                      disabled={uploading}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] || null;
+                        event.currentTarget.value = '';
+                        void upload(file, 'note');
+                      }}
+                    />
                   </label>
                   <p className="mt-2 text-center text-xs text-[#303532]/52">JPG, WebP or PNG. EXIF/GPS metadata is stripped before upload.</p>
                 </div>
@@ -517,21 +605,96 @@ export function JokoNotesManagement() {
           ) : (
             <>
               <div className="rounded-2xl border border-[#C76624]/16 bg-[#FFF2E8]/45 p-4">
-                <p className="text-sm font-semibold text-[#303532]">Bubble artwork</p>
-                <p className="mt-1 text-xs leading-5 text-[#303532]/55">
-                  Upload the finished English illustration itself — for example “Oh my Good-ness.” The words are part of the artwork and remain the same in EN, TH and ZH versions of the site.
-                </p>
-                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#C76624]/30 bg-white/55 px-4 py-5 text-sm font-semibold text-[#A95120] hover:bg-white/80">
-                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                  {uploading ? 'Uploading…' : 'Upload bubble illustration'}
-                  <input type="file" accept="image/jpeg,image/webp,image/png" className="sr-only" disabled={uploading} onChange={(event) => void upload(event.target.files?.[0] || null, 'bubble')} />
-                </label>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#303532]">Bubble Library</p>
+                    <p className="mt-1 text-xs leading-5 text-[#303532]/55">
+                      Upload a finished bubble once, then reuse the same brand artwork on any registered bubble-safe page.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-[#A95120]">
+                    {assets.length} saved
+                  </span>
+                </div>
+
+                {assets.length > 0 ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {assets.map((asset) => {
+                      const selected = draft.bubble_image_url === asset.image_url;
+                      return (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          onClick={() => chooseBubbleAsset(asset)}
+                          className={`grid grid-cols-[5rem_1fr] items-center gap-3 rounded-2xl border p-3 text-left transition ${selected
+                            ? 'border-[#C76624] bg-white shadow-sm'
+                            : 'border-[#C76624]/14 bg-white/45 hover:border-[#C76624]/35 hover:bg-white/70'}`}
+                          aria-pressed={selected}
+                        >
+                          <div className="flex h-16 items-center justify-center overflow-hidden rounded-xl bg-[#FFF9EE] p-2">
+                            <img src={asset.image_url} alt="" className="h-full w-full object-contain" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#303532]">{asset.name}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#303532]/52">{asset.alt_text}</p>
+                            <span className="mt-2 inline-block text-[11px] font-semibold text-[#A95120]">
+                              {selected ? 'Selected' : 'Use this bubble'}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-dashed border-[#C76624]/20 bg-white/40 p-4 text-sm text-[#303532]/55">
+                    No reusable bubbles yet. Upload the first one below. Existing bubble placements are automatically imported into this library by the migration.
+                  </p>
+                )}
+
+                <div className="mt-5 rounded-2xl border border-dashed border-[#C76624]/25 bg-white/35 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[.12em] text-[#A95120]">Add reusable bubble</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-medium text-[#303532]">
+                      Library name
+                      <input
+                        value={newAssetName}
+                        onChange={(event) => setNewAssetName(event.target.value)}
+                        className="joko-admin-field mt-1 w-full"
+                        placeholder="Oh my Good-ness."
+                      />
+                    </label>
+                    <label className="text-xs font-medium text-[#303532]">
+                      Accessibility label
+                      <input
+                        value={newAssetAlt}
+                        onChange={(event) => setNewAssetAlt(event.target.value)}
+                        className="joko-admin-field mt-1 w-full"
+                        placeholder="Oh my Good-ness."
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-4 text-sm font-semibold text-[#A95120] transition hover:bg-white">
+                    {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                    {uploading ? 'Uploading to Bubble Library…' : 'Upload once to Bubble Library'}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/webp,image/png"
+                      className="sr-only"
+                      disabled={uploading}
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0] || null;
+                        event.currentTarget.value = '';
+                        void upload(file, 'bubble');
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-[#303532]">
-                  Bubble image URL
-                  <input value={draft.bubble_image_url || ''} onChange={(event) => patch({ bubble_image_url: event.target.value || null })} className="joko-admin-field mt-1 w-full" placeholder="https://…" />
+                  Selected bubble URL
+                  <input value={draft.bubble_image_url || ''} readOnly className="joko-admin-field mt-1 w-full opacity-75" placeholder="Choose from Bubble Library" />
                 </label>
                 <label className="block text-sm font-medium text-[#303532]">
                   Accessibility label
@@ -575,6 +738,15 @@ export function JokoNotesManagement() {
           )}
 
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={previewOnPage}
+              disabled={saving || uploading}
+              className="joko-admin-secondary-button inline-flex items-center gap-2 px-5 py-3 disabled:opacity-50"
+            >
+              <Eye className="h-4 w-4" />
+              Preview on {pageLabel}
+            </button>
             <button type="button" onClick={() => void save()} disabled={saving || uploading} className="joko-admin-primary-button inline-flex items-center gap-2 px-5 py-3 disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {existing ? 'Save Page Accent' : 'Create Page Accent'}

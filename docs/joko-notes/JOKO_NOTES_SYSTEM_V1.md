@@ -188,3 +188,29 @@ For a speech bubble, ask:
 > Is this a short brand reaction, or are we trying to make it carry information?
 
 If it carries operational information, it should not be a bubble.
+
+
+## Bubble artwork library
+
+Bubble artwork is a reusable brand asset, not page-owned media.
+
+Admin uploads a finished bubble illustration once into `site_page_accent_assets`. The Bubble Library stores:
+- a reusable admin label;
+- image URL;
+- accessibility label.
+
+A page placement still stores its selected image URL and accessibility label so public rendering does not depend on public access to the Admin asset library. Deleting or changing a library entry therefore does not silently break an already-published page.
+
+The library migration imports any bubble artwork already used by an existing Page Accent, so artwork uploaded before the library was introduced becomes reusable automatically.
+
+## Real-page preview
+
+Admin can preview the current unsaved Page Accent in its actual registered safe zone before saving.
+
+The preview workflow:
+1. serializes the current draft into browser-local storage under a random short-lived token;
+2. opens the real target page with that token in the URL;
+3. Page Accent slots on that page temporarily render the local draft instead of the saved accent;
+4. a fixed **Page Accent preview · not saved** badge makes the preview state explicit.
+
+Preview data expires after 30 minutes and is never written to Supabase. For ordinary pages, previewing one accent also suppresses the saved accent of the other type, accurately reflecting the either/or rule. The Homepage Builder-owned Hero note remains visible while previewing its lower-page bubble.
