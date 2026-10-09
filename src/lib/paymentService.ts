@@ -63,6 +63,7 @@ export type PromptPayIntent = {
   qrMode?: PaymentQrMode;
   stripePaymentIntentId?: string;
   stripeHostedInstructionsUrl?: string;
+  stripeLivemode?: boolean;
 };
 
 export type PaymentVerificationResult = {

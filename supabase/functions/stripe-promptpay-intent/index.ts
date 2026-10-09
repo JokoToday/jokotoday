@@ -144,6 +144,7 @@ Deno.serve(async (req: Request) => {
         expiresAt: payment.expires_at,
         qrMode: "stripe_promptpay",
         stripeStatus: intent.status,
+        stripeLivemode: intent.livemode,
       });
     }
 
@@ -169,6 +170,7 @@ Deno.serve(async (req: Request) => {
       promptPayPayload: qr.data,
       stripePaymentIntentId: intent.id,
       stripeHostedInstructionsUrl: qr.hosted_instructions_url,
+      stripeLivemode: intent.livemode,
     });
   } catch (error) {
     console.error("stripe-promptpay-intent failed", error);

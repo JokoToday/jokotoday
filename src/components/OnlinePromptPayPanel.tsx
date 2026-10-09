@@ -385,20 +385,37 @@ export function OnlineQrPaymentPanel({
             <Clock className="h-4 w-4" />
             <span>{copy.expires}: {formatExpiry(intent.expiresAt, language)}</span>
           </div>
-          {paymentWindowMinutes === 15 && (
-            <div className={`mt-3 rounded-xl border p-3 text-sm ${isOverdue ? 'border-red-200 bg-red-50 text-red-700' : remainingSeconds <= 60 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-[#55766F]/15 bg-white/60 text-[#303532]/70'}`}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold">{isOverdue ? copy.overdue : copy.countdown}</span>
-                {!isOverdue && <span className="font-mono text-base font-bold">{countdownText}</span>}
-              </div>
-              {reminderText && !isOverdue && <p className="mt-1 text-xs leading-5">{reminderText}</p>}
+          <div className={`mt-3 rounded-xl border p-3 text-sm ${isOverdue ? 'border-red-200 bg-red-50 text-red-700' : remainingSeconds <= 60 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-[#55766F]/15 bg-white/60 text-[#303532]/70'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold">{isOverdue ? copy.overdue : copy.countdown}</span>
+              {!isOverdue && <span className="font-mono text-base font-bold">{countdownText}</span>}
             </div>
-          )}
+            {reminderText && !isOverdue && <p className="mt-1 text-xs leading-5">{reminderText}</p>}
+          </div>
         </div>
       </div>
 
       {activeProvider.capabilities.autoConfirmsWithoutSlip ? (
         <div className="mt-5 border-t border-[#55766F]/12 pt-5">
+          {intent.stripeLivemode === false && (
+            <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold">
+                    {language === 'th' ? 'Stripe อยู่ในโหมดทดสอบ' : language === 'zh' ? 'Stripe 当前为测试模式' : 'Stripe is in test mode'}
+                  </p>
+                  <p className="mt-1 text-xs leading-5">
+                    {language === 'th'
+                      ? 'แอปธนาคารจริงจะไม่สามารถสแกน QR นี้ได้ กรุณาใช้ Stripe test simulator จนกว่าจะเปิดใช้ Stripe Live'
+                      : language === 'zh'
+                        ? '真实银行 App 无法扫描此测试二维码。启用 Stripe Live 前，请使用 Stripe 测试模拟器。'
+                        : 'Real banking apps cannot scan this test QR. Use Stripe’s test simulator until Stripe Live is activated.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/25 p-4">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#3F665E]" />
