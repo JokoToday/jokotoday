@@ -3,6 +3,31 @@ import { normalizePaymentProviderMode, type PaymentProviderMode } from './paymen
 
 export type PaymentQrMode = PaymentProviderMode;
 
+
+async function getFunctionInvokeErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const payload = await context.clone().json() as { error?: unknown; message?: unknown };
+        const detail = typeof payload.error === 'string'
+          ? payload.error
+          : typeof payload.message === 'string'
+            ? payload.message
+            : '';
+        if (detail) return detail;
+      } catch {
+        // Fall through to a safe user-facing fallback.
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message && !error.message.includes('non-2xx')) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
   payment_window_minutes: number;
@@ -115,7 +140,9 @@ export async function getStripePromptPayIntent(paymentTransactionId: string): Pr
     body: { paymentTransactionId },
   });
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(await getFunctionInvokeErrorMessage(error, 'Could not prepare Stripe PromptPay QR.'));
+  }
   if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare Stripe PromptPay QR.');
   return data as PromptPayIntent;
 }

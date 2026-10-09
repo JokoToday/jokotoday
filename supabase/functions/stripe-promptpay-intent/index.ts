@@ -85,6 +85,14 @@ Deno.serve(async (req: Request) => {
     const amount = Number(payment.amount_due);
     if (!Number.isFinite(amount) || amount <= 0) return jsonResponse({ error: "Invalid payment amount" }, 409);
     if ((payment.currency || "THB").toUpperCase() !== "THB") return jsonResponse({ error: "Stripe PromptPay requires THB" }, 409);
+    if (amount < 10) {
+      return jsonResponse({
+        code: "STRIPE_MINIMUM_AMOUNT",
+        minimumAmount: 10,
+        currency: "THB",
+        error: "Stripe PromptPay requires a minimum payment of ฿10. Please add another item or choose another payment method.",
+      }, 422);
+    }
 
     const billingEmail = order.customer_email?.trim() || authData.user.email?.trim();
     if (!billingEmail) {
