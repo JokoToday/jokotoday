@@ -4,7 +4,7 @@ import {
   type JokoBubbleSize,
   type JokoNote as JokoAccentRecord,
 } from '../lib/jokoNotesService';
-import { getActivePageAccentPreview } from '../lib/pageAccentPreview';
+import { getActivePageAccentPreview, removePageAccentPreview } from '../lib/pageAccentPreview';
 import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
 
 const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
@@ -42,8 +42,14 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
       } else {
         setBubble(null);
       }
+      const timeout = window.setTimeout(() => {
+        removePageAccentPreview(preview.token);
+        if (active) setBubble(null);
+      }, Math.max(0, preview.expiresAt - Date.now()));
+
       return () => {
         active = false;
+        window.clearTimeout(timeout);
       };
     }
 
