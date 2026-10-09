@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Resend } from "npm:resend";
 import {
-  authenticateRequest,
+  authenticateNotificationRequest,
   claimNotification,
   finishNotification,
   handlePreflight,
@@ -179,9 +179,9 @@ Deno.serve(async (req: Request) => {
   const originRejection = rejectDisallowedOrigin(req);
   if (originRejection) return originRejection;
 
-  const auth = await authenticateRequest(req);
+  const auth = await authenticateNotificationRequest(req);
   if (!auth.ok) return auth.response;
-  const { supabase, user } = auth.value;
+  const { supabase, user, internal } = auth.value;
 
   let body: Record<string, unknown>;
   try {
@@ -193,13 +193,15 @@ Deno.serve(async (req: Request) => {
   const orderId = body.order_id;
   if (!isValidUuid(orderId)) return jsonResponse(req, 400, { error: "Invalid order_id" });
 
-  const { data: orderData, error: orderError } = await supabase
+  let orderQuery = supabase
     .from("orders")
     .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, payment_status, payment_method, status, pickup_date")
     .eq("id", orderId)
-    .eq("customer_id", user.id)
-    .eq("purchase_type", "online")
-    .maybeSingle();
+    .eq("purchase_type", "online");
+
+  if (!internal && user) orderQuery = orderQuery.eq("customer_id", user.id);
+
+  const { data: orderData, error: orderError } = await orderQuery.maybeSingle();
 
   if (orderError) {
     console.error("Payment confirmation order lookup failed", orderError.message);

@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Resend } from "npm:resend";
 import {
-  authenticateRequest,
+  authenticateNotificationRequest,
   claimNotification,
   finishNotification,
   handlePreflight,
@@ -171,14 +171,16 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return jsonResponse(req, 405, { error: "Method not allowed" });
   const originRejection = rejectDisallowedOrigin(req);
   if (originRejection) return originRejection;
-  const auth = await authenticateRequest(req);
+  const auth = await authenticateNotificationRequest(req);
   if (!auth.ok) return auth.response;
-  const { supabase, user } = auth.value;
+  const { supabase, user, internal } = auth.value;
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return jsonResponse(req, 400, { error: "Invalid JSON body" }); }
   const orderId = body.order_id;
   if (!isValidUuid(orderId)) return jsonResponse(req, 400, { error: "Invalid order_id" });
-  const { data: orderData, error: orderError } = await supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned, payment_status, payment_method").eq("id", orderId).eq("customer_id", user.id).eq("purchase_type", "online").maybeSingle();
+  let orderQuery = supabase.from("orders").select("id, order_number, customer_id, customer_name, customer_email, customer_phone, purchase_type, pickup_day, pickup_location_id, total_amount, walk_in_amount, order_items, notes, created_at, loyalty_points_earned, payment_status, payment_method").eq("id", orderId).eq("purchase_type", "online");
+  if (!internal && user) orderQuery = orderQuery.eq("customer_id", user.id);
+  const { data: orderData, error: orderError } = await orderQuery.maybeSingle();
   if (orderError) { console.error("SEC-005: admin notification order lookup failed", orderError.message); return jsonResponse(req, 500, { error: "Notification service unavailable" }); }
   if (!orderData) return jsonResponse(req, 404, { error: "Order not found" });
   const order = orderData as Order;
@@ -224,7 +226,7 @@ Deno.serve(async (req: Request) => {
   const { data: memberProfile, error: memberProfileError } = await supabase
     .from("user_profiles")
     .select("short_code")
-    .eq("id", user.id)
+    .eq("id", order.customer_id)
     .maybeSingle();
   if (memberProfileError) {
     console.warn("SEC-005: admin notification member code lookup failed", memberProfileError.message);
