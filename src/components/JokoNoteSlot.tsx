@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { getPublishedJokoNote, localizeJokoNote, type JokoNote as JokoNoteRecord } from '../lib/jokoNotesService';
-import { getActivePageAccentPreview } from '../lib/pageAccentPreview';
+import { getActivePageAccentPreview, removePageAccentPreview } from '../lib/pageAccentPreview';
 import { JokoNote } from './JokoNote';
 import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
 
@@ -31,8 +31,14 @@ export function JokoNoteSlot({ pageKey, placementKey, className = '' }: JokoNote
       } else {
         setNote(null);
       }
+      const timeout = window.setTimeout(() => {
+        removePageAccentPreview(preview.token);
+        if (active) setNote(null);
+      }, Math.max(0, preview.expiresAt - Date.now()));
+
       return () => {
         active = false;
+        window.clearTimeout(timeout);
       };
     }
 
