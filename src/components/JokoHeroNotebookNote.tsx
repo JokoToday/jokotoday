@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react';
 import type { HomeHeroNotebookFontPreset } from '../platform/builder/contracts';
+import type { JokoNoteImageLayout } from '../lib/jokoNotesService';
 import './JokoHeroNotebookNote.css';
 
 interface JokoHeroNotebookNoteProps {
@@ -12,6 +14,8 @@ interface JokoHeroNotebookNoteProps {
   fontPreset?: HomeHeroNotebookFontPreset;
   headingSize?: number;
   bodySize?: number;
+  rotation?: number;
+  imageLayout?: JokoNoteImageLayout;
 }
 
 const NOTEBOOK_FONT_STACKS: Record<HomeHeroNotebookFontPreset, string> = {
@@ -28,14 +32,18 @@ function NotebookPaper({
   fontPreset = 'handwritten',
   headingSize = 22,
   bodySize = 14,
+  rotation = 4,
+  imageLayout = 'stacked',
 }: Pick<
   JokoHeroNotebookNoteProps,
-  'title' | 'body' | 'imageUrl' | 'imageAlt' | 'fontPreset' | 'headingSize' | 'bodySize'
+  'title' | 'body' | 'imageUrl' | 'imageAlt' | 'fontPreset' | 'headingSize' | 'bodySize' | 'rotation' | 'imageLayout'
 >) {
   const fontFamily = NOTEBOOK_FONT_STACKS[fontPreset];
+  const safeRotation = Number.isFinite(rotation) ? Math.max(-6, Math.min(6, rotation)) : 4;
+  const noteStyle = { '--joko-note-rotation': `${safeRotation}deg` } as CSSProperties;
 
   return (
-    <div className="joko-hero-note">
+    <div className="joko-hero-note" style={noteStyle}>
       <span aria-hidden="true" className="joko-hero-note__paper" />
       <span aria-hidden="true" className="joko-hero-note__weathering" />
       <span aria-hidden="true" className="joko-hero-note__tape" />
@@ -68,7 +76,7 @@ function NotebookPaper({
           <img
             src={imageUrl}
             alt={imageAlt || ''}
-            className="mx-auto mt-3 max-h-36 w-full object-contain mix-blend-multiply"
+            className={`joko-hero-note__image joko-hero-note__image--${imageLayout}`}
             decoding="async"
             loading="lazy"
           />
@@ -89,6 +97,8 @@ export function JokoHeroNotebookNote({
   fontPreset = 'handwritten',
   headingSize = 22,
   bodySize = 14,
+  rotation = 4,
+  imageLayout = 'stacked',
 }: JokoHeroNotebookNoteProps) {
   const content = (
     <NotebookPaper
@@ -99,6 +109,8 @@ export function JokoHeroNotebookNote({
       fontPreset={fontPreset}
       headingSize={headingSize}
       bodySize={bodySize}
+      rotation={rotation}
+      imageLayout={imageLayout}
     />
   );
 
