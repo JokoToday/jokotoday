@@ -74,7 +74,7 @@ Rollback the frontend to remove Admin access if necessary. Retain tables and aud
 
 ## Next implementation slice
 
-Before publishing any real batch, add atomic all-or-nothing holds tied to pending existing orders; 15-minute deadlines and three-minute bounded verification; immutable prices/pickup/recipient snapshots; late-payment reconciliation/refund records; safe expiry; Specials-specific generic-order/payment/cancellation guards; My Orders and Pickup Desk integration; and a verified payment recipient/QR pilot. Validate the current business-account QR rail independently of this inventory preparation.
+Before publishing any real batch, add atomic all-or-nothing holds tied to pending existing orders; 5-minute deadlines and two-minute bounded verification; immutable prices/pickup/recipient snapshots; late-payment reconciliation/refund records; safe expiry; Specials-specific generic-order/payment/cancellation guards; My Orders and Pickup Desk integration; and a verified payment recipient/QR pilot. Validate the current business-account QR rail independently of this inventory preparation.
 
 After checkout is validated, publish `/specials` with an empty state/current batch and conditional homepage entry. Add prepared LINE message/manual send, then Messaging API outbox/retry flow when its audience and credentials are verified. This phase intentionally has no send button or published URL to avoid announcing unavailable stock.
 

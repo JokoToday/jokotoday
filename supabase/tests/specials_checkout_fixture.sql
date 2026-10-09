@@ -107,3 +107,13 @@ BEGIN
   RETURN NEW;
 END; $$;
 CREATE TRIGGER orders_calculate_loyalty BEFORE INSERT ON public.orders FOR EACH ROW EXECUTE FUNCTION public.calculate_loyalty_points_on_order();
+
+-- Regular payment-mode selector contract for replaying the actual Stripe migration.
+CREATE TABLE public.payment_settings(id boolean PRIMARY KEY, payment_qr_mode text NOT NULL,
+ CONSTRAINT payment_settings_payment_qr_mode_check CHECK(payment_qr_mode IN ('promptpay_legacy','kshop_easyslip','kshop_master')));
+INSERT INTO public.payment_settings VALUES(true,'kshop_master');
+
+-- Existing profile read contract used by the checkout SELECT policy.
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.user_profiles TO authenticated;
+CREATE POLICY fixture_profile_own_read ON public.user_profiles FOR SELECT TO authenticated USING(id=auth.uid());

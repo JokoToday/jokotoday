@@ -8,6 +8,7 @@ import {
   getPaymentSettings,
   getPaymentTransactionStatus,
   getPromptPayIntent,
+  getStripePromptPayIntent,
   verifyPaymentSlip,
   type PaymentTransaction,
   type PromptPayIntent,
@@ -166,12 +167,14 @@ export function OnlinePromptPayPanel({
         if (cancelled) return;
         setTransaction(nextTransaction);
 
-        const nextIntent = await getPromptPayIntent(nextTransaction.id);
+        const nextIntent = nextTransaction.payment_mode === 'stripe_promptpay'
+          ? await getStripePromptPayIntent(nextTransaction.id)
+          : await getPromptPayIntent(nextTransaction.id);
         if (cancelled) return;
         setIntent(nextIntent);
         if (nextIntent.state === 'verified') {
           setPaid(true);
-        } else {
+        } else if (nextTransaction.payment_mode !== 'stripe_promptpay') {
           try {
             const handoff = await createPaymentHandoff(nextTransaction.id);
             if (!cancelled && handoff.handoffToken) {
@@ -335,18 +338,26 @@ export function OnlinePromptPayPanel({
         </div>
         <div>
           <h3 className="text-xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
-            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
-              ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
-              : copy.title}
+            {intent?.qrMode === 'stripe_promptpay'
+              ? (language === 'th' ? 'ชำระด้วย Stripe PromptPay' : language === 'zh' ? '使用 Stripe PromptPay 付款' : 'Pay now with Stripe PromptPay')
+              : intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+                ? (language === 'th' ? 'ชำระด้วย K SHOP QR' : language === 'zh' ? '使用 K SHOP QR 付款' : 'Pay now with K SHOP QR')
+                : copy.title}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            {intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+            {intent?.qrMode === 'stripe_promptpay'
               ? (language === 'th'
-                  ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
+                  ? 'สแกน QR ด้วยแอปธนาคารและชำระเงินตามยอดที่แสดง Stripe จะแจ้ง JOKO อัตโนมัติเมื่อชำระสำเร็จ ไม่ต้องอัปโหลดสลิป'
                   : language === 'zh'
-                    ? '扫描商户二维码完成付款，然后上传银行回执。交易验证成功后，JOKO 才会确认订单。'
-                    : 'Scan the merchant QR, complete the transfer, then upload the bank slip. JOKO confirms the order only after the banking transaction is verified.')
-              : copy.intro}
+                    ? '使用银行 App 扫描二维码并按显示金额付款。付款成功后 Stripe 会自动通知 JOKO，无需上传回执。'
+                    : 'Scan the QR with your banking app and pay the exact amount shown. Stripe notifies JOKO automatically when payment succeeds — no slip upload needed.')
+              : intent?.qrMode === 'kshop_master' || intent?.qrMode === 'kshop_easyslip'
+                ? (language === 'th'
+                    ? 'สแกน QR ร้านค้า ชำระเงิน แล้วอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้อหลังตรวจสอบธุรกรรมสำเร็จ'
+                    : language === 'zh'
+                      ? '扫描商户二维码完成付款，然后上传银行回执。交易验证成功后，JOKO 才会确认订单。'
+                      : 'Scan the merchant QR, complete the transfer, then upload the bank slip. JOKO confirms the order only after the banking transaction is verified.')
+                : copy.intro}
           </p>
         </div>
       </div>
@@ -381,6 +392,34 @@ export function OnlinePromptPayPanel({
         </div>
       </div>
 
+      {intent?.qrMode === 'stripe_promptpay' ? (
+        <div className="mt-5 border-t border-[#55766F]/12 pt-5">
+          <div className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/25 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#3F665E]" />
+              <div>
+                <p className="text-sm font-semibold text-[#303532]">
+                  {language === 'th' ? 'ยืนยันอัตโนมัติ' : language === 'zh' ? '自动确认' : 'Automatic confirmation'}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[#303532]/60">
+                  {language === 'th'
+                    ? 'หลังจากธนาคารยืนยันการชำระเงิน Stripe จะส่งการยืนยันแบบปลอดภัยมายัง JOKO และคำสั่งซื้อจะได้รับการยืนยันโดยอัตโนมัติ หน้านี้จะอัปเดตเอง'
+                    : language === 'zh'
+                      ? '银行确认付款后，Stripe 会向 JOKO 发送安全确认，订单将自动确认。此页面会自动更新。'
+                      : 'After your bank confirms the payment, Stripe sends JOKO a secure confirmation and the order is confirmed automatically. This page updates by itself.'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-[#303532]/50">
+            {language === 'th'
+              ? 'ไม่ต้องอัปโหลดสลิปหรือส่งหลักฐานการชำระเงิน'
+              : language === 'zh'
+                ? '无需上传付款回执或发送付款证明。'
+                : 'No slip upload or payment proof is required.'}
+          </p>
+        </div>
+      ) : (
       <div className="mt-5 border-t border-[#55766F]/12 pt-5">
         <p className="text-sm font-semibold text-[#303532]">{copy.upload}</p>
         <input
@@ -504,6 +543,7 @@ export function OnlinePromptPayPanel({
             : copy.secure}
         </p>
       </div>
+      )}
     </div>
   );
 }

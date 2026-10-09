@@ -40,7 +40,7 @@ export const specialsLabels = {
     out: "Release available stock",
     empty: "No batches yet. Create today’s first draft.",
     times:
-      "All times are Bangkok time. Allow 15 minutes for payment and 15 minutes between sales end and pickup end.",
+      "All times are Bangkok time. Allow 5 minutes for payment and 15 minutes between sales end and pickup end.",
     retry: "Retry the same operation",
     uncertain:
       "This operation has an unresolved result. Retry it before making another change; the original operation key prevents duplicate transfers.",
@@ -95,7 +95,7 @@ export const specialsLabels = {
     out: "นำสต็อกพร้อมขายออก",
     empty: "ยังไม่มีรอบขาย สร้างร่างสำหรับวันนี้",
     times:
-      "ทุกเวลาเป็นเวลากรุงเทพฯ เผื่อชำระเงิน 15 นาที และเผื่อรับสินค้า 15 นาทีหลังสิ้นสุดการขาย",
+      "ทุกเวลาเป็นเวลากรุงเทพฯ เผื่อชำระเงิน 5 นาที และเผื่อรับสินค้า 15 นาทีหลังสิ้นสุดการขาย",
     retry: "ลองดำเนินการเดิมอีกครั้ง",
     uncertain:
       "ผลการดำเนินการยังไม่ชัดเจน ลองรายการเดิมอีกครั้งก่อนทำรายการใหม่ เพื่อป้องกันการโอนซ้ำ",
@@ -147,7 +147,7 @@ export const specialsLabels = {
     out: "释放可售库存",
     empty: "暂无批次。请创建今日草稿。",
     times:
-      "所有时间均为曼谷时间。需预留 15 分钟付款，并在销售结束后预留 15 分钟取货。",
+      "所有时间均为曼谷时间。需预留 5 分钟付款，并在销售结束后预留 15 分钟取货。",
     retry: "重试同一操作",
     uncertain: "操作结果尚未明确。请先重试原操作；原操作编号可防止重复转移。",
     saved: "已保存。",

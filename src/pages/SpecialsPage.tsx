@@ -126,7 +126,7 @@ export default function SpecialsPage({
             <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>
             <h2 className="mt-3 text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{location}</h2>
             <p className="mt-3 text-sm">{date(batch.pickup_start_at)} · {time(batch.pickup_start_at)}–{time(batch.pickup_end_at)}</p>
-            <p className="mt-2 text-xs text-[#303532]/70">{copy.closes} {time(new Date(new Date(batch.sales_end_at).getTime() - 15 * 60000).toISOString())} · {copy.timezone}</p>
+            <p className="mt-2 text-xs text-[#303532]/70">{copy.closes} {time(new Date(new Date(batch.sales_end_at).getTime() - 5 * 60000).toISOString())} · {copy.timezone}</p>
             {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-[#55766F] underline underline-offset-4"><MapPin className="h-4 w-4" />{copy.maps}</a>}
           </aside>}
         </div>

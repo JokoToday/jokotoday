@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master';
+export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master' | 'stripe_promptpay';
 
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
@@ -13,6 +13,7 @@ export type PaymentTransaction = {
   order_id: string;
   customer_id: string;
   provider: string;
+  payment_mode: PaymentQrMode;
   rail: string;
   currency: string;
   amount_due: number;
@@ -34,6 +35,8 @@ export type PromptPayIntent = {
   expiresAt: string;
   promptPayPayload?: string;
   qrMode?: PaymentQrMode;
+  stripePaymentIntentId?: string;
+  stripeHostedInstructionsUrl?: string;
 };
 
 export type PaymentVerificationResult = {
@@ -76,7 +79,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
-    payment_qr_mode: data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
+    payment_qr_mode: data?.payment_qr_mode === 'stripe_promptpay' ? 'stripe_promptpay' : data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
   };
 }
 
@@ -102,6 +105,17 @@ export async function getPromptPayIntent(paymentTransactionId: string): Promise<
   if (error) throw error;
   if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare PromptPay QR.');
 
+  return data as PromptPayIntent;
+}
+
+
+export async function getStripePromptPayIntent(paymentTransactionId: string): Promise<PromptPayIntent> {
+  const { data, error } = await supabase.functions.invoke('stripe-promptpay-intent', {
+    body: { paymentTransactionId },
+  });
+
+  if (error) throw error;
+  if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare Stripe PromptPay QR.');
   return data as PromptPayIntent;
 }
 

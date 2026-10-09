@@ -17,8 +17,8 @@ CREATE TABLE public.specials_batches (
   sales_end_at timestamptz NOT NULL,
   pickup_start_at timestamptz NOT NULL,
   pickup_end_at timestamptz NOT NULL,
-  hold_minutes integer NOT NULL DEFAULT 15 CHECK (hold_minutes = 15),
-  verification_grace_minutes integer NOT NULL DEFAULT 3 CHECK (verification_grace_minutes = 3),
+  hold_minutes integer NOT NULL DEFAULT 5 CHECK (hold_minutes = 5),
+  verification_grace_minutes integer NOT NULL DEFAULT 2 CHECK (verification_grace_minutes = 2),
   pickup_buffer_minutes integer NOT NULL DEFAULT 15 CHECK (pickup_buffer_minutes = 15),
   notes_internal text NOT NULL DEFAULT '' CHECK (length(notes_internal) <= 2000),
   created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
@@ -28,7 +28,7 @@ CREATE TABLE public.specials_batches (
   closed_at timestamptz,
   version integer NOT NULL DEFAULT 1,
   CONSTRAINT specials_batch_window CHECK (
-    sales_start_at + interval '15 minutes' < sales_end_at
+    sales_start_at + interval '5 minutes' < sales_end_at
     AND pickup_start_at < pickup_end_at
     AND sales_end_at + interval '15 minutes' <= pickup_end_at
     AND (sales_start_at AT TIME ZONE 'Asia/Bangkok')::date = business_date
@@ -159,7 +159,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.cms_pickup_locations WHERE id = (p_request->>'pickup_location_id')::uuid AND is_active = true) THEN
       RAISE EXCEPTION 'Choose an active pickup location';
     END IF;
-    IF (p_request->>'sales_end_at')::timestamptz <= v_now + interval '15 minutes' THEN RAISE EXCEPTION 'Allow a full 15-minute payment window before sales end'; END IF;
+    IF (p_request->>'sales_end_at')::timestamptz <= v_now + interval '5 minutes' THEN RAISE EXCEPTION 'Allow a full 5-minute payment window before sales end'; END IF;
     IF v_batch.id IS NULL THEN
       INSERT INTO public.specials_batches(title,business_date,pickup_location_id,sales_start_at,sales_end_at,pickup_start_at,pickup_end_at,notes_internal,created_by)
       VALUES (btrim(p_request->>'title'),v_today,(p_request->>'pickup_location_id')::uuid,(p_request->>'sales_start_at')::timestamptz,(p_request->>'sales_end_at')::timestamptz,(p_request->>'pickup_start_at')::timestamptz,(p_request->>'pickup_end_at')::timestamptz,coalesce(p_request->>'notes_internal',''),v_actor)
@@ -218,7 +218,7 @@ BEGIN
     -- Never edit cms_products.stock_remaining or product_date_inventory here.
   ELSIF p_action = 'prepare' THEN
     IF v_batch.status <> 'draft' OR v_batch.business_date <> v_today THEN RAISE EXCEPTION 'Prepare today''s draft only'; END IF;
-    IF v_now < v_batch.sales_start_at OR v_now >= v_batch.sales_end_at - interval '15 minutes' THEN RAISE EXCEPTION 'Preparation must occur within the valid sales opportunity'; END IF;
+    IF v_now < v_batch.sales_start_at OR v_now >= v_batch.sales_end_at - interval '5 minutes' THEN RAISE EXCEPTION 'Preparation must occur within the valid sales opportunity'; END IF;
     IF NOT EXISTS (SELECT 1 FROM public.cms_pickup_locations WHERE id=v_batch.pickup_location_id AND is_active=true) THEN RAISE EXCEPTION 'Pickup location is inactive'; END IF;
     IF NOT EXISTS (SELECT 1 FROM public.specials_items WHERE batch_id=v_batch.id AND is_enabled AND quantity_available>0) THEN RAISE EXCEPTION 'Transfer some stock before preparing'; END IF;
     IF EXISTS (SELECT 1 FROM public.specials_items i JOIN public.cms_products p ON p.id=i.product_id WHERE i.batch_id=v_batch.id AND i.is_enabled AND p.is_active IS DISTINCT FROM true) THEN RAISE EXCEPTION 'An enabled product is inactive'; END IF;

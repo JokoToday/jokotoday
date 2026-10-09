@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master';
+type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master' | 'stripe_promptpay';
 
 type PaymentSettingsRow = {
   online_promptpay_enabled: boolean;
@@ -38,7 +38,7 @@ export function PaymentSettingsManagement() {
         const row = data as PaymentSettingsRow | null;
         setEnabled(Boolean(row?.online_promptpay_enabled));
         setMinutes(Number(row?.payment_window_minutes) || 60);
-        setQrMode(row?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
+        setQrMode(row?.payment_qr_mode === 'stripe_promptpay' ? 'stripe_promptpay' : row?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load payment settings.');
@@ -95,7 +95,7 @@ export function PaymentSettingsManagement() {
         <div>
           <h2 className="joko-admin-title text-xl font-semibold">Online QR payment rollout</h2>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            Controls the customer-facing QR + EasySlip payment flow. K SHOP merchant QR is the preferred business-account route; the original personal PromptPay generator remains available as a fallback.
+            Controls the customer-facing QR payment provider. K SHOP + EasySlip remains the preferred direct-bank route; Stripe PromptPay adds fully automatic webhook confirmation without slip upload.
           </p>
         </div>
       </div>
@@ -135,12 +135,13 @@ export function PaymentSettingsManagement() {
               }}
               className="joko-admin-field mt-2 w-full max-w-md"
             >
-              <option value="kshop_master">K SHOP master QR (preferred)</option>
+              <option value="kshop_master">K SHOP master QR + EasySlip (preferred)</option>
+              <option value="stripe_promptpay">Stripe PromptPay (automatic, no slip)</option>
               <option value="kshop_easyslip">K SHOP merchant QR via EasySlip (experimental)</option>
               <option value="promptpay_legacy">Legacy personal PromptPay (fallback)</option>
             </select>
             <p className="mt-1 text-xs leading-5 text-[#303532]/50">
-              K SHOP master QR preserves the genuine merchant identity from the QR issued by your K SHOP account and only injects the order amount. The EasySlip-generated K SHOP and legacy personal PromptPay modes remain available as fallbacks.
+              K SHOP master QR preserves the genuine merchant identity and uses EasySlip verification. Stripe PromptPay creates an amount-specific Stripe QR and confirms payment automatically by signed webhook, with no slip upload.
             </p>
           </label>
 
@@ -148,9 +149,11 @@ export function PaymentSettingsManagement() {
             <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                {qrMode === 'kshop_master'
-                  ? 'Preferred test mode: the server derives each amount-specific QR from the genuine K SHOP master QR payload. Merchant fields are preserved exactly.'
-                  : qrMode === 'kshop_easyslip'
+                {qrMode === 'stripe_promptpay'
+                  ? 'Stripe mode: JOKO creates a PromptPay PaymentIntent for the exact order amount. Stripe confirms successful payment to JOKO by signed webhook; customers do not upload a slip.'
+                  : qrMode === 'kshop_master'
+                    ? 'Preferred direct-bank mode: the server derives each amount-specific QR from the genuine K SHOP master QR payload. Merchant fields are preserved exactly.'
+                    : qrMode === 'kshop_easyslip'
                     ? 'Experimental mode: EasySlip generates the K SHOP QR. This previously produced a merchant ID that did not match your K SHOP registration.'
                     : 'Legacy PromptPay uses the existing server-side PROMPTPAY_ID secret and is retained only as a fallback.'}
               </p>

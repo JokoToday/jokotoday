@@ -17,3 +17,10 @@ SELECT p.proname,
 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
 WHERE n.nspname='public' AND p.proname IN ('expire_payment_transaction_v1','expire_own_payment_transaction_v1','reactivate_expired_online_order_v1');
 SELECT tgname,tgenabled FROM pg_trigger WHERE tgrelid='public.payment_handoff_sessions'::regclass AND tgname='specials_payment_handoff_guard';
+
+-- Read-only timing/provider invariants for the shorter Specials flow.
+SELECT id,hold_minutes,verification_grace_minutes,pickup_buffer_minutes FROM public.specials_batches ORDER BY created_at DESC LIMIT 10;
+SELECT c.order_id FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id
+WHERE t.provider<>'easyslip' OR t.payment_mode<>'kshop_master' OR t.expires_at<>c.payment_deadline
+ OR c.verification_deadline-c.payment_deadline<>interval '2 minutes';
+SELECT tgname,tgenabled FROM pg_trigger WHERE tgrelid='public.payment_transactions'::regclass AND tgname='zz_specials_payment_mode';

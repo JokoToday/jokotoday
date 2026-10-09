@@ -30,4 +30,18 @@ END $$;
 REVOKE ALL ON FUNCTION specials_private.guard_payment_handoff() FROM PUBLIC,anon,authenticated,service_role;
 CREATE TRIGGER specials_payment_handoff_guard BEFORE INSERT OR UPDATE ON public.payment_handoff_sessions
 FOR EACH ROW EXECUTE FUNCTION specials_private.guard_payment_handoff();
+-- Regular checkout's Stripe selector must never change the Specials payment rail.
+CREATE FUNCTION specials_private.pin_payment_mode() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.orders WHERE id=NEW.order_id AND order_type='specials') THEN
+  NEW.payment_mode:='kshop_master';
+  NEW.provider:='easyslip';
+  NEW.rail:='promptpay';
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION specials_private.pin_payment_mode() FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER zz_specials_payment_mode BEFORE INSERT ON public.payment_transactions
+FOR EACH ROW EXECUTE FUNCTION specials_private.pin_payment_mode();
 COMMIT;

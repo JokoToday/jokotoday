@@ -27,7 +27,10 @@ BEGIN
 END $$;
 `);
 await db.exec(await readFile("supabase/migrations/20261008213000_payment_handoff_v1.sql", "utf8"));
+await db.exec(await readFile("supabase/migrations/20261009023000_stripe_promptpay_v1.sql", "utf8"));
 await db.exec(await readFile("supabase/migrations/20261009025239_joko_specials_payment_compatibility_v1.sql", "utf8"));
+// Deliberately configure regular checkout for Stripe throughout Specials tests.
+await db.exec("UPDATE public.payment_settings SET payment_qr_mode='stripe_promptpay'");
 const id = {
   admin: "00000000-0000-0000-0000-000000000001",
   customer: "00000000-0000-0000-0000-000000000002",
@@ -120,6 +123,20 @@ eq(b.status, "live", "published");
 await actor("anon");
 const cat = (await query("SELECT public.specials_catalog_v1() r"))[0].r;
 eq(cat.items.length, 1, "public catalog");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '6 minutes' WHERE id=$1",[b.id]);
+await actor("anon");
+eq(Boolean((await query("SELECT public.specials_catalog_v1() r"))[0].r.batch),true,"Specials remains open with six minutes left");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '4 minutes' WHERE id=$1",[b.id]);
+await actor("anon");
+eq((await query("SELECT public.specials_catalog_v1() r"))[0].r,{},"catalog closes five minutes before sales end");
+await actor("authenticated",id.customer);
+await fails(()=>query("SELECT public.specials_checkout_v1($1,$2,$3)",[b.id,JSON.stringify([{item_id:item.id,quantity:1}]),crypto.randomUUID()]),/Checkout is closed/,"database enforces shorter cutoff");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=$1 WHERE id=$2",[plus(50),b.id]);
+
+await actor("anon");
 eq(cat.batch.notes_internal, undefined, "internal fields hidden");
 await fails(
   () => query("SELECT * FROM public.specials_checkouts"),
@@ -138,7 +155,19 @@ const checkout = async (c = cart, k = key) =>
     ])
   )[0].r;
 const { order_id: order } = await checkout();
+await actor("postgres");
+const deadlines = (await query("SELECT round(extract(epoch FROM c.payment_deadline-c.created_at)) AS hold_seconds, extract(epoch FROM c.verification_deadline-c.payment_deadline)::integer AS grace_seconds, (t.expires_at=c.payment_deadline) AS payment_matches, t.provider, t.payment_mode FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE c.order_id=$1",[order]))[0];
+eq(Number(deadlines.hold_seconds),300,"Specials holds last exactly five minutes");
+eq(deadlines.grace_seconds,120,"verification grace is two minutes");
+eq(deadlines.payment_matches,true,"payment rail deadline matches stock deadline");
+eq([deadlines.provider,deadlines.payment_mode],['easyslip','kshop_master'],"regular Stripe setting cannot change Specials rail");
+const originalDeadlines = (await query("SELECT payment_deadline,verification_deadline FROM public.specials_checkouts WHERE order_id=$1",[order]))[0];
+await actor("authenticated",id.customer);
 eq((await checkout()).order_id, order, "idempotent checkout");
+await actor("postgres");
+eq((await query("SELECT payment_deadline,verification_deadline FROM public.specials_checkouts WHERE order_id=$1",[order]))[0],originalDeadlines,"checkout retries cannot extend deadlines");
+await actor("authenticated",id.customer);
+eq((await query("SELECT order_id FROM public.specials_checkouts WHERE order_id=$1",[order])).length,1,"customer lifecycle projection is readable for My Orders");
 await fails(
   () => checkout([{ item_id: item.id, quantity: 1 }], key),
   /different request/,
@@ -181,6 +210,8 @@ await fails(
   /permission denied/,
   "customer cannot forge provider evidence",
 );
+await actor("authenticated", "00000000-0000-0000-0000-000000000004");
+eq((await query("SELECT order_id FROM public.specials_checkouts WHERE order_id=$1",[order])).length,0,"different customer cannot read lifecycle projection");
 await actor("authenticated", id.staff);
 await fails(
   () => query("SELECT public.specials_customer_state_v1($1)", [order]),
@@ -445,7 +476,7 @@ await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
 ]);
 await actor("postgres");
 await query(
-  "UPDATE public.specials_checkouts SET created_at=clock_timestamp()-interval '16 minutes',payment_deadline=clock_timestamp()-interval '1 minute',verification_deadline=clock_timestamp()+interval '2 minutes' WHERE order_id=$1",
+  "UPDATE public.specials_checkouts SET created_at=clock_timestamp()-interval '6 minutes',payment_deadline=clock_timestamp()-interval '1 minute',verification_deadline=clock_timestamp()+interval '1 minute' WHERE order_id=$1",
   [grace],
 );
 await query(
@@ -762,6 +793,11 @@ eq(
   0,
   "existing loyalty trigger neutralized for Specials",
 );
+// Regular transactions still follow the deployed Stripe selector and retain their deadline.
+const regularOrder = crypto.randomUUID();
+await query("INSERT INTO public.orders(id,customer_id,order_number,customer_name,customer_phone,total_amount) VALUES($1,$2,'REGULAR-TEST','Test','0812345678',100)",[regularOrder,id.customer]);
+const regularPayment=(await query("INSERT INTO public.payment_transactions(order_id,customer_id,amount_due,expires_at) VALUES($1,$2,100,clock_timestamp()+interval '15 minutes') RETURNING provider,payment_mode,round(extract(epoch FROM expires_at-created_at)) AS seconds",[regularOrder,id.customer]))[0];
+eq([regularPayment.provider,regularPayment.payment_mode,Number(regularPayment.seconds)],['stripe','stripe_promptpay',900],"regular Stripe selection and fifteen-minute deadline untouched");
 const ts = await import("typescript");
 const source = await readFile(
   "supabase/functions/_shared/kshop-master-qr.ts",

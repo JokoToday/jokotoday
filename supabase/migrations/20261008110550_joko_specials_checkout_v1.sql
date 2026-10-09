@@ -85,7 +85,7 @@ BEGIN
  END LOOP;
  IF b.status IN ('prepared','live') AND t>=b.sales_end_at THEN UPDATE public.specials_batches SET status='closed',closed_at=t,version=version+1 WHERE id=p_batch; END IF;
  IF t>=b.pickup_end_at THEN UPDATE public.specials_checkouts SET fulfillment_state='no_show',updated_at=t WHERE batch_id=p_batch AND inventory_state='committed' AND fulfillment_state='ready'; END IF;
- UPDATE public.specials_line_outbox SET status='suppressed',last_error='Sale no longer eligible',updated_at=t WHERE batch_id=p_batch AND status IN ('queued','failed') AND (b.status<>'live' OR t>=b.sales_end_at-interval '15 minutes');
+ UPDATE public.specials_line_outbox SET status='suppressed',last_error='Sale no longer eligible',updated_at=t WHERE batch_id=p_batch AND status IN ('queued','failed') AND (b.status<>'live' OR t>=b.sales_end_at-interval '5 minutes');
 END $$;
 CREATE FUNCTION specials_private.checkout(p_batch uuid,p_cart jsonb,p_key uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE b public.specials_batches%ROWTYPE; u public.user_profiles%ROWTYPE; s specials_private.settings%ROWTYPE; c public.specials_checkouts%ROWTYPE; i public.specials_items%ROWTYPE; row record; pr public.cms_products%ROWTYPE; loc public.cms_pickup_locations%ROWTYPE; oid uuid:=gen_random_uuid(); total integer:=0; items jsonb:='[]'; t timestamptz; used integer;
@@ -102,7 +102,7 @@ BEGIN
  END IF;
  t:=clock_timestamp();
  SELECT * INTO s FROM specials_private.settings WHERE id;
- IF NOT s.enabled OR b.status<>'live' OR t<b.sales_start_at OR t>=b.sales_end_at-interval '15 minutes' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date THEN RAISE EXCEPTION 'Checkout is closed'; END IF;
+ IF NOT s.enabled OR b.status<>'live' OR t<b.sales_start_at OR t>=b.sales_end_at-interval '5 minutes' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date THEN RAISE EXCEPTION 'Checkout is closed'; END IF;
  SELECT * INTO u FROM public.user_profiles WHERE id=auth.uid();
  IF NOT FOUND OR NOT coalesce(u.profile_completed,false) OR nullif(trim(u.name),'') IS NULL OR nullif(trim(u.phone),'') IS NULL THEN RAISE EXCEPTION 'Complete your name and phone in your profile first'; END IF;
  IF EXISTS(SELECT 1 FROM public.specials_checkouts WHERE customer_id=auth.uid() AND batch_id=p_batch AND inventory_state IN ('held','verifying')) THEN RAISE EXCEPTION 'Resume or cancel your existing checkout first'; END IF;
@@ -121,12 +121,12 @@ BEGIN
   items:=items||jsonb_build_array(jsonb_build_object('product_id',pr.id,'product_name',pr.name_en,'product_name_th',pr.name_th,'product_name_zh',pr.name_zh,'quantity',(row.value->>'quantity')::int,'price_at_order',i.special_price_satang/100.0));
  END LOOP;
  t:=clock_timestamp();
- IF t>=b.sales_end_at-interval '15 minutes' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date THEN RAISE EXCEPTION 'Checkout is closed'; END IF;
+ IF t>=b.sales_end_at-interval '5 minutes' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date THEN RAISE EXCEPTION 'Checkout is closed'; END IF;
  INSERT INTO public.orders(id,customer_id,order_number,order_items,total_amount,pickup_location_id,pickup_date,status,payment_status,customer_name,customer_phone,customer_email,line_id,purchase_type,order_type,specials_batch_id,specials_pickup_snapshot,inventory_reserved,loyalty_points_earned,loyalty_multiplier)
  VALUES(oid,auth.uid(),'JT-'||nextval('public.online_order_number_seq'),items,total/100.0,b.pickup_location_id,b.business_date,'pending','unpaid',u.name,u.phone,u.email,u.line_id,'online','specials',b.id,jsonb_build_object('name_en',loc.name_en,'name_th',loc.name_th,'name_zh',loc.name_zh,'maps_url',loc.maps_url,'start_at',b.pickup_start_at,'end_at',b.pickup_end_at),false,0,0);
- INSERT INTO public.specials_checkouts(order_id,batch_id,customer_id,operation_key,request,inventory_state,payment_deadline,verification_deadline) VALUES(oid,b.id,auth.uid(),p_key,p_cart,'held',t+interval '15 minutes',t+interval '18 minutes');
+ INSERT INTO public.specials_checkouts(order_id,batch_id,customer_id,operation_key,request,inventory_state,payment_deadline,verification_deadline) VALUES(oid,b.id,auth.uid(),p_key,p_cart,'held',t+interval '5 minutes',t+interval '7 minutes');
  INSERT INTO specials_private.checkout_snapshots VALUES(oid,to_jsonb(s));
- INSERT INTO public.payment_transactions(order_id,customer_id,amount_due,status,expires_at) VALUES(oid,auth.uid(),total/100.0,'pending',t+interval '15 minutes');
+ INSERT INTO public.payment_transactions(order_id,customer_id,amount_due,status,expires_at) VALUES(oid,auth.uid(),total/100.0,'pending',t+interval '5 minutes');
  FOR row IN SELECT value FROM jsonb_array_elements(p_cart) LOOP
   INSERT INTO specials_private.hold_lines VALUES(oid,(row.value->>'item_id')::uuid,(row.value->>'quantity')::int);
   UPDATE public.specials_items SET quantity_available=quantity_available-(row.value->>'quantity')::int,quantity_held=quantity_held+(row.value->>'quantity')::int,version=version+1,updated_at=t WHERE id=(row.value->>'item_id')::uuid;
@@ -244,7 +244,7 @@ BEGIN
  RETURN NEXT o;
 END $$;
 CREATE FUNCTION specials_private.catalog() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT coalesce((SELECT jsonb_build_object('batch',jsonb_build_object('id',b.id,'title',b.title,'pickup_start_at',b.pickup_start_at,'pickup_end_at',b.pickup_end_at,'sales_end_at',b.sales_end_at,'location',jsonb_build_object('name_en',l.name_en,'name_th',l.name_th,'maps_url',l.maps_url)), 'items',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',i.id,'name_en',p.name_en,'name_th',p.name_th,'image',p.image,'price_satang',i.special_price_satang,'regular_price_satang',i.regular_price_satang,'available',i.quantity_available,'max_per_customer',i.max_per_customer) ORDER BY i.created_at),'[]'::jsonb) FROM public.specials_items i JOIN public.cms_products p ON p.id=i.product_id WHERE i.batch_id=b.id AND i.is_enabled AND p.is_active)) FROM public.specials_batches b JOIN public.cms_pickup_locations l ON l.id=b.pickup_location_id JOIN specials_private.settings s ON s.id WHERE b.status='live' AND s.enabled AND l.is_active AND clock_timestamp()>=b.sales_start_at AND clock_timestamp()<b.sales_end_at-interval '15 minutes' AND b.business_date=(clock_timestamp() AT TIME ZONE 'Asia/Bangkok')::date LIMIT 1),'{}'::jsonb);
+ SELECT coalesce((SELECT jsonb_build_object('batch',jsonb_build_object('id',b.id,'title',b.title,'pickup_start_at',b.pickup_start_at,'pickup_end_at',b.pickup_end_at,'sales_end_at',b.sales_end_at,'location',jsonb_build_object('name_en',l.name_en,'name_th',l.name_th,'maps_url',l.maps_url)), 'items',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',i.id,'name_en',p.name_en,'name_th',p.name_th,'image',p.image,'price_satang',i.special_price_satang,'regular_price_satang',i.regular_price_satang,'available',i.quantity_available,'max_per_customer',i.max_per_customer) ORDER BY i.created_at),'[]'::jsonb) FROM public.specials_items i JOIN public.cms_products p ON p.id=i.product_id WHERE i.batch_id=b.id AND i.is_enabled AND p.is_active)) FROM public.specials_batches b JOIN public.cms_pickup_locations l ON l.id=b.pickup_location_id JOIN specials_private.settings s ON s.id WHERE b.status='live' AND s.enabled AND l.is_active AND clock_timestamp()>=b.sales_start_at AND clock_timestamp()<b.sales_end_at-interval '5 minutes' AND b.business_date=(clock_timestamp() AT TIME ZONE 'Asia/Bangkok')::date LIMIT 1),'{}'::jsonb);
 $$;
 -- Extend the existing admin dispatcher while preserving its audited retry contract.
 ALTER FUNCTION specials_private.admin_action(text,jsonb,uuid) RENAME TO preparation_action;
@@ -281,11 +281,11 @@ BEGIN
  IF p_action='publish' THEN
   IF b.status='live' THEN RETURN jsonb_build_object('batch',to_jsonb(b)); END IF;
   IF b.version IS DISTINCT FROM (p_request->>'expected_version')::integer THEN RAISE EXCEPTION 'Batch changed; refresh'; END IF;
-  IF b.status<>'prepared' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date OR t<b.sales_start_at OR t>=b.sales_end_at-interval '15 minutes' OR NOT EXISTS(SELECT 1 FROM specials_private.settings WHERE id AND enabled) OR NOT EXISTS(SELECT 1 FROM public.specials_items i JOIN public.cms_products p ON p.id=i.product_id WHERE i.batch_id=b.id AND i.is_enabled AND i.quantity_available>0 AND p.is_active) OR NOT EXISTS(SELECT 1 FROM public.cms_pickup_locations WHERE id=b.pickup_location_id AND is_active) THEN RAISE EXCEPTION 'Publication requires enabled payment, prepared stock and an open sales window'; END IF;
+  IF b.status<>'prepared' OR b.business_date<>(t AT TIME ZONE 'Asia/Bangkok')::date OR t<b.sales_start_at OR t>=b.sales_end_at-interval '5 minutes' OR NOT EXISTS(SELECT 1 FROM specials_private.settings WHERE id AND enabled) OR NOT EXISTS(SELECT 1 FROM public.specials_items i JOIN public.cms_products p ON p.id=i.product_id WHERE i.batch_id=b.id AND i.is_enabled AND i.quantity_available>0 AND p.is_active) OR NOT EXISTS(SELECT 1 FROM public.cms_pickup_locations WHERE id=b.pickup_location_id AND is_active) THEN RAISE EXCEPTION 'Publication requires enabled payment, prepared stock and an open sales window'; END IF;
   UPDATE public.specials_batches SET status='live',version=version+1,updated_at=t WHERE id=b.id RETURNING * INTO b;
   RETURN jsonb_build_object('batch',to_jsonb(b));
  ELSIF p_action='queue_line' THEN
-  IF b.status<>'live' OR t>=b.sales_end_at-interval '15 minutes' OR NOT EXISTS(SELECT 1 FROM public.specials_items WHERE batch_id=b.id AND is_enabled AND quantity_available>0) THEN RAISE EXCEPTION 'Sale is not eligible for announcement'; END IF;
+  IF b.status<>'live' OR t>=b.sales_end_at-interval '5 minutes' OR NOT EXISTS(SELECT 1 FROM public.specials_items WHERE batch_id=b.id AND is_enabled AND quantity_available>0) THEN RAISE EXCEPTION 'Sale is not eligible for announcement'; END IF;
   SELECT * INTO loc FROM public.cms_pickup_locations WHERE id=b.pickup_location_id;
   msg:='JOKO Specials — '||b.title||E'\nขนม JOKO ราคาพิเศษ รับวันนี้เท่านั้น / Same-day pickup only\n'||loc.name_en||' / '||loc.name_th||E'\n'||to_char(b.pickup_start_at AT TIME ZONE 'Asia/Bangkok','DD Mon HH24:MI')||'–'||to_char(b.pickup_end_at AT TIME ZONE 'Asia/Bangkok','HH24:MI')||E' (Bangkok)\nLimited stock / มีจำนวนจำกัด\nhttps://joko.today/specials';
   INSERT INTO public.specials_line_outbox(batch_id,message) VALUES(b.id,msg) ON CONFLICT(batch_id) DO NOTHING;
@@ -334,7 +334,7 @@ BEGIN
    UPDATE public.specials_line_outbox SET status='uncertain',last_error='Retry window exhausted; do not create another campaign',lease_until=NULL WHERE batch_id=p_batch;
    RETURN jsonb_build_object('send',false,'status','uncertain');
   END IF;
-  IF b.status<>'live' OR t>=b.sales_end_at-interval '15 minutes' OR NOT EXISTS(SELECT 1 FROM public.specials_items WHERE batch_id=p_batch AND is_enabled AND quantity_available>0) THEN
+  IF b.status<>'live' OR t>=b.sales_end_at-interval '5 minutes' OR NOT EXISTS(SELECT 1 FROM public.specials_items WHERE batch_id=p_batch AND is_enabled AND quantity_available>0) THEN
    UPDATE public.specials_line_outbox SET status=CASE WHEN first_attempt_at IS NULL THEN 'suppressed' ELSE 'uncertain' END,last_error='Sale closed or sold out; sending suppressed',lease_until=NULL WHERE batch_id=p_batch;
    RETURN jsonb_build_object('send',false,'status','suppressed');
   END IF;

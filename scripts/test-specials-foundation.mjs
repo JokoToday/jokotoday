@@ -116,7 +116,7 @@ await fails(
 );
 await fails(
   () => op("save_batch", { ...request, sales_end_at: plus(2) }),
-  /15-minute/,
+  /5-minute/,
   "short payment window rejected",
 );
 await fails(

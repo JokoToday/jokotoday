@@ -64,3 +64,9 @@ verify_jwt = false
 # against a short-lived, hashed bearer token tied to one payment transaction.
 [functions.verify-payment-slip]
 verify_jwt = false
+
+[functions.stripe-promptpay-intent]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
