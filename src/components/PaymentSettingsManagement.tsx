@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
-type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master' | 'stripe_promptpay';
+import {
+  CUSTOMER_PAYMENT_PROVIDERS,
+  getPaymentProvider,
+  normalizePaymentProviderMode,
+  type PaymentProviderMode,
+} from '../lib/paymentProviders';
 
 type PaymentSettingsRow = {
   online_promptpay_enabled: boolean;
   payment_window_minutes: number;
-  payment_qr_mode: PaymentQrMode;
+  payment_qr_mode: PaymentProviderMode;
 };
 
 export function PaymentSettingsManagement() {
   const [enabled, setEnabled] = useState(false);
   const [minutes, setMinutes] = useState(60);
-  const [qrMode, setQrMode] = useState<PaymentQrMode>('promptpay_legacy');
+  const [providerMode, setProviderMode] = useState<PaymentProviderMode>('kshop_master');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +42,7 @@ export function PaymentSettingsManagement() {
         const row = data as PaymentSettingsRow | null;
         setEnabled(Boolean(row?.online_promptpay_enabled));
         setMinutes(Number(row?.payment_window_minutes) || 60);
-        setQrMode(row?.payment_qr_mode === 'stripe_promptpay' ? 'stripe_promptpay' : row?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : row?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy');
+        setProviderMode(normalizePaymentProviderMode(row?.payment_qr_mode));
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load payment settings.');
@@ -71,7 +75,7 @@ export function PaymentSettingsManagement() {
         .update({
           online_promptpay_enabled: enabled,
           payment_window_minutes: nextMinutes,
-          payment_qr_mode: qrMode,
+          payment_qr_mode: providerMode,
           updated_at: new Date().toISOString(),
         })
         .eq('id', true);
@@ -86,6 +90,9 @@ export function PaymentSettingsManagement() {
     }
   };
 
+  const selectedProvider = getPaymentProvider(providerMode);
+  const hiddenLegacyModeActive = !selectedProvider.adminVisible;
+
   return (
     <div className="joko-admin-paper-card max-w-3xl p-5 sm:p-6">
       <div className="mb-5 flex items-start gap-3">
@@ -93,9 +100,9 @@ export function PaymentSettingsManagement() {
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="joko-admin-title text-xl font-semibold">Online QR payment rollout</h2>
+          <h2 className="joko-admin-title text-xl font-semibold">Customer Payment Provider</h2>
           <p className="mt-1 text-sm leading-6 text-[#303532]/65">
-            Controls the customer-facing QR payment provider. K SHOP + EasySlip remains the preferred direct-bank route; Stripe PromptPay adds fully automatic webhook confirmation without slip upload.
+            Choose which payment provider new online orders use. Existing open payments keep the provider they were created with.
           </p>
         </div>
       </div>
@@ -109,9 +116,9 @@ export function PaymentSettingsManagement() {
         <div className="space-y-5">
           <label className="flex items-start justify-between gap-4 rounded-xl border border-[#55766F]/15 bg-white/70 p-4">
             <div>
-              <p className="text-sm font-semibold text-[#303532]">Customer online QR payment</p>
+              <p className="text-sm font-semibold text-[#303532]">Online customer payments</p>
               <p className="mt-1 text-xs leading-5 text-[#303532]/55">
-                When enabled, unpaid online orders receive an amount-specific QR and bank-slip upload flow.
+                When enabled, online orders receive an amount-specific QR and follow the selected provider’s confirmation flow.
               </p>
             </div>
             <input
@@ -125,38 +132,80 @@ export function PaymentSettingsManagement() {
             />
           </label>
 
-          <label className="block">
-            <span className="text-sm font-semibold text-[#303532]">QR payment mode</span>
-            <select
-              value={qrMode}
-              onChange={(event) => {
-                setQrMode(event.target.value as PaymentQrMode);
-                setSaved(false);
-              }}
-              className="joko-admin-field mt-2 w-full max-w-md"
-            >
-              <option value="kshop_master">K SHOP master QR + EasySlip (preferred)</option>
-              <option value="stripe_promptpay">Stripe PromptPay (automatic, no slip)</option>
-              <option value="kshop_easyslip">K SHOP merchant QR via EasySlip (experimental)</option>
-              <option value="promptpay_legacy">Legacy personal PromptPay (fallback)</option>
-            </select>
-            <p className="mt-1 text-xs leading-5 text-[#303532]/50">
-              K SHOP master QR preserves the genuine merchant identity and uses EasySlip verification. Stripe PromptPay creates an amount-specific Stripe QR and confirms payment automatically by signed webhook, with no slip upload.
-            </p>
-          </label>
+          <fieldset>
+            <legend className="text-sm font-semibold text-[#303532]">Payment provider</legend>
+            <div className="mt-2 grid gap-3">
+              {CUSTOMER_PAYMENT_PROVIDERS.map((provider) => {
+                const selected = providerMode === provider.mode;
+                return (
+                  <label
+                    key={provider.mode}
+                    className={`cursor-pointer rounded-xl border p-4 transition ${
+                      selected
+                        ? 'border-[#55766F]/45 bg-[#CFE3DF]/28 shadow-sm'
+                        : 'border-[#55766F]/15 bg-white/65 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="payment-provider"
+                        value={provider.mode}
+                        checked={selected}
+                        onChange={() => {
+                          setProviderMode(provider.mode);
+                          setSaved(false);
+                        }}
+                        className="mt-1 h-4 w-4 accent-[#55766F]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-[#303532]">{provider.label}</span>
+                          {provider.recommended && (
+                            <span className="rounded-full bg-[#55766F]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#45645E]">
+                              Direct bank
+                            </span>
+                          )}
+                          {provider.fallback && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                              Fallback
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-[#303532]/58">{provider.description}</p>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#303532]/55">
+                          {provider.capabilities.requiresSlipUpload ? (
+                            <span className="rounded-full bg-white/80 px-2 py-1">Slip verification</span>
+                          ) : (
+                            <span className="rounded-full bg-white/80 px-2 py-1">No slip</span>
+                          )}
+                          {provider.capabilities.supportsMobileHandoff && (
+                            <span className="rounded-full bg-white/80 px-2 py-1">Mobile handoff</span>
+                          )}
+                          {provider.capabilities.autoConfirmsWithoutSlip && (
+                            <span className="rounded-full bg-white/80 px-2 py-1">Webhook auto-confirm</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
 
-          {enabled && (
+          {hiddenLegacyModeActive && (
             <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                {qrMode === 'stripe_promptpay'
-                  ? 'Stripe mode: JOKO creates a PromptPay PaymentIntent for the exact order amount. Stripe confirms successful payment to JOKO by signed webhook; customers do not upload a slip.'
-                  : qrMode === 'kshop_master'
-                    ? 'Preferred direct-bank mode: the server derives each amount-specific QR from the genuine K SHOP master QR payload. Merchant fields are preserved exactly.'
-                    : qrMode === 'kshop_easyslip'
-                    ? 'Experimental mode: EasySlip generates the K SHOP QR. This previously produced a merchant ID that did not match your K SHOP registration.'
-                    : 'Legacy PromptPay uses the existing server-side PROMPTPAY_ID secret and is retained only as a fallback.'}
+                A hidden legacy payment mode is currently active: <strong>{selectedProvider.label}</strong>. It is retained for backwards compatibility but is no longer offered as a normal Admin choice. Select one of the supported providers above and save to leave this legacy mode.
               </p>
+            </div>
+          )}
+
+          {enabled && !hiddenLegacyModeActive && (
+            <div className="rounded-xl border border-[#55766F]/15 bg-[#CFE3DF]/18 p-4 text-sm leading-6 text-[#303532]/72">
+              <strong>{selectedProvider.label}:</strong> {selectedProvider.description}
             </div>
           )}
 
@@ -178,7 +227,7 @@ export function PaymentSettingsManagement() {
               <span className="text-sm text-[#303532]/60">minutes</span>
             </div>
             <p className="mt-1 text-xs leading-5 text-[#303532]/50">
-              Unpaid reservations expire after this window. Inventory is released automatically by the expiry job.
+              Unpaid reservations expire after this window. Inventory is released automatically by the expiry process.
             </p>
           </label>
 
