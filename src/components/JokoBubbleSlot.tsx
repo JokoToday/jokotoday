@@ -42,7 +42,7 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
   const image = (
     <img
       src={bubble.bubble_image_url}
-      alt={bubble.bubble_alt || 'Oh my Good-ness.'}
+      alt={bubble.bubble_alt || ''}
       className="block h-auto w-full object-contain"
       loading="eager"
       decoding="async"
