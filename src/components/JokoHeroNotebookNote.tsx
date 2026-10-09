@@ -32,15 +32,17 @@ function NotebookPaper({
   fontPreset = 'handwritten',
   headingSize = 22,
   bodySize = 14,
-  rotation = 4,
+  rotation,
   imageLayout = 'stacked',
 }: Pick<
   JokoHeroNotebookNoteProps,
   'title' | 'body' | 'imageUrl' | 'imageAlt' | 'fontPreset' | 'headingSize' | 'bodySize' | 'rotation' | 'imageLayout'
 >) {
   const fontFamily = NOTEBOOK_FONT_STACKS[fontPreset];
-  const safeRotation = Number.isFinite(rotation) ? Math.max(-6, Math.min(6, rotation)) : 4;
-  const noteStyle = { '--joko-note-rotation': `${safeRotation}deg` } as CSSProperties;
+  const safeRotation = Number.isFinite(rotation) ? Math.max(-6, Math.min(6, Number(rotation))) : null;
+  const noteStyle = safeRotation === null
+    ? undefined
+    : ({ '--joko-note-rotation': `${safeRotation}deg` } as CSSProperties);
 
   return (
     <div className="joko-hero-note" style={noteStyle}>
@@ -97,7 +99,7 @@ export function JokoHeroNotebookNote({
   fontPreset = 'handwritten',
   headingSize = 22,
   bodySize = 14,
-  rotation = 4,
+  rotation,
   imageLayout = 'stacked',
 }: JokoHeroNotebookNoteProps) {
   const content = (
