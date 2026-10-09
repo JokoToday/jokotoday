@@ -31,7 +31,7 @@ create table public.site_joko_notes (
     check (page_key ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   constraint site_joko_notes_placement_key_check
     check (placement_key ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
-  constraint site_joko_notes_unique_slot unique (site_key, page_key, placement_key),
+  constraint site_joko_notes_one_per_page unique (site_key, page_key),
 
   constraint site_joko_notes_title_en_length_check check (title_en is null or length(title_en) <= 120),
   constraint site_joko_notes_title_th_length_check check (title_th is null or length(title_th) <= 180),
@@ -138,4 +138,4 @@ select
   false
 from public.platform_sites ps
 where ps.site_key = 'joko-today'
-on conflict (site_key, page_key, placement_key) do nothing;
+on conflict (site_key, page_key) do nothing;
