@@ -1,5 +1,5 @@
 import { JokoHeroNotebookNote } from './JokoHeroNotebookNote';
-import type { JokoNoteFontPreset } from '../lib/jokoNotesService';
+import type { JokoNoteFontPreset, JokoNoteImageLayout } from '../lib/jokoNotesService';
 
 export interface JokoNoteProps {
   title?: string;
@@ -12,6 +12,8 @@ export interface JokoNoteProps {
   fontPreset?: JokoNoteFontPreset;
   headingSize?: number;
   bodySize?: number;
+  rotation?: number;
+  imageLayout?: JokoNoteImageLayout;
 }
 
 /**
