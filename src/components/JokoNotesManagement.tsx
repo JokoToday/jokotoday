@@ -269,7 +269,7 @@ export function JokoNotesManagement() {
     }
   };
 
-  const useBubbleAsset = (asset: PageAccentAsset) => {
+  const chooseBubbleAsset = (asset: PageAccentAsset) => {
     patch({
       bubble_image_url: asset.image_url,
       bubble_alt: asset.alt_text,
@@ -615,7 +615,7 @@ export function JokoNotesManagement() {
                         <button
                           key={asset.id}
                           type="button"
-                          onClick={() => useBubbleAsset(asset)}
+                          onClick={() => chooseBubbleAsset(asset)}
                           className={`grid grid-cols-[5rem_1fr] items-center gap-3 rounded-2xl border p-3 text-left transition ${selected
                             ? 'border-[#C76624] bg-white shadow-sm'
                             : 'border-[#C76624]/14 bg-white/45 hover:border-[#C76624]/35 hover:bg-white/70'}`}
