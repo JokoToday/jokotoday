@@ -172,7 +172,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('joko-notes')} className={tabClass('joko-notes')}>
                   <StickyNote className="h-4 w-4" />
-                  JOKO Notes
+                  Page Accents
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('non-bakery')} className={tabClass('non-bakery')}>
                   <ShoppingBasket className="h-4 w-4" />
@@ -253,8 +253,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         {activeTab === 'joko-notes' && (
           <AdminSection
             eyebrow="Website editorial"
-            title="JOKO Notes"
-            description="Place a small number of personal notebook notes across registered website slots. Content is editable; placement and the paper treatment remain design-controlled."
+            title="Page Accents"
+            description="Choose one design-controlled accent per page: either a localized JOKO Note or a single-language illustrated brand bubble placed in a registered responsive safe zone."
           >
             <JokoNotesManagement />
           </AdminSection>
