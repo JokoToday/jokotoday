@@ -129,6 +129,18 @@ export const JOKO_NOTE_PAGES: readonly JokoNotePageDefinition[] = [
 
 export const JOKO_BUBBLE_PAGES: readonly JokoNotePageDefinition[] = [
   {
+    pageKey: 'home',
+    label: 'Homepage',
+    description: 'A lower-page brand reaction. The existing Hero notebook note remains managed separately in Homepage Builder.',
+    placements: [
+      {
+        placementKey: 'before-about',
+        label: 'Before About JOKO',
+        description: 'Between “Not Bread. Still Good.” and the About JOKO section, well below the Hero notebook note.',
+      },
+    ],
+  },
+  {
     pageKey: 'products',
     label: 'Products',
     description: 'A single-language brand reaction in the Products header.',
