@@ -49,7 +49,7 @@ The two systems should not be merged.
 
 Editors do not position notes using arbitrary coordinates.
 
-Each public note appears in a **registered placement slot** defined by code:
+Each public note belongs to one page and appears in a **registered safe zone** defined by code. Admin chooses the page and then one of that page's approved safe zones:
 
 ```
 page_key + placement_key
@@ -61,7 +61,7 @@ Example:
 how-it-works + intro
 ```
 
-This prevents layout drift and keeps responsive behaviour under design-system control.
+This prevents layout drift and keeps responsive behaviour under design-system control. Admin can move a note between safe zones without code changes, but cannot free-drag it to arbitrary coordinates.
 
 ### Content is Admin-owned
 
@@ -90,7 +90,7 @@ Admin cannot edit:
 
 `site_joko_notes` is the canonical store for site-wide notes outside the Homepage Hero.
 
-One row represents one controlled page slot.
+One row represents one page note. Its `placement_key` selects one of that page's approved safe zones.
 
 Important fields:
 - `site_key`
@@ -109,10 +109,10 @@ Important fields:
 The database has a unique constraint on:
 
 ```
-(site_key, page_key, placement_key)
+(site_key, page_key)
 ```
 
-so one slot cannot accidentally contain multiple competing notes.
+so v1 enforces one JOKO Note per page. The database also validates that `page_key + placement_key` is one of the registered safe-zone combinations.
 
 ## Security
 
@@ -130,35 +130,42 @@ The visual primitive is shared, but content ownership is deliberately not migrat
 
 A later phase may move the Hero note onto the same editorial data model if that proves useful.
 
-## v1 placement registry
+## v1 safe-zone registry
 
-### How It Works · Intro
+### Products
 
-```
-page_key: how-it-works
-placement_key: intro
-```
+- **Below browse controls** — between the Products/browse area and category filters.
+- **Below categories** — between category filters and the product catalogue.
+- **After catalogue** — a closing note below the catalogue.
 
-This is the first public site-wide slot.
+The Products header center remains intentionally reserved for the separate **“Oh my Good-ness.”** bubble system.
 
-The migration seeds an **unpublished starter draft**:
+### How It Works
+
+- **Below introduction** — directly below the heading and subtitle.
+- **After the four steps** — between the step overview and ordering details.
+- **Before Start Ordering** — after ordering details and before the final CTA.
+
+### About
+
+- **Below page title** — directly below the About heading.
+- **After story** — between the story/mission card and value cards.
+- **Before pickup locations** — between the value cards and pickup-location panel.
+
+The migration seeds one **unpublished** starter draft for How It Works:
 
 > A little note from JOKO  
 > Order first. We’ll get the oven ready.
 
 It does not change the live site until an Admin explicitly publishes it.
 
-## Suggested future slots
+## Future safe zones
 
-These should be added only when the page composition has been reviewed:
+Add new page zones only after reviewing the real responsive composition. Likely future candidates include:
 
-- Products · editorial note below browsing controls
-- Product detail · product-specific baker note
-- About / Meet the Founders · contextual note
-- Pickup section · gentle pickup-day note
+- Product detail · baker/editor note
 - Gallery · behind-the-scenes note
-
-The Products header remains reserved for the separate “Oh my Good-ness.” bubble concept.
+- dedicated public Pickup page · pickup-day note
 
 ## Component structure
 
@@ -173,8 +180,10 @@ The Products header remains reserved for the separate “Oh my Good-ness.” bub
 
 `JokoNotesManagement`
 - Admin editor;
+- page selector;
+- clickable safe-zone selector for the chosen page;
 - real-component preview;
-- registered placement selection only.
+- no arbitrary x/y positioning.
 
 ## Editorial test
 
