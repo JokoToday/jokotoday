@@ -42,8 +42,28 @@ const EMPTY_DRAFT: JokoNoteDraft = {
 
 function draftFromNote(note: JokoNote | null, pageKey: string, placementKey: string): JokoNoteDraft {
   if (!note) return { ...EMPTY_DRAFT, page_key: pageKey, placement_key: placementKey };
-  const { id: _id, created_at: _created, updated_at: _updated, ...draft } = note;
-  return draft;
+  return {
+    site_key: note.site_key,
+    page_key: note.page_key,
+    placement_key: note.placement_key,
+    title_en: note.title_en,
+    title_th: note.title_th,
+    title_zh: note.title_zh,
+    body_en: note.body_en,
+    body_th: note.body_th,
+    body_zh: note.body_zh,
+    image_url: note.image_url,
+    image_alt_en: note.image_alt_en,
+    image_alt_th: note.image_alt_th,
+    image_alt_zh: note.image_alt_zh,
+    link_url: note.link_url,
+    font_preset: note.font_preset,
+    heading_size: note.heading_size,
+    body_size: note.body_size,
+    rotation: note.rotation,
+    image_layout: note.image_layout,
+    is_published: note.is_published,
+  };
 }
 
 function nullable(value: string): string | null {
