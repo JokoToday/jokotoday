@@ -4,12 +4,14 @@
 
 JOKO TODAY uses a small number of deliberate visual/editorial accents to add personality without turning every page into a decorative layer.
 
-A public page may have **one accent only**:
+Ordinary public pages may have **one accent only**:
 
 - a **JOKO Note**; or
 - an **illustrated speech bubble**.
 
-This is an either/or rule. A page never publishes both at the same time.
+This is an either/or rule for ordinary pages.
+
+The **Homepage is the deliberate exception** because it is a long, narrative scroll. Its existing Builder-owned Hero notebook note may coexist with one lower-page bubble placed several sections farther down.
 
 ## Accent types
 
@@ -59,7 +61,9 @@ The database has a unique constraint on:
 (site_key, page_key)
 ```
 
-so there can be only one accent row per page.
+so there can be only one Page Accent row per page.
+
+The Homepage Hero notebook note is not stored in this table; it remains part of the Homepage Builder document. Therefore the Homepage can have the Builder-owned Hero note plus one lower-page Page Accent without weakening the one-row rule for the Page Accents table.
 
 The `accent_type` field is either:
 
@@ -104,6 +108,12 @@ Bubble artwork is intentionally not translated.
 Bubble artwork is stored separately from JOKO Note imagery so switching accent types cannot accidentally reuse the wrong image.
 
 ## v1 safe zones
+
+### Homepage — Bubble
+
+- **Before About JOKO** — between “Not Bread. Still Good.” and the About JOKO section, well below the Hero.
+
+The Homepage Hero notebook note remains managed in Homepage Builder. No second Page Accent row is allowed for Home in v1.
 
 ### Products — JOKO Note
 
@@ -162,6 +172,8 @@ New bubble safe zones should only be added after reviewing the actual responsive
 ## Homepage compatibility
 
 The Homepage Hero notebook note remains Builder-owned. Page Accents v1 does not rewrite Homepage Builder revisions.
+
+The long Homepage is the intentional exception to the ordinary-page either/or presentation rule: one Hero notebook note may coexist with one lower-page bubble. The lower bubble is still controlled through Page Accents and is limited to the registered **Before About JOKO** safe zone.
 
 ## Editorial test
 
