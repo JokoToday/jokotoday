@@ -66,7 +66,7 @@ type WorkspaceTab =
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/homepage')) return 'homepage';
-  if (path.startsWith('/admin/joko-notes')) return 'joko-notes';
+  if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
@@ -86,7 +86,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'homepage': return '/admin/homepage';
-    case 'joko-notes': return '/admin/joko-notes';
+    case 'joko-notes': return '/admin/page-accents';
     case 'non-bakery': return '/admin/non-bakery';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
