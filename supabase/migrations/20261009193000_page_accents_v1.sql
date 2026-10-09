@@ -4,13 +4,19 @@
 
 alter table public.site_joko_notes
   add column accent_type text not null default 'note',
-  add column bubble_size text not null default 'medium';
+  add column bubble_size text not null default 'medium',
+  add column bubble_image_url text null,
+  add column bubble_alt text null;
 
 alter table public.site_joko_notes
   add constraint site_joko_notes_accent_type_check
     check (accent_type in ('note', 'bubble')),
   add constraint site_joko_notes_bubble_size_check
-    check (bubble_size in ('small', 'medium', 'large'));
+    check (bubble_size in ('small', 'medium', 'large')),
+  add constraint site_joko_notes_bubble_image_url_check
+    check (bubble_image_url is null or bubble_image_url ~ '^(https://|/)'),
+  add constraint site_joko_notes_bubble_alt_length_check
+    check (bubble_alt is null or length(bubble_alt) <= 180);
 
 alter table public.site_joko_notes
   drop constraint site_joko_notes_registered_safe_zone_check;
@@ -38,13 +44,19 @@ alter table public.site_joko_notes
 
 alter table public.site_joko_notes
   add constraint site_joko_notes_bubble_image_required_check
-    check (accent_type <> 'bubble' or image_url is not null);
+    check (accent_type <> 'bubble' or bubble_image_url is not null);
 
 comment on column public.site_joko_notes.accent_type is
   'Editorial accent type. Exactly one row per page means a page can show either a JOKO Note or a brand bubble, never both.';
 
 comment on column public.site_joko_notes.bubble_size is
   'Responsive presentation preset for illustrated bubble accents. Ignored for note accents.';
+
+comment on column public.site_joko_notes.bubble_image_url is
+  'Single-language illustrated speech-bubble asset. Kept separate from JOKO Note imagery.';
+
+comment on column public.site_joko_notes.bubble_alt is
+  'English accessibility label for the illustrated bubble. The bubble artwork itself is intentionally not localized.';
 
 comment on table public.site_joko_notes is
   'Page Accents for JOKO TODAY. One row per page: either a localized JOKO Note or a single-language illustrated brand bubble placed in registered responsive safe zones.';
