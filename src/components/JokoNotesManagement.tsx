@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { CheckCircle2, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { uploadGalleryImage } from '../lib/mediaService';
 import {
   JOKO_NOTE_PAGES,
@@ -119,9 +119,12 @@ export function JokoNotesManagement() {
       : pageDefinition.placements[0].placementKey;
 
     setDraft(draftFromNote(existing, pageDefinition.pageKey, registeredPlacement));
+  }, [existing, pageDefinition]);
+
+  useEffect(() => {
     setNotice('');
     setError('');
-  }, [existing, pageDefinition]);
+  }, [selectedPageKey]);
 
   const patch = (next: Partial<JokoNoteDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
@@ -167,9 +170,21 @@ export function JokoNotesManagement() {
         image_alt_zh: nullable(draft.image_alt_zh || ''),
         link_url: nullable(draft.link_url || ''),
       };
+      const wasPublished = existing?.is_published ?? false;
+      const placementLabel = pageDefinition.placements.find(
+        (placement) => placement.placementKey === draft.placement_key,
+      )?.label || 'selected safe zone';
+
       await adminSaveJokoNote(normalized, existing?.id);
       await load();
-      setNotice(draft.is_published ? 'JOKO Note saved and published.' : 'JOKO Note saved as a draft.');
+
+      if (draft.is_published) {
+        setNotice(`Published successfully. This JOKO Note is now live on ${pageDefinition.label} → ${placementLabel}.`);
+      } else if (wasPublished) {
+        setNotice(`Saved successfully. This JOKO Note is now unpublished and hidden from ${pageDefinition.label}.`);
+      } else {
+        setNotice(`Saved successfully as a draft for ${pageDefinition.label} → ${placementLabel}.`);
+      }
     } catch (err) {
       console.error('Could not save JOKO Note', err);
       setError(err instanceof Error ? err.message : 'Could not save JOKO Note.');
@@ -373,7 +388,19 @@ export function JokoNotesManagement() {
           </label>
 
           {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {notice && !error && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
+          {notice && !error && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+            >
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">JOKO Note updated</p>
+                <p className="mt-0.5 leading-5">{notice}</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => void save()} disabled={saving || uploading} className="joko-admin-primary-button inline-flex items-center gap-2 px-5 py-3 disabled:opacity-50">
