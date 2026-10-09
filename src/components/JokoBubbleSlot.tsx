@@ -5,6 +5,7 @@ import {
   type JokoNote as JokoAccentRecord,
 } from '../lib/jokoNotesService';
 import { getActivePageAccentPreview } from '../lib/pageAccentPreview';
+import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
 
 const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
   small: 'max-w-[11rem] sm:max-w-[12rem]',
@@ -62,6 +63,13 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
 
   if (!bubble?.bubble_image_url) return null;
 
+  const activePreview = getActivePageAccentPreview(pageKey);
+  const isPreview = Boolean(
+    activePreview
+    && activePreview.draft.accent_type === 'bubble'
+    && activePreview.draft.placement_key === placementKey,
+  );
+
   const image = (
     <img
       src={bubble.bubble_image_url}
@@ -76,16 +84,24 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
 
   if (bubble.link_url) {
     return (
-      <a
-        href={bubble.link_url}
-        className={`block transition-transform hover:scale-[1.015] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C76624]/45 ${wrapperClass}`}
-      >
-        {image}
-      </a>
+      <>
+        <a
+          href={bubble.link_url}
+          className={`block transition-transform hover:scale-[1.015] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C76624]/45 ${wrapperClass}`}
+        >
+          {image}
+        </a>
+        {isPreview && <PageAccentPreviewBadge />}
+      </>
     );
   }
 
-  return <div className={wrapperClass}>{image}</div>;
+  return (
+    <>
+      <div className={wrapperClass}>{image}</div>
+      {isPreview && <PageAccentPreviewBadge />}
+    </>
+  );
 }
 
 export default JokoBubbleSlot;
