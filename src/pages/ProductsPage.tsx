@@ -8,6 +8,7 @@ import {
 } from '../components/PickupBrowseDateSelectorV2';
 import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
+import { JokoNoteSlot } from '../components/JokoNoteSlot';
 import { ProductPickupCalendarModalV2 } from '../components/ProductPickupCalendarModalV2';
 import { PickupBasketFitDisplay } from '../components/PickupIntelligenceBadges';
 import { useLanguage } from '../context/LanguageContext';
@@ -555,6 +556,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
         </div>
 
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="below-browse-controls"
+          className="mb-9 ml-auto max-w-sm lg:mr-[7%]"
+        />
+
         <div className="mb-9">
           <div className="joko-products-category-strip flex flex-wrap gap-2.5 p-2.5 sm:gap-3 sm:p-3">
             <button
@@ -614,6 +621,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
         </div>
 
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="below-categories"
+          className="mb-10 max-w-sm"
+        />
+
         {loading || (pickupV2Enabled && v2AvailabilityLoading && v2AvailabilityRows.length === 0) ? (
           <div className="py-20 text-center">
             <div className="inline-block h-11 w-11 animate-spin rounded-full border-[3px] border-solid border-[#55766F] border-r-transparent"></div>
@@ -670,6 +683,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
             })}
           </div>
         )}
+
+        <JokoNoteSlot
+          pageKey="products"
+          placementKey="after-catalogue"
+          className="mx-auto mt-12 max-w-sm"
+        />
       </div>
 
       <AuthModal
