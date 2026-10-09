@@ -86,8 +86,8 @@ Deno.serve(async (req: Request) => {
         customer_name: profile.name || "JOKO Admin",
         customer_phone: profile.phone || "TEST",
         customer_email: authData.user.email || null,
-        notes: "[STRIPE_SANDBOX_TEST] Admin-only automated PromptPay test order. No inventory is reserved.",
-        purchase_type: "online",
+        notes: "[STRIPE_SANDBOX_TEST] Admin-only automated PromptPay test order. Synthetic walk-in classification bypasses pickup scheduling; no inventory is reserved.",
+        purchase_type: "walk_in",
         inventory_reserved: false,
         loyalty_discount_amount: 0,
       })

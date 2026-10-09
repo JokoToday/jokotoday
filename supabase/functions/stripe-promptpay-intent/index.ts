@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderError } = await service
       .from("orders")
-      .select("id, order_number, customer_id, payment_status, status")
+      .select("id, order_number, customer_id, customer_email, payment_status, status")
       .eq("id", payment.order_id)
       .maybeSingle();
 
@@ -86,6 +86,11 @@ Deno.serve(async (req: Request) => {
     if (!Number.isFinite(amount) || amount <= 0) return jsonResponse({ error: "Invalid payment amount" }, 409);
     if ((payment.currency || "THB").toUpperCase() !== "THB") return jsonResponse({ error: "Stripe PromptPay requires THB" }, 409);
 
+    const billingEmail = order.customer_email?.trim() || authData.user.email?.trim();
+    if (!billingEmail) {
+      return jsonResponse({ error: "Stripe PromptPay requires a customer email address" }, 409);
+    }
+
     const stripe = new Stripe(requiredEnv("STRIPE_SECRET_KEY"));
     let intent: Stripe.PaymentIntent;
 
@@ -96,7 +101,10 @@ Deno.serve(async (req: Request) => {
         amount: Math.round(amount * 100),
         currency: "thb",
         payment_method_types: ["promptpay"],
-        payment_method_data: { type: "promptpay" },
+        payment_method_data: {
+          type: "promptpay",
+          billing_details: { email: billingEmail },
+        },
         confirm: true,
         description: `JOKO TODAY ${order.order_number}`,
         metadata: {
