@@ -24,6 +24,18 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
 
   useEffect(() => {
     let active = true;
+
+    const loadPublished = () => {
+      getPublishedJokoBubble(pageKey, placementKey)
+        .then((value) => {
+          if (active) setBubble(value);
+        })
+        .catch((error) => {
+          console.error(`[Page Accents] Could not load bubble ${pageKey}/${placementKey}`, error);
+          if (active) setBubble(null);
+        });
+    };
+
     const preview = getActivePageAccentPreview(pageKey);
 
     if (preview) {
@@ -42,9 +54,10 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
       } else {
         setBubble(null);
       }
+
       const timeout = window.setTimeout(() => {
         removePageAccentPreview(preview.token);
-        if (active) setBubble(null);
+        if (active) loadPublished();
       }, Math.max(0, preview.expiresAt - Date.now()));
 
       return () => {
@@ -53,14 +66,7 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
       };
     }
 
-    getPublishedJokoBubble(pageKey, placementKey)
-      .then((value) => {
-        if (active) setBubble(value);
-      })
-      .catch((error) => {
-        console.error(`[Page Accents] Could not load bubble ${pageKey}/${placementKey}`, error);
-        if (active) setBubble(null);
-      });
+    loadPublished();
 
     return () => {
       active = false;
