@@ -37,8 +37,11 @@ alter table public.site_joko_notes
       or
       (
         accent_type = 'bubble'
-        and page_key = 'products'
-        and placement_key = 'header-center'
+        and (
+          (page_key = 'products' and placement_key = 'header-center')
+          or
+          (page_key = 'home' and placement_key = 'before-about')
+        )
       )
     );
 
