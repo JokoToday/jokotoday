@@ -12,6 +12,7 @@ interface StoredPageAccentPreview {
 export interface ActivePageAccentPreview {
   token: string;
   draft: JokoNoteDraft;
+  expiresAt: number;
 }
 
 function storageKey(token: string) {
@@ -64,7 +65,11 @@ export function getActivePageAccentPreview(pageKey: string): ActivePageAccentPre
       return null;
     }
 
-    return { token, draft: parsed.draft };
+    return {
+      token,
+      draft: parsed.draft,
+      expiresAt: parsed.createdAt + PREVIEW_MAX_AGE_MS,
+    };
   } catch {
     window.localStorage.removeItem(storageKey(token));
     return null;
