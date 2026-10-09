@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 
 export const JOKO_NOTES_SITE_KEY = 'joko-today';
 
+export type JokoAccentType = 'note' | 'bubble';
+export type JokoBubbleSize = 'small' | 'medium' | 'large';
 export type JokoNoteFontPreset = 'handwritten' | 'display' | 'body';
 export type JokoNoteImageLayout = 'stacked' | 'portrait' | 'tiny-sketch';
 
@@ -10,6 +12,10 @@ export interface JokoNote {
   site_key: string;
   page_key: string;
   placement_key: string;
+  accent_type: JokoAccentType;
+  bubble_size: JokoBubbleSize;
+  bubble_image_url: string | null;
+  bubble_alt: string | null;
   title_en: string | null;
   title_th: string | null;
   title_zh: string | null;
@@ -47,15 +53,16 @@ export interface JokoNotePageDefinition {
 }
 
 /**
- * JOKO Notes use fixed, code-owned safe zones.
- * Admin chooses a page and one of its approved zones; arbitrary x/y positioning
- * is intentionally not supported because it is fragile across breakpoints.
+ * Page Accents use fixed, code-owned safe zones.
+ * Admin chooses one accent per page: either a JOKO Note or a brand bubble.
+ * Arbitrary x/y positioning is intentionally not supported because it is fragile
+ * across responsive breakpoints.
  */
 export const JOKO_NOTE_PAGES: readonly JokoNotePageDefinition[] = [
   {
     pageKey: 'products',
     label: 'Products',
-    description: 'Editorial note around the catalogue. The Products header center remains reserved for the separate brand-bubble system.',
+    description: 'Editorial note around the catalogue.',
     placements: [
       {
         placementKey: 'below-browse-controls',
@@ -120,13 +127,59 @@ export const JOKO_NOTE_PAGES: readonly JokoNotePageDefinition[] = [
   },
 ] as const;
 
+export const JOKO_BUBBLE_PAGES: readonly JokoNotePageDefinition[] = [
+  {
+    pageKey: 'home',
+    label: 'Homepage',
+    description: 'A lower-page brand reaction. The existing Hero notebook note remains managed separately in Homepage Builder.',
+    placements: [
+      {
+        placementKey: 'before-about',
+        label: 'Before About JOKO',
+        description: 'Between “Not Bread. Still Good.” and the About JOKO section, well below the Hero notebook note.',
+      },
+    ],
+  },
+  {
+    pageKey: 'products',
+    label: 'Products',
+    description: 'A single-language brand reaction in the Products header.',
+    placements: [
+      {
+        placementKey: 'header-center',
+        label: 'Header center',
+        description: 'Between the Products heading and browse controls on desktop; below the heading on smaller screens.',
+      },
+    ],
+  },
+] as const;
+
 export function getJokoNotePage(pageKey: string): JokoNotePageDefinition | undefined {
   return JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
 }
 
-export function isRegisteredJokoNotePlacement(pageKey: string, placementKey: string): boolean {
-  const page = getJokoNotePage(pageKey);
+export function getJokoBubblePage(pageKey: string): JokoNotePageDefinition | undefined {
+  return JOKO_BUBBLE_PAGES.find((page) => page.pageKey === pageKey);
+}
+
+export function getJokoAccentPage(
+  pageKey: string,
+  accentType: JokoAccentType,
+): JokoNotePageDefinition | undefined {
+  return accentType === 'bubble' ? getJokoBubblePage(pageKey) : getJokoNotePage(pageKey);
+}
+
+export function isRegisteredJokoAccentPlacement(
+  pageKey: string,
+  placementKey: string,
+  accentType: JokoAccentType,
+): boolean {
+  const page = getJokoAccentPage(pageKey, accentType);
   return Boolean(page?.placements.some((placement) => placement.placementKey === placementKey));
+}
+
+export function isRegisteredJokoNotePlacement(pageKey: string, placementKey: string): boolean {
+  return isRegisteredJokoAccentPlacement(pageKey, placementKey, 'note');
 }
 
 function pickLocalized(
@@ -162,6 +215,26 @@ export async function getPublishedJokoNote(
     .eq('site_key', siteKey)
     .eq('page_key', pageKey)
     .eq('placement_key', placementKey)
+    .eq('accent_type', 'note')
+    .eq('is_published', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as JokoNote | null) ?? null;
+}
+
+export async function getPublishedJokoBubble(
+  pageKey: string,
+  placementKey: string,
+  siteKey = JOKO_NOTES_SITE_KEY,
+): Promise<JokoNote | null> {
+  const { data, error } = await supabase
+    .from('site_joko_notes')
+    .select('*')
+    .eq('site_key', siteKey)
+    .eq('page_key', pageKey)
+    .eq('placement_key', placementKey)
+    .eq('accent_type', 'bubble')
     .eq('is_published', true)
     .maybeSingle();
 
@@ -185,8 +258,14 @@ export async function adminSaveJokoNote(
   draft: JokoNoteDraft,
   id?: string,
 ): Promise<JokoNote> {
-  if (!isRegisteredJokoNotePlacement(draft.page_key, draft.placement_key)) {
-    throw new Error('Choose one of the registered JOKO Note safe zones for this page.');
+  if (!isRegisteredJokoAccentPlacement(draft.page_key, draft.placement_key, draft.accent_type)) {
+    throw new Error('Choose one of the registered safe zones for this page and accent type.');
+  }
+  if (draft.accent_type === 'bubble' && !draft.bubble_image_url) {
+    throw new Error('Upload a bubble illustration before saving.');
+  }
+  if (draft.accent_type === 'bubble' && !draft.bubble_alt?.trim()) {
+    throw new Error('Add an accessibility label that accurately describes the bubble wording.');
   }
 
   if (id) {

@@ -9,6 +9,7 @@ import {
 import { AuthModal } from '../components/AuthModal';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { JokoNoteSlot } from '../components/JokoNoteSlot';
+import { JokoBubbleSlot } from '../components/JokoBubbleSlot';
 import { ProductPickupCalendarModalV2 } from '../components/ProductPickupCalendarModalV2';
 import { PickupBasketFitDisplay } from '../components/PickupIntelligenceBadges';
 import { useLanguage } from '../context/LanguageContext';
@@ -461,8 +462,9 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   return (
     <div className="joko-products-page joko-mineral-field min-h-screen">
       <div className="relative z-10 mx-auto max-w-[88rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-        <div className="mb-7 grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(32rem,1.28fr)] lg:gap-10 xl:gap-14">
-          <div className="max-w-2xl">
+        <div className="relative mb-7">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(32rem,1.28fr)] lg:gap-10 xl:gap-14">
+            <div className="max-w-2xl">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
               JOKO TODAY
             </p>
@@ -477,6 +479,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               {t.product.preOrderOnly}
             </p>
           </div>
+
+          <JokoBubbleSlot
+            pageKey="products"
+            placementKey="header-center"
+            className="mx-auto lg:absolute lg:left-[39%] lg:top-7 lg:-translate-x-1/2 xl:left-[40%]"
+          />
 
           <div className="min-w-0 lg:pt-1">
             {!rolloutResolved ? (
@@ -554,6 +562,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               </div>
             )}
           </div>
+          </div>
+
         </div>
 
         <JokoNoteSlot

@@ -66,7 +66,7 @@ type WorkspaceTab =
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/homepage')) return 'homepage';
-  if (path.startsWith('/admin/joko-notes')) return 'joko-notes';
+  if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
@@ -86,7 +86,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'homepage': return '/admin/homepage';
-    case 'joko-notes': return '/admin/joko-notes';
+    case 'joko-notes': return '/admin/page-accents';
     case 'non-bakery': return '/admin/non-bakery';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
@@ -172,7 +172,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('joko-notes')} className={tabClass('joko-notes')}>
                   <StickyNote className="h-4 w-4" />
-                  JOKO Notes
+                  Page Accents
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('non-bakery')} className={tabClass('non-bakery')}>
                   <ShoppingBasket className="h-4 w-4" />
@@ -253,8 +253,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         {activeTab === 'joko-notes' && (
           <AdminSection
             eyebrow="Website editorial"
-            title="JOKO Notes"
-            description="Place a small number of personal notebook notes across registered website slots. Content is editable; placement and the paper treatment remain design-controlled."
+            title="Page Accents"
+            description="Choose one design-controlled accent per page: either a localized JOKO Note or a single-language illustrated brand bubble placed in a registered responsive safe zone."
           >
             <JokoNotesManagement />
           </AdminSection>

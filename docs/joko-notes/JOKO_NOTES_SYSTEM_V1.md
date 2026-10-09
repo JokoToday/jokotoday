@@ -1,110 +1,59 @@
-# JOKO Notes System v1
+# JOKO Page Accents v1
 
 ## Purpose
 
-JOKO Notes are small notebook-style editorial interruptions placed strategically across JOKO TODAY.
+JOKO TODAY uses a small number of deliberate visual/editorial accents to add personality without turning every page into a decorative layer.
 
-They are **not** alerts, banners, system messages or speech bubbles. Their job is to add Joe & Phuttan's human editorial voice: a recommendation, observation, contextual comment, small story, or gentle bit of personality.
+Ordinary public pages may have **one accent only**:
 
-The separate **“Oh my Good-ness.” bubble** remains a different visual language and is intentionally outside JOKO Notes v1.
+- a **JOKO Note**; or
+- an **illustrated speech bubble**.
 
-## Core design rule
+This is an either/or rule for ordinary pages.
 
-Use roughly **one prominent JOKO Note per page**. A genuinely long page may eventually justify a second controlled slot, but repetition should feel discovered rather than templated.
+The **Homepage is the deliberate exception** because it is a long, narrative scroll. Its existing Builder-owned Hero notebook note may coexist with one lower-page bubble placed several sections farther down.
 
-A JOKO Note may add:
-- warmth;
-- context;
-- recommendation;
-- personality;
-- a short editorial aside;
-- a link to another relevant page.
+## Accent types
 
-A JOKO Note must **never be the only place** that communicates:
-- price;
-- stock or availability;
-- order cutoff;
-- pickup eligibility;
-- payment instructions;
-- cancellation rules;
-- errors;
-- security/account instructions;
-- any information required to complete a purchase.
+### JOKO Note
 
-Essential commerce and operational information must remain normal accessible UI.
+A notebook-style editorial interruption carrying Joe & Phuttan’s human voice: recommendation, observation, contextual comment, small story, or gentle personality.
 
-## Two visual languages
+Notes are localized in EN / TH / ZH.
 
-### JOKO Notes
-Paper, tape, punched holes, hand-written/editorial feel. Personal and contextual.
+A JOKO Note may add warmth, context, recommendation or personality, but it must never be the only place for price, stock, cutoffs, pickup eligibility, payment instructions, cancellation rules, errors, security instructions, or anything required to complete a purchase.
 
-### Brand bubbles
-Short reactive expressions such as “Oh my Good-ness.” Decorative, playful, almost like JOKO reacting to the page.
+### Illustrated speech bubble
 
-The two systems should not be merged.
+A short visual brand reaction such as **“Oh my Good-ness.”**
 
-## Architecture
+The bubble is treated as finished artwork rather than translatable UI text. Its English wordplay remains unchanged on Thai and Chinese versions of the site.
 
-### Placement is code-owned
+The same bubble artwork can also be reused outside the website — for print, packaging, stickers, cards and other brand material.
 
-Editors do not position notes using arbitrary coordinates.
+## Placement model
 
-Each public note belongs to one page and appears in a **registered safe zone** defined by code. Admin chooses the page and then one of that page's approved safe zones:
+Placement is code-owned.
+
+Editors do not drag accents to arbitrary x/y coordinates. Each accent type has registered responsive safe zones:
 
 ```
-page_key + placement_key
+page_key + accent_type + placement_key
 ```
 
-Example:
+Admin chooses:
 
-```
-how-it-works + intro
-```
+1. page;
+2. accent type;
+3. one of the safe zones registered for that page/type;
+4. content/artwork;
+5. draft or published state.
 
-This prevents layout drift and keeps responsive behaviour under design-system control. Admin can move a note between safe zones without code changes, but cannot free-drag it to arbitrary coordinates.
+Responsive positioning remains owned by the frontend.
 
-### Content is Admin-owned
+## Either/or enforcement
 
-Admin can edit:
-- publish / draft;
-- localized heading EN / TH / ZH;
-- localized body EN / TH / ZH;
-- optional image;
-- localized image alt text;
-- optional link;
-- controlled font preset;
-- heading/body size within safe ranges;
-- small controlled rotation;
-- controlled image layout.
-
-Admin cannot edit:
-- arbitrary CSS;
-- paper shape;
-- punched holes;
-- tape treatment;
-- shadow system;
-- page coordinates;
-- unsupported placement slots.
-
-## Data model
-
-`site_joko_notes` is the canonical store for site-wide notes outside the Homepage Hero.
-
-One row represents one page note. Its `placement_key` selects one of that page's approved safe zones.
-
-Important fields:
-- `site_key`
-- `page_key`
-- `placement_key`
-- localized title/body/alt fields
-- `image_url`
-- `link_url`
-- `font_preset`
-- `heading_size`
-- `body_size`
-- `rotation`
-- `image_layout`
-- `is_published`
+The canonical store remains `site_joko_notes` for backwards compatibility.
 
 The database has a unique constraint on:
 
@@ -112,83 +61,130 @@ The database has a unique constraint on:
 (site_key, page_key)
 ```
 
-so v1 enforces one JOKO Note per page. The database also validates that `page_key + placement_key` is one of the registered safe-zone combinations.
+so there can be only one Page Accent row per page.
+
+The Homepage Hero notebook note is not stored in this table; it remains part of the Homepage Builder document. Therefore the Homepage can have the Builder-owned Hero note plus one lower-page Page Accent without weakening the one-row rule for the Page Accents table.
+
+The `accent_type` field is either:
+
+```
+note
+bubble
+```
+
+Changing a page from Note to Bubble updates that same row. It does not create a second accent.
+
+## JOKO Note controls
+
+Admin may edit:
+
+- safe zone;
+- publish / draft;
+- localized heading EN / TH / ZH;
+- localized body EN / TH / ZH;
+- optional note image;
+- localized image alt text;
+- optional link;
+- controlled font preset;
+- heading/body size;
+- controlled rotation;
+- controlled image layout.
+
+Paper shape, tape, holes, shadows and arbitrary page coordinates remain design-controlled.
+
+## Bubble controls
+
+Admin may edit:
+
+- registered bubble safe zone;
+- bubble illustration upload;
+- English accessibility label;
+- optional link;
+- size preset: small / medium / large;
+- publish / draft.
+
+Bubble artwork is intentionally not translated.
+
+Bubble artwork is stored separately from JOKO Note imagery so switching accent types cannot accidentally reuse the wrong image.
+
+## v1 safe zones
+
+### Homepage — Bubble
+
+- **Before About JOKO** — between “Not Bread. Still Good.” and the About JOKO section, well below the Hero.
+
+The Homepage Hero notebook note remains managed in Homepage Builder. No second Page Accent row is allowed for Home in v1.
+
+### Products — JOKO Note
+
+- **Below browse controls**
+- **Below categories**
+- **After catalogue**
+
+### Products — Bubble
+
+- **Header center** — visually between the Products heading and browse controls on desktop; below the heading on smaller screens.
+
+This is the first web bubble placement and is intended for the “Oh my Good-ness.” artwork.
+
+### How It Works — JOKO Note
+
+- **Below introduction**
+- **After the four steps**
+- **Before Start Ordering**
+
+No bubble safe zone is registered yet.
+
+### About — JOKO Note
+
+- **Below page title**
+- **After story**
+- **Before pickup locations**
+
+No bubble safe zone is registered yet.
+
+New bubble safe zones should only be added after reviewing the actual responsive composition of the target page.
+
+## Components
+
+`JokoNote`
+- notebook visual primitive.
+
+`JokoNoteSlot`
+- loads only published accents where `accent_type = note`.
+
+`JokoBubbleSlot`
+- loads only published accents where `accent_type = bubble`;
+- renders the uploaded illustration unchanged across languages;
+- applies responsive size presets.
+
+`JokoNotesManagement`
+- retained component filename for backwards compatibility;
+- Admin UI is now presented as **Page Accents**.
 
 ## Security
 
-- Anonymous/authenticated public readers can select **published notes only**.
-- Admins can create, update and delete notes.
-- RLS uses the existing `private.current_user_is_admin()` gate.
-- Draft notes never render publicly.
-- Uploaded note imagery reuses JOKO Media and strips EXIF/GPS metadata in-browser.
+- Public readers can select published accent rows only.
+- Admins manage accents through the existing admin RLS gate.
+- Draft accents never render publicly.
+- Uploaded images reuse JOKO Media; source metadata is stripped in-browser before upload.
 
 ## Homepage compatibility
 
-The existing Homepage Hero notebook note remains stored inside the immutable Homepage Builder revision for v1.
+The Homepage Hero notebook note remains Builder-owned. Page Accents v1 does not rewrite Homepage Builder revisions.
 
-The visual primitive is shared, but content ownership is deliberately not migrated yet. This avoids rewriting published Homepage Builder history just to introduce the wider note system.
-
-A later phase may move the Hero note onto the same editorial data model if that proves useful.
-
-## v1 safe-zone registry
-
-### Products
-
-- **Below browse controls** — between the Products/browse area and category filters.
-- **Below categories** — between category filters and the product catalogue.
-- **After catalogue** — a closing note below the catalogue.
-
-The Products header center remains intentionally reserved for the separate **“Oh my Good-ness.”** bubble system.
-
-### How It Works
-
-- **Below introduction** — directly below the heading and subtitle.
-- **After the four steps** — between the step overview and ordering details.
-- **Before Start Ordering** — after ordering details and before the final CTA.
-
-### About
-
-- **Below page title** — directly below the About heading.
-- **After story** — between the story/mission card and value cards.
-- **Before pickup locations** — between the value cards and pickup-location panel.
-
-The migration seeds one **unpublished** starter draft for How It Works:
-
-> A little note from JOKO  
-> Order first. We’ll get the oven ready.
-
-It does not change the live site until an Admin explicitly publishes it.
-
-## Future safe zones
-
-Add new page zones only after reviewing the real responsive composition. Likely future candidates include:
-
-- Product detail · baker/editor note
-- Gallery · behind-the-scenes note
-- dedicated public Pickup page · pickup-day note
-
-## Component structure
-
-`JokoNote`
-- reusable public visual primitive;
-- shares the established paper family with the Homepage Hero note.
-
-`JokoNoteSlot`
-- loads one published note for a registered page slot;
-- localizes EN / TH / ZH;
-- renders nothing if no note is published.
-
-`JokoNotesManagement`
-- Admin editor;
-- page selector;
-- clickable safe-zone selector for the chosen page;
-- real-component preview;
-- no arbitrary x/y positioning.
+The long Homepage is the intentional exception to the ordinary-page either/or presentation rule: one Hero notebook note may coexist with one lower-page bubble. The lower bubble is still controlled through Page Accents and is limited to the registered **Before About JOKO** safe zone.
 
 ## Editorial test
 
-Before publishing a note, ask:
+For a JOKO Note, ask:
 
 > If this note vanished, could a customer still understand and complete the page?
 
-If the answer is no, the content belongs in normal UI, not in a JOKO Note.
+If not, that information belongs in normal UI.
+
+For a speech bubble, ask:
+
+> Is this a short brand reaction, or are we trying to make it carry information?
+
+If it carries operational information, it should not be a bubble.
