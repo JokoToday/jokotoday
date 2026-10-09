@@ -16,6 +16,7 @@ export type PaymentProviderDefinition = {
   shortLabel: string;
   description: string;
   adminVisible: boolean;
+  minimumAmountThb?: number;
   recommended?: boolean;
   fallback?: boolean;
   capabilities: PaymentProviderCapabilities;
@@ -41,6 +42,7 @@ export const PAYMENT_PROVIDERS: Record<PaymentProviderMode, PaymentProviderDefin
     shortLabel: 'Stripe',
     description: 'Stripe generates the exact-amount PromptPay QR and confirms successful payment to JOKO automatically by signed webhook. No slip upload is required.',
     adminVisible: true,
+    minimumAmountThb: 10,
     capabilities: {
       requiresSlipUpload: false,
       supportsMobileHandoff: false,
