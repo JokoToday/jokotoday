@@ -36,6 +36,7 @@ import {
 } from '../../../platform/builder';
 import { Container } from '../../../platform/design-system';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
+import { JokoBubbleSlot } from '../../../components/JokoBubbleSlot';
 
 interface HomepageLowerSectionsProps {
   locale: string;
@@ -556,6 +557,16 @@ export function HomepageLowerSections({
         </Container>
       </section>
 
+
+      <div className="joko-paper-band border-t border-[#8B765E]/10 py-5 sm:py-7">
+        <Container width="wide">
+          <JokoBubbleSlot
+            pageKey="home"
+            placementKey="before-about"
+            className="ml-auto mr-[4%] sm:mr-[8%]"
+          />
+        </Container>
+      </div>
 
       <section id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
