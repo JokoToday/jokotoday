@@ -113,6 +113,12 @@ export default function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
           })}
         </div>
 
+        <JokoNoteSlot
+          pageKey="how-it-works"
+          placementKey="after-steps"
+          className="mx-auto mb-12 max-w-sm md:mr-10"
+        />
+
         <div className="bg-background rounded-2xl shadow-lg p-8 md:p-12 mb-12">
           <h2 className="text-2xl md:text-3xl font-header font-bold text-primary-900 mb-6">
             {t.howItWorks.orderingTitle}
@@ -189,6 +195,12 @@ export default function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
             </div>
           </div>
         </div>
+
+        <JokoNoteSlot
+          pageKey="how-it-works"
+          placementKey="before-start-ordering"
+          className="mx-auto mb-12 max-w-sm"
+        />
 
         <div className="text-center">
           <button
