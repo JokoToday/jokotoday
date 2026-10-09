@@ -72,7 +72,7 @@ export interface HomeAboutCardImage {
 
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
-export type TopMenuKey = 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
+export type TopMenuKey = 'home' | 'products' | 'other-products' | 'makers' | 'how-it-works' | 'pickup' | 'about';
 export interface TopMenuItem {
   key: TopMenuKey;
   visible: boolean;

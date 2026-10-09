@@ -1,3 +1,4 @@
+import { MakerSnapshotAttribution } from '../MakerSnapshotAttribution';
 import React from 'react';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle, Printer } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
@@ -272,6 +273,7 @@ export function OrderDetailModal({
                         <p className="text-sm font-semibold text-stone-900 truncate">{displayName}</p>
                       )}
                       <p className="text-xs text-stone-400 mt-0.5">
+                        <MakerSnapshotAttribution item={item} />
                         {getLabel('my_orders_page.quantity', language, 'Qty')}: {item.quantity}
                         {' · '}
                         {getLabel('my_orders_page.unit_price', language, 'Unit Price')}: ฿{Number(item.price_at_order).toFixed(2)}

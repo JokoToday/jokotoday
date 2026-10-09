@@ -1,3 +1,4 @@
+import { productOrigin } from '../lib/makersService';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, RefreshCw, ShoppingBag } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
@@ -364,9 +365,9 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   const filteredProducts = products.filter((product) => {
     const matchesCategory = !selectedCategory || selectedCategory === 'all'
       || (selectedCategory === 'non-bakery'
-        ? Boolean(product.is_non_bakery)
+        ? productOrigin(product) === 'beyond'
         : selectedCategory === 'bakery'
-          ? !product.is_non_bakery
+          ? productOrigin(product) === 'joko'
           : product.category_id === selectedCategory);
     if (!matchesCategory) return false;
 

@@ -1,3 +1,5 @@
+import { MakersSection } from '../../../components/MakersSection';
+import { productOrigin } from '../../../lib/makersService';
 import {
   ArrowRight,
   ArrowUp,
@@ -361,10 +363,10 @@ export function HomepageLowerSections({
   };
 
   const weeklyProducts = products
-    .filter((product) => !product.is_non_bakery && Boolean(productImage(product)))
+    .filter((product) => productOrigin(product) === 'joko' && Boolean(productImage(product)))
     .slice(0, 6);
   const nonBakeryFeatured = products
-    .filter((product) => product.is_non_bakery && product.non_bakery_feature_order != null)
+    .filter((product) => productOrigin(product) === 'beyond' && product.non_bakery_feature_order != null)
     .sort((a, b) =>
       (a.non_bakery_feature_order ?? 999) - (b.non_bakery_feature_order ?? 999)
       || a.sort_order - b.sort_order
@@ -376,6 +378,7 @@ export function HomepageLowerSections({
 
   return (
     <div>
+      <MakersSection />
       {showBaking && <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
         <Container width="wide">
           <SectionTitle

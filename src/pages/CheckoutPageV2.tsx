@@ -1,3 +1,5 @@
+import { MakerAttribution, SourcingDisclosure } from '../components/MakerAttribution';
+import { MakerSnapshotAttribution } from '../components/MakerSnapshotAttribution';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, Clock, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
@@ -71,6 +73,9 @@ function clearActiveCheckout(userId: string) {
 }
 
 interface SecureOrderItem {
+  maker_name_en?: string | null;
+  maker_name_th?: string | null;
+  maker_name_zh?: string | null;
   product_id: string;
   product_name?: string;
   product_name_th?: string | null;
@@ -384,6 +389,10 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitError('');
+    if (items.some((item) => item.product.product_origin === 'maker') && !onlinePaymentEnabled) {
+      setSubmitError(language === 'th' ? 'สินค้า Makers ต้องชำระเงินออนไลน์' : language === 'zh' ? '制作人商品需要在线付款。' : 'Makers products require verified online payment. Ordering is currently unavailable.');
+      return;
+    }
 
     if (!selection || showPickupEditor) {
       setSubmitError(language === 'th'
@@ -615,7 +624,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 <div key={`${item.product_id}-${getItemName(item)}`} className="flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <ShoppingBag className="h-4 w-4 shrink-0 text-[#C76624]" />
-                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}</span>
+                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}<MakerSnapshotAttribution item={item} /></span>
                     <span className="text-xs text-[#303532]/50">× {Number(item.quantity) || 0}</span>
                   </div>
                   <span className="text-sm font-semibold text-[#303532]">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>
@@ -815,7 +824,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 {items.map((item) => (
                   <div key={item.product.id} className="flex items-center justify-between gap-4 border-b border-[#55766F]/10 pb-3 last:border-0">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-[#292D2B]">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p>
+                      <p className="truncate font-medium text-[#292D2B]">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p><MakerAttribution maker={item.product.maker} />
                       <p className="text-xs text-[#303532]/50">{item.quantity} × ฿{item.product.price.toFixed(2)}</p>
                     </div>
                     <span className="font-semibold text-[#303532]">฿{(item.product.price * item.quantity).toFixed(2)}</span>
@@ -828,6 +837,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               </div>
             </div>
             <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.42] p-6">
+              {items.some((item) => item.product.product_origin === 'maker') && <SourcingDisclosure />}
               <h3 className="mb-2 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
               <p className="text-sm leading-6 text-[#303532]/[.72]">{t.checkout.paymentInfoText}</p>
             </div>

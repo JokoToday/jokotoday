@@ -49,7 +49,7 @@ export function useProductRecommendations(productId: string | null): UseProductR
 
       const { data: products, error: productsError } = await supabase
         .from('cms_products')
-        .select('*')
+        .select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)')
         .in('id', productIds)
         .eq('is_active', true);
 

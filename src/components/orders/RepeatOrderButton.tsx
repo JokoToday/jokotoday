@@ -141,7 +141,7 @@ export function RepeatOrderButton({
     }
 
     const [productsResult, availabilityRows] = await Promise.all([
-      supabase.from('cms_products').select('*').in('id', productIds),
+      supabase.from('cms_products').select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)').in('id', productIds),
       getCustomerPickupAvailabilityV2(productIds),
     ]);
 
@@ -167,7 +167,7 @@ export function RepeatOrderButton({
       const futureQuantities = availabilityByProduct.get(productId) || [];
       const hasEnoughUpcomingAvailability = futureQuantities.some(remaining => remaining >= quantity);
 
-      if (!product || !product.is_active || product.is_sold_out || !hasEnoughUpcomingAvailability) {
+      if (!product || !product.is_active || product.is_sold_out || (product.product_origin === 'maker' && !product.maker?.is_ordering_enabled) || !hasEnoughUpcomingAvailability) {
         skippedLines += 1;
         return;
       }

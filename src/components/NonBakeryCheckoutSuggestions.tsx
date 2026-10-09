@@ -1,3 +1,4 @@
+import { productOrigin } from '../lib/makersService';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Plus, ShoppingBasket } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -82,7 +83,7 @@ export function NonBakeryCheckoutSuggestions({
     void (async () => {
       try {
         const catalog = (await getProducts())
-          .filter((product) => product.is_non_bakery && !product.is_sold_out)
+          .filter((product) => productOrigin(product) === 'beyond' && !product.is_sold_out)
           .sort((a, b) =>
             (a.non_bakery_feature_order ?? 1000) - (b.non_bakery_feature_order ?? 1000)
             || a.sort_order - b.sort_order
