@@ -43,6 +43,15 @@ verify_jwt = true
 [functions.joko-ai-gateway]
 verify_jwt = false
 
+# Authenticated Specials handlers also validate the bearer token with getUser.
+[functions.specials-verify-payment]
+verify_jwt = true
+
+[functions.specials-line-send]
+verify_jwt = true
+
+[functions.specials-merchant-config]
+verify_jwt = true
 
 [functions.create-payment-handoff]
 verify_jwt = true

@@ -244,11 +244,16 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   }
 
   if (value.topMenu !== undefined) {
-    if (!Array.isArray(value.topMenu) || value.topMenu.length !== 6) {
-      pushIssue(issues, 'branding.topMenu', 'Top menu must have all six fixed destinations.');
+    if (!Array.isArray(value.topMenu) || ![6, 7].includes(value.topMenu.length)) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must contain the six original destinations and may include Specials.');
     } else {
-      const allowed = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
+      const required = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
+      const allowed = [...required, 'specials'];
       const keys = new Set<string>();
+      const menu = value.topMenu;
+      if (required.some((key) => !menu.some((item: unknown) => isRecord(item) && item.key === key))) {
+        pushIssue(issues, 'branding.topMenu', 'Top menu is missing a required destination.');
+      }
       value.topMenu.forEach((item: unknown, index: number) => {
         const path = `branding.topMenu[${index}]`;
         if (!isRecord(item) || !allowed.includes(String(item.key)) || keys.has(String(item.key))) {

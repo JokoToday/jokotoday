@@ -8,6 +8,7 @@ import { CMSProduct } from '../lib/cmsService';
 import { cancelOnlineOrderCompatible, reactivateExpiredOnlineOrder } from '../lib/orderServiceV2';
 import { Order, PickupDay, PickupLocation } from '../components/orders/OrderTypes';
 import { MyOrdersList } from '../components/orders/MyOrdersList';
+import { SpecialsPaymentPanel } from '../features/specials/SpecialsPaymentPanel';
 import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
 import { getPaymentSettings } from '../lib/paymentService';
 
@@ -71,7 +72,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
+          .select('specials_checkout:specials_checkouts(inventory_state,financial_state,fulfillment_state), order_type, specials_pickup_snapshot, id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),
@@ -80,7 +81,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
       if (ordersRes.error) throw ordersRes.error;
 
-      setOrders(ordersRes.data || []);
+      setOrders((ordersRes.data || []).map(row => ({...row, specials_checkout: Array.isArray(row.specials_checkout) ? row.specials_checkout[0] || null : row.specials_checkout})));
       setPickupDays(pickupRes.data || []);
 
       const locMap: Record<string, PickupLocation> = {};
@@ -208,7 +209,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
               </div>
             ) : (
               <MyOrdersList
-                orders={orders}
+                orders={orders.map(order => ({...order, online_payment_enabled:onlinePaymentEnabled}))}
                 language={language}
                 productMap={productMap}
                 pickupDays={pickupDays}
@@ -216,7 +217,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
                 getLabel={getLabel}
                 onNavigate={onNavigate}
                 onCancelRequest={openCancelModal}
-                onPayRequest={onlinePaymentEnabled ? setPaymentTarget : undefined}
+                onPayRequest={setPaymentTarget}
                 onReactivateRequest={onlinePaymentEnabled ? setReactivateTarget : undefined}
                 reactivatingOrderId={reactivatingOrderId}
               />
@@ -277,11 +278,11 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             >
               <X className="h-4 w-4" />
             </button>
-            <OnlinePromptPayPanel
+            {paymentTarget.order_type === 'specials' ? <SpecialsPaymentPanel orderId={paymentTarget.id} onPaid={() => void loadAll()} /> : <OnlinePromptPayPanel
               orderId={paymentTarget.id}
               language={language}
               onPaid={() => void loadAll()}
-            />
+            />}
           </div>
         </div>
       )}

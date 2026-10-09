@@ -56,7 +56,7 @@ export function OrderDetailModal({
 
   const getLocationInfo = (locationId: string | null): { name: string; mapsUrl: string | null } => {
     if (!locationId) return { name: '—', mapsUrl: null };
-    const loc = locationMap[locationId];
+    const loc = order.specials_pickup_snapshot || locationMap[locationId];
     if (!loc) return { name: '—', mapsUrl: null };
     const name = language === 'th' ? loc.name_th || loc.name_en : language === 'zh' ? loc.name_zh || loc.name_en : loc.name_en;
     return { name, mapsUrl: loc.maps_url };
@@ -93,6 +93,7 @@ export function OrderDetailModal({
   };
 
   const statusConfig = getStatusConfig(order.status);
+  const specialsPickup = order.specials_pickup_snapshot;
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const subtotal = items.reduce((sum, i) => sum + i.price_at_order * i.quantity, 0);
   const grossTotal = Number(isOnline ? order.total_amount : (order.walk_in_amount ?? order.total_amount)) || 0;
@@ -110,8 +111,8 @@ export function OrderDetailModal({
       : Math.max(0, grossTotal - discount));
   const pastPickup = isOnline && isPickupDatePast(order.pickup_date);
   const unresolvedPastPickup = pastPickup && ['pending', 'confirmed', 'ready'].includes(order.status);
-  const isCancellable = (order.status === 'pending' || order.status === 'confirmed') && isOnline && !pastPickup;
-  const isRepeatablePastOrder = isOnline
+  const isCancellable = order.order_type !== 'specials' && (order.status === 'pending' || order.status === 'confirmed') && isOnline && !pastPickup;
+  const isRepeatablePastOrder = order.order_type !== 'specials' && isOnline
     && items.length > 0
     && (pastPickup || !['pending', 'confirmed', 'ready'].includes(order.status));
   const canPrintWalkInReceipt = !isOnline && order.status === 'completed' && items.length > 0;
@@ -354,6 +355,7 @@ export function OrderDetailModal({
             />
           )}
 
+          {specialsPickup && <p className="mb-4 rounded-xl bg-green-50 p-4">JOKO Specials · {specialsPickup.name_en} / {specialsPickup.name_th}<br />{new Date(specialsPickup.start_at).toLocaleString('en-GB', {timeZone:'Asia/Bangkok'})}–{new Date(specialsPickup.end_at).toLocaleTimeString('en-GB', {timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'})} (Bangkok). Same-day pickup only.</p>}
           {isCancellable && (
             <button
               onClick={() => { onCancelRequest(order); onClose(); }}

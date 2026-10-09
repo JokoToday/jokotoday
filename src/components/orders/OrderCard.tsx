@@ -122,9 +122,10 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                 }
               >
                 {isOnline
-                  ? getLabel('my_orders_page.online_order', language, 'Online Order')
+                  ? (order.order_type === 'specials' ? 'JOKO Specials' : getLabel('my_orders_page.online_order', language, 'Online Order'))
                   : getLabel('my_orders_page.in_store_order', language, 'In-Store Order')}
               </span>
+              {order.specials_checkout && <span className="text-xs">{order.specials_checkout.financial_state.replace(/_/g, ' ')} · {order.specials_checkout.fulfillment_state.replace(/_/g, ' ')}</span>}
               {terminalStatus && (
                 <span
                   className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"

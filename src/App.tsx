@@ -15,6 +15,7 @@ import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const OurStoryPage = lazy(() => import('./pages/OurStoryPage'));
@@ -47,6 +48,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
   products: '/products',
   checkout: '/checkout',
+  specials: '/specials',
   about: '/about',
   'our-story': '/our-story',
   'meet-founders': '/meet-joe-and-phuttan',
@@ -430,6 +432,8 @@ function AppContent() {
             onNavigate={handleNavigate}
           />
         );
+      case 'specials':
+        return <SpecialsPage onNavigate={handleNavigate} />;
       case 'checkout':
         return <CheckoutPage onNavigate={handleNavigate} />;
       case 'about':
@@ -485,7 +489,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute

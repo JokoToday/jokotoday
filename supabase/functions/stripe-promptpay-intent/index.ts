@@ -58,11 +58,12 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderError } = await service
       .from("orders")
-      .select("id, order_number, customer_id, payment_status, status")
+      .select("id, order_number, customer_id, payment_status, status, order_type")
       .eq("id", payment.order_id)
       .maybeSingle();
 
     if (orderError) throw orderError;
+    if (order?.order_type === "specials") return jsonResponse({ error: "Use Specials payment verification" }, 409);
     if (!order || order.customer_id !== authData.user.id) return jsonResponse({ error: "Order not found" }, 404);
 
     if (payment.status === "verified" || order.payment_status === "paid") {

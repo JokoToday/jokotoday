@@ -463,6 +463,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
       <div className="relative z-10 mx-auto max-w-[88rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <div className="mb-7 grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(32rem,1.28fr)] lg:gap-10 xl:gap-14">
           <div className="max-w-2xl">
+            <button className="mb-4 rounded-full border border-[#758b78] px-4 py-2 text-sm" onClick={() => onNavigate?.('specials')}>JOKO Specials · Same-day pickup / รับวันนี้</button>
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
               JOKO TODAY
             </p>

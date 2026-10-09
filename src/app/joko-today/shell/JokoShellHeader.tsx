@@ -19,7 +19,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
+  key: 'home' | 'products' | 'other-products' | 'specials' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
   targetId?: string;
@@ -101,6 +101,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     home: { targetId: 'top', activeKey: 'today' },
     products: { page: 'products-bakery', activeKey: 'bakery' },
     'other-products': { page: 'products-non-bakery', activeKey: 'bakery' },
+    specials: { page: 'specials' },
     'how-it-works': { targetId: 'how-it-works' },
     pickup: { targetId: 'pickup' },
     about: { targetId: 'about', activeKey: 'about' },
@@ -160,6 +161,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     if (item.key === 'home') return false;
     // The two product menus share /products but differ by query-controlled filter.
     if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
+    if (item.key === 'specials') return path === '/specials';
     if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';
     if (path === '/' && item.targetId) return activeHash === `#${item.targetId}`;
     // The founder and full-story pages belong to About, but the indicator must
