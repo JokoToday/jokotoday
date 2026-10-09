@@ -626,7 +626,7 @@ export function JokoNotesManagement() {
             {draft.bubble_image_url ? (
               <img
                 src={draft.bubble_image_url}
-                alt={draft.bubble_alt || 'Oh my Good-ness.'}
+                alt={draft.bubble_alt || ''}
                 className={`h-auto w-full object-contain ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
               />
             ) : (
