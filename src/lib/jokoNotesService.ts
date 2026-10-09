@@ -264,6 +264,9 @@ export async function adminSaveJokoNote(
   if (draft.accent_type === 'bubble' && !draft.bubble_image_url) {
     throw new Error('Upload a bubble illustration before saving.');
   }
+  if (draft.accent_type === 'bubble' && !draft.bubble_alt?.trim()) {
+    throw new Error('Add an accessibility label that accurately describes the bubble wording.');
+  }
 
   if (id) {
     const { data, error } = await supabase
