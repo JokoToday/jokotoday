@@ -17,6 +17,18 @@ export function JokoNoteSlot({ pageKey, placementKey, className = '' }: JokoNote
 
   useEffect(() => {
     let active = true;
+
+    const loadPublished = () => {
+      getPublishedJokoNote(pageKey, placementKey)
+        .then((value) => {
+          if (active) setNote(value);
+        })
+        .catch((error) => {
+          console.error(`[JOKO Notes] Could not load ${pageKey}/${placementKey}`, error);
+          if (active) setNote(null);
+        });
+    };
+
     const preview = getActivePageAccentPreview(pageKey);
 
     if (preview) {
@@ -31,9 +43,10 @@ export function JokoNoteSlot({ pageKey, placementKey, className = '' }: JokoNote
       } else {
         setNote(null);
       }
+
       const timeout = window.setTimeout(() => {
         removePageAccentPreview(preview.token);
-        if (active) setNote(null);
+        if (active) loadPublished();
       }, Math.max(0, preview.expiresAt - Date.now()));
 
       return () => {
@@ -42,14 +55,7 @@ export function JokoNoteSlot({ pageKey, placementKey, className = '' }: JokoNote
       };
     }
 
-    getPublishedJokoNote(pageKey, placementKey)
-      .then((value) => {
-        if (active) setNote(value);
-      })
-      .catch((error) => {
-        console.error(`[JOKO Notes] Could not load ${pageKey}/${placementKey}`, error);
-        if (active) setNote(null);
-      });
+    loadPublished();
 
     return () => {
       active = false;
