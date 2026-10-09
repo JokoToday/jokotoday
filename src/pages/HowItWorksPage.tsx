@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ShoppingCart, Calendar, MapPin, CreditCard, Clock, Navigation } from 'lucide-react';
 import { CutoffTimesDisplay } from '../components/CutoffTimesDisplay';
+import { JokoNoteSlot } from '../components/JokoNoteSlot';
 import { useLanguage } from '../context/LanguageContext';
 import { CMSPickupLocation, getPickupLocations } from '../lib/cmsService';
 import { getPickupDayLabel, getPickupDays, PickupDay } from '../lib/availabilityService';
@@ -76,6 +77,12 @@ export default function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
             {t.howItWorks.subtitle}
           </p>
         </div>
+
+        <JokoNoteSlot
+          pageKey="how-it-works"
+          placementKey="intro"
+          className="mx-auto mb-12 max-w-sm"
+        />
 
         <div className="grid md:grid-cols-2 gap-8 mb-16">
           {steps.map((step, index) => {
