@@ -47,7 +47,31 @@ alter table public.site_joko_notes
 
 alter table public.site_joko_notes
   add constraint site_joko_notes_bubble_image_required_check
-    check (accent_type <> 'bubble' or bubble_image_url is not null);
+    check (accent_type <> 'bubble' or bubble_image_url is not null),
+  add constraint site_joko_notes_bubble_alt_required_check
+    check (accent_type <> 'bubble' or (bubble_alt is not null and btrim(bubble_alt) <> '')),
+  add constraint site_joko_notes_inactive_accent_fields_check
+    check (
+      (
+        accent_type = 'note'
+        and bubble_image_url is null
+        and bubble_alt is null
+      )
+      or
+      (
+        accent_type = 'bubble'
+        and title_en is null
+        and title_th is null
+        and title_zh is null
+        and body_en is null
+        and body_th is null
+        and body_zh is null
+        and image_url is null
+        and image_alt_en is null
+        and image_alt_th is null
+        and image_alt_zh is null
+      )
+    );
 
 comment on column public.site_joko_notes.accent_type is
   'Editorial accent type. Exactly one row per page means a page can show either a JOKO Note or a brand bubble, never both.';
