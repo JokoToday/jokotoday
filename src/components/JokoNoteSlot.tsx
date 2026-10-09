@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { getPublishedJokoNote, localizeJokoNote, type JokoNote as JokoNoteRecord } from '../lib/jokoNotesService';
+import { getActivePageAccentPreview } from '../lib/pageAccentPreview';
 import { JokoNote } from './JokoNote';
 
 interface JokoNoteSlotProps {
@@ -15,6 +16,24 @@ export function JokoNoteSlot({ pageKey, placementKey, className = '' }: JokoNote
 
   useEffect(() => {
     let active = true;
+    const preview = getActivePageAccentPreview(pageKey);
+
+    if (preview) {
+      const draft = preview.draft;
+      if (draft.accent_type === 'note' && draft.placement_key === placementKey) {
+        setNote({
+          id: `preview-${preview.token}`,
+          created_at: '',
+          updated_at: '',
+          ...draft,
+        });
+      } else {
+        setNote(null);
+      }
+      return () => {
+        active = false;
+      };
+    }
 
     getPublishedJokoNote(pageKey, placementKey)
       .then((value) => {
