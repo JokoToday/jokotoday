@@ -135,8 +135,8 @@ export const JOKO_BUBBLE_PAGES: readonly JokoNotePageDefinition[] = [
     placements: [
       {
         placementKey: 'before-about',
-        label: 'Before About JOKO',
-        description: 'Between “Not Bread. Still Good.” and the About JOKO section, well below the Hero notebook note.',
+        label: 'About header',
+        description: 'Inside the About JOKO section header, alongside the section actions and well below the Hero notebook note.',
       },
     ],
   },
