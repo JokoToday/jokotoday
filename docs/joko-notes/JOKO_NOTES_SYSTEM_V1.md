@@ -111,7 +111,7 @@ Bubble artwork is stored separately from JOKO Note imagery so switching accent t
 
 ### Homepage — Bubble
 
-- **Before About JOKO** — between “Not Bread. Still Good.” and the About JOKO section, well below the Hero.
+- **About header** — inside the About JOKO section header, aligned with the section actions and well below the Hero.
 
 The Homepage Hero notebook note remains managed in Homepage Builder. No second Page Accent row is allowed for Home in v1.
 
@@ -173,7 +173,7 @@ New bubble safe zones should only be added after reviewing the actual responsive
 
 The Homepage Hero notebook note remains Builder-owned. Page Accents v1 does not rewrite Homepage Builder revisions.
 
-The long Homepage is the intentional exception to the ordinary-page either/or presentation rule: one Hero notebook note may coexist with one lower-page bubble. The lower bubble is still controlled through Page Accents and is limited to the registered **Before About JOKO** safe zone.
+The long Homepage is the intentional exception to the ordinary-page either/or presentation rule: one Hero notebook note may coexist with one lower-page bubble. The lower bubble is still controlled through Page Accents and is limited to the registered **About header** safe zone.
 
 ## Editorial test
 

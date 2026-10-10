@@ -28,6 +28,7 @@ import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderSer
 import { supabase } from '../lib/supabase';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 import { createOrGetPaymentTransaction, getPaymentSettings } from '../lib/paymentService';
+import { getPaymentProvider, type PaymentProviderMode } from '../lib/paymentProviders';
 
 interface CheckoutPageV2Props {
   onNavigate: (page: string) => void;
@@ -135,6 +136,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [paymentProviderMode, setPaymentProviderMode] = useState<PaymentProviderMode>('promptpay_legacy');
   const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [checkoutResumeResolved, setCheckoutResumeResolved] = useState(false);
@@ -146,6 +148,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       .then((settings) => {
         if (!cancelledLoad) {
           setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+          setPaymentProviderMode(settings.payment_qr_mode);
           setPaymentWindowMinutes(settings.payment_window_minutes);
         }
       })
@@ -386,11 +389,29 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     return item.product_name || '';
   };
 
+  const activePaymentProvider = getPaymentProvider(paymentProviderMode);
+  const paymentMinimumThb = onlinePaymentEnabled ? activePaymentProvider.minimumAmountThb : undefined;
+  const paymentMinimumBlocked = typeof paymentMinimumThb === 'number'
+    && totalPrice > 0
+    && totalPrice < paymentMinimumThb;
+  const paymentMinimumMessage = paymentProviderMode === 'stripe_promptpay'
+    ? (language === 'th'
+      ? 'Stripe PromptPay กำหนดยอดชำระขั้นต่ำ ฿10 กรุณาเพิ่มสินค้าอีกเล็กน้อยหรือเลือกวิธีชำระเงินอื่น'
+      : language === 'zh'
+        ? 'Stripe PromptPay 的最低付款金额为 ฿10。请再添加商品，或选择其他付款方式。'
+        : 'Stripe PromptPay requires a minimum payment of ฿10. Please add another item or choose another payment method.')
+    : '';
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitError('');
     if (items.some((item) => item.product.product_origin === 'maker') && !onlinePaymentEnabled) {
       setSubmitError(language === 'th' ? 'สินค้า Makers ต้องชำระเงินออนไลน์' : language === 'zh' ? '制作人商品需要在线付款。' : 'Makers products require verified online payment. Ordering is currently unavailable.');
+      return;
+    }
+
+    if (paymentMinimumBlocked) {
+      setSubmitError(paymentMinimumMessage);
       return;
     }
 
@@ -996,6 +1017,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 className="w-full resize-none rounded-xl border border-[#55766F]/20 bg-white/[.72] px-3 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/[.16]"
               />
             </div>
+
+            {paymentMinimumBlocked && !submitError && (
+              <div className="rounded-lg border border-[#C76624]/25 bg-[#FFF4DF] p-4 text-sm font-medium text-[#8D451C]">
+                {paymentMinimumMessage}
+              </div>
+            )}
 
             {submitError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{submitError}</div>
