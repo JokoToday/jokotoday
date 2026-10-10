@@ -566,11 +566,24 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const { data: paymentTransaction } = await supabase
-    .from("payment_transactions")
-    .select("payment_mode")
-    .eq("order_id", order.id)
-    .maybeSingle();
+  const [{ data: paymentTransaction }, { data: paymentSetting }] = await Promise.all([
+    supabase
+      .from("payment_transactions")
+      .select("payment_mode")
+      .eq("order_id", order.id)
+      .maybeSingle(),
+    supabase
+      .from("payment_settings")
+      .select("online_promptpay_enabled, payment_qr_mode")
+      .eq("id", true)
+      .maybeSingle(),
+  ]);
+
+  const paymentMode = typeof paymentTransaction?.payment_mode === "string"
+    ? paymentTransaction.payment_mode
+    : typeof paymentSetting?.payment_qr_mode === "string"
+      ? paymentSetting.payment_qr_mode
+      : null;
 
   const items: OrderItem[] = Array.isArray(order.order_items) ? order.order_items : [];
   const email = buildEmail(
@@ -579,8 +592,8 @@ Deno.serve(async (req: Request) => {
     location,
     pickupDay,
     lang,
-    Boolean(paymentTransaction),
-    typeof paymentTransaction?.payment_mode === "string" ? paymentTransaction.payment_mode : null,
+    Boolean(paymentSetting?.online_promptpay_enabled),
+    paymentMode,
   );
 
   const resendKey = Deno.env.get("RESEND_API_KEY");
