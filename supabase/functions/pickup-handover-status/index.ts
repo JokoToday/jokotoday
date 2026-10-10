@@ -62,14 +62,20 @@ Deno.serve(async (req: Request) => {
     if (orderError) throw orderError;
     if (!order) return json({ error: "Order not found" }, 404);
 
-    let pickupLocation: string | null = null;
+    let pickupLocation: { en: string; th: string; zh: string } | null = null;
     if (order.pickup_location_id) {
       const { data: location } = await service
         .from("cms_pickup_locations")
         .select("name_en, name_th, name_zh")
         .eq("id", order.pickup_location_id)
         .maybeSingle();
-      pickupLocation = location?.name_en || null;
+      pickupLocation = location
+        ? {
+          en: location.name_en || "",
+          th: location.name_th || location.name_en || "",
+          zh: location.name_zh || location.name_en || "",
+        }
+        : null;
     }
 
     const state = ["confirmed", "bypassed"].includes(handoff.status) || ["picked_up", "completed"].includes(order.status)
@@ -88,7 +94,9 @@ Deno.serve(async (req: Request) => {
         items: Array.isArray(order.order_items) ? order.order_items : [],
         totalAmount: Number(order.total_amount || 0),
         loyaltyDiscountAmount: Number(order.loyalty_discount_amount || 0),
-        amountPaid: Number(order.amount_paid || 0),
+        amountPaid: order.amount_paid == null
+          ? Math.max(0, Number(order.total_amount || 0) - Number(order.loyalty_discount_amount || 0))
+          : Number(order.amount_paid),
         paymentStatus: order.payment_status,
         paymentMethod: order.payment_method,
         status: order.status,
