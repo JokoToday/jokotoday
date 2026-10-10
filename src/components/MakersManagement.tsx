@@ -331,16 +331,6 @@ export function MakersManagement() {
               sourcing/refund process are validated. Unpublishing a maker
               requires disabling orders first.
             </p>
-            <button
-              type="button"
-              aria-expanded={previewOpen}
-              aria-controls="maker-admin-preview"
-              onClick={() => setPreviewOpen(!previewOpen)}
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#55766F] bg-white px-5 py-3 font-semibold text-[#304B45]"
-            >
-              <Eye className="h-5 w-5" aria-hidden="true" />{" "}
-              {previewOpen ? "Hide preview" : "Preview maker"}
-            </button>
             {id && draft.is_published && (
               <a
                 href={`/makers/${encodeURIComponent(draft.slug)}`}
@@ -351,12 +341,24 @@ export function MakersManagement() {
                 Open published profile
               </a>
             )}
+            <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              aria-expanded={previewOpen}
+              aria-controls="maker-admin-preview"
+              onClick={() => setPreviewOpen(!previewOpen)}
+              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#55766F] bg-white px-5 py-3 font-semibold text-[#304B45]"
+            >
+              <Eye className="h-5 w-5" aria-hidden="true" />{" "}
+              {previewOpen ? "Hide preview" : "Preview maker"}
+            </button>
             <button
               type="submit"
               className="joko-admin-primary-button px-6 py-3"
             >
               {busy ? "Saving…" : "Save maker"}
             </button>
+            </div>
           </fieldset>
         </form>
       </div>
