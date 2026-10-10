@@ -81,19 +81,42 @@ export function OrderDetailModal({
     return item.product_name || product?.name_en || '—';
   };
 
-  const getStatusConfig = (status: string) => {
+  const getStatusConfig = (status: string, paymentStatus: string) => {
+    if (status === 'cancelled') {
+      return {
+        label: getLabel('orders_page.status_cancelled', language, 'Cancelled'),
+        color: 'bg-red-100 text-red-800 border-red-200',
+        icon: <XCircle className="w-3.5 h-3.5" />,
+      };
+    }
+
+    if (status === 'completed') {
+      return {
+        label: language === 'th' ? 'เสร็จสิ้น' : language === 'zh' ? '已完成' : 'COMPLETED',
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: <CheckCircle className="w-3.5 h-3.5" />,
+      };
+    }
+
+    if (paymentStatus === 'paid') {
+      return {
+        label: language === 'th' ? 'ชำระเงินแล้ว' : language === 'zh' ? '已付款' : 'PAID',
+        color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        icon: <CheckCircle className="w-3.5 h-3.5" />,
+      };
+    }
+
     const configs: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
       pending:   { label: getLabel('orders_page.status_pending',   language, 'Pending'),          color: 'bg-amber-100 text-amber-800 border-amber-200',   icon: <Clock       className="w-3.5 h-3.5" /> },
       confirmed: { label: getLabel('orders_page.status_confirmed', language, 'Confirmed'),        color: 'bg-blue-100 text-blue-800 border-blue-200',       icon: <CheckCircle className="w-3.5 h-3.5" /> },
       ready:     { label: getLabel('orders_page.status_ready',     language, 'Ready for Pickup'), color: 'bg-green-100 text-green-800 border-green-200',    icon: <Package     className="w-3.5 h-3.5" /> },
       picked_up: { label: getLabel('orders_page.status_picked_up', language, 'Picked Up'),       color: 'bg-gray-100 text-gray-700 border-gray-200',       icon: <CheckCircle className="w-3.5 h-3.5" /> },
-      cancelled: { label: getLabel('orders_page.status_cancelled', language, 'Cancelled'),       color: 'bg-red-100 text-red-800 border-red-200',          icon: <XCircle     className="w-3.5 h-3.5" /> },
-      completed: { label: 'Completed',                                                            color: 'bg-gray-100 text-gray-700 border-gray-200',       icon: <CheckCircle className="w-3.5 h-3.5" /> },
+
     };
     return configs[status] || { label: status, color: 'bg-gray-100 text-gray-700 border-gray-200', icon: null };
   };
 
-  const statusConfig = getStatusConfig(order.status);
+  const statusConfig = getStatusConfig(order.status, order.payment_status);
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const subtotal = items.reduce((sum, i) => sum + i.price_at_order * i.quantity, 0);
   const grossTotal = Number(isOnline ? order.total_amount : (order.walk_in_amount ?? order.total_amount)) || 0;
@@ -139,12 +162,12 @@ export function OrderDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full sm:max-w-2xl bg-white sm:rounded-2xl shadow-2xl flex flex-col max-h-[95dvh] sm:max-h-[88vh] overflow-hidden">
+      <div className="relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-2xl sm:rounded-2xl">
         <div
-          className="flex items-center justify-between px-5 py-4 border-b border-stone-100"
+          className="flex shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4"
           style={{ background: 'linear-gradient(135deg, #f6f1e7 0%, #fdf8f0 100%)' }}
         >
           <div>
@@ -182,7 +205,7 @@ export function OrderDetailModal({
         </div>
 
         {isOnline && (
-          <div className="grid grid-cols-2 gap-px bg-stone-100 border-b border-stone-100">
+          <div className="grid shrink-0 grid-cols-2 gap-px border-b border-stone-100 bg-stone-100">
             {[
               {
                 label: language === 'zh' ? '取货日' : language === 'th' ? 'วันรับสินค้า' : 'Pickup Day',
@@ -229,7 +252,7 @@ export function OrderDetailModal({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
             {language === 'zh' ? '商品明细' : language === 'th' ? 'รายการสินค้า' : 'Items'}
           </p>
@@ -291,7 +314,7 @@ export function OrderDetailModal({
           )}
         </div>
 
-        <div className="border-t border-stone-100 px-5 py-4 bg-stone-50/60">
+        <div className="shrink-0 border-t border-stone-100 bg-stone-50/60 px-5 py-4">
           {items.length > 0 && (
             <div className="space-y-1.5 mb-3">
               <div className="flex items-center justify-between text-sm text-stone-500">

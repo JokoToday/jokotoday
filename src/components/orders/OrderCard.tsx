@@ -32,8 +32,9 @@ function formatPickupDate(dateString: string, language: 'en' | 'th' | 'zh'): str
   );
 }
 
-function getTerminalStatus(
+function getCustomerStatus(
   status: string,
+  paymentStatus: string,
   language: 'en' | 'th' | 'zh',
   cancellationReasonCode?: string | null
 ): { label: string; style: React.CSSProperties } | null {
@@ -47,17 +48,24 @@ function getTerminalStatus(
     };
   }
 
+  if (status === 'completed') {
+    return {
+      label: language === 'th' ? 'เสร็จสิ้น' : language === 'zh' ? '已完成' : 'COMPLETED',
+      style: { background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' },
+    };
+  }
+
+  if (paymentStatus === 'paid') {
+    return {
+      label: language === 'th' ? 'ชำระเงินแล้ว' : language === 'zh' ? '已付款' : 'PAID',
+      style: { background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' },
+    };
+  }
+
   if (status === 'picked_up') {
     return {
       label: language === 'th' ? 'รับสินค้าแล้ว' : language === 'zh' ? '已取货' : 'Picked Up',
       style: { background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' },
-    };
-  }
-
-  if (status === 'completed') {
-    return {
-      label: language === 'th' ? 'เสร็จสิ้น' : language === 'zh' ? '已完成' : 'Completed',
-      style: { background: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' },
     };
   }
 
@@ -67,7 +75,12 @@ function getTerminalStatus(
 export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps) {
   const isOnline = order.purchase_type === 'online' || !order.purchase_type;
   const total = isOnline ? order.total_amount : (order.walk_in_amount || order.total_amount);
-  const terminalStatus = getTerminalStatus(order.status, language, order.cancellation_reason_code);
+  const customerStatus = getCustomerStatus(
+    order.status,
+    order.payment_status,
+    language,
+    order.cancellation_reason_code,
+  );
   const unresolvedPastPickup = isOnline
     && ['pending', 'confirmed', 'ready'].includes(order.status)
     && isPickupDatePast(order.pickup_date);
@@ -125,12 +138,12 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                   ? getLabel('my_orders_page.online_order', language, 'Online Order')
                   : getLabel('my_orders_page.in_store_order', language, 'In-Store Order')}
               </span>
-              {terminalStatus && (
+              {customerStatus && (
                 <span
                   className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"
-                  style={terminalStatus.style}
+                  style={customerStatus.style}
                 >
-                  {terminalStatus.label}
+                  {customerStatus.label}
                 </span>
               )}
               {unresolvedPastPickup && (
