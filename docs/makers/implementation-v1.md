@@ -49,3 +49,7 @@ The browser test accepts `JOKO_TEST_PLAYWRIGHT_MODULE` (absolute path to `playwr
 ## Recovery
 
 Disable ordering on a maker to stop new sales while preserving stories and historical order names. Disable ordering before unpublishing. Roll back the frontend revision if needed; retain the additive schema and snapshot trigger while investigating. Do not drop maker data or remove the trigger from live orders without a separately reviewed recovery migration.
+
+## Snapshot review correction
+
+The follow-up migration `20261010102901_makers_snapshot_immutability_fix.sql` checks existing Makers snapshots before permitting legacy NULL/non-array JSON. It replaces only the private trigger function and retains its permissions and trigger binding. Regression tests cover SQL NULL, JSON null, object, number and string replacements, preserved historical names, and non-Makers legacy compatibility. The PostgreSQL suite now runs in Frontend Quality CI.

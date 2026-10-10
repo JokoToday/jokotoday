@@ -45,6 +45,15 @@ await sql(
     "utf8",
   ),
 );
+await sql(
+  await readFile(
+    new URL(
+      "../../supabase/migrations/20261010102901_makers_snapshot_immutability_fix.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 // Exercise the repository's real dated order RPC against minimal table fixtures.
 const baseline = await readFile(
   new URL(
@@ -152,6 +161,30 @@ await sql(
 await assert.rejects(
   sql(`UPDATE orders SET order_items = '[]' WHERE id = '${result.id}'`),
   /immutable/,
+);
+// A malformed replacement must never erase an existing historical snapshot.
+for (const replacement of [
+  "NULL",
+  "'null'::jsonb",
+  "'{}'::jsonb",
+  "'42'::jsonb",
+  "'\"erased\"'::jsonb",
+]) {
+  await assert.rejects(
+    sql(
+      `UPDATE orders SET order_items = ${replacement} WHERE id = '${result.id}'`,
+    ),
+    /immutable/,
+  );
+  assert.equal(
+    (await rows(`SELECT order_items FROM orders WHERE id = '${result.id}'`))[0]
+      .order_items[1].maker_name_en,
+    "Original maker",
+  );
+}
+// Legacy non-Makers rows retain their existing NULL/non-array compatibility.
+await sql(
+  `INSERT INTO orders (id, order_items, status) VALUES ('${id(90)}', NULL, 'pending'); UPDATE orders SET order_items = '{}'::jsonb WHERE id = '${id(90)}'; UPDATE orders SET order_items = '[]'::jsonb WHERE id = '${id(90)}'; DELETE FROM orders WHERE id = '${id(90)}';`,
 );
 await sql(`UPDATE orders SET status = 'cancelled' WHERE id = '${result.id}'`);
 await assert.rejects(
