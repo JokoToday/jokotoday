@@ -328,21 +328,71 @@ try {
   );
   await mobile.context.close();
   console.log("PASS mobile profile width and Makers navigation");
+  maker.is_published = false;
+  products[2].is_active = false;
   const admin = await setup({ admin: true });
   await admin.page.goto(`${base}/admin/makers`);
   await expectVisible(admin.page.getByRole("button", { name: "Save maker" }));
   await admin.page.getByLabel("Slug", { exact: true }).fill("new-shop");
   await admin.page.locator("textarea").nth(0).fill("New Shop");
   await admin.page.locator("textarea").nth(4).fill("ร้านใหม่");
+  const chooserPromise = admin.page.waitForEvent("filechooser");
+  await admin.page
+    .getByRole("button", { name: "Upload image", exact: true })
+    .click();
+  await chooserPromise;
+  const savedBeforePreview = savedMaker;
+  await admin.page
+    .getByRole("button", { name: "Preview maker", exact: true })
+    .click();
+  const preview = admin.page.getByRole("region", {
+    name: "Maker draft preview",
+  });
+  await expectVisible(
+    preview.getByRole("heading", { name: "New Shop", exact: true }),
+  );
+  await admin.page.locator("textarea").nth(0).fill("Unsaved Shop");
+  await expectVisible(
+    preview.getByRole("heading", { name: "Unsaved Shop", exact: true }),
+  );
+  assert.equal(savedMaker, savedBeforePreview);
+  await admin.page.getByLabel("Preview language").selectOption("th");
+  await expectVisible(
+    preview.getByRole("heading", { name: "ร้านใหม่", exact: true }),
+  );
+  await admin.page.getByLabel("Preview language").selectOption("en");
+  await admin.page.locator("textarea").nth(0).fill("New Shop");
+  await admin.page
+    .getByRole("button", { name: "Hide preview", exact: true })
+    .click();
   await admin.page.getByRole("button", { name: "Save maker" }).click();
   await expectVisible(admin.page.getByText("Maker saved.", { exact: true }));
   assert.equal(savedMaker.slug, "new-shop");
   assert.equal(savedMaker.is_ordering_enabled, false);
   await admin.page.getByRole("button", { name: /Morning Makers/ }).click();
   await admin.page.getByLabel("Location", { exact: true }).fill("Mae Rim");
+  await admin.page
+    .getByRole("button", { name: "Preview maker", exact: true })
+    .click();
+  await expectVisible(preview.getByText("Selected Cake", { exact: true }));
+  await expectVisible(preview.getByText("Mae Rim", { exact: true }));
+  assert.equal(
+    await preview.getByRole("link", { name: /Selected Cake/ }).count(),
+    0,
+  );
+  assert.equal(
+    await admin.page.getByLabel("Publish maker profile").isChecked(),
+    maker.is_published,
+  );
+  assert.equal(
+    await admin.page.getByLabel(/Enable customer orders/).isChecked(),
+    false,
+  );
+
   await admin.page.getByRole("button", { name: "Save maker" }).click();
   await expectVisible(admin.page.getByText("Maker saved.", { exact: true }));
   assert.equal(savedMaker.location, "Mae Rim");
+  if (process.env.JOKO_TEST_SCREENSHOTS) await admin.page.screenshot({ path: `${process.env.JOKO_TEST_SCREENSHOTS}/makers-admin-preview.png`, fullPage: true });
   await admin.page.goto(`${base}/admin`);
   await expectVisible(admin.page.getByRole("button", { name: /^House Bread/ }));
   await admin.page.getByRole("button", { name: /^House Bread/ }).click();
@@ -371,6 +421,8 @@ try {
   console.log(
     "PASS Admin maker create/edit/save, preview-only defaults and product assignment validation",
   );
+  maker.is_published = true;
+  products[2].is_active = true;
   maker.is_ordering_enabled = true;
   const checkout = await setup({ cart: true });
   await checkout.page.goto(`${base}/checkout`);
