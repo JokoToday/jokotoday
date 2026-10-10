@@ -16,8 +16,11 @@ export function MakerAttribution({ maker }: { maker?: MakerIdentity | null }) {
   );
 }
 
-export function SourcingDisclosure() {
-  const { language } = useLanguage();
+export function SourcingDisclosure({
+  previewLanguage,
+}: { previewLanguage?: "en" | "th" | "zh" } = {}) {
+  const { language: currentLanguage } = useLanguage();
+  const language = previewLanguage || currentLanguage;
   const text = {
     en: "JOKO purchases these products from independent makers or retail shops, sets its own selling prices and prepares your pickup. Your order is confirmed after payment is verified. If an item cannot be sourced, we will contact you and refund the affected item. Substitutions require your agreement.",
     th: "JOKO จัดซื้อสินค้าจากผู้ผลิตหรือร้านค้าปลีก กำหนดราคาขายของเราเอง และเตรียมสินค้าให้คุณรับ คำสั่งซื้อจะยืนยันเมื่อชำระเงินได้รับการตรวจสอบแล้ว หากจัดหาสินค้าไม่ได้ เราจะติดต่อคุณและคืนเงินสำหรับสินค้านั้น การเปลี่ยนสินค้าอื่นต้องได้รับความยินยอมจากคุณ",

@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getMakers,
   saveMaker,
   type Maker,
   type MakerDraft,
 } from "../lib/makersService";
+import { Upload, Eye } from "lucide-react";
+import { MakerProfile } from "./MakerProfile";
+import { supabase } from "../lib/supabase";
+import type { CMSProduct } from "../lib/cmsService";
 import { uploadGalleryImage } from "../lib/mediaService";
 
 const emptyDraft = (): MakerDraft => ({
@@ -37,6 +41,36 @@ export function MakersManagement() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const uploadInput = useRef<HTMLInputElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLanguage, setPreviewLanguage] = useState<"en" | "th" | "zh">(
+    "en",
+  );
+  const [previewProducts, setPreviewProducts] = useState<CMSProduct[]>([]);
+  const [previewError, setPreviewError] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setPreviewProducts([]);
+    setPreviewError("");
+    setPreviewLoading(false);
+    if (!previewOpen || !id) return;
+    setPreviewLoading(true);
+    void supabase
+      .from("cms_products")
+      .select("*")
+      .eq("maker_id", id)
+      .order("sort_order")
+      .then(({ data, error: loadError }) => {
+        if (!active) return;
+        if (loadError) setPreviewError("Could not load assigned products.");
+        else setPreviewProducts((data || []) as CMSProduct[]);
+        setPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id, previewOpen]);
   const load = async () => {
     try {
       setMakers(await getMakers(true));
@@ -227,15 +261,29 @@ export function MakersManagement() {
                 className="mt-1 w-full rounded-xl border p-3"
               />
             </label>
-            <label className="block text-sm">
-              Upload image
+            <div className="rounded-2xl border-2 border-[#55766F]/30 bg-[#D5E8E2]/40 p-4">
               <input
+                ref={uploadInput}
                 type="file"
+                aria-label="Choose maker image"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => void upload(event.target.files?.[0])}
-                className="mt-2 block"
+                className="hidden"
+                onChange={(event) => {
+                  void upload(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
               />
-            </label>
+              <button
+                type="button"
+                onClick={() => uploadInput.current?.click()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#304B45] px-5 py-3 font-semibold text-white shadow-sm hover:bg-[#243A35] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#304B45]"
+              >
+                <Upload className="h-5 w-5" aria-hidden="true" /> Upload image
+              </button>
+              <p className="mt-2 text-sm text-[#304B45]">
+                Choose a JPG, PNG or WebP for this maker’s profile.
+              </p>
+            </div>
             {draft.hero_image && (
               <img
                 src={draft.hero_image}
@@ -283,6 +331,16 @@ export function MakersManagement() {
               sourcing/refund process are validated. Unpublishing a maker
               requires disabling orders first.
             </p>
+            <button
+              type="button"
+              aria-expanded={previewOpen}
+              aria-controls="maker-admin-preview"
+              onClick={() => setPreviewOpen(!previewOpen)}
+              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#55766F] bg-white px-5 py-3 font-semibold text-[#304B45]"
+            >
+              <Eye className="h-5 w-5" aria-hidden="true" />{" "}
+              {previewOpen ? "Hide preview" : "Preview maker"}
+            </button>
             {id && draft.is_published && (
               <a
                 href={`/makers/${encodeURIComponent(draft.slug)}`}
@@ -302,6 +360,54 @@ export function MakersManagement() {
           </fieldset>
         </form>
       </div>
+      {previewOpen && (
+        <section
+          id="maker-admin-preview"
+          aria-label="Maker draft preview"
+          className="mt-8 rounded-3xl border-2 border-[#55766F]/30 bg-[#FFF9EE] p-4 sm:p-8"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold">Draft preview</h2>
+              <p className="mt-2 text-sm">
+                Shows your current edits, including unsaved changes. Assigned
+                products may be inactive. This preview does not publish or
+                enable orders.
+              </p>
+            </div>
+            <label className="text-sm">
+              Preview language{" "}
+              <select
+                value={previewLanguage}
+                onChange={(event) =>
+                  setPreviewLanguage(event.target.value as "en" | "th" | "zh")
+                }
+                className="rounded-lg border p-2"
+              >
+                <option value="en">EN</option>
+                <option value="th">TH</option>
+                <option value="zh">ZH</option>
+              </select>
+            </label>
+          </div>
+          {previewError && (
+            <p role="alert" className="mt-4 text-red-700">
+              {previewError}
+            </p>
+          )}
+          {previewLoading && (
+            <p role="status" className="mt-4">
+              Loading assigned products…
+            </p>
+          )}
+          <MakerProfile
+            maker={{ ...draft, id: id || "unsaved-maker" }}
+            products={previewProducts}
+            preview
+            previewLanguage={previewLanguage}
+          />
+        </section>
+      )}
     </section>
   );
 }
