@@ -1,3 +1,4 @@
+import { supabase } from './supabase';
 export type LINEFriendshipStatus = 'friend' | 'not_friend' | 'unknown';
 
 export const LINE_OFFICIAL_ACCOUNT_ID = '@jokotoday';
@@ -52,8 +53,17 @@ export async function refreshLINEFriendshipStatus(
   if (!providerToken) return getCachedLINEFriendshipStatus(userId);
 
   try {
-    // The LINE provider token is used only for this direct LINE API request.
-    // Never persist it in localStorage/sessionStorage or JOKO tables.
+    // The server verifies token channel, linked identity and OA status. It does
+    // not persist the token. Missing rollout support falls back to the existing
+    // browser-only status, which never grants server messaging eligibility.
+    const { data, error } = await supabase.functions.invoke('sync-line-oa-friendship', {
+      body: { provider_token: providerToken }, signal,
+    });
+    if (!error && (data?.friendship === 'friend' || data?.friendship === 'not_friend')) {
+      cacheLINEFriendshipStatus(userId, data.friendship);
+      return data.friendship;
+    }
+    // Never persist the provider token in browser storage or JOKO tables.
     const response = await fetch(FRIENDSHIP_ENDPOINT, {
       method: 'GET',
       headers: { Authorization: `Bearer ${providerToken}` },
