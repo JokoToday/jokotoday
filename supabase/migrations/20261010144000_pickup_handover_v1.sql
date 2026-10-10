@@ -30,21 +30,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS pickup_handover_sessions_one_active_per_order
 
 ALTER TABLE public.pickup_handover_sessions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS pickup_handover_staff_read ON public.pickup_handover_sessions;
-CREATE POLICY pickup_handover_staff_read
-ON public.pickup_handover_sessions
-FOR SELECT TO authenticated
-USING (
-  EXISTS (
-    SELECT 1
-    FROM public.user_profiles up
-    WHERE up.id = auth.uid()
-      AND up.role IN ('staff','admin')
-  )
-);
-
-REVOKE INSERT, UPDATE, DELETE ON public.pickup_handover_sessions FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON public.pickup_handover_sessions TO authenticated;
+REVOKE ALL ON public.pickup_handover_sessions FROM PUBLIC, anon, authenticated;
 
 COMMENT ON TABLE public.pickup_handover_sessions IS
 'Short-lived pickup handover sessions. Staff initiates handover; customer receipt confirmation or an audited staff bypass completes pickup. Plain bearer tokens are never stored.';
@@ -61,6 +47,7 @@ DECLARE
   v_role text := COALESCE(auth.role(), '');
   v_handoff public.pickup_handover_sessions%ROWTYPE;
   v_order public.orders%ROWTYPE;
+  v_customer_id uuid;
   v_existing_earn_at timestamptz;
   v_bypass_reason text := NULLIF(btrim(COALESCE(p_bypass_reason, '')), '');
 BEGIN
@@ -101,6 +88,25 @@ BEGIN
     RAISE EXCEPTION 'Pickup handover has expired';
   END IF;
 
+  SELECT o.customer_id INTO v_customer_id
+  FROM public.orders o
+  WHERE o.id = v_handoff.order_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_customer_id IS NOT NULL THEN
+    PERFORM 1
+    FROM public.customers c
+    WHERE c.id = v_customer_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Customer record not found';
+    END IF;
+  END IF;
+
   SELECT * INTO v_order
   FROM public.orders
   WHERE id = v_handoff.order_id
@@ -108,6 +114,10 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF v_order.customer_id IS DISTINCT FROM v_customer_id THEN
+    RAISE EXCEPTION 'Order customer changed while confirming pickup; retry';
   END IF;
 
   IF v_order.status = 'cancelled' THEN
