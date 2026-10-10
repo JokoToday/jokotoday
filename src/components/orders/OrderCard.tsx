@@ -1,3 +1,4 @@
+import { approximatePickupLabel, pickupWindowLabel } from '../../lib/pickupWindows';
 import React from 'react';
 import { ChevronDown, ShoppingBag } from 'lucide-react';
 import { Order } from './OrderTypes';
@@ -95,6 +96,7 @@ export function OrderCard({ order, language, getLabel, onClick }: OrderCardProps
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-0.5">
                   {getLabel('my_orders_page.order_number', language, 'Order')} #{order.order_number}
                 </p>
+                {order.pickup_slot_start && <p className="text-xs font-semibold text-[#55766F]">{approximatePickupLabel(language)}: {pickupWindowLabel(order.pickup_slot_start, order.pickup_slot_end)}</p>}
                 <p className="text-xs text-stone-500">{formatFullDate(order.created_at, language)}</p>
                 {isOnline && order.pickup_date && (
                   <p className="text-xs font-semibold mt-1" style={{ color: unresolvedPastPickup ? '#b45309' : '#9a7b2f' }}>

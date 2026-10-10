@@ -1,3 +1,4 @@
+import type { PickupLocationSnapshot } from '../../lib/pickupWindows';
 export interface OrderItem {
   maker_id?: string | null;
   maker_name_en?: string | null;
@@ -22,6 +23,9 @@ export interface Order {
   pickup_day: string;
   pickup_date: string;
   pickup_date_id?: string | null;
+  pickup_slot_start?: string | null;
+  pickup_slot_end?: string | null;
+  pickup_location_snapshot?: PickupLocationSnapshot | null;
   pickup_location_id: string | null;
   status: string;
   payment_status: string;

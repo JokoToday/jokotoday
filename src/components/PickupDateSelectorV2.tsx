@@ -1,3 +1,4 @@
+import { approximatePickupLabel, generatePickupWindows } from '../lib/pickupWindows';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -28,10 +29,14 @@ export interface PickupSelectionV2 {
   pickupLocationId: string;
   scheduleId: string;
   scheduleKey: string;
+  pickupSlotStart?: string | null;
+  pickupSlotEnd?: string | null;
+  pickupWindowRevision?: number | null;
 }
 
 interface PickupDateSelectorV2Props {
   requirements: CartAvailabilityRequirement[];
+  windowsRequired?: boolean;
   value: PickupSelectionV2 | null;
   onChange: (selection: PickupSelectionV2 | null) => void;
   onQuantityChange?: (productId: string, quantity: number) => void;
@@ -82,6 +87,7 @@ function localizedLocationName(location: PickupAvailabilityLocation, language: '
 
 export function PickupDateSelectorV2({
   requirements,
+  windowsRequired = false,
   value,
   onChange,
   onQuantityChange,
@@ -91,6 +97,7 @@ export function PickupDateSelectorV2({
   const [rows, setRows] = useState<Awaited<ReturnType<typeof getCustomerPickupAvailabilityV2>>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pendingSlotStart, setPendingSlotStart] = useState('');
   const [activeDateId, setActiveDateId] = useState<string | null>(value?.pickupDateId || null);
   const [pendingLocationId, setPendingLocationId] = useState<string | null>(value?.pickupLocationId || null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthStart(new Date()));
@@ -182,26 +189,41 @@ export function PickupDateSelectorV2({
   }, [productIdsKey]);
 
   useEffect(() => {
+    if (loading) return;
     if (value) {
       const selectedDate = commonDateById.get(value.pickupDateId);
-      const locationStillActive = selectedDate?.locations.some((location) => location.id === value.pickupLocationId);
+      const currentLocation = selectedDate?.locations.find((location) => location.id === value.pickupLocationId);
+      const locationStillActive = Boolean(currentLocation);
+      if (!loading && value.pickupSlotStart && currentLocation?.pickup_window_revision !== value.pickupWindowRevision) {
+        onChange(null);
+        return;
+      }
       if (!selectedDate || !locationStillActive) {
         onChange(null);
         return;
       }
       if (activeDateId === null) {
         setActiveDateId(value.pickupDateId);
-        setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
+        setVisibleMonth((current) => {
+          const next = monthStart(utcDateFromKey(value.pickupDate));
+          return current.getTime() === next.getTime() ? current : next;
+        });
       } else if (activeDateId === value.pickupDateId) {
-        setVisibleMonth(monthStart(utcDateFromKey(value.pickupDate)));
+        setVisibleMonth((current) => {
+          const next = monthStart(utcDateFromKey(value.pickupDate));
+          return current.getTime() === next.getTime() ? current : next;
+        });
       }
       return;
     }
 
     if (calendarDates.length > 0 && activeDateId === null) {
-      setVisibleMonth(monthStart(utcDateFromKey(calendarDates[0].pickupDate)));
+      setVisibleMonth((current) => {
+        const next = monthStart(utcDateFromKey(calendarDates[0].pickupDate));
+        return current.getTime() === next.getTime() ? current : next;
+      });
     }
-  }, [value?.pickupDateId, value?.pickupLocationId, commonDates, commonDateById, calendarDates, activeDateId]);
+  }, [value, onChange, loading, commonDates, commonDateById, calendarDates, activeDateId]);
 
   useEffect(() => {
     setPendingLocationId(value?.pickupDateId === activeDateId ? value.pickupLocationId : null);
@@ -232,6 +254,15 @@ export function PickupDateSelectorV2({
   const pendingLocation = activeCalendarDate && pendingLocationId
     ? activeCalendarDate.locations.find((location) => location.id === pendingLocationId) || null
     : null;
+
+  const windows = pendingLocation ? generatePickupWindows(pendingLocation) : [];
+  const chosenWindow = windows.find((slot) => slot.start === pendingSlotStart);
+  useEffect(() => {
+    const selectedLocation = activeCalendarDate?.locations.find((location) => location.id === pendingLocationId);
+    const sameOperation = value?.pickupDateId === activeDateId && value?.pickupLocationId === pendingLocationId
+      && value?.pickupWindowRevision === selectedLocation?.pickup_window_revision;
+    setPendingSlotStart(sameOperation ? value?.pickupSlotStart?.slice(0, 5) || '' : '');
+  }, [activeDateId, pendingLocationId, activeCalendarDate?.locations, value?.pickupDateId, value?.pickupLocationId, value?.pickupSlotStart, value?.pickupWindowRevision]);
 
   const calendarMonthIndices = visibleCalendarDates.map(({ pickupDate }) => monthIndex(utcDateFromKey(pickupDate)));
   const currentMonthIndex = monthIndex(visibleMonth);
@@ -273,13 +304,16 @@ export function PickupDateSelectorV2({
   };
 
   const confirmPickupSelection = (date: CommonPickupDateAvailability) => {
-    if (!pendingLocationId) return;
+    if (!pendingLocationId || (windowsRequired && !chosenWindow)) return;
     onChange({
       pickupDateId: date.pickupDateId,
       pickupDate: date.pickupDate,
       pickupLocationId: pendingLocationId,
       scheduleId: date.scheduleId,
       scheduleKey: date.scheduleKey,
+      pickupSlotStart: chosenWindow?.start || null,
+      pickupSlotEnd: chosenWindow?.end || null,
+      pickupWindowRevision: chosenWindow ? pendingLocation?.pickup_window_revision || null : null,
     });
   };
 
@@ -742,10 +776,18 @@ export function PickupDateSelectorV2({
                       ) : (
                         <p className="mb-3 text-center text-sm font-medium text-[#3F665E]">{selectLocationPrompt}</p>
                       )}
+                      {pendingLocation && (windows.length > 0 ? <label className="mb-4 block text-sm font-semibold text-[#304B45]">
+                        {approximatePickupLabel(language)}{windowsRequired ? ' *' : ''}
+                        <select value={pendingSlotStart} onChange={(event) => setPendingSlotStart(event.target.value)} className="mt-2 w-full rounded-xl border border-[#55766F]/25 bg-white px-3 py-3" required={windowsRequired}>
+                          <option value="">{language === 'th' ? 'เลือกช่วงเวลา' : language === 'zh' ? '选择时间段' : 'Choose a time window'}</option>
+                          {windows.map((slot) => <option key={slot.start} value={slot.start}>{slot.start}–{slot.end}</option>)}
+                        </select>
+                        <span className="mt-2 block text-xs font-normal">{language === 'th' ? 'ช่วยให้เราเตรียมคำสั่งซื้อของคุณ ช่วงเวลานี้เป็นเวลาโดยประมาณ' : language === 'zh' ? '方便我们准备您的订单。此时间段为预计到达时间。' : 'It helps us prepare your order. This is an approximate arrival time.'}</span>
+                      </label> : windowsRequired ? <p role="alert" className="mb-3 text-sm text-red-700">{language === 'th' ? 'ยังไม่สามารถเลือกช่วงเวลารับสินค้าได้ กรุณาเลือกสถานที่อื่นหรือติดต่อ JOKO' : language === 'zh' ? '此地点暂未提供取货时间段，请选择其他地点或联系 JOKO。' : 'Pickup times are unavailable for this location. Choose another location or contact JOKO.'}</p> : null)}
                       <button
                         type="button"
                         onClick={() => confirmPickupSelection(activeCommonDate)}
-                        disabled={!pendingLocationId}
+                        disabled={!pendingLocationId || (windowsRequired && !chosenWindow)}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#C76624] px-4 py-4 text-base font-bold text-white transition hover:bg-[#A95120] focus:outline-none focus:ring-4 focus:ring-[#C76624]/15 disabled:cursor-not-allowed disabled:bg-[#A9ACA9] disabled:text-white"
                       >
                         <CheckCircle2 className="w-5 h-5" />
