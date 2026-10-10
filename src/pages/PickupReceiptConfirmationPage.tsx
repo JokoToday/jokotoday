@@ -186,7 +186,7 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#55766F]/10 pt-4 text-sm">
                   <div><p className="text-[#303532]/45">{copy.pickup}</p><p className="mt-1 font-semibold text-[#292D2B]">{formatDate(order.pickupDate, language)}</p></div>
-                  <div><p className="text-[#303532]/45">Location</p><p className="mt-1 font-semibold text-[#292D2B]">{order.pickupLocation || '—'}</p></div>
+                  <div><p className="text-[#303532]/45">Location</p><p className="mt-1 font-semibold text-[#292D2B]">{order.pickupLocation?.[language] || order.pickupLocation?.en || '—'}</p></div>
                 </div>
               </div>
 
