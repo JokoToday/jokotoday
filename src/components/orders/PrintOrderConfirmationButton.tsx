@@ -56,9 +56,9 @@ const FALLBACK = {
     zh: '此已关闭订单的付款状态尚未明确。如有需要，请联系 JOKO TODAY。',
   },
   footer: {
-    en: 'JOKO TODAY · Life is worth noticing.',
-    th: 'JOKO TODAY · Life is worth noticing.',
-    zh: 'JOKO TODAY · Life is worth noticing.',
+    en: 'JOKO TODAY — SELECTED GOODNESS. FOR A BRIGHTER TODAY.',
+    th: 'JOKO TODAY — SELECTED GOODNESS. FOR A BRIGHTER TODAY.',
+    zh: 'JOKO TODAY — SELECTED GOODNESS. FOR A BRIGHTER TODAY.',
   },
 } as const;
 
