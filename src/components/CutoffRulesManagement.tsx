@@ -1,3 +1,4 @@
+import { PickupHoursManagement } from './PickupHoursManagement';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Edit3, Plus, RefreshCw, Save, ShieldCheck, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -587,6 +588,7 @@ export function CutoffRulesManagement({ onRefresh }: CutoffRulesManagementProps)
       <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-700">
         Changing recurring configuration affects future materialization. Once concrete dates exist, the database deliberately blocks changing that schedule's weekday; use date overrides or create a new recurring schedule instead.
       </div>
+      <PickupHoursManagement scope="schedule" />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { approximatePickupLabel, pickupWindowLabel, snapshotLocationName } from '../../lib/pickupWindows';
 import { MakerSnapshotAttribution } from '../MakerSnapshotAttribution';
 import React from 'react';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle, Printer } from 'lucide-react';
@@ -70,7 +71,7 @@ export function OrderDetailModal({
     return getLocationInfo(day.location_id);
   };
 
-  const locationInfo = order.pickup_location_id
+  const locationInfo = order.pickup_location_snapshot ? { name: snapshotLocationName(order.pickup_location_snapshot, language), mapsUrl: order.pickup_location_snapshot.maps_url || null } : order.pickup_location_id
     ? getLocationInfo(order.pickup_location_id)
     : getLocationInfoForDay(order.pickup_day);
 
@@ -191,6 +192,7 @@ export function OrderDetailModal({
                     <Calendar className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: '#c6a75e' }} />
                     <span>
                       {getPickupDayLabel(order.pickup_day) || '—'}
+                      {order.pickup_slot_start && <span className="block text-xs text-[#55766F]">{approximatePickupLabel(language)}: {pickupWindowLabel(order.pickup_slot_start, order.pickup_slot_end)}</span>}
                       {order.pickup_date && (
                         <span className="block text-xs mt-0.5" style={{ color: unresolvedPastPickup ? '#b45309' : '#9a7b2f' }}>
                           {formatPickupDate(order.pickup_date, language)}

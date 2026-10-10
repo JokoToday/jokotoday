@@ -1,6 +1,7 @@
+import type { PickupWindowHours } from './pickupWindows';
 import { supabase } from './supabase';
 
-export interface PickupAvailabilityLocation {
+export interface PickupAvailabilityLocation extends PickupWindowHours {
   id: string;
   name_en: string;
   name_th: string;
