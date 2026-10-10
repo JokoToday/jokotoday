@@ -34,7 +34,7 @@ export type PickupHandoverStatus = {
     paymentMethod: string | null;
     status: string;
     pickupDate: string | null;
-    pickupLocation: string | null;
+    pickupLocation: { en: string; th: string; zh: string } | null;
   };
 };
 
