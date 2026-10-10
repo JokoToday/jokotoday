@@ -1,3 +1,4 @@
+import { productOrigin } from '../lib/makersService';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Plus, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -126,7 +127,8 @@ export function FitsYourPickupV2({ pickupDateId, placement = 'cart', onProductCl
     if (!config || !placementConfig?.enabled) return [];
     const eligible = products.filter(
       (product) => !cartProductIds.has(product.id)
-        && (placement !== 'checkout' || !product.is_non_bakery)
+        && (product.product_origin !== 'maker' || product.maker?.is_ordering_enabled === true)
+        && (placement !== 'checkout' || productOrigin(product) === 'joko')
         && (remainingByProduct.get(product.id) || 0) > 0,
     );
     return rankFitsYourPickupProducts(eligible, cartCategoryIds, likeCounts, config)

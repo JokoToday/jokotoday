@@ -1,3 +1,4 @@
+import type { MakerIdentity, ProductOrigin } from './makersService';
 import { supabase } from './supabase';
 import { resolveStaticSiteAssetUrl } from './staticAssetPolicy';
 
@@ -15,6 +16,9 @@ export interface CMSCategory {
 }
 
 export interface CMSProduct {
+  maker_id?: string | null;
+  maker?: MakerIdentity | null;
+  product_origin?: ProductOrigin | null;
   id: string;
   slug: string;
   category_id: string;
@@ -133,7 +137,7 @@ export async function getCategoryBySlug(slug: string): Promise<CMSCategory | nul
 export async function getProducts(categoryId?: string): Promise<CMSProduct[]> {
   let query = supabase
     .from('cms_products')
-    .select('*')
+    .select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
@@ -153,7 +157,7 @@ export async function getProductBySlug(
 ): Promise<CMSProduct | null> {
   let query = supabase
     .from('cms_products')
-    .select('*')
+    .select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)')
     .eq('slug', slug);
 
   if (!options.includeInactive) {
@@ -172,7 +176,7 @@ export async function getProductByPublicCode(publicCode: string): Promise<CMSPro
 
   const { data, error } = await supabase
     .from('cms_products')
-    .select('*')
+    .select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)')
     .ilike('public_code', normalized)
     .maybeSingle();
 

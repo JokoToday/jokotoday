@@ -1,3 +1,4 @@
+import { MakerAttribution, SourcingDisclosure } from '../../../components/MakerAttribution';
 import { Check, ExternalLink, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useCart } from '../../../context/CartContext';
@@ -149,7 +150,8 @@ export function NotebookProductCommerceBridge({
   const remainingToAdd = Math.max(0, maximumAvailable - cartQuantity);
   const soldOut = product.is_sold_out
     || (!checkingAvailability && !availabilityError && maximumAvailable <= 0);
-  const canAdd = !checkingAvailability && !availabilityError && !soldOut && remainingToAdd > 0;
+  const previewOnly = product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true;
+  const canAdd = !previewOnly && !checkingAvailability && !availabilityError && !soldOut && remainingToAdd > 0;
   const image = productImage(product);
   const name = lang === 'th'
     ? product.name_th || product.name_en
@@ -180,10 +182,13 @@ export function NotebookProductCommerceBridge({
           <img src={image} alt={name} className="h-28 w-full rounded-xl object-cover sm:h-28 sm:w-32" loading="lazy" />
         )}
         <div className="min-w-0">
+          {product.product_origin === 'maker' && <SourcingDisclosure />}
+          {previewOnly && <p className="text-sm text-gray-600">{lang === 'th' ? 'ดูตัวอย่างเท่านั้น' : lang === 'zh' ? '仅供预览' : 'Preview only'}</p>}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">{labels.eyebrow}</p>
               <h3 className="mt-1 font-header text-2xl font-semibold text-primary-950">{name}</h3>
+              <MakerAttribution maker={product.maker} />
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">{labels.price}</p>

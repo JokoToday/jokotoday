@@ -1,3 +1,4 @@
+import { MakerAttribution, SourcingDisclosure } from '../components/MakerAttribution';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -281,7 +282,8 @@ export default function ProductDetailPage({
   const jokoNote = localizedField(product, lang, 'joko_note');
   const liked = isLiked(product.id);
   const likeCount = getLikeCount(product.id);
-  const canOrder = product.is_active && !product.is_sold_out && maxQuantity > 0;
+  const previewOnly = product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true;
+  const canOrder = product.is_active && !product.is_sold_out && maxQuantity > 0 && (product.product_origin !== 'maker' || product.maker?.is_ordering_enabled === true);
   const canonicalUrl = `${window.location.origin}/products/${encodeURIComponent(product.slug)}`;
 
   const toggleLike = async () => {
@@ -347,6 +349,8 @@ export default function ProductDetailPage({
               <h1 className="mt-3 text-4xl font-semibold tracking-[-0.035em] text-[#292D2B] sm:text-5xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
                 {name}
               </h1>
+              <MakerAttribution maker={product.maker} />
+              {product.product_origin === 'maker' && <SourcingDisclosure />}
               {shortDescription && <p className="mt-4 text-base leading-7 text-[#303532]/68">{shortDescription}</p>}
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -404,6 +408,7 @@ export default function ProductDetailPage({
                 )}
               </div>
 
+              {previewOnly && <p className="mt-6 text-sm text-[#303532]/65">{lang === 'th' ? 'ดูตัวอย่างเท่านั้น ยังไม่เปิดรับคำสั่งซื้อ' : lang === 'zh' ? '仅供预览，暂未开放订购。' : 'Preview only. Ordering is not open yet.'}</p>}
               {canOrder && (
                 <div className="mt-6">
                   <div className="mb-3 flex items-center justify-center gap-4">

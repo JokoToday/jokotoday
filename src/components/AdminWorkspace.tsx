@@ -1,3 +1,4 @@
+import { MakersManagement } from './MakersManagement';
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import {
   BookOpen,
@@ -49,6 +50,7 @@ type WorkspaceTab =
   | 'cms'
   | 'homepage'
   | 'joko-notes'
+  | 'makers'
   | 'non-bakery'
   | 'gallery'
   | 'what-people-say'
@@ -67,6 +69,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
   if (path.startsWith('/admin/homepage')) return 'homepage';
   if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
+  if (path.startsWith('/admin/makers')) return 'makers';
   if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
@@ -87,6 +90,7 @@ function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
     case 'homepage': return '/admin/homepage';
     case 'joko-notes': return '/admin/page-accents';
+    case 'makers': return '/admin/makers';
     case 'non-bakery': return '/admin/non-bakery';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
@@ -174,6 +178,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <StickyNote className="h-4 w-4" />
                   Page Accents
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('makers')} className={tabClass('makers')}><Users className="h-4 w-4" />Makers</button>
                 <button type="button" onClick={() => selectWorkspaceTab('non-bakery')} className={tabClass('non-bakery')}>
                   <ShoppingBasket className="h-4 w-4" />
                   Not Bread
@@ -242,6 +247,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
 
       <main className="joko-admin-content pb-14">
         {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
+        {activeTab === 'makers' && <MakersManagement />}
         {activeTab === 'non-bakery' && <NonBakeryManagement />}
 
         {activeTab === 'homepage' && (

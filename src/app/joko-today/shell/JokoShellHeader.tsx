@@ -11,7 +11,7 @@ import './jokoNavPencil.css';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
-export type JokoShellSection = 'today' | 'curiosities' | 'bakery' | 'about' | 'gallery' | 'what-people-say';
+export type JokoShellSection = 'today' | 'curiosities' | 'makers' | 'bakery' | 'about' | 'gallery' | 'what-people-say';
 
 type JokoShellHeaderProps = {
   onNavigate: (page: string) => void;
@@ -19,7 +19,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'other-products' | 'how-it-works' | 'pickup' | 'about';
+  key: 'home' | 'products' | 'other-products' | 'makers' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
   targetId?: string;
@@ -100,6 +100,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   const targets: Record<NavItem['key'], Omit<NavItem, 'key' | 'label'>> = {
     home: { targetId: 'top', activeKey: 'today' },
     products: { page: 'products-bakery', activeKey: 'bakery' },
+    makers: { page: 'makers', activeKey: 'makers' },
     'other-products': { page: 'products-non-bakery', activeKey: 'bakery' },
     'how-it-works': { targetId: 'how-it-works' },
     pickup: { targetId: 'pickup' },
@@ -158,6 +159,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     const path = window.location.pathname;
     // Home is intentionally not permanently marked; a stroke appears on hover.
     if (item.key === 'home') return false;
+    if (item.key === 'makers') return path === '/makers' || path.startsWith('/makers/');
     // The two product menus share /products but differ by query-controlled filter.
     if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
     if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';

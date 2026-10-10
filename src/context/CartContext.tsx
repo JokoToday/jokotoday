@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useAuth } from './AuthContext';
 
 export type CartProduct = {
+  product_origin?: import('../lib/makersService').ProductOrigin | null;
+  maker_id?: string | null;
+  maker?: import('../lib/makersService').MakerIdentity | null;
   id: string;
   name_en: string;
   name_th: string;

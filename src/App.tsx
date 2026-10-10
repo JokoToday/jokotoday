@@ -13,6 +13,7 @@ import JokoShell from './app/joko-today/shell/JokoShell';
 import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
+const MakersPage = lazy(() => import('./pages/MakersPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -46,6 +47,7 @@ const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
   products: '/products',
+  makers: '/makers',
   checkout: '/checkout',
   about: '/about',
   'our-story': '/our-story',
@@ -96,6 +98,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [paymentHandoffToken, setPaymentHandoffToken] = useState<string | null>(null);
+  const [makerSlug, setMakerSlug] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [productPublicCode, setProductPublicCode] = useState<string | null>(null);
   const [productEntrySource, setProductEntrySource] = useState<'qr' | 'web'>('web');
@@ -221,6 +224,12 @@ function AppContent() {
         return;
       }
 
+      const makerMatch = path.match(/^\/makers\/([^/]+)$/);
+      if (makerMatch) {
+        try { setMakerSlug(decodeURIComponent(makerMatch[1])); } catch { setMakerSlug(''); }
+        setCurrentPage('maker-detail');
+        return;
+      }
       const primaryPage = PRIMARY_PATH_PAGES[path];
       if (primaryPage) {
         setCurrentPage(primaryPage);
@@ -309,6 +318,14 @@ function AppContent() {
       window.dispatchEvent(new Event('joko-products-category-navigation'));
     }
 
+    const makerNavMatch = page.match(/^maker\/(.+)$/);
+    if (makerNavMatch) {
+      setMakerSlug(makerNavMatch[1]);
+      window.history.pushState({}, '', `/makers/${encodeURIComponent(makerNavMatch[1])}`);
+      window.dispatchEvent(new Event('joko-navigation-updated'));
+      setCurrentPage('maker-detail');
+      return;
+    }
     const productNavMatch = page.match(/^product\/(.+)$/);
     if (productNavMatch) {
       const slug = productNavMatch[1];
@@ -419,6 +436,8 @@ function AppContent() {
           onNotebookClose={handleNotebookClose}
           onNotebookOpen={handleNotebookOpen}
         />;
+      case 'makers': return <MakersPage />;
+      case 'maker-detail': return <MakersPage slug={makerSlug} />;
       case 'products':
         return <ProductsPage onNavigate={handleNavigate} />;
       case 'product-detail':
@@ -485,11 +504,12 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
     ? 'curiosities'
+    : currentPage === 'makers' || currentPage === 'maker-detail' ? 'makers'
     : currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout'
       ? 'bakery'
       : currentPage === 'our-story' || currentPage === 'meet-founders'
