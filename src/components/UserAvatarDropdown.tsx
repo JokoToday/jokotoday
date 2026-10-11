@@ -66,6 +66,7 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
   if (!user) return null;
 
   const userName = userProfile?.name || user.email?.split('@')[0] || 'User';
+  const memberCode = String(userProfile?.short_code || '').trim();
   const initials = getInitials(userName);
   const roleLabel = userRole === 'admin'
     ? (language === 'th' ? 'ผู้ดูแลระบบ' : language === 'zh' ? '管理员' : 'Administrator')
@@ -93,7 +94,10 @@ export function UserAvatarDropdown({ onNavigate }: UserAvatarDropdownProps) {
         <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="font-semibold text-gray-900">{userName}</p>
-            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+            {memberCode && (
+              <p className="mt-0.5 text-xs font-extrabold tracking-[0.14em] text-amber-700">{memberCode}</p>
+            )}
+            <p className="mt-0.5 text-xs text-gray-500 truncate">{user.email}</p>
 
             {roleLabel && (
               <span
