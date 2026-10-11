@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { supabase } from '../lib/supabase';
-import { LINE_LINKING_ENABLED } from '../lib/lineAuth';
+import { LINE_LINKING_ENABLED, hasLinkedLINE } from '../lib/lineAuth';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
 import {
@@ -36,8 +36,6 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     name: '',
     phone: '',
     line_id: '',
-    whatsapp: '',
-    wechat_id: '',
   });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -50,8 +48,6 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       name: userProfile.name || lineDisplayName(user) || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
-      whatsapp: userProfile.whatsapp || '',
-      wechat_id: userProfile.wechat_id || '',
     });
     setProfilePicture(userProfile.profile_picture_url || null);
   }, [userProfile, user]);
@@ -134,6 +130,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     await refreshProfile();
   };
 
+  const isLINEConnected = lineLinked === true || (lineLinked === null && hasLinkedLINE(user));
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
@@ -148,8 +146,16 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setError(getLabel('profile.phone_required_error', language, 'Phone number is required'));
       return;
     }
-    if (!formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim() && lineLinked !== true) {
-      setError(getLabel('profile.contact_required_error', language, 'At least one contact method is required'));
+    if (!formData.line_id.trim() && !isLINEConnected) {
+      setError(getLabel(
+        'profile.line_required_error',
+        language,
+        language === 'th'
+          ? 'จำเป็นต้องมี LINE กรุณากรอก LINE ID หรือเชื่อมต่อบัญชี LINE ของคุณ'
+          : language === 'zh'
+            ? 'LINE 为必填项。请输入 LINE ID 或关联您的 LINE 账号。'
+            : 'LINE is required. Enter your LINE ID or connect your LINE account.',
+      ));
       return;
     }
 
@@ -159,8 +165,6 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
-        whatsapp: formData.whatsapp.trim() || undefined,
-        wechat_id: formData.wechat_id.trim() || undefined,
       });
       setProfileSaved(true);
     } catch (err) {
@@ -347,7 +351,15 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 {getLabel('profile_page.contact_methods', language, 'Contact Methods')}
               </h3>
               <p className="mb-4 text-sm text-gray-600">
-                {getLabel('profile_page.contact_help', language, 'How can we reach you with order updates?')}
+                {getLabel(
+                  'profile_page.contact_help_email_line',
+                  language,
+                  language === 'th'
+                    ? 'ขณะนี้เราใช้อีเมลและ LINE สำหรับการติดต่อและแจ้งข้อมูลคำสั่งซื้อ'
+                    : language === 'zh'
+                      ? '目前我们使用邮箱和 LINE 与您联系并发送订单更新。'
+                      : 'We currently use email and LINE for customer contact and order updates.',
+                )}
               </p>
               {hasVerifiedEmail(user) ? (
                 <div className="mb-4 rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
@@ -373,25 +385,39 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 </div>
               )}
               <div className="space-y-3">
-                {[
-                  ['line_id', language === 'th' ? 'LINE ID (ไม่บังคับ)'
-                    : language === 'zh' ? 'LINE ID（选填）' : 'LINE ID (optional)'],
-                  ['whatsapp', getLabel('profile_page.whatsapp_label', language, 'WhatsApp')],
-                  ['wechat_id', getLabel('profile_page.wechat_label', language, 'WeChat ID')],
-                ].map(([name, label]) => (
-                  <label key={name} className="block text-sm text-gray-600">
-                    {label}
-                    <input type="text" name={name}
-                      value={formData[name as keyof typeof formData]}
-                      onChange={handleChange}
-                      className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
-                      disabled={loading} />
-                  </label>
-                ))}
+                {isLINEConnected && (
+                  <div className="rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
+                    {language === 'th'
+                      ? 'เชื่อมต่อบัญชี LINE แล้ว — ครบตามข้อกำหนด ไม่จำเป็นต้องกรอก LINE ID'
+                      : language === 'zh'
+                        ? 'LINE 账号已关联——已满足要求，无需填写 LINE ID。'
+                        : 'LINE account connected — requirement fulfilled. You do not need to enter a LINE ID.'}
+                  </div>
+                )}
+                <label className="block text-sm text-gray-600">
+                  LINE ID <span className="text-red-500">*</span>
+                  <input
+                    type="text"
+                    name="line_id"
+                    value={formData.line_id}
+                    onChange={handleChange}
+                    className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
+                    disabled={loading}
+                    required={!isLINEConnected}
+                  />
+                </label>
                 <p className="text-xs text-gray-500">
-                  {language === 'th' ? 'LINE Login ไม่เปิดเผย LINE ID ที่ค้นหาได้ หากต้องการระบุ LINE ID กรุณากรอกด้วยตัวเอง'
-                    : language === 'zh' ? 'LINE 登录不会提供可搜索的 LINE ID。如需填写，请手动输入。'
-                      : 'LINE Login does not share a searchable LINE ID. Enter yours manually only if needed.'}
+                  {isLINEConnected
+                    ? (language === 'th'
+                      ? 'LINE Login ไม่เปิดเผย LINE ID ที่ค้นหาได้ คุณสามารถเว้นช่องนี้ว่างได้เมื่อเชื่อมต่อบัญชี LINE แล้ว'
+                      : language === 'zh'
+                        ? 'LINE 登录不会提供可搜索的 LINE ID。账号已关联时，此栏可以留空。'
+                        : 'LINE Login does not share a searchable LINE ID. You may leave this blank when your LINE account is connected.')
+                    : (language === 'th'
+                      ? 'จำเป็น กรุณากรอก LINE ID ที่นี่ หรือเชื่อมต่อบัญชี LINE ด้านล่าง'
+                      : language === 'zh'
+                        ? '必填。请在此输入 LINE ID，或在下方关联您的 LINE 账号。'
+                        : 'Required. Enter your LINE ID here, or connect your LINE account below.')}
                 </p>
               </div>
             </section>
