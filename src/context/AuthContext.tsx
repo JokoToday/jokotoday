@@ -30,8 +30,6 @@ type ProfileDetails = {
   name: string;
   phone: string;
   line_id?: string;
-  whatsapp?: string;
-  wechat_id?: string;
 };
 
 function isSupportedLanguage(value: unknown): value is Language {
@@ -42,7 +40,7 @@ function hasRequiredProfileDetails(data: ProfileDetails, lineConnected: boolean)
   return Boolean(
     data.name.trim() &&
     data.phone.trim() &&
-    (lineConnected || data.line_id?.trim() || data.whatsapp?.trim() || data.wechat_id?.trim())
+    (lineConnected || data.line_id?.trim())
   );
 }
 
@@ -320,8 +318,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         phone: data.phone,
         line_id: data.line_id || null,
-        whatsapp: data.whatsapp || null,
-        wechat_id: data.wechat_id || null,
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
@@ -346,8 +342,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         phone: data.phone,
         line_id: data.line_id || null,
-        whatsapp: data.whatsapp || null,
-        wechat_id: data.wechat_id || null,
         profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user)),
         updated_at: new Date().toISOString(),
       })
