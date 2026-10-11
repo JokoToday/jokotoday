@@ -43,8 +43,6 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     name: '',
     phone: '',
     line_id: '',
-    whatsapp: '',
-    wechat_id: '',
   });
 
   useEffect(() => {
@@ -54,8 +52,6 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       name: userProfile?.name || lineDisplayName(user) || '',
       phone: userProfile?.phone || '',
       line_id: userProfile?.line_id || '',
-      whatsapp: userProfile?.whatsapp || '',
-      wechat_id: userProfile?.wechat_id || '',
     });
     setError('');
     setShowCelebrationModal(showCelebration);
@@ -77,8 +73,16 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       return;
     }
 
-    if (!hasLinkedLINE(user) && !formData.line_id.trim() && !formData.whatsapp.trim() && !formData.wechat_id.trim()) {
-      setError(getLabel('profile.contact_required_error', language, t.profile.contactRequired));
+    if (!hasLinkedLINE(user) && !formData.line_id.trim()) {
+      setError(getLabel(
+        'profile.line_required_error',
+        language,
+        language === 'th'
+          ? 'จำเป็นต้องมี LINE กรุณากรอก LINE ID หรือเชื่อมต่อบัญชี LINE ของคุณ'
+          : language === 'zh'
+            ? 'LINE 为必填项。请输入 LINE ID 或关联您的 LINE 账号。'
+            : 'LINE is required. Enter your LINE ID or connect your LINE account.',
+      ));
       return;
     }
 
@@ -89,8 +93,6 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
-        whatsapp: formData.whatsapp.trim() || undefined,
-        wechat_id: formData.wechat_id.trim() || undefined,
       });
       setShowQRCode(true);
     } catch (err) {
@@ -232,22 +234,32 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
 
           <div className="border-t border-gray-200 pt-4">
             <p className="text-sm font-medium text-gray-700 mb-1">
-              {getLabel('profile.contact_header', language, t.profile.contactMethod)} <span className="text-red-500">*</span>
+              LINE <span className="text-red-500">*</span>
             </p>
             <p className="text-xs text-gray-500 mb-4">
-              {getLabel('profile.contact_subtitle', language, t.profile.contactMethodHint)}
+              {getLabel(
+                'profile.line_required_help',
+                language,
+                language === 'th'
+                  ? 'จำเป็นต้องมี LINE กรุณากรอก LINE ID หรือใช้บัญชี LINE ที่เชื่อมต่อแล้ว'
+                  : language === 'zh'
+                    ? 'LINE 为必填项。请输入 LINE ID，或使用已关联的 LINE 账号。'
+                    : 'LINE is required. Enter your LINE ID, or use a connected LINE account.',
+              )}
             </p>
 
             <div className="space-y-3">
               {hasLinkedLINE(user) && (
                 <p className="rounded-lg border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
-                  {language === 'th' ? 'เชื่อมต่อบัญชี LINE แล้ว ไม่จำเป็นต้องกรอก LINE ID'
-                    : language === 'zh' ? 'LINE 账号已连接，无需填写 LINE ID。'
-                      : 'LINE account connected. You do not need to enter a LINE ID.'}
+                  {language === 'th' ? 'เชื่อมต่อบัญชี LINE แล้ว — ครบตามข้อกำหนด ไม่จำเป็นต้องกรอก LINE ID'
+                    : language === 'zh' ? 'LINE 账号已关联——已满足要求，无需填写 LINE ID。'
+                      : 'LINE account connected — requirement fulfilled. You do not need to enter a LINE ID.'}
                 </p>
               )}
               <div>
-                <label className="block text-sm text-gray-600 mb-1">LINE ID (optional)</label>
+                <label className="block text-sm text-gray-600 mb-1">
+                  LINE ID {!hasLinkedLINE(user) && <span className="text-red-500">*</span>}
+                </label>
                 <input
                   type="text"
                   name="line_id"
@@ -256,32 +268,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   placeholder={getLabel('profile.line_placeholder', language, t.profile.enterLineId)}
                   disabled={loading}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">WhatsApp</label>
-                <input
-                  type="text"
-                  name="whatsapp"
-                  value={formData.whatsapp}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder={getLabel('profile.whatsapp_placeholder', language, t.profile.enterWhatsApp)}
-                  disabled={loading}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">WeChat ID</label>
-                <input
-                  type="text"
-                  name="wechat_id"
-                  value={formData.wechat_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder={getLabel('profile.wechat_placeholder', language, t.profile.enterWeChatId)}
-                  disabled={loading}
+                  required={!hasLinkedLINE(user)}
                 />
               </div>
             </div>
