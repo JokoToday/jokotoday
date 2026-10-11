@@ -40,6 +40,7 @@ await db.exec(`DO $$ DECLARE f record; BEGIN
  EXECUTE replace(pg_get_functiondef(f.oid), E'BEGIN\\n', E'begin\\n');
  END LOOP; END $$;`);
 await db.exec(await readFile("supabase/migrations/20261009025239_joko_specials_payment_compatibility_v1.sql", "utf8"));
+await db.exec(await readFile('supabase/migrations/20261011161020_joko_specials_catalogue_products_v1.sql', 'utf8'));
 // Deliberately configure regular checkout for Stripe throughout Specials tests.
 await db.exec("UPDATE public.payment_settings SET payment_qr_mode='stripe_promptpay'");
 const id = {
@@ -94,7 +95,6 @@ let { batch, item } = await rpc("save_item", {
   product_id: id.product,
   special_price_satang: 10000,
   max_per_customer: 3,
-  made_by_joko_confirmed: true,
 });
 b = batch;
 ({ batch: b } = await rpc("transfer", {
