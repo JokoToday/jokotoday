@@ -146,6 +146,18 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setError(getLabel('profile.phone_required_error', language, 'Phone number is required'));
       return;
     }
+    if (!hasVerifiedEmail(user)) {
+      setError(getLabel(
+        'profile.email_required_error',
+        language,
+        language === 'th'
+          ? 'จำเป็นต้องยืนยันอีเมลก่อนบันทึกโปรไฟล์'
+          : language === 'zh'
+            ? '保存个人资料前必须先验证邮箱。'
+            : 'A verified email is required before saving your profile.',
+      ));
+      return;
+    }
     if (!formData.line_id.trim() && !isLINEConnected) {
       setError(getLabel(
         'profile.line_required_error',
@@ -355,10 +367,10 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   'profile_page.contact_help_email_line',
                   language,
                   language === 'th'
-                    ? 'ขณะนี้เราใช้อีเมลและ LINE สำหรับการติดต่อและแจ้งข้อมูลคำสั่งซื้อ'
+                    ? 'ต้องมีทั้งอีเมลและ LINE สำหรับการติดต่อและแจ้งข้อมูลคำสั่งซื้อ'
                     : language === 'zh'
-                      ? '目前我们使用邮箱和 LINE 与您联系并发送订单更新。'
-                      : 'We currently use email and LINE for customer contact and order updates.',
+                      ? '邮箱和 LINE 都是必填项，用于联系您并发送订单更新。'
+                      : 'Email and LINE are both required for customer contact and order updates.',
                 )}
               </p>
               {hasVerifiedEmail(user) ? (
@@ -367,8 +379,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-semibold">
-                        {language === 'th' ? 'อีเมล: ยืนยันแล้ว'
-                          : language === 'zh' ? '邮箱：已验证' : 'Email: Verified'}
+                        {language === 'th' ? 'อีเมล * · ยืนยันแล้ว'
+                          : language === 'zh' ? '邮箱 * · 已验证' : 'Email * · Verified'}
                       </p>
                       <p className="mt-1 break-all">{user?.email}</p>
                       <p className="mt-1 text-xs">
