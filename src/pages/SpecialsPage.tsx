@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Check, MapPin, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { specialsCustomerCopy } from "../features/specials/customerCopy";
@@ -10,12 +10,14 @@ import {
   specialsRpc,
   type SpecialsCatalog,
 } from "../features/specials/customer";
+const AuthModal = lazy(() => import('../components/AuthModal').then(module => ({ default: module.AuthModal })));
 export default function SpecialsPage({
   onNavigate,
 }: {
   onNavigate: (page: string) => void;
 }) {
   const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const { language } = useLanguage();
   const copy = specialsCustomerCopy[language];
   const [pageContent, setPageContent] = useState(defaultSpecialsPageContent);
@@ -120,6 +122,7 @@ export default function SpecialsPage({
   const actionClass = 'min-h-11 rounded-xl bg-[#C76624] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#A95120] disabled:opacity-50';
   return (
     <main className="joko-mineral-field min-h-screen text-[#303532]">
+      {authOpen && <Suspense fallback={null}><AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} initialAction="signup" /></Suspense>}
       <div className="relative z-10 mx-auto max-w-6xl px-4 py-9 sm:px-6 sm:py-12 lg:px-8">
         <div className="mb-8 grid items-center gap-7 md:grid-cols-[minmax(0,1fr)_17rem]">
           <div>
@@ -196,7 +199,7 @@ export default function SpecialsPage({
               </div>
               <div className="my-6 flex justify-between gap-3"><span>{copy.total}</span><strong>{money(total)}</strong></div>
               {invalid && <p role="alert" className="mb-4 text-sm text-red-800">{copy.changed}</p>}
-              {user ? <button type="button" className={`${actionClass} w-full`} disabled={busy || (!pending && (total <= 0 || invalid || !batch))} onClick={() => void checkout()}>{busy ? copy.busy : pending ? copy.retry : copy.pay}</button> : <button type="button" className={`${actionClass} w-full`} disabled={!batch} onClick={() => onNavigate('login')}>{copy.signIn}</button>}
+              {user ? <button type="button" className={`${actionClass} w-full`} disabled={busy || (!pending && (total <= 0 || invalid || !batch))} onClick={() => void checkout()}>{busy ? copy.busy : pending ? copy.retry : copy.pay}</button> : <button type="button" className={`${actionClass} w-full`} disabled={!batch} onClick={() => setAuthOpen(true)}>{copy.signIn}</button>}
               <p className="mt-4 text-xs leading-6 text-[#303532]/70">{copy.hold}</p>
               {pending && <div className="mt-5 border-t border-[#55766F]/20 pt-4"><p className="text-xs leading-6">{copy.pending}</p><button type="button" className="mt-2 min-h-11 text-sm underline underline-offset-4" onClick={() => onNavigate('orders')}>{copy.orders}</button></div>}
             </aside>
