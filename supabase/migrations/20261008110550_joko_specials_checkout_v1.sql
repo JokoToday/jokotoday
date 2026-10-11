@@ -386,7 +386,7 @@ DECLARE f record; definition text; injection text;
 BEGIN
  FOR f IN SELECT p.oid,p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('cancel_online_order','cancel_online_order_legacy_v1','cancel_online_order_v2','cancel_online_order_v2_inventory_v1','staff_record_order_payment_v2','staff_repair_completed_order_payment_method_v2','staff_redeem_loyalty_reward_v2','refund_reserved_order_loyalty_reward_v2','apply_loyalty_points_delta_v2','claim_order_notification','confirm_order_pickup','create_or_get_payment_transaction_v1','finalize_verified_payment_v1','expire_payment_transaction_v1') LOOP
   definition:=pg_get_functiondef(f.oid);
-  IF position(E'BEGIN\n' IN definition)=0 THEN RAISE EXCEPTION 'Unexpected RPC body: %',f.proname; END IF;
+  IF definition !~* E'\\mBEGIN\\M[[:space:]]*\n' THEN RAISE EXCEPTION 'Unexpected RPC body: %',f.proname; END IF;
   IF f.proname='expire_payment_transaction_v1' THEN
    injection:=E'BEGIN\n  IF EXISTS(SELECT 1 FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE t.id=p_payment_transaction_id) THEN PERFORM specials_private.reap_batch((SELECT c.batch_id FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE t.id=p_payment_transaction_id)); RETURN jsonb_build_object(''state'',''specials_swept''); END IF;\n';
   ELSIF f.proname='claim_order_notification' THEN
@@ -396,7 +396,7 @@ BEGIN
   ELSE
    injection:=E'BEGIN\n  IF EXISTS(SELECT 1 FROM public.orders WHERE id=p_order_id AND order_type=''specials'') THEN RAISE EXCEPTION ''Use the authorized Specials workflow''; END IF;\n';
   END IF;
-  EXECUTE regexp_replace(definition,E'BEGIN\n',injection);
+  EXECUTE regexp_replace(definition,E'\\mBEGIN\\M[[:space:]]*\n',injection,'i');
  END LOOP;
 END $guards$;
 DO $cron$

@@ -10,7 +10,12 @@ for (const file of [
   "supabase/tests/specials_checkout_fixture.sql",
   "supabase/migrations/20261008110550_joko_specials_checkout_v1.sql",
 ])
-  await db.exec(await readFile(file, "utf8"));
+  // Real baseline RPCs use lowercase begin; guard installation must accept it.
+  await db.exec(
+    file.endsWith("specials_checkout_fixture.sql")
+      ? (await readFile(file, "utf8")).replace(/\bBEGIN\b/g, "begin")
+      : await readFile(file, "utf8"),
+  );
 // Simulate the later regular migration replacing expiry, then apply the compatibility guard.
 await db.exec(`
 CREATE OR REPLACE FUNCTION public.expire_payment_transaction_v1(p_payment_transaction_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -28,6 +33,12 @@ END $$;
 `);
 await db.exec(await readFile("supabase/migrations/20261008213000_payment_handoff_v1.sql", "utf8"));
 await db.exec(await readFile("supabase/migrations/20261009023000_stripe_promptpay_v1.sql", "utf8"));
+// Verify compatibility guards also accept real lowercase function bodies.
+await db.exec(`DO $$ DECLARE f record; BEGIN
+ FOR f IN SELECT oid FROM pg_proc WHERE pronamespace='public'::regnamespace
+ AND proname IN ('expire_payment_transaction_v1','reactivate_expired_online_order_v1','expire_own_payment_transaction_v1') LOOP
+ EXECUTE replace(pg_get_functiondef(f.oid), E'BEGIN\\n', E'begin\\n');
+ END LOOP; END $$;`);
 await db.exec(await readFile("supabase/migrations/20261009025239_joko_specials_payment_compatibility_v1.sql", "utf8"));
 // Deliberately configure regular checkout for Stripe throughout Specials tests.
 await db.exec("UPDATE public.payment_settings SET payment_qr_mode='stripe_promptpay'");

@@ -5,7 +5,7 @@ DECLARE signature text; definition text; injection text;
 BEGIN
  FOREACH signature IN ARRAY ARRAY['public.expire_payment_transaction_v1(uuid)','public.reactivate_expired_online_order_v1(uuid)','public.expire_own_payment_transaction_v1(uuid)'] LOOP
   definition:=pg_get_functiondef(signature::regprocedure);
-  IF position(E'BEGIN\n' IN definition)=0 THEN RAISE EXCEPTION 'Unexpected RPC body: %',signature; END IF;
+  IF definition !~* E'\\mBEGIN\\M[[:space:]]*\n' THEN RAISE EXCEPTION 'Unexpected RPC body: %',signature; END IF;
   IF signature='public.expire_payment_transaction_v1(uuid)' THEN
    injection:=E'BEGIN\n  IF EXISTS(SELECT 1 FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE t.id=p_payment_transaction_id) THEN PERFORM specials_private.reap_batch((SELECT c.batch_id FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE t.id=p_payment_transaction_id)); RETURN jsonb_build_object(''state'',''specials_swept''); END IF;\n';
   ELSIF signature='public.reactivate_expired_online_order_v1(uuid)' THEN
@@ -13,7 +13,7 @@ BEGIN
   ELSE
    injection:=E'BEGIN\n  IF EXISTS(SELECT 1 FROM public.orders o JOIN public.payment_transactions t ON t.order_id=o.id WHERE t.id=p_payment_transaction_id AND o.order_type=''specials'') THEN RAISE EXCEPTION ''Use the authorized Specials workflow''; END IF;\n';
   END IF;
-  EXECUTE regexp_replace(definition,E'BEGIN\n',injection);
+  EXECUTE regexp_replace(definition,E'\\mBEGIN\\M[[:space:]]*\n',injection,'i');
  END LOOP;
 END $guards$;
 
