@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, MapPin, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { specialsCustomerCopy } from "../features/specials/customerCopy";
+import { defaultSpecialsPageContent, loadSpecialsPageContent } from '../features/specials/pageContent';
 import { useAuth } from "../context/AuthContext";
 import { SpecialsPaymentPanel } from "../features/specials/SpecialsPaymentPanel";
 import {
@@ -17,6 +18,13 @@ export default function SpecialsPage({
   const { user } = useAuth();
   const { language } = useLanguage();
   const copy = specialsCustomerCopy[language];
+  const [pageContent, setPageContent] = useState(defaultSpecialsPageContent);
+  const pageCopy = pageContent[language];
+  useEffect(() => {
+    let active = true;
+    void loadSpecialsPageContent().then(content => { if (active) setPageContent(content); }).catch(() => { /* Keep translated defaults when CMS is unavailable. */ });
+    return () => { active = false; };
+  }, []);
   const locale = language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB';
   const money = (satang: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'THB' }).format(satang / 100);
   const time = (value: string) => new Date(value).toLocaleTimeString(locale, { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -115,12 +123,12 @@ export default function SpecialsPage({
       <div className="relative z-10 mx-auto max-w-6xl px-4 py-9 sm:px-6 sm:py-12 lg:px-8">
         <div className="mb-8 grid items-center gap-7 md:grid-cols-[minmax(0,1fr)_17rem]">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55766F]">{copy.eyebrow}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55766F]">{pageCopy.eyebrow}</p>
             <h1 className="mt-3 text-4xl leading-tight tracking-[-0.035em] sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
-              {copy.heading}<br /><span className="text-[#C76624]">{copy.accent}</span>
+              {pageCopy.heading}<br /><span className="text-[#C76624]">{pageCopy.accent}</span>
             </h1>
             <span className="mt-4 block h-[3px] w-40 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
-            <p className="mt-5 max-w-xl text-base leading-7 text-[#303532]/75">{copy.intro}</p>
+            <p className="mt-5 max-w-xl whitespace-pre-line text-base leading-7 text-[#303532]/75">{pageCopy.intro}</p>
           </div>
           {batch && <aside className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>

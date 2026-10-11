@@ -1,4 +1,5 @@
 import { SpecialsOperations } from './SpecialsOperations';
+import { SpecialsPageContentEditor } from './SpecialsPageContentEditor';
 import { specialsLabels } from "./copy";
 import {
   useCallback,
@@ -280,6 +281,7 @@ export function SpecialsManagement() {
 
   return (
     <section className="space-y-6 pt-6">
+      <SpecialsPageContentEditor />
       <div className="joko-admin-paper-card p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
