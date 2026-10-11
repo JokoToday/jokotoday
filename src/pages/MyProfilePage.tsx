@@ -379,8 +379,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     <CheckCircle2 aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-semibold">
-                        {language === 'th' ? 'อีเมล * · ยืนยันแล้ว'
-                          : language === 'zh' ? '邮箱 * · 已验证' : 'Email * · Verified'}
+                        {language === 'th' ? 'อีเมล: ยืนยันแล้ว'
+                          : language === 'zh' ? '邮箱：已验证' : 'Email: Verified'}
                       </p>
                       <p className="mt-1 break-all">{user?.email}</p>
                       <p className="mt-1 text-xs">
