@@ -5,8 +5,9 @@ import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { PostSignupCelebration } from './PostSignupCelebration';
+import { EmailVerificationPanel } from './EmailVerificationPanel';
 import { hasLinkedLINE } from '../lib/lineAuth';
-import { lineDisplayName } from '../lib/lineProfile';
+import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -70,6 +71,19 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
 
     if (!formData.phone.trim()) {
       setError(getLabel('profile.phone_required_error', language, t.profile.phoneRequired));
+      return;
+    }
+
+    if (!hasVerifiedEmail(user)) {
+      setError(getLabel(
+        'profile.email_required_error',
+        language,
+        language === 'th'
+          ? 'จำเป็นต้องยืนยันอีเมลก่อนดำเนินการต่อ'
+          : language === 'zh'
+            ? '继续前必须先验证邮箱。'
+            : 'A verified email is required before continuing.',
+      ));
       return;
     }
 
@@ -234,42 +248,82 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
 
           <div className="border-t border-gray-200 pt-4">
             <p className="text-sm font-medium text-gray-700 mb-1">
-              LINE <span className="text-red-500">*</span>
+              {getLabel(
+                'profile.contact_methods_email_line',
+                language,
+                language === 'th' ? 'ข้อมูลติดต่อที่จำเป็น'
+                  : language === 'zh' ? '必填联系方式' : 'Required Contact Methods',
+              )}
             </p>
             <p className="text-xs text-gray-500 mb-4">
               {getLabel(
-                'profile.line_required_help',
+                'profile.email_line_required_help',
                 language,
                 language === 'th'
-                  ? 'จำเป็นต้องมี LINE กรุณากรอก LINE ID หรือใช้บัญชี LINE ที่เชื่อมต่อแล้ว'
+                  ? 'ต้องมีทั้งอีเมลที่ยืนยันแล้วและ LINE เพื่อดำเนินการต่อ'
                   : language === 'zh'
-                    ? 'LINE 为必填项。请输入 LINE ID，或使用已关联的 LINE 账号。'
-                    : 'LINE is required. Enter your LINE ID, or use a connected LINE account.',
+                    ? '继续前必须同时提供已验证邮箱和 LINE。'
+                    : 'A verified email and LINE are both required to continue.',
               )}
             </p>
 
-            <div className="space-y-3">
-              {hasLinkedLINE(user) && (
-                <p className="rounded-lg border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
-                  {language === 'th' ? 'เชื่อมต่อบัญชี LINE แล้ว — ครบตามข้อกำหนด ไม่จำเป็นต้องกรอก LINE ID'
-                    : language === 'zh' ? 'LINE 账号已关联——已满足要求，无需填写 LINE ID。'
-                      : 'LINE account connected — requirement fulfilled. You do not need to enter a LINE ID.'}
-                </p>
+            <div className="space-y-4">
+              {hasVerifiedEmail(user) ? (
+                <div className="rounded-lg border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
+                  <p className="font-semibold">
+                    {language === 'th' ? 'อีเมล * · ยืนยันแล้ว'
+                      : language === 'zh' ? '邮箱 * · 已验证' : 'Email * · Verified'}
+                  </p>
+                  <p className="mt-1 break-all">{user?.email}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-700">
+                    {language === 'th' ? 'อีเมล' : language === 'zh' ? '邮箱' : 'Email'} <span className="text-red-500">*</span>
+                  </p>
+                  <EmailVerificationPanel />
+                </div>
               )}
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  LINE ID {!hasLinkedLINE(user) && <span className="text-red-500">*</span>}
-                </label>
-                <input
-                  type="text"
-                  name="line_id"
-                  value={formData.line_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  placeholder={getLabel('profile.line_placeholder', language, t.profile.enterLineId)}
-                  disabled={loading}
-                  required={!hasLinkedLINE(user)}
-                />
+
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  LINE <span className="text-red-500">*</span>
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  {getLabel(
+                    'profile.line_required_help',
+                    language,
+                    language === 'th'
+                      ? 'กรอก LINE ID หรือใช้บัญชี LINE ที่เชื่อมต่อแล้ว'
+                      : language === 'zh'
+                        ? '请输入 LINE ID，或使用已关联的 LINE 账号。'
+                        : 'Enter your LINE ID, or use a connected LINE account.',
+                  )}
+                </p>
+                <div className="space-y-3">
+                  {hasLinkedLINE(user) && (
+                    <p className="rounded-lg border border-[#06C755]/30 bg-[#E9F8EE] p-3 text-sm text-[#285A39]">
+                      {language === 'th' ? 'เชื่อมต่อบัญชี LINE แล้ว — ครบตามข้อกำหนด ไม่จำเป็นต้องกรอก LINE ID'
+                        : language === 'zh' ? 'LINE 账号已关联——已满足要求，无需填写 LINE ID。'
+                          : 'LINE account connected — requirement fulfilled. You do not need to enter a LINE ID.'}
+                    </p>
+                  )}
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">
+                      LINE ID {!hasLinkedLINE(user) && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      name="line_id"
+                      value={formData.line_id}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      placeholder={getLabel('profile.line_placeholder', language, t.profile.enterLineId)}
+                      disabled={loading}
+                      required={!hasLinkedLINE(user)}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
