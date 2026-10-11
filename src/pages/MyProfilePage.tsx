@@ -291,7 +291,22 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
           <div className="mb-6 rounded-[2.25rem] border border-[#55766F]/14 bg-[#FFF9EE]/95 p-6 shadow-[0_18px_50px_rgba(59,74,69,0.08)] md:p-8 lg:p-10">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#55766F]">JOKO TODAY</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#292D2B] sm:text-4xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{getLabel('profile_page.header', language, 'My Profile')}</h1>
-            <p className="mb-8 mt-2 max-w-2xl text-[#303532]/66">{getLabel('profile_page.subtitle', language, 'Your details help us prepare your orders and stay in touch.')}</p>
+            <p className="mt-2 max-w-2xl text-[#303532]/66">{getLabel('profile_page.subtitle', language, 'Your details help us prepare your orders and stay in touch.')}</p>
+
+            {userProfile?.short_code && (
+              <div className="mb-8 mt-5 inline-flex items-center gap-3 rounded-xl border border-[#55766F]/16 bg-white/55 px-4 py-3">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#55766F]">
+                  {getLabel(
+                    'profile_page.member_code',
+                    language,
+                    language === 'th' ? 'รหัสสมาชิก' : language === 'zh' ? '会员编号' : 'Member Code',
+                  )}
+                </span>
+                <span className="text-sm font-extrabold tracking-[0.12em] text-[#303532]">
+                  {userProfile.short_code}
+                </span>
+              </div>
+            )}
 
           {success && <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">{success}</div>}
           {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">{error}</div>}
