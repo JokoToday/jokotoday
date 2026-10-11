@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Award,
-  Banknote,
   Calendar,
   Check,
   Home,
@@ -15,7 +14,6 @@ import {
   Package,
   Phone,
   Printer,
-  QrCode,
   Store,
   Upload,
   User,
@@ -101,7 +99,7 @@ const getBangkokToday = () => {
 };
 
 const paymentComplete = (order: Order) => (
-  order.payment_status === 'paid' && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method || '')
+  order.payment_status === 'paid'
 );
 
 const paymentMethodLabel = (order: Order, language: 'en' | 'th' | 'zh') => {
@@ -118,6 +116,25 @@ const amountDue = (order: Order) => Math.max(
   0,
   Number(order.total_amount || 0) - Number(order.loyalty_discount_amount || 0)
 );
+
+function OrderDetails({ order, language }: { order: Order; language: 'en' | 'th' }) {
+  return (
+    <ul className="my-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-slate-50 px-3">
+      {(order.order_items || []).map((item, index) => {
+        const name = (language === 'th' ? item.product_name_th || item.name_th : null)
+          || item.product_name_en || item.product_name || item.name || (language === 'th' ? 'สินค้า' : 'Item');
+        const quantity = Number(item.quantity ?? item.qty ?? 0);
+        const price = Number(item.price_at_order ?? item.price ?? 0);
+        return (
+          <li key={`${item.product_id || 'item'}-${index}`} className="flex justify-between gap-3 py-3 text-sm">
+            <div><p className="font-semibold text-slate-900">{name}</p><p className="text-slate-600">{quantity} × ฿{price.toFixed(2)}</p></div>
+            <span className="font-semibold text-slate-900">฿{(quantity * price).toFixed(2)}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
@@ -335,47 +352,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     image.src = objectUrl;
   };
 
-  const recordPayment = async (order: Order, method: 'qr_code' | 'cash') => {
-    try {
-      setUpdatingOrder(order.id);
-      setActionError(null);
-      setActionSuccess(null);
-      setLastReceiptOrder(null);
-      const { data, error: updateError } = await supabase.rpc('staff_record_order_payment_v2', {
-        p_order_id: order.id,
-        p_payment_method: method,
-      });
-      if (updateError) throw updateError;
-      if (!data || typeof data.id !== 'string' || data.payment_status !== 'paid') {
-        throw new Error('Payment was recorded but the confirmation response was invalid.');
-      }
-
-      const returnedOrder = data as Order;
-      const applyPayment = (item: Order) => (
-        item.id === order.id ? returnedOrder : item
-      );
-      setOrders((current) => current.map(applyPayment));
-      setUpcomingOrders((current) => current.map(applyPayment));
-      setEarlyPickupOrder((current) => current?.id === order.id ? applyPayment(current) : current);
-      setActionSuccess(language === 'en'
-        ? `${method === 'cash' ? 'Cash' : 'QR'} payment recorded: ฿${amountDue(returnedOrder).toFixed(2)}.`
-        : `บันทึกการชำระ${method === 'cash' ? 'เงินสด' : ' QR'} ฿${amountDue(returnedOrder).toFixed(2)} แล้ว`);
-    } catch (err) {
-      console.error('Error recording payment:', err);
-      setActionError(err instanceof Error
-        ? err.message
-        : (language === 'en' ? 'Could not record payment.' : 'ไม่สามารถบันทึกการชำระเงินได้'));
-    } finally {
-      setUpdatingOrder(null);
-    }
-  };
-
   const confirmPickup = async (order: Order, early: boolean) => {
     if (order.order_type === 'specials' && (!specialsDeskLocation || specialsDeskLocation !== order.pickup_location_id || early)) { setActionError('Select the actual Specials pickup desk location. Early pickup is unavailable.'); return; }
     if (!paymentComplete(order)) {
       setActionError(language === 'en'
-        ? 'Record payment by QR or Cash before confirming pickup.'
-        : 'กรุณาบันทึกการชำระเงินด้วย QR หรือเงินสดก่อนยืนยันการรับสินค้า');
+        ? 'Online payment must be verified before confirming pickup.'
+        : 'ต้องยืนยันการชำระเงินออนไลน์ก่อนรับสินค้า');
       return;
     }
 
@@ -789,6 +771,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </span>
                           </div>
 
+                          <OrderDetails order={order} language={staffLanguage} />
+
                           {order.status !== 'picked_up' && order.order_items?.length > 0 && (
                             <PrintPrepTicketButton
                               order={order}
@@ -818,36 +802,10 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           )}
 
-                          <div className="bg-slate-50 rounded-xl p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                              {order.order_type === 'specials' ? 'JOKO Specials — verified online payment required' : (language === 'en' ? 'Payment received' : 'รับชำระเงิน')}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <button
-                                onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={order.order_type === 'specials' || updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                } disabled:opacity-50`}
-                              >
-                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
-                              </button>
-                              <button
-                                onClick={() => void recordPayment(order, 'cash')}
-                                disabled={order.order_type === 'specials' || updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                  order.payment_status === 'paid' && order.payment_method === 'cash'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                } disabled:opacity-50`}
-                              >
-                                <Banknote className="w-4 h-4" />
-                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
-                              </button>
-                            </div>
+                          <div className={`rounded-xl p-4 text-sm font-semibold ${paymentComplete(order) ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>
+                            {paymentComplete(order)
+                              ? (language === 'en' ? 'Paid — payment verified' : 'ชำระแล้ว — ยืนยันการชำระเงินแล้ว')
+                              : (language === 'en' ? 'Awaiting online payment — pickup unavailable' : 'รอชำระเงินออนไลน์ — ยังรับสินค้าไม่ได้')}
                           </div>
 
                           {order.status !== 'picked_up' && (
@@ -859,7 +817,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                               {paymentComplete(order)
                                 ? (language === 'en' ? 'Mark as Picked Up' : 'บันทึกรับสินค้า')
-                                : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
+                                : (language === 'en' ? 'Awaiting online payment' : 'รอชำระเงินออนไลน์')}
                             </button>
                           )}
                         </div>
@@ -877,8 +835,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         {language === 'en'
-                          ? 'For an early pickup, record how payment was received first, then confirm the early collection.'
-                          : 'หากรับสินค้าก่อนกำหนด ให้บันทึกวิธีการชำระเงินก่อน แล้วจึงยืนยันการรับสินค้าก่อนกำหนด'}
+                          ? 'Online payment must be verified before confirming early pickup.'
+                          : 'ต้องยืนยันการชำระเงินออนไลน์ก่อนรับสินค้าก่อนกำหนด'}
                       </p>
                     </div>
 
@@ -919,6 +877,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </div>
                             </div>
 
+                            <OrderDetails order={order} language={staffLanguage} />
+
                             {order.order_items?.length > 0 && (
                               <PrintPrepTicketButton
                                 order={order}
@@ -938,35 +898,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               />
                             )}
 
-                            <div className="mt-4 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                                } disabled:opacity-50`}
-                              >
-                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void recordPayment(order, 'cash')}
-                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                                  order.payment_status === 'paid' && order.payment_method === 'cash'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                                } disabled:opacity-50`}
-                              >
-                                <Banknote className="w-4 h-4" />
-                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
-                              </button>
-                            </div>
-
                             {!confirmingEarly ? (
                               <button
                                 type="button"
@@ -981,7 +912,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               >
                                 {paymentComplete(order)
                                   ? (language === 'en' ? 'Pick Up Early' : 'รับสินค้าก่อนกำหนด')
-                                  : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
+                                  : (language === 'en' ? 'Awaiting online payment' : 'รอชำระเงินออนไลน์')}
                               </button>
                             ) : (
                               <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
