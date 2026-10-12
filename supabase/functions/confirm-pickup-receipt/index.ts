@@ -66,10 +66,8 @@ type OrderRecord = {
 };
 
 type ReceiptRecord = {
-  id: string;
   receipt_number: string;
   issued_at: string;
-  snapshot: Record<string, unknown>;
 };
 
 type PickupLocationRecord = {
@@ -440,24 +438,30 @@ Deno.serve(async (req: Request) => {
     });
 
     const tokenHash = await sha256Hex(token);
-    const { data: completion, error: completionError } = await service.rpc(
-      "complete_order_customer_receipt",
-      { p_token_hash: tokenHash },
-    );
+    const { data: handoff, error: handoffError } = await service
+      .from("pickup_handoff_sessions")
+      .select("order_id, status, expires_at")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
 
-    if (completionError) {
-      const message = completionError.message || "Could not confirm product receipt";
-      const status = /expired|no longer active/i.test(message) ? 410 : /not found/i.test(message) ? 404 : 409;
-      return jsonResponse(req, status, { error: message });
+    if (handoffError) throw handoffError;
+    if (!handoff) return jsonResponse(req, 404, { error: "Receipt confirmation not found" });
+    if (!["active", "confirmed"].includes(handoff.status)) {
+      return jsonResponse(req, 410, { error: "Receipt confirmation is no longer active" });
     }
-
-    const orderId = completion?.order_id;
-    if (typeof orderId !== "string") throw new Error("Invalid receipt completion response");
+    if (handoff.status === "active" && new Date(handoff.expires_at).getTime() <= Date.now()) {
+      await service
+        .from("pickup_handoff_sessions")
+        .update({ status: "expired", updated_at: new Date().toISOString() })
+        .eq("token_hash", tokenHash)
+        .eq("status", "active");
+      return jsonResponse(req, 410, { error: "Receipt confirmation has expired" });
+    }
 
     const { data: order, error: orderError } = await service
       .from("orders")
       .select("id, order_number, customer_id, customer_name, customer_email, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, customer_received_at, purchase_type, walk_in_amount, loyalty_points_earned")
-      .eq("id", orderId)
+      .eq("id", handoff.order_id)
       .single();
 
     if (orderError) throw orderError;
@@ -560,12 +564,7 @@ Deno.serve(async (req: Request) => {
       order: {
         order_number: order.order_number,
         customer_name: order.customer_name,
-        order_items: ((order.order_items || []) as OrderItem[]).map((item) => ({
-          ...item,
-          product_name: itemName(item, "en"),
-          product_name_th: itemName(item, "th"),
-          product_name_zh: itemName(item, "zh"),
-        })),
+        order_items: order.order_items || [],
         total_amount: order.total_amount,
         loyalty_discount_amount: order.loyalty_discount_amount,
         amount_paid: order.amount_paid,
@@ -588,38 +587,37 @@ Deno.serve(async (req: Request) => {
       next_order_url: nextSetting?.value || "/products?from=receipt",
     };
 
-    const receiptLookup = await service
-      .from("order_receipts")
-      .select("id, receipt_number, issued_at, snapshot")
-      .eq("order_id", order.id)
-      .maybeSingle();
+    const { data: completion, error: completionError } = await service.rpc(
+      "complete_order_customer_receipt",
+      {
+        p_token_hash: tokenHash,
+        p_receipt_number: receiptNumber,
+        p_issued_at: issuedAt,
+        p_snapshot: snapshot,
+      },
+    );
 
-    if (receiptLookup.error) throw receiptLookup.error;
-    let receipt = receiptLookup.data as ReceiptRecord | null;
-
-    if (!receipt) {
-      const { error: insertError } = await service
-        .from("order_receipts")
-        .insert({
-          order_id: order.id,
-          customer_id: order.customer_id,
-          receipt_number: receiptNumber,
-          issued_at: issuedAt,
-          document_version: 1,
-          snapshot,
-        });
-
-      if (insertError && insertError.code !== "23505") throw insertError;
-
-      const { data: issuedReceipt, error: issuedError } = await service
-        .from("order_receipts")
-        .select("id, receipt_number, issued_at, snapshot")
-        .eq("order_id", order.id)
-        .single();
-
-      if (issuedError) throw issuedError;
-      receipt = issuedReceipt as ReceiptRecord;
+    if (completionError) {
+      const message = completionError.message || "Could not confirm product receipt";
+      const status = /expired|no longer active/i.test(message) ? 410 : /not found/i.test(message) ? 404 : 409;
+      return jsonResponse(req, status, { error: message });
     }
+
+    if (
+      !completion
+      || typeof completion.receipt_number !== "string"
+      || typeof completion.issued_at !== "string"
+    ) {
+      throw new Error("Invalid receipt completion response");
+    }
+
+    const receipt: ReceiptRecord = {
+      receipt_number: completion.receipt_number,
+      issued_at: completion.issued_at,
+    };
+    const customerReceivedAt = typeof completion.customer_received_at === "string"
+      ? completion.customer_received_at
+      : order.customer_received_at || issuedAt;
 
     const notificationRows: Array<{ order_id: string; notification_type: NotificationType; language: Language }> = [];
     if (order.customer_email) {
@@ -656,7 +654,7 @@ Deno.serve(async (req: Request) => {
       orderNumber: order.order_number,
       receiptNumber: receipt.receipt_number,
       issuedAt: receipt.issued_at,
-      customerReceivedAt: order.customer_received_at,
+      customerReceivedAt,
       delivery: {
         email: emailDelivery,
         line: lineDelivery,

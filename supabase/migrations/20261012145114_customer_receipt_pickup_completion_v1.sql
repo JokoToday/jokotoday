@@ -220,7 +220,14 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.complete_order_customer_receipt(p_token_hash text)
+DROP FUNCTION IF EXISTS public.complete_order_customer_receipt(text);
+
+CREATE OR REPLACE FUNCTION public.complete_order_customer_receipt(
+  p_token_hash text,
+  p_receipt_number text,
+  p_issued_at timestamptz,
+  p_snapshot jsonb
+)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -229,9 +236,20 @@ AS $$
 DECLARE
   v_handoff public.pickup_handoff_sessions%ROWTYPE;
   v_order public.orders%ROWTYPE;
+  v_receipt public.order_receipts%ROWTYPE;
+  v_already_confirmed boolean := false;
 BEGIN
   IF p_token_hash IS NULL OR length(btrim(p_token_hash)) < 32 THEN
     RAISE EXCEPTION 'Invalid receipt confirmation token';
+  END IF;
+  IF p_receipt_number IS NULL OR btrim(p_receipt_number) = '' THEN
+    RAISE EXCEPTION 'Receipt number is required';
+  END IF;
+  IF p_issued_at IS NULL THEN
+    RAISE EXCEPTION 'Receipt issue time is required';
+  END IF;
+  IF p_snapshot IS NULL OR jsonb_typeof(p_snapshot) <> 'object' THEN
+    RAISE EXCEPTION 'Receipt snapshot must be an object';
   END IF;
 
   SELECT *
@@ -254,12 +272,41 @@ BEGIN
     RAISE EXCEPTION 'Order not found';
   END IF;
 
+  SELECT *
+  INTO v_receipt
+  FROM public.order_receipts
+  WHERE order_id = v_order.id
+  FOR UPDATE;
+
   IF v_handoff.status = 'confirmed' THEN
+    v_already_confirmed := true;
+    IF v_receipt.id IS NULL THEN
+      INSERT INTO public.order_receipts (
+        order_id,
+        customer_id,
+        receipt_number,
+        issued_at,
+        document_version,
+        snapshot
+      )
+      VALUES (
+        v_order.id,
+        v_order.customer_id,
+        p_receipt_number,
+        p_issued_at,
+        1,
+        p_snapshot
+      )
+      RETURNING * INTO v_receipt;
+    END IF;
+
     RETURN jsonb_build_object(
       'order_id', v_order.id,
       'customer_id', v_order.customer_id,
       'order_number', v_order.order_number,
       'customer_received_at', v_order.customer_received_at,
+      'receipt_number', v_receipt.receipt_number,
+      'issued_at', v_receipt.issued_at,
       'already_confirmed', true
     );
   END IF;
@@ -290,15 +337,35 @@ BEGIN
   UPDATE public.orders
   SET
     status = 'completed',
-    customer_received_at = COALESCE(customer_received_at, now()),
+    customer_received_at = COALESCE(customer_received_at, p_issued_at),
     updated_at = now()
   WHERE id = v_order.id
   RETURNING * INTO v_order;
 
+  IF v_receipt.id IS NULL THEN
+    INSERT INTO public.order_receipts (
+      order_id,
+      customer_id,
+      receipt_number,
+      issued_at,
+      document_version,
+      snapshot
+    )
+    VALUES (
+      v_order.id,
+      v_order.customer_id,
+      p_receipt_number,
+      p_issued_at,
+      1,
+      p_snapshot
+    )
+    RETURNING * INTO v_receipt;
+  END IF;
+
   UPDATE public.pickup_handoff_sessions
   SET
     status = 'confirmed',
-    confirmed_at = COALESCE(confirmed_at, v_order.customer_received_at, now()),
+    confirmed_at = COALESCE(confirmed_at, v_order.customer_received_at, p_issued_at),
     updated_at = now()
   WHERE id = v_handoff.id;
 
@@ -313,16 +380,20 @@ BEGIN
     'customer_id', v_order.customer_id,
     'order_number', v_order.order_number,
     'customer_received_at', v_order.customer_received_at,
-    'already_confirmed', false
+    'receipt_number', v_receipt.receipt_number,
+    'issued_at', v_receipt.issued_at,
+    'already_confirmed', v_already_confirmed
   );
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.complete_order_customer_receipt(text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.complete_order_customer_receipt(text) TO service_role;
+REVOKE ALL ON FUNCTION public.complete_order_customer_receipt(text, text, timestamptz, jsonb)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_order_customer_receipt(text, text, timestamptz, jsonb)
+  TO service_role;
 
-COMMENT ON FUNCTION public.complete_order_customer_receipt(text) IS
-'Service-role-only atomic transition from staff handover (picked_up) to customer-confirmed completed.';
+COMMENT ON FUNCTION public.complete_order_customer_receipt(text, text, timestamptz, jsonb) IS
+'Service-role-only atomic transition that confirms customer receipt and persists the immutable receipt in the same transaction.';
 
 CREATE OR REPLACE FUNCTION public.staff_lookup_pickup_code(p_pickup_code text)
 RETURNS jsonb
