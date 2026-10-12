@@ -1,3 +1,4 @@
+import { MakerAttribution, SourcingDisclosure } from './MakerAttribution';
 import { useState, useEffect } from 'react';
 import { X, Plus, Minus, Heart } from 'lucide-react';
 import { CMSProduct } from '../lib/cmsService';
@@ -112,7 +113,8 @@ export default function ProductDetailModal({
   const quantityLimit = quantityLimitOverride !== undefined
     ? quantityLimitOverride
     : stockRemaining;
-  const isSoldOut = product.is_sold_out || stockRemaining === 0 || quantityLimit === 0;
+  const previewOnly = product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true;
+  const isSoldOut = previewOnly || product.is_sold_out || stockRemaining === 0 || quantityLimit === 0;
 
   const handleRecommendedProductClick = (recommendedProduct: CMSProduct) => {
     onClose();
@@ -177,6 +179,8 @@ export default function ProductDetailModal({
             <h1 className="text-2xl md:text-3xl font-header font-bold text-primary-900 mb-3">
               {getProductName()}
             </h1>
+            <MakerAttribution maker={product.maker} />
+            {product.product_origin === 'maker' && <SourcingDisclosure />}
             <p className="text-gray-600 mb-6 leading-relaxed">
               {getProductDescription()}
             </p>
@@ -217,7 +221,7 @@ export default function ProductDetailModal({
               <span className="text-3xl font-bold text-primary-900">฿{product.price}</span>
               {isSoldOut && !selectedDay && (
                 <span className="text-sm font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
-                  {t.product.soldOut}
+                  {previewOnly ? (language === 'th' ? 'ดูตัวอย่างเท่านั้น' : language === 'zh' ? '仅供预览' : 'Preview only') : t.product.soldOut}
                 </span>
               )}
             </div>

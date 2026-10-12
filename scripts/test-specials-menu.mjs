@@ -10,7 +10,7 @@ const { resolveTopMenu, getTopMenuLabel } = await import(
   'data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'),
 );
 const defaults = resolveTopMenu(undefined);
-assert.deepEqual(defaults.map(item => item.key), ['home', 'products', 'other-products', 'specials', 'how-it-works', 'pickup', 'about']);
+assert.deepEqual(defaults.map(item => item.key), ['home', 'products', 'other-products', 'specials', 'makers', 'how-it-works', 'pickup', 'about']);
 
 // Existing published menus must gain Specials without losing labels, order or visibility.
 const legacy = defaults.filter(item => item.key !== 'specials').map(item => ({
@@ -28,7 +28,7 @@ assert.deepEqual(resolveTopMenu(custom), custom);
 assert.equal(getTopMenuLabel(custom[0], 'en'), 'Today Only');
 assert.equal(getTopMenuLabel(custom[0], 'th'), 'วันนี้เท่านั้น');
 assert.equal(getTopMenuLabel(custom[0], 'zh'), '仅限今日');
-assert.equal(resolveTopMenu([...custom, custom[0], { key: 'untrusted-route' }]).length, 7);
+assert.equal(resolveTopMenu([...custom, custom[0], { key: 'untrusted-route' }]).length, 8);
 const moduleUrls = {};
 for (const name of ['contracts', 'registry', 'validation']) {
   let output = ts.transpileModule(await readFile(`src/platform/builder/${name}.ts`, 'utf8'), {

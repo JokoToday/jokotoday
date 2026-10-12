@@ -1,3 +1,5 @@
+import { MakersSection } from '../../../components/MakersSection';
+import { productOrigin } from '../../../lib/makersService';
 import {
   ArrowRight,
   ArrowUp,
@@ -36,6 +38,7 @@ import {
 } from '../../../platform/builder';
 import { Container } from '../../../platform/design-system';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
+import { JokoBubbleSlot } from '../../../components/JokoBubbleSlot';
 
 interface HomepageLowerSectionsProps {
   locale: string;
@@ -360,10 +363,10 @@ export function HomepageLowerSections({
   };
 
   const weeklyProducts = products
-    .filter((product) => !product.is_non_bakery && Boolean(productImage(product)))
+    .filter((product) => productOrigin(product) === 'joko' && Boolean(productImage(product)))
     .slice(0, 6);
   const nonBakeryFeatured = products
-    .filter((product) => product.is_non_bakery && product.non_bakery_feature_order != null)
+    .filter((product) => productOrigin(product) === 'beyond' && product.non_bakery_feature_order != null)
     .sort((a, b) =>
       (a.non_bakery_feature_order ?? 999) - (b.non_bakery_feature_order ?? 999)
       || a.sort_order - b.sort_order
@@ -375,6 +378,7 @@ export function HomepageLowerSections({
 
   return (
     <div>
+      <MakersSection />
       {showBaking && <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
         <Container width="wide">
           <SectionTitle
@@ -562,6 +566,13 @@ export function HomepageLowerSections({
           <SectionTitle
             title={labels.aboutTitle}
             intro={labels.aboutIntro}
+            action={(
+              <JokoBubbleSlot
+                pageKey="home"
+                placementKey="before-about"
+                className="mr-1"
+              />
+            )}
             backToTopLabel={labels.backToTop}
             onBackToTop={backToTop}
           />

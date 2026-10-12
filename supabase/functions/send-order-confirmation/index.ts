@@ -137,6 +137,7 @@ type EmailCopy = {
   greetingSuffix: string;
   intro: string;
   introOutstanding: string;
+  introOutstandingStripe: string;
   customer: string;
   orderNumber: string;
   ordered: string;
@@ -151,6 +152,7 @@ type EmailCopy = {
   paymentHeading: string;
   paymentUnpaid: string;
   paymentUnpaidOnline: string;
+  paymentUnpaidOnlineStripe: string;
   paymentPaid: string;
   paymentCancelled: string;
   paymentReview: string;
@@ -173,6 +175,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     greetingSuffix: ",",
     intro: "Thanks for your order. We have it and will have it ready for your selected pickup.",
     introOutstanding: "Thanks for your order. Your pickup is reserved while you complete PromptPay and upload the bank slip. JOKO will confirm the order automatically after the banking transaction is verified.",
+    introOutstandingStripe: "Thanks for your order. Your pickup is reserved while you complete PromptPay. Scan the QR on the payment page. Once Stripe confirms the payment, JOKO will confirm your order automatically. No payment slip is required.",
     customer: "Customer",
     orderNumber: "Order",
     ordered: "Ordered",
@@ -187,6 +190,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     paymentHeading: "Payment",
     paymentUnpaid: "Pay ฿{{amount}} when you pick up. Cash or Thai QR payment is available.",
     paymentUnpaidOnline: "Payment slip outstanding · ฿{{amount}}. Open My Orders to pay by PromptPay and upload the bank slip for automatic verification.",
+    paymentUnpaidOnlineStripe: "PromptPay payment outstanding · ฿{{amount}}. Open My Orders to scan the Stripe PromptPay QR. Your order will be confirmed automatically after Stripe confirms payment. No payment slip is required.",
     paymentPaid: "Paid · ฿{{amount}}",
     paymentCancelled: "This order was cancelled. No payment is due.",
     paymentReview: "Payment status is unresolved for this closed order. Please contact JOKO TODAY if needed.",
@@ -207,6 +211,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     greetingSuffix: "",
     intro: "ขอบคุณสำหรับคำสั่งซื้อ เราได้รับออเดอร์เรียบร้อยแล้วและจะเตรียมไว้สำหรับวันรับสินค้าที่คุณเลือก",
     introOutstanding: "เราได้รับคำสั่งซื้อแล้วและกันสินค้าไว้ชั่วคราว กรุณาชำระผ่านพร้อมเพย์และอัปโหลดสลิป ระบบ JOKO จะยืนยันคำสั่งซื้ออัตโนมัติหลังตรวจสอบธุรกรรมธนาคาร",
+    introOutstandingStripe: "เราได้รับคำสั่งซื้อแล้วและกันสินค้าไว้ชั่วคราว กรุณาสแกน QR พร้อมเพย์บนหน้าชำระเงิน เมื่อ Stripe ยืนยันการชำระเงิน JOKO จะยืนยันคำสั่งซื้อโดยอัตโนมัติ ไม่ต้องอัปโหลดสลิป",
     customer: "ลูกค้า",
     orderNumber: "คำสั่งซื้อ",
     ordered: "วันที่สั่งซื้อ",
@@ -221,6 +226,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     paymentHeading: "การชำระเงิน",
     paymentUnpaid: "ชำระ ฿{{amount}} เมื่อรับสินค้า สามารถชำระด้วยเงินสดหรือ Thai QR ได้",
     paymentUnpaidOnline: "ยังไม่ได้อัปโหลดสลิปชำระเงิน · ฿{{amount}} เปิด “คำสั่งซื้อของฉัน” เพื่อชำระผ่านพร้อมเพย์และอัปโหลดสลิปสำหรับการตรวจสอบอัตโนมัติ",
+    paymentUnpaidOnlineStripe: "รอการชำระผ่านพร้อมเพย์ · ฿{{amount}} เปิด “คำสั่งซื้อของฉัน” เพื่อสแกน Stripe PromptPay QR ระบบจะยืนยันคำสั่งซื้อโดยอัตโนมัติเมื่อ Stripe ยืนยันการชำระเงิน ไม่ต้องอัปโหลดสลิป",
     paymentPaid: "ชำระแล้ว · ฿{{amount}}",
     paymentCancelled: "คำสั่งซื้อนี้ถูกยกเลิกแล้ว ไม่มียอดที่ต้องชำระ",
     paymentReview: "สถานะการชำระเงินของคำสั่งซื้อที่ปิดแล้วนี้ยังไม่ชัดเจน โปรดติดต่อ JOKO TODAY หากจำเป็น",
@@ -241,6 +247,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     greetingSuffix: "",
     intro: "感谢您的订购。我们已收到订单，并会在您选择的取货时间准备好。",
     introOutstanding: "我们已收到订单，并暂时为您保留商品。请使用 PromptPay 付款并上传银行回执；银行交易验证成功后，JOKO 会自动确认订单。",
+    introOutstandingStripe: "我们已收到订单，并暂时为您保留商品。请扫描付款页面上的 PromptPay 二维码。Stripe 确认付款后，JOKO 会自动确认订单，无需上传付款回执。",
     customer: "客户",
     orderNumber: "订单",
     ordered: "下单日期",
@@ -255,6 +262,7 @@ const EMAIL_COPY: Record<Language, EmailCopy> = {
     paymentHeading: "付款",
     paymentUnpaid: "取货时支付 ฿{{amount}}。可使用现金或 Thai QR 付款。",
     paymentUnpaidOnline: "付款回执尚未上传 · ฿{{amount}}。请打开“我的订单”，使用 PromptPay 付款并上传银行回执以自动验证。",
+    paymentUnpaidOnlineStripe: "PromptPay 待付款 · ฿{{amount}}。请打开“我的订单”扫描 Stripe PromptPay 二维码。Stripe 确认付款后订单会自动确认，无需上传付款回执。",
     paymentPaid: "已付款 · ฿{{amount}}",
     paymentCancelled: "此订单已取消，无需付款。",
     paymentReview: "此已关闭订单的付款状态尚未明确。如有需要，请联系 JOKO TODAY。",
@@ -310,6 +318,7 @@ function buildEmail(
   pickupDay: PickupDay | null,
   lang: Language,
   onlinePromptPayEnabled: boolean,
+  paymentMode: string | null,
 ): { subject: string; html: string; text: string } {
   const copy = EMAIL_COPY[lang];
   const paymentOutstanding = onlinePromptPayEnabled
@@ -328,7 +337,10 @@ function buildEmail(
   const itemRows = buildItemRows(items, lang, copy);
   const loyaltyBlock = buildLoyaltyBlock(points, copy);
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
-  const introText = paymentOutstanding ? copy.introOutstanding : copy.intro;
+  const isStripePromptPay = paymentMode === "stripe_promptpay";
+  const introText = paymentOutstanding
+    ? (isStripePromptPay ? copy.introOutstandingStripe : copy.introOutstanding)
+    : copy.intro;
   const eyebrowText = paymentOutstanding ? copy.eyebrowOutstanding : copy.eyebrow;
   const headingText = paymentOutstanding ? copy.headingOutstanding : copy.heading;
   const orderedDate = formatDate(order.created_at, lang);
@@ -341,8 +353,11 @@ function buildEmail(
   } else if (order.payment_status === "paid") {
     paymentText = copy.paymentPaid.replace("{{amount}}", amountPaid.toFixed(2));
   } else if (order.status === "pending" || order.status === "confirmed" || order.status === "ready") {
-    paymentText = (paymentOutstanding ? copy.paymentUnpaidOnline : copy.paymentUnpaid)
-      .replace("{{amount}}", amountDue.toFixed(2));
+    paymentText = (
+      paymentOutstanding
+        ? (isStripePromptPay ? copy.paymentUnpaidOnlineStripe : copy.paymentUnpaidOnline)
+        : copy.paymentUnpaid
+    ).replace("{{amount}}", amountDue.toFixed(2));
   } else {
     paymentText = copy.paymentReview;
   }
@@ -551,11 +566,24 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const { data: paymentSetting } = await supabase
-    .from("payment_settings")
-    .select("online_promptpay_enabled")
-    .eq("id", true)
-    .maybeSingle();
+  const [{ data: paymentTransaction }, { data: paymentSetting }] = await Promise.all([
+    supabase
+      .from("payment_transactions")
+      .select("payment_mode")
+      .eq("order_id", order.id)
+      .maybeSingle(),
+    supabase
+      .from("payment_settings")
+      .select("online_promptpay_enabled, payment_qr_mode")
+      .eq("id", true)
+      .maybeSingle(),
+  ]);
+
+  const paymentMode = typeof paymentTransaction?.payment_mode === "string"
+    ? paymentTransaction.payment_mode
+    : typeof paymentSetting?.payment_qr_mode === "string"
+      ? paymentSetting.payment_qr_mode
+      : null;
 
   const items: OrderItem[] = Array.isArray(order.order_items) ? order.order_items : [];
   const email = buildEmail(
@@ -565,6 +593,7 @@ Deno.serve(async (req: Request) => {
     pickupDay,
     lang,
     Boolean(paymentSetting?.online_promptpay_enabled),
+    paymentMode,
   );
 
   const resendKey = Deno.env.get("RESEND_API_KEY");

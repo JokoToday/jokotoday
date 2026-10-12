@@ -187,279 +187,257 @@ result = await op("transfer", stock, stockKey);
 batch = result.batch;
 item = result.item;
 check(item.quantity_available, 4, "counted stock allocated");
-…7163 tokens truncated…n                      onChange={(event) => setEnabled(event.target.checked)}
-                    />
-                    {copy.enabled}
-                  </label>
-                )}
-                <button
-                  type="submit"
-                  className="joko-admin-primary-button w-fit px-4 py-2"
-                >
-                  {copy.add}
-                </button>
-              </fieldset>
-            </form>
-          )}
-          <div className="joko-admin-paper-card overflow-x-auto p-5">
-            <table className="w-full text-left text-sm">
-              <caption className="mb-3 text-left joko-admin-title text-xl">
-                {copy.transfer}
-              </caption>
-              <thead>
-                <tr>
-                  {[
-                    copy.product,
-                    copy.allocated,
-                    copy.available,
-                    copy.held,
-                    copy.sold,
-                    "",
-                  ].map((label) => (
-                    <th key={label} className="px-2 py-2">
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-t border-[#55766F]/15">
-                    <td className="px-2 py-3">
-                      {productName(
-                        products.find(
-                          (product) => product.id === item.product_id,
-                        ),
-                      )}
-                    </td>
-                    {[
-                      item.quantity_allocated,
-                      item.quantity_available,
-                      item.quantity_held,
-                      item.quantity_committed,
-                    ].map((value, index) => (
-                      <td key={index} className="px-2 py-3">
-                        {value}
-                      </td>
-                    ))}
-                    <td>
-                      {batch.status === "draft" && (
-                        <button
-                          disabled={locked}
-                          className="joko-admin-secondary-button px-2 py-1"
-                          onClick={() => {
-                            setEditItem(item);
-                            setProductId(item.product_id);
-                            setPrice(
-                              (item.special_price_satang / 100).toFixed(2),
-                            );
-                            setCap(item.max_per_customer?.toString() || "");
-                            setEnabled(item.is_enabled);
-                          }}
-                        >
-                          {copy.edit}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <form
-            onSubmit={transfer}
-            className="joko-admin-paper-card space-y-4 p-5"
-          >
-            <h2 className="joko-admin-title text-xl">{copy.transfer}</h2>
-            <p className="text-sm">{copy.sourceHint}</p>
-            <fieldset disabled={locked} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="text-sm">
-                  {copy.product}
-                  <select
-                    required
-                    className="joko-admin-field mt-1 w-full"
-                    value={transferItemId}
-                    onChange={(event) => {
-                      setTransferItemId(event.target.value);
-                      setIsolated(false);
-                      setQuality(false);
-                    }}
-                  >
-                    <option value="">—</option>
-                    {items.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {productName(
-                          products.find(
-                            (product) => product.id === item.product_id,
-                          ),
-                        )}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm">
-                  {copy.transfer}
-                  <select
-                    className="joko-admin-field mt-1 w-full"
-                    value={direction}
-                    onChange={(event) => {
-                      setDirection(event.target.value as "in" | "out");
-                      setIsolated(false);
-                      setQuality(false);
-                    }}
-                  >
-                    <option
-                      value="in"
-                      disabled={!["draft", "prepared", "live"].includes(batch.status)}
-                    >
-                      {copy.in}
-                    </option>
-                    <option value="out">{copy.out}</option>
-                  </select>
-                </label>
-                <label className="text-sm">
-                  {copy.quantity}
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    step="1"
-                    className="joko-admin-field mt-1 w-full"
-                    value={quantity}
-                    onChange={(event) => setQuantity(event.target.value)}
-                  />
-                </label>
-              </div>
-              <label className="block text-sm">
-                {copy.source}
-                <input
-                  required
-                  maxLength={500}
-                  className="joko-admin-field mt-1 w-full"
-                  value={source}
-                  onChange={(event) => setSource(event.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                {copy.reason}
-                <input
-                  required
-                  maxLength={1000}
-                  className="joko-admin-field mt-1 w-full"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                />
-              </label>
-              {direction === "in" && (
-                <div className="space-y-3">
-                  <label className="flex items-start gap-2 text-sm">
-                    <input
-                      required
-                      type="checkbox"
-                      checked={isolated}
-                      onChange={(event) => setIsolated(event.target.checked)}
-                    />
-                    {copy.isolated}
-                  </label>
-                  <label className="flex items-start gap-2 text-sm">
-                    <input
-                      required
-                      type="checkbox"
-                      checked={quality}
-                      onChange={(event) => setQuality(event.target.checked)}
-                    />
-                    {copy.quality}
-                  </label>
-                </div>
-              )}
-              <button
-                type="submit"
-                className="joko-admin-primary-button px-4 py-2"
-              >
-                {direction === "in" ? copy.in : copy.out}
-              </button>
-            </fieldset>
-          </form>
-          <div className="joko-admin-paper-card space-y-3 p-5">
-            <p className="text-sm">{copy.leftover}</p>
-            <div className="flex flex-wrap gap-2">
-              {batch.status === "draft" && (
-                <button
-                  disabled={
-                    locked ||
-                    !items.some(
-                      (item) => item.is_enabled && item.quantity_available > 0,
-                    )
-                  }
-                  className="joko-admin-primary-button px-4 py-2"
-                  onClick={() => void run("prepare", batchRequest())}
-                >
-                  {copy.prepare}
-                </button>
-              )}
-              {["draft", "prepared", "live"].includes(batch.status) && (
-                <>
-                  <button
-                    disabled={locked}
-                    className="joko-admin-secondary-button px-4 py-2"
-                    onClick={() => close("close")}
-                  >
-                    {copy.close}
-                  </button>
-                  <button
-                    disabled={locked}
-                    className="joko-admin-secondary-button px-4 py-2"
-                    onClick={() => close("cancel")}
-                  >
-                    {copy.cancel}
-                  </button>
-                </>
-              )}
-            </div>
-            <label className="block text-sm">
-              {copy.reason}
-              <input
-                disabled={locked}
-                maxLength={1000}
-                className="joko-admin-field mt-1 w-full"
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </label>
-          </div>
-          <div className="joko-admin-paper-card p-5">
-            <h2 className="joko-admin-title mb-3 text-xl">{copy.history}</h2>
-            {events.length === 0 && <p className="text-sm">{copy.noEvents}</p>}
-            <ol className="space-y-3 text-sm">
-              {events.map((event) => (
-                <li
-                  key={event.id}
-                  className="border-b border-[#55766F]/15 pb-3"
-                >
-                  <p>
-                    <strong>{event.event_type}</strong> ·{" "}
-                    {bangkokInputValue(new Date(event.created_at)).replace(
-                      "T",
-                      " ",
-                    )}
-                    {event.quantity_delta
-                      ? ` · ${event.quantity_delta > 0 ? "+" : ""}${event.quantity_delta}`
-                      : ""}
-                  </p>
-                  <p>
-                    {event.source_reference} · {event.reason}
-                  </p>
-                  <p className="break-all text-xs opacity-55">
-                    {event.actor_id}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </>
-      )}
-      <SpecialsOperations batch={batches.find(b => b.id === batchId) || null} onChanged={() => { void loadSpecialsWorkspace().then(data => setBatches(data.batches)); }} />
-    </section>
+check(
+  (await op("transfer", stock, stockKey)).item.quantity_available,
+  4,
+  "duplicate transfer not applied twice",
+);
+await fails(
+  () => op("transfer", stock),
+  /Batch changed/,
+  "stale stock command rejected",
+);
+await fails(
+  () => op("transfer", { ...stock, ...base(), direction: "out", quantity: 5 }),
+  /Only available/,
+  "cannot release excess stock",
+);
+// Simulate future held/committed units in a rolled-back test transaction.
+await actor("postgres", ids.admin);
+await db.exec("BEGIN");
+await db.query(
+  "UPDATE public.specials_items SET quantity_available=2,quantity_held=1,quantity_committed=1 WHERE id=$1",
+  [item.id],
+);
+await actor("authenticated", ids.admin);
+await db.exec("SAVEPOINT release_check");
+await fails(
+  () => op("transfer", { ...stock, ...base(), direction: "out", quantity: 3 }),
+  /Only available/,
+  "held/committed units cannot be released",
+);
+await db.exec("ROLLBACK TO SAVEPOINT release_check");
+const remaining = (
+  await op("transfer", { ...stock, ...base(), direction: "out", quantity: 2 })
+).item;
+check(
+  [
+    remaining.quantity_available,
+    remaining.quantity_held,
+    remaining.quantity_committed,
+  ],
+  [0, 1, 1],
+  "release only consumes available units",
+);
+await db.exec("ROLLBACK");
+await actor("authenticated", ids.admin);
+for (const role of ["customer", "staff", "productStaff"]) {
+  await actor("authenticated", ids[role]);
+  check(
+    (await db.query("SELECT id FROM public.specials_batches")).rows.length,
+    0,
+    `${role} cannot read internal batches`,
+  );
+  check(
+    (await db.query("SELECT id FROM public.specials_items")).rows.length,
+    0,
+    `${role} cannot read internal stock`,
+  );
+  check(
+    (await db.query("SELECT id FROM public.specials_audit_events")).rows.length,
+    0,
+    `${role} cannot read audit`,
+  );
+  await fails(
+    () => op("transfer", { ...stock, ...base() }),
+    /Admin access/,
+    `${role} cannot mutate`,
+  );
+  await fails(
+    () => db.query("UPDATE public.specials_items SET quantity_available=99"),
+    /permission denied/,
+    `${role} cannot bypass RPC`,
   );
 }
+await actor("anon");
+await fails(
+  () => db.query("SELECT * FROM public.specials_batches"),
+  /permission denied/,
+  "anonymous has no internal read grant",
+);
+await fails(
+  () => op("save_batch", request),
+  /permission denied/,
+  "anonymous has no RPC execution",
+);
+await actor("service_role");
+await fails(
+  () => db.query("UPDATE public.specials_audit_events SET reason='changed'"),
+  /permission denied/,
+  "service role has no ledger write grant",
+);
+await actor("authenticated", ids.admin);
+await fails(
+  () => db.query("UPDATE public.specials_items SET quantity_available=99"),
+  /permission denied/,
+  "even Admin direct writes denied",
+);
+result = await op("prepare", base());
+batch = result.batch;
+check(batch.status, "prepared", "reviewed batch remains private/prepared");
+await fails(
+  () => op("publish", base()),
+  /Invalid Specials/,
+  "no public publishing action",
+);
+await fails(
+  () => op("save_batch", { ...request, ...base(), title: "New pickup" }),
+  /Only a draft/,
+  "prepared batch immutable",
+);
+// A second funded draft cannot become prepared while the first is open.
+let second = (await op("save_batch", { ...request, title: "Second draft" }))
+  .batch;
+let secondResult = await op("save_item", {
+  batch_id: second.id,
+  expected_version: second.version,
+  product_id: ids.product,
+  special_price_satang: 10000,
+});
+second = secondResult.batch;
+secondResult = await op("transfer", {
+  ...stock,
+  batch_id: second.id,
+  expected_version: second.version,
+  item_id: secondResult.item.id,
+  quantity: 1,
+});
+second = secondResult.batch;
+await fails(
+  () =>
+    op("prepare", { batch_id: second.id, expected_version: second.version }),
+  /specials_one_prepared_batch/,
+  "only one prepared batch",
+);
+result = await op("close", { ...base(), reason: "End of opportunity" });
+batch = result.batch;
+check(
+  (
+    await db.query(
+      "SELECT quantity_available FROM public.specials_items WHERE id=$1",
+      [item.id],
+    )
+  ).rows[0].quantity_available,
+  4,
+  "closing does not silently return stock",
+);
+await fails(
+  () => op("transfer", { ...stock, ...base() }),
+  /open preparation/,
+  "cannot add stock to closed batch",
+);
+result = await op("transfer", {
+  ...stock,
+  ...base(),
+  direction: "out",
+  quantity: 4,
+  source_reference: "Donation tray",
+  reason: "Closeout",
+});
+batch = result.batch;
+item = result.item;
+check(item.quantity_allocated, 0, "explicit closeout reconciles allocation");
+check(item.created_by, ids.admin, "offer creator is recorded without maker attestation");
+check(item.quantity_available, 0, "explicit closeout reconciles available");
+await fails(
+  () => op("prepare", base()),
+  /today.*draft/,
+  "closed batch cannot reopen",
+);
+await actor("postgres", ids.admin);
+check(
+  (
+    await db.query(
+      "SELECT stock_remaining FROM public.cms_products WHERE id=$1",
+      [ids.product],
+    )
+  ).rows[0].stock_remaining,
+  20,
+  "regular production capacity untouched",
+);
+check(
+  Number(
+    (
+      await db.query(
+        "SELECT sum(quantity_delta) AS total FROM public.specials_audit_events WHERE item_id=$1",
+        [item.id],
+      )
+    ).rows[0].total,
+  ),
+  0,
+  "transfer ledger balances",
+);
+check(
+  Number(
+    (
+      await db.query(
+        "SELECT count(*) AS total FROM public.specials_audit_events WHERE operation_key=$1",
+        [stockKey],
+      )
+    ).rows[0].total,
+  ),
+  1,
+  "one audit record per transfer",
+);
+check(
+  (
+    await db.query(
+      "SELECT count(*)::int AS total FROM public.specials_items WHERE quantity_allocated <> quantity_available+quantity_held+quantity_committed",
+    )
+  ).rows[0].total,
+  0,
+  "all inventory balances preserved",
+);
+// Date and money inputs use the real frontend helper source.
+const ts = await import("typescript");
+const helperSource = await readFile(
+  path.join(root, "src/features/specials/time.ts"),
+  "utf8",
+);
+const helperJs = ts.transpileModule(helperSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const timeHelpers = await import(
+  `data:text/javascript;base64,${Buffer.from(helperJs).toString("base64")}`
+);
+check(
+  timeHelpers.bangkokInputValue(new Date("2026-10-08T17:00:00Z")),
+  "2026-10-09T00:00",
+  "Bangkok midnight rolls date correctly",
+);
+check(
+  timeHelpers.bangkokInstant("2026-10-08T18:00"),
+  "2026-10-08T11:00:00.000Z",
+  "Bangkok input does not depend on local timezone",
+);
+check(
+  timeHelpers.priceToSatang("0.29"),
+  29,
+  "satang conversion avoids floating-point multiplication error",
+);
+check(timeHelpers.priceToSatang("110.50"), 11050, "exact two-decimal amount");
+assert.throws(() => timeHelpers.priceToSatang("1.005"));
+assertions++;
+assert.throws(() => timeHelpers.priceToSatang("1e2"));
+assertions++;
+assert.throws(() => timeHelpers.bangkokInstant("2026-02-30T18:00"));
+assertions++;
+assert.throws(() => timeHelpers.bangkokInstant("2026-10-08T24:00"));
+assertions++;
+await db.close();
+console.log(
+  `Specials foundation: ${assertions} assertions passed (isolated Postgres; no production writes).`,
+);

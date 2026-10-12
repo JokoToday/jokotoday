@@ -1,6 +1,32 @@
 import { supabase } from './supabase';
+import { normalizePaymentProviderMode, type PaymentProviderMode } from './paymentProviders';
 
-export type PaymentQrMode = 'promptpay_legacy' | 'kshop_easyslip' | 'kshop_master' | 'stripe_promptpay';
+export type PaymentQrMode = PaymentProviderMode;
+
+
+async function getFunctionInvokeErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const payload = await context.clone().json() as { error?: unknown; message?: unknown };
+        const detail = typeof payload.error === 'string'
+          ? payload.error
+          : typeof payload.message === 'string'
+            ? payload.message
+            : '';
+        if (detail) return detail;
+      } catch {
+        // Fall through to a safe user-facing fallback.
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message && !error.message.includes('non-2xx')) {
+    return error.message;
+  }
+  return fallback;
+}
 
 export type PaymentSettings = {
   online_promptpay_enabled: boolean;
@@ -37,6 +63,7 @@ export type PromptPayIntent = {
   qrMode?: PaymentQrMode;
   stripePaymentIntentId?: string;
   stripeHostedInstructionsUrl?: string;
+  stripeLivemode?: boolean;
 };
 
 export type PaymentVerificationResult = {
@@ -79,7 +106,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   return {
     online_promptpay_enabled: Boolean(data?.online_promptpay_enabled),
     payment_window_minutes: Number(data?.payment_window_minutes) || 60,
-    payment_qr_mode: data?.payment_qr_mode === 'stripe_promptpay' ? 'stripe_promptpay' : data?.payment_qr_mode === 'kshop_master' ? 'kshop_master' : data?.payment_qr_mode === 'kshop_easyslip' ? 'kshop_easyslip' : 'promptpay_legacy',
+    payment_qr_mode: normalizePaymentProviderMode(data?.payment_qr_mode),
   };
 }
 
@@ -114,7 +141,9 @@ export async function getStripePromptPayIntent(paymentTransactionId: string): Pr
     body: { paymentTransactionId },
   });
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(await getFunctionInvokeErrorMessage(error, 'Could not prepare Stripe PromptPay QR.'));
+  }
   if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare Stripe PromptPay QR.');
   return data as PromptPayIntent;
 }

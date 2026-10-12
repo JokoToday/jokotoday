@@ -41,6 +41,11 @@ jobs:
       - name: LINE Official Account friendship contract
         run: npm run audit:line-friendship
 
+      - name: Makers PostgreSQL regression tests
+        run: |
+          npm install --prefix /tmp/joko-makers-tests --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.5.8
+          JOKO_TEST_PGLITE_MODULE=/tmp/joko-makers-tests/node_modules/@electric-sql/pglite/dist/index.js node scripts/tests/makers-db.mjs
+
       - name: Typecheck
         run: npm run typecheck
 

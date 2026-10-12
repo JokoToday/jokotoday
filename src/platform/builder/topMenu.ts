@@ -1,7 +1,7 @@
 import type { LocalizedText, TopMenuItem, TopMenuKey } from './contracts';
 
 export const TOP_MENU_KEYS: readonly TopMenuKey[] = [
-  'home', 'products', 'other-products', 'specials', 'how-it-works', 'pickup', 'about',
+  'home', 'products', 'other-products', 'specials', 'makers', 'how-it-works', 'pickup', 'about',
 ];
 
 export const TOP_MENU_DEFAULT_LABELS: Readonly<Record<TopMenuKey, LocalizedText>> = {
@@ -9,6 +9,7 @@ export const TOP_MENU_DEFAULT_LABELS: Readonly<Record<TopMenuKey, LocalizedText>
   products: { en: 'Baked', th: 'ขนมอบ', zh: '烘焙好物' },
   'other-products': { en: 'Beyond', th: 'ของดีอื่น ๆ', zh: '其他好物' },
   specials: { en: 'Specials', th: 'ราคาพิเศษ', zh: '今日特惠' },
+  makers: { en: 'Makers', th: 'ผู้ผลิต', zh: '制作人' },
   'how-it-works': { en: 'How It Works', th: 'วิธีสั่งซื้อ', zh: '如何订购' },
   pickup: { en: 'Pick Up', th: 'จุดรับสินค้า', zh: '取货' },
   about: { en: 'About', th: 'เกี่ยวกับเรา', zh: '关于' },

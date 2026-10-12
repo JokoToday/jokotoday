@@ -1,3 +1,4 @@
+import { MakerAttribution } from './MakerAttribution';
 import { useState } from 'react';
 import { Plus, Minus, Heart } from 'lucide-react';
 import { Product } from '../lib/supabase';
@@ -101,7 +102,9 @@ export default function ProductCard({
   const quantityLimit = quantityLimitOverride !== undefined
     ? quantityLimitOverride
     : stockRemaining;
-  const globallySoldOut = 'is_sold_out' in product ? product.is_sold_out : !product.is_available;
+  const previewOnly = 'product_origin' in product && product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true;
+  const previewLabel = language === 'th' ? 'ดูตัวอย่างเท่านั้น' : language === 'zh' ? '仅供预览' : 'Preview only';
+  const globallySoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || previewOnly;
   const isSoldOut = globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
 
   const getProductImage = () => {
@@ -158,6 +161,7 @@ export default function ProductCard({
 
       <div className="joko-product-card-body p-4">
         <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productName}</h3>
+        {'maker' in product && <MakerAttribution maker={product.maker} />}
         <p className="joko-product-card-description mb-4 line-clamp-2 text-sm text-gray-600">{productDescription}</p>
 
         {(nextPickupLabel || basketFit) && (
@@ -195,7 +199,7 @@ export default function ProductCard({
           <span className="joko-product-card-price text-2xl font-bold text-primary-900">฿{product.price}</span>
           {isSoldOut && !selectedDay && (
             <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
-              {t.product.soldOut}
+              {previewOnly ? previewLabel : t.product.soldOut}
             </span>
           )}
         </div>

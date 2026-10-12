@@ -32,6 +32,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
     { label: t.nav.home, value: 'home' },
     { label: copy.baked, value: 'products-bakery' },
     { label: copy.other, value: 'products-non-bakery' },
+    { label: language === 'th' ? 'ผู้ผลิต' : language === 'zh' ? '制作人' : 'Makers', value: 'makers' },
     { label: copy.how, value: 'how-it-works' },
     { label: copy.pickup, value: 'pickup' },
     { label: copy.about, value: 'about' },

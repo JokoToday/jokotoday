@@ -244,11 +244,11 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   }
 
   if (value.topMenu !== undefined) {
-    if (!Array.isArray(value.topMenu) || ![6, 7].includes(value.topMenu.length)) {
-      pushIssue(issues, 'branding.topMenu', 'Top menu must contain the six original destinations and may include Specials.');
+    if (!Array.isArray(value.topMenu) || ![6, 7, 8].includes(value.topMenu.length)) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must contain the six original destinations and may include Specials and Makers.');
     } else {
       const required = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
-      const allowed = [...required, 'specials'];
+      const allowed = [...required, 'specials', 'makers'];
       const keys = new Set<string>();
       const menu = value.topMenu;
       if (required.some((key) => !menu.some((item: unknown) => isRecord(item) && item.key === key))) {
@@ -269,6 +269,9 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
           }
         }
       });
+      for (const key of required) {
+        if (!keys.has(key)) pushIssue(issues, 'branding.topMenu', 'A legacy menu destination is missing.');
+      }
     }
   }
 

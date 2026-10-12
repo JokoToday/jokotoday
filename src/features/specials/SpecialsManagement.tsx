@@ -79,7 +79,6 @@ export function SpecialsManagement() {
   const [editItem, setEditItem] = useState<SpecialsItem | null>(null);
   const [price, setPrice] = useState("");
   const [cap, setCap] = useState("");
-  const [ownProduct, setOwnProduct] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [transferItemId, setTransferItemId] = useState("");
   const [direction, setDirection] = useState<"in" | "out">("in");
@@ -146,7 +145,6 @@ export function SpecialsManagement() {
     setProductId("");
     setPrice("");
     setCap("");
-    setOwnProduct(false);
     setIsolated(false);
     setQuality(false);
     setSource("");
@@ -251,7 +249,6 @@ export function SpecialsManagement() {
         product_id: productId,
         special_price_satang: priceToSatang(price),
         max_per_customer: cap ? Number(cap) : null,
-        made_by_joko_confirmed: ownProduct,
         is_enabled: enabled,
       });
     } catch (err) {
@@ -572,15 +569,6 @@ export function SpecialsManagement() {
                     onChange={(event) => setCap(event.target.value)}
                   />
                 </label>
-                <label className="flex items-start gap-2 text-sm sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={ownProduct}
-                    onChange={(event) => setOwnProduct(event.target.checked)}
-                  />
-                  {copy.own}
-                </label>
                 {editItem && (
                   <label className="flex gap-2 text-sm">
                     <input
@@ -653,7 +641,6 @@ export function SpecialsManagement() {
                               (item.special_price_satang / 100).toFixed(2),
                             );
                             setCap(item.max_per_customer?.toString() || "");
-                            setOwnProduct(false);
                             setEnabled(item.is_enabled);
                           }}
                         >

@@ -24,10 +24,21 @@ export interface ClaimResult {
 export interface AuthenticatedRequest {
   supabase: SupabaseClient;
   user: User;
+  internal: false;
+}
+
+export interface InternalNotificationRequest {
+  supabase: SupabaseClient;
+  user: null;
+  internal: true;
 }
 
 export type AuthResult =
   | { ok: true; value: AuthenticatedRequest }
+  | { ok: false; response: Response };
+
+export type NotificationAuthResult =
+  | { ok: true; value: AuthenticatedRequest | InternalNotificationRequest }
   | { ok: false; response: Response };
 
 export type ClaimModeResult =
@@ -125,7 +136,23 @@ export async function authenticateRequest(req: Request): Promise<AuthResult> {
     console.warn("SEC-005: authenticated notification request rejected", error?.message ?? "no user");
     return { ok: false, response: jsonResponse(req, 401, { error: "Authentication required" }) };
   }
-  return { ok: true, value: { supabase, user } };
+  return { ok: true, value: { supabase, user, internal: false } };
+}
+
+export async function authenticateNotificationRequest(req: Request): Promise<NotificationAuthResult> {
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
+  const secretKey = readNamedKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+
+  if (token && secretKey && token === secretKey) {
+    const supabase = createNotificationAdminClient();
+    if (!supabase) {
+      return { ok: false, response: jsonResponse(req, 500, { error: "Notification service unavailable" }) };
+    }
+    return { ok: true, value: { supabase, user: null, internal: true } };
+  }
+
+  return authenticateRequest(req);
 }
 
 function createNotificationAdminClient(): SupabaseClient | null {

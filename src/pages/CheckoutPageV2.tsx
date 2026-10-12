@@ -1,3 +1,5 @@
+import { MakerAttribution, SourcingDisclosure } from '../components/MakerAttribution';
+import { MakerSnapshotAttribution } from '../components/MakerSnapshotAttribution';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, Clock, ExternalLink, MapPin, ShoppingBag, Sparkles } from 'lucide-react';
 import { AuthRequiredModal } from '../components/AuthRequiredModal';
@@ -6,7 +8,7 @@ import { NonBakeryCheckoutSuggestions } from '../components/NonBakeryCheckoutSug
 import { PickupDateSelectorV2, PickupSelectionV2 } from '../components/PickupDateSelectorV2';
 import { ProfileCompletionModal } from '../components/ProfileCompletionModal';
 import { OrderPrintButtonById } from '../components/orders/OrderPrintButtonById';
-import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
+import { OnlineQrPaymentPanel } from '../components/OnlinePromptPayPanel';
 import { useCMSLabels } from '../hooks/useCMSLabels';
 import { CMSProduct } from '../lib/cmsService';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +28,7 @@ import { cancelOnlineOrderByVersion, createOnlineOrderV2 } from '../lib/orderSer
 import { supabase } from '../lib/supabase';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 import { createOrGetPaymentTransaction, getPaymentSettings } from '../lib/paymentService';
+import { getPaymentProvider, type PaymentProviderMode } from '../lib/paymentProviders';
 
 interface CheckoutPageV2Props {
   onNavigate: (page: string) => void;
@@ -71,6 +74,9 @@ function clearActiveCheckout(userId: string) {
 }
 
 interface SecureOrderItem {
+  maker_name_en?: string | null;
+  maker_name_th?: string | null;
+  maker_name_zh?: string | null;
   product_id: string;
   product_name?: string;
   product_name_th?: string | null;
@@ -130,6 +136,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [paymentProviderMode, setPaymentProviderMode] = useState<PaymentProviderMode>('promptpay_legacy');
   const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [checkoutResumeResolved, setCheckoutResumeResolved] = useState(false);
@@ -141,6 +148,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       .then((settings) => {
         if (!cancelledLoad) {
           setOnlinePaymentEnabled(settings.online_promptpay_enabled);
+          setPaymentProviderMode(settings.payment_qr_mode);
           setPaymentWindowMinutes(settings.payment_window_minutes);
         }
       })
@@ -381,9 +389,31 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
     return item.product_name || '';
   };
 
+  const activePaymentProvider = getPaymentProvider(paymentProviderMode);
+  const paymentMinimumThb = onlinePaymentEnabled ? activePaymentProvider.minimumAmountThb : undefined;
+  const paymentMinimumBlocked = typeof paymentMinimumThb === 'number'
+    && totalPrice > 0
+    && totalPrice < paymentMinimumThb;
+  const paymentMinimumMessage = paymentProviderMode === 'stripe_promptpay'
+    ? (language === 'th'
+      ? 'Stripe PromptPay กำหนดยอดชำระขั้นต่ำ ฿10 กรุณาเพิ่มสินค้าอีกเล็กน้อยหรือเลือกวิธีชำระเงินอื่น'
+      : language === 'zh'
+        ? 'Stripe PromptPay 的最低付款金额为 ฿10。请再添加商品，或选择其他付款方式。'
+        : 'Stripe PromptPay requires a minimum payment of ฿10. Please add another item or choose another payment method.')
+    : '';
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitError('');
+    if (items.some((item) => item.product.product_origin === 'maker') && !onlinePaymentEnabled) {
+      setSubmitError(language === 'th' ? 'สินค้า Makers ต้องชำระเงินออนไลน์' : language === 'zh' ? '制作人商品需要在线付款。' : 'Makers products require verified online payment. Ordering is currently unavailable.');
+      return;
+    }
+
+    if (paymentMinimumBlocked) {
+      setSubmitError(paymentMinimumMessage);
+      return;
+    }
 
     if (!selection || showPickupEditor) {
       setSubmitError(language === 'th'
@@ -615,7 +645,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 <div key={`${item.product_id}-${getItemName(item)}`} className="flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <ShoppingBag className="h-4 w-4 shrink-0 text-[#C76624]" />
-                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}</span>
+                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}<MakerSnapshotAttribution item={item} /></span>
                     <span className="text-xs text-[#303532]/50">× {Number(item.quantity) || 0}</span>
                   </div>
                   <span className="text-sm font-semibold text-[#303532]">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>
@@ -635,7 +665,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
             )}
 
             {orderId && (
-              <OnlinePromptPayPanel
+              <OnlineQrPaymentPanel
                 orderId={orderId}
                 language={language}
                 onPaid={() => {
@@ -815,7 +845,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 {items.map((item) => (
                   <div key={item.product.id} className="flex items-center justify-between gap-4 border-b border-[#55766F]/10 pb-3 last:border-0">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-[#292D2B]">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p>
+                      <p className="truncate font-medium text-[#292D2B]">{language === 'th' ? item.product.name_th : language === 'zh' ? item.product.name_zh || item.product.name_en : item.product.name_en}</p><MakerAttribution maker={item.product.maker} />
                       <p className="text-xs text-[#303532]/50">{item.quantity} × ฿{item.product.price.toFixed(2)}</p>
                     </div>
                     <span className="font-semibold text-[#303532]">฿{(item.product.price * item.quantity).toFixed(2)}</span>
@@ -828,6 +858,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               </div>
             </div>
             <div className="rounded-[1.5rem] border border-[#55766F]/[.14] bg-[#CFE3DF]/[.42] p-6">
+              {items.some((item) => item.product.product_origin === 'maker') && <SourcingDisclosure />}
               <h3 className="mb-2 text-lg font-semibold text-[#304B45]" style={{ fontFamily: 'var(--joko-font-display)' }}>{t.checkout.paymentInfo}</h3>
               <p className="text-sm leading-6 text-[#303532]/[.72]">{t.checkout.paymentInfoText}</p>
             </div>
@@ -986,6 +1017,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 className="w-full resize-none rounded-xl border border-[#55766F]/20 bg-white/[.72] px-3 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/[.16]"
               />
             </div>
+
+            {paymentMinimumBlocked && !submitError && (
+              <div className="rounded-lg border border-[#C76624]/25 bg-[#FFF4DF] p-4 text-sm font-medium text-[#8D451C]">
+                {paymentMinimumMessage}
+              </div>
+            )}
 
             {submitError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{submitError}</div>

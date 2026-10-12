@@ -504,7 +504,7 @@ export function printOrderDocument({
     .payment-box { display: flex; justify-content: space-between; gap: 3mm; margin-top: ${isThermal ? '2mm' : '14px'}; padding: ${isThermal ? '2mm 0' : '10px 12px'}; border-top: ${isThermal ? '1px solid #222' : '0'}; border-bottom: ${isThermal ? '1px solid #222' : '0'}; background: ${isThermal ? '#fff' : '#f5f5f5'}; font-size: ${isThermal ? '10px' : '12px'}; }
     .payment-box span { text-align: right; font-weight: 800; }
     .disclaimer { margin-top: 12px; color: #666; text-align: center; font-size: 9px; }
-    .footer { margin-top: ${isThermal ? '4mm' : '22px'}; text-align: center; font-size: ${isThermal ? '9px' : '11px'}; color: #666; }
+    .footer { margin-top: ${isThermal ? '4mm' : '22px'}; text-align: center; white-space: pre-line; line-height: 1.5; font-size: ${isThermal ? '9px' : '11px'}; color: #666; }
     .prep-focus { padding: 2mm 0; border-top: 2px solid #111; border-bottom: 2px solid #111; text-align: center; }
     .prep-customer { overflow-wrap: anywhere; font-size: ${nextProfile === '58mm' ? '20px' : '24px'}; font-weight: 900; line-height: 1.05; }
     .prep-pickup { margin-top: 1.5mm; font-size: ${nextProfile === '58mm' ? '12px' : '14px'}; font-weight: 800; }

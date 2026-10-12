@@ -1,3 +1,4 @@
+import { MakerAttribution } from './MakerAttribution';
 import { ChevronDown, ChevronUp, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
@@ -151,6 +152,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
 
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-[#292D2B]">{productName}</h3>
+                      <MakerAttribution maker={item.product.maker} />
                       <p className="mt-1 font-bold text-[#C76624]">฿{item.product.price}</p>
 
                       <div className="flex items-center justify-between mt-2">

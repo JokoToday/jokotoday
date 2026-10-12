@@ -1,3 +1,4 @@
+import { getMakers, productOrigin, type Maker, type ProductOrigin } from '../../lib/makersService';
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, QrCode } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -19,6 +20,8 @@ interface ProductFormProps {
 }
 
 interface FormData {
+  product_origin: ProductOrigin;
+  maker_id: string;
   name_en: string;
   name_th: string;
   name_zh: string;
@@ -71,6 +74,8 @@ function dayAliases(day: PickupDay): string[] {
 export function ProductEditor({ product, categories, onSave, onCancel, mode = 'admin' }: ProductFormProps) {
   const isProductStaff = mode === 'product-staff';
   const [formData, setFormData] = useState<FormData>({
+    product_origin: product ? productOrigin(product) : 'joko',
+    maker_id: product?.maker_id || '',
     name_en: product?.name_en || '',
     name_th: product?.name_th || '',
     name_zh: product?.name_zh || '',
@@ -113,6 +118,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       : {},
   });
 
+  const [makers, setMakers] = useState<Maker[]>([]);
+  useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
@@ -127,6 +134,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
+    if (!isProductStaff && formData.product_origin === 'maker' && !formData.maker_id) newErrors.maker_id = 'Choose a maker for Makers products.';
     if (!formData.name_en.trim()) newErrors.name_en = 'Product name (English) is required';
     if (!formData.name_th.trim()) newErrors.name_th = 'Product name (Thai) is required';
     if (!formData.category_id) newErrors.category_id = 'Category is required';
@@ -198,6 +206,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       });
 
       const baseData = {
+        ...(!isProductStaff ? { product_origin: formData.product_origin, maker_id: formData.maker_id || null } : {}),
         name_en: formData.name_en.trim(),
         name_th: formData.name_th.trim(),
         name_zh: formData.name_zh.trim() || null,
@@ -329,6 +338,12 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             </div>
           )}
 
+          {!isProductStaff && <div className="rounded-xl border border-[#55766F]/20 bg-[#FFF9EE] p-4">
+            <h3 className="mb-3 font-semibold">JOKO selection</h3>
+            <label className="block text-sm">Product world<select className="ml-3 rounded-lg border p-2" value={formData.product_origin} onChange={(event) => setFormData({ ...formData, product_origin: event.target.value as ProductOrigin })}><option value="joko">BAKED — made by JOKO</option><option value="beyond">BEYOND — selected products</option><option value="maker">MAKERS — selected producers</option></select></label>
+            <label className="mt-3 block text-sm">Maker<select className="ml-3 max-w-full rounded-lg border p-2" value={formData.maker_id} onChange={(event) => setFormData({ ...formData, maker_id: event.target.value })}><option value="">No maker</option>{makers.map((maker) => <option key={maker.id} value={maker.id}>{maker.name_en}{maker.is_published ? '' : ' (draft)'}</option>)}</select></label>
+            {(errors.maker_id || errors.makers) && <p role="alert" className="mt-2 text-sm text-red-700">{errors.maker_id || errors.makers}</p>}
+          </div>}
           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
             <div className="grid grid-cols-3 gap-4 mb-4">

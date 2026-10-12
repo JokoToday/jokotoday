@@ -1,0 +1,119 @@
+import { useEffect, useState } from 'react';
+import {
+  getPublishedJokoBubble,
+  type JokoBubbleSize,
+  type JokoNote as JokoAccentRecord,
+} from '../lib/jokoNotesService';
+import { getActivePageAccentPreview, removePageAccentPreview } from '../lib/pageAccentPreview';
+import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
+
+const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
+  small: 'max-w-[11rem] sm:max-w-[12rem]',
+  medium: 'max-w-[14rem] sm:max-w-[16rem]',
+  large: 'max-w-[17rem] sm:max-w-[20rem]',
+};
+
+interface JokoBubbleSlotProps {
+  pageKey: string;
+  placementKey: string;
+  className?: string;
+}
+
+export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBubbleSlotProps) {
+  const [bubble, setBubble] = useState<JokoAccentRecord | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadPublished = () => {
+      getPublishedJokoBubble(pageKey, placementKey)
+        .then((value) => {
+          if (active) setBubble(value);
+        })
+        .catch((error) => {
+          console.error(`[Page Accents] Could not load bubble ${pageKey}/${placementKey}`, error);
+          if (active) setBubble(null);
+        });
+    };
+
+    const preview = getActivePageAccentPreview(pageKey);
+
+    if (preview) {
+      const draft = preview.draft;
+      if (
+        draft.accent_type === 'bubble'
+        && draft.placement_key === placementKey
+        && draft.bubble_image_url
+      ) {
+        setBubble({
+          id: `preview-${preview.token}`,
+          created_at: '',
+          updated_at: '',
+          ...draft,
+        });
+      } else {
+        setBubble(null);
+      }
+
+      const timeout = window.setTimeout(() => {
+        removePageAccentPreview(preview.token);
+        if (active) loadPublished();
+      }, Math.max(0, preview.expiresAt - Date.now()));
+
+      return () => {
+        active = false;
+        window.clearTimeout(timeout);
+      };
+    }
+
+    loadPublished();
+
+    return () => {
+      active = false;
+    };
+  }, [pageKey, placementKey]);
+
+  if (!bubble?.bubble_image_url) return null;
+
+  const activePreview = getActivePageAccentPreview(pageKey);
+  const isPreview = Boolean(
+    activePreview
+    && activePreview.draft.accent_type === 'bubble'
+    && activePreview.draft.placement_key === placementKey,
+  );
+
+  const image = (
+    <img
+      src={bubble.bubble_image_url}
+      alt={bubble.bubble_alt || ''}
+      className="block h-auto w-full object-contain"
+      loading="eager"
+      decoding="async"
+    />
+  );
+
+  const wrapperClass = `w-full ${SIZE_CLASSES[bubble.bubble_size]} ${className}`;
+
+  if (bubble.link_url) {
+    return (
+      <>
+        <a
+          href={bubble.link_url}
+          className={`block transition-transform hover:scale-[1.015] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C76624]/45 ${wrapperClass}`}
+        >
+          {image}
+        </a>
+        {isPreview && <PageAccentPreviewBadge />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className={wrapperClass}>{image}</div>
+      {isPreview && <PageAccentPreviewBadge />}
+    </>
+  );
+}
+
+export default JokoBubbleSlot;

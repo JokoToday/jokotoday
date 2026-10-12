@@ -41,6 +41,10 @@ await db.exec(`DO $$ DECLARE f record; BEGIN
  END LOOP; END $$;`);
 await db.exec(await readFile("supabase/migrations/20261009025239_joko_specials_payment_compatibility_v1.sql", "utf8"));
 await db.exec(await readFile('supabase/migrations/20261011161020_joko_specials_catalogue_products_v1.sql', 'utf8'));
+await db.exec("CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;");
+await db.exec('CREATE TABLE public.loyalty_redemptions(id uuid,order_id uuid,status text,reward_snapshot jsonb)');
+await db.exec(await readFile('supabase/migrations/20261009103000_payment_safety_hardening_v1.sql','utf8'));
+await db.exec(await readFile('supabase/migrations/20261012100247_joko_specials_main_payment_guards_v1.sql','utf8'));
 // Deliberately configure regular checkout for Stripe throughout Specials tests.
 await db.exec("UPDATE public.payment_settings SET payment_qr_mode='stripe_promptpay'");
 const id = {
@@ -53,6 +57,7 @@ const id = {
 const actor = async (role, uid = "") => {
   await db.exec("RESET ROLE");
   await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [uid]);
+  await db.query("SELECT set_config('request.jwt.claim.role',$1,false)", [role]);
   await db.exec(`SET ROLE ${role}`);
 };
 const query = async (sql, args = []) => (await db.query(sql, args)).rows;
@@ -840,5 +845,35 @@ eq(
   "15C9",
   "amount QR CRC matches independent golden fixture",
 );
+// Integrate shared handover infrastructure only after exercising the legacy baseline.
+await actor('service_role');
+await db.exec('RESET ROLE');
+await db.exec('GRANT SELECT ON public.orders,public.specials_checkouts TO service_role');
+await db.exec("CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_user::text $$;");
+await db.exec(await readFile('supabase/migrations/20261010144000_pickup_handover_v1.sql', 'utf8'));
+await db.exec(await readFile('supabase/migrations/20261012094221_joko_specials_pickup_handover_v1.sql', 'utf8'));
+await db.query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '10 minutes',pickup_end_at=clock_timestamp()+interval '30 minutes' WHERE id=$1",[b.id]);
+// Restore one paid fixture to ready for a new handover, with an open same-day snapshot.
+await db.query("UPDATE public.specials_checkouts SET fulfillment_state='ready',financial_state='verified',inventory_state='committed' WHERE order_id=$1", [grace]);
+await db.query("UPDATE public.orders SET status='confirmed',payment_status='paid',amount_paid=total_amount,picked_up_at=NULL,specials_pickup_snapshot=jsonb_build_object('start_at',clock_timestamp()-interval '1 minute','end_at',clock_timestamp()+interval '30 minutes') WHERE id=$1", [grace]);
+await db.exec("CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;");
+await db.exec("SELECT set_config('request.jwt.claim.role','service_role',false)");
+await actor('service_role');
+const handover = async (staff=id.admin,loc=id.loc,hash='a'.repeat(64)) => (await query('SELECT public.create_specials_pickup_handover_v1($1,$2,$3,$4) AS r',[grace,loc,staff,hash]))[0].r;
+await fails(()=>handover(id.customer),/authorized/, 'customer cannot initiate handover');
+await fails(()=>handover(id.staff,'20000000-0000-0000-0000-000000000002'),/authorized|Wrong/, 'wrong desk blocked');
+const h = await handover();
+eq(h.state,'active','QR handover starts');
+eq((await query('SELECT status FROM public.orders WHERE id=$1',[grace]))[0].status,'confirmed','staff handover does not prematurely complete pickup');
+await fails(()=>query('SELECT public.finalize_pickup_handover_v1($1,$2)',[h.handoffId,'x']),/reason/, 'fallback requires meaningful audit reason');
+const done=(await query('SELECT public.finalize_pickup_handover_v1($1,NULL) AS r',[h.handoffId]))[0].r;
+eq(done.order.status,'picked_up','receipt confirmation completes order');
+eq(done.handover.status,'confirmed','customer receipt recorded');
+eq(done.order.loyalty_points_earned,0,'Specials receives no regular loyalty points');
+eq((await query('SELECT fulfillment_state FROM public.specials_checkouts WHERE order_id=$1',[grace]))[0].fulfillment_state,'picked_up','Specials fulfillment completes with receipt');
+eq((await query('SELECT public.finalize_pickup_handover_v1($1,NULL) AS r',[h.handoffId]))[0].r.idempotent_replay,true,'receipt confirmation is idempotent');
+await actor('authenticated',id.staff);
+await fails(()=>query('SELECT * FROM public.specials_pickup_v1($1,$2)',[grace,id.loc]),/handover/, 'legacy pickup shortcut is closed');
+await fails(()=>handover(),/permission denied/, 'browser cannot call service-only session creator');
 console.log(`${count} Specials checkout/payment/pickup/LINE assertions passed`);
 await db.close();

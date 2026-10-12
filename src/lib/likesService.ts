@@ -97,6 +97,9 @@ export async function fetchLikedProducts(userId: string): Promise<CMSProduct[]> 
       product_id,
       created_at,
       cms_products (
+        product_origin,
+        maker_id,
+        maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled),
         id,
         slug,
         name_en,
@@ -127,14 +130,18 @@ export async function fetchLikedProducts(userId: string): Promise<CMSProduct[]> 
   }
 
   const products: CMSProduct[] = [];
+  const appendProduct = (value: unknown) => {
+    const product = value as CMSProduct;
+    products.push({ ...product, maker: Array.isArray(product.maker) ? product.maker[0] || null : product.maker });
+  };
   (data || []).forEach((item) => {
     const relation = item.cms_products;
     if (Array.isArray(relation)) {
       relation.forEach((product) => {
-        if (product) products.push(product as CMSProduct);
+        if (product) appendProduct(product);
       });
     } else if (relation) {
-      products.push(relation as CMSProduct);
+      appendProduct(relation);
     }
   });
 

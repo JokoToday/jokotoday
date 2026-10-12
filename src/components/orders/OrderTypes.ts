@@ -1,4 +1,8 @@
 export interface OrderItem {
+  maker_id?: string | null;
+  maker_name_en?: string | null;
+  maker_name_th?: string | null;
+  maker_name_zh?: string | null;
   product_id: string;
   product_name: string;
   product_name_th?: string | null;
