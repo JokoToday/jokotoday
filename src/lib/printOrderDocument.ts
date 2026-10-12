@@ -4,6 +4,9 @@ export type PrintOrderDocumentType = 'receipt' | 'confirmation' | 'prep_ticket';
 
 export type PrintableOrderItem = {
   product_id?: string;
+  maker_name_en?: string | null;
+  maker_name_th?: string | null;
+  maker_name_zh?: string | null;
   product_name?: string;
   product_name_en?: string;
   product_name_th?: string | null;
@@ -370,7 +373,8 @@ export function printOrderDocument({
     const itemRows = items.map((item) => {
       const quantity = Math.max(0, Number(item.quantity ?? item.qty ?? 0));
       const price = Number(item.price_at_order ?? item.price ?? 0);
-      const name = escapeHtml(itemName(item, nextLanguage));
+      const makerName = item[`maker_name_${nextLanguage}`] || item.maker_name_en;
+      const name = escapeHtml(`${itemName(item, nextLanguage)}${makerName ? ` (${makerName})` : ''}`);
 
       if (isPrep) {
         return `<div class="prep-item"><strong>${escapeHtml(quantity)} ×</strong><span>${name}</span></div>`;

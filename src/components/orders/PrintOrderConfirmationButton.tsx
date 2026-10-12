@@ -86,22 +86,6 @@ function getProductName(item: OrderItem, language: 'en' | 'th' | 'zh', productMa
   return item.product_name || item.product_name_th || item.product_name_zh || '—';
 }
 
-function getMakerName(item: OrderItem, language: 'en' | 'th' | 'zh'): string {
-  if (language === 'th') return item.maker_name_th || item.maker_name_en || item.maker_name_zh || '';
-  if (language === 'zh') return item.maker_name_zh || item.maker_name_en || item.maker_name_th || '';
-  return item.maker_name_en || item.maker_name_th || item.maker_name_zh || '';
-}
-
-function getPrintableProductName(
-  item: OrderItem,
-  language: 'en' | 'th' | 'zh',
-  productMap: Record<string, CMSProduct>,
-): string {
-  const productName = getProductName(item, language, productMap);
-  const makerName = getMakerName(item, language).trim();
-  return makerName ? `${productName} (${makerName})` : productName;
-}
-
 function getPickupLabel(order: Order, language: 'en' | 'th' | 'zh', pickupDays: PickupDay[]): string {
   const day = pickupDays.find((candidate) =>
     candidate.label === order.pickup_day
@@ -172,9 +156,9 @@ export function PrintOrderConfirmationButton({
       ...liveOrder,
       order_items: (liveOrder.order_items || []).map((item) => ({
         ...item,
-        product_name: getPrintableProductName(item, 'en', productMap),
-        product_name_th: getPrintableProductName(item, 'th', productMap),
-        product_name_zh: getPrintableProductName(item, 'zh', productMap),
+        product_name: getProductName(item, 'en', productMap),
+        product_name_th: getProductName(item, 'th', productMap),
+        product_name_zh: getProductName(item, 'zh', productMap),
       })),
     };
 
