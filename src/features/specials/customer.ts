@@ -20,6 +20,7 @@ export type SpecialsCatalog = {
   }[];
 };
 export type SpecialsState = {
+  payment: { id: string; mode: "stripe_promptpay" | "kshop_master" };
   checkout: {
     order_id: string;
     inventory_state: string;

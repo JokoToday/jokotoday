@@ -1,5 +1,6 @@
 import { MakerSnapshotAttribution } from '../MakerSnapshotAttribution';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle, Printer } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
 import { RepeatOrderButton } from './RepeatOrderButton';
@@ -162,11 +163,16 @@ export function OrderDetailModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-2 sm:p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={language === 'th' ? 'รายละเอียดคำสั่งซื้อ' : language === 'zh' ? '订单详情' : 'Order Details'}
+    >
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-2xl sm:rounded-2xl">
+      <div className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden rounded-[1.5rem] bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:max-w-2xl sm:rounded-2xl">
         <div
           className="flex shrink-0 items-center justify-between border-b border-stone-100 px-5 py-4"
           style={{ background: 'linear-gradient(135deg, #f6f1e7 0%, #fdf8f0 100%)' }}
@@ -287,17 +293,16 @@ export function OrderDetailModal({
                       {slug ? (
                         <button
                           onClick={() => { onNavigate(`product/${slug}`); onClose(); }}
-                          className="text-sm font-semibold text-stone-900 hover:underline flex items-center gap-1 group text-left truncate max-w-full"
+                          className="text-sm font-semibold text-stone-900 hover:underline flex items-center gap-1 group text-left max-w-full"
                           title={displayName}
                         >
-                          <span className="truncate">{displayName}</span>
+                          <span>{displayName}<MakerSnapshotAttribution item={item} /></span>
                           <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
                         </button>
                       ) : (
-                        <p className="text-sm font-semibold text-stone-900 truncate">{displayName}</p>
+                        <p className="text-sm font-semibold text-stone-900">{displayName}<MakerSnapshotAttribution item={item} /></p>
                       )}
                       <p className="text-xs text-stone-400 mt-0.5">
-                        <MakerSnapshotAttribution item={item} />
                         {getLabel('my_orders_page.quantity', language, 'Qty')}: {item.quantity}
                         {' · '}
                         {getLabel('my_orders_page.unit_price', language, 'Unit Price')}: ฿{Number(item.price_at_order).toFixed(2)}
@@ -391,6 +396,7 @@ export function OrderDetailModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

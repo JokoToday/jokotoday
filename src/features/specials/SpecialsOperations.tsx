@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { specialsError, specialsRpc } from "./customer";
 import type { SpecialsBatch } from "./contracts";
 type Settings = {
+  payment_mode: "stripe_promptpay" | "kshop_master";
   enabled: boolean;
   qr_payload: string;
   receiver_bank_code: string;
@@ -150,11 +151,19 @@ export function SpecialsOperations({
           </summary>
           <div className="mt-4 space-y-3">
             <p>
-              Use the same genuine K SHOP master QR as regular online payment.
-              The QR includes the exact order total. The receiver must match the
-              account registered with EasySlip. Changes apply to new checkouts
-              only.
+              Choose the payment method for new Specials checkouts. Existing
+              checkouts keep their original method.
             </p>
+            <label className="block">Payment method
+              <select className="mt-1 block w-full rounded border p-2" value={settings.payment_mode || 'stripe_promptpay'} disabled={busy}
+                onChange={e => { setSettings({...settings, payment_mode: e.target.value as Settings['payment_mode']}); setApproved(false); }}>
+                <option value="stripe_promptpay">Stripe PromptPay (default)</option>
+                <option value="kshop_master">Merchant PromptPay QR + EasySlip verification</option>
+              </select>
+            </label>
+            {settings.payment_mode === 'stripe_promptpay' && <p>Stripe confirms payment automatically. No slip upload. Changes apply to new checkouts only.</p>}
+            {settings.payment_mode === "kshop_master" && <>
+            <p>Use a genuine merchant QR whose receiver matches the account registered with EasySlip.</p>
             <label className="block">
               Merchant QR image{" "}
               <input
@@ -195,6 +204,7 @@ export function SpecialsOperations({
                 />
               </label>
             ))}
+            </>}
             <label className="block">
               <input
                 type="checkbox"
@@ -206,7 +216,7 @@ export function SpecialsOperations({
               />{" "}
               Enable Specials payments
             </label>
-            <label className="block">
+            {settings.payment_mode === "kshop_master" && <label className="block">
               <input
                 type="checkbox"
                 checked={approved}
@@ -214,10 +224,10 @@ export function SpecialsOperations({
               />{" "}
               I tested this QR in a banking app and checked the exact registered
               receiver.
-            </label>
+            </label>}
             <button
               className="rounded border px-4 py-2"
-              disabled={busy || (settings.enabled && !approved)}
+              disabled={busy || (settings.enabled && settings.payment_mode === "kshop_master" && !approved)}
               onClick={() => void run(() => action("settings", settings))}
             >
               Save payment configuration

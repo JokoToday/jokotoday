@@ -645,7 +645,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 <div key={`${item.product_id}-${getItemName(item)}`} className="flex items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-2">
                     <ShoppingBag className="h-4 w-4 shrink-0 text-[#C76624]" />
-                    <span className="truncate text-sm font-medium text-[#292D2B]">{getItemName(item)}<MakerSnapshotAttribution item={item} /></span>
+                    <span className="text-sm font-medium text-[#292D2B]">{getItemName(item)}<MakerSnapshotAttribution item={item} /></span>
                     <span className="text-xs text-[#303532]/50">× {Number(item.quantity) || 0}</span>
                   </div>
                   <span className="text-sm font-semibold text-[#303532]">฿{((Number(item.price_at_order) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</span>

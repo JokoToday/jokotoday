@@ -20,6 +20,9 @@ export function SpecialsPaymentPanel({
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [seconds, setSeconds] = useState(0);
+  const [stripeQr, setStripeQr] = useState<string | null>(null);
+  const [stripeRetry, setStripeRetry] = useState(0);
+  const [stripeTestUrl, setStripeTestUrl] = useState<string | null>(null);
   const refresh = useCallback(async () => {
     try {
       const next = await specialsRpc<SpecialsState>(
@@ -46,6 +49,10 @@ export function SpecialsPaymentPanel({
     }
   }, [orderId]);
   useEffect(() => {
+    setState(null);
+    setStripeQr(null);
+    setStripeTestUrl(null);
+    setError("");
     void refresh();
     const timer = setInterval(() => void refresh(), 10000);
     return () => clearInterval(timer);
@@ -57,6 +64,22 @@ export function SpecialsPaymentPanel({
     );
     return () => clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (state?.payment.mode !== 'stripe_promptpay' || state.checkout.inventory_state !== 'held') { setStripeQr(null); setStripeTestUrl(null); return; }
+    setStripeQr(null);
+    setStripeTestUrl(null);
+    let active = true;
+    void supabase.functions.invoke('stripe-promptpay-intent', {body:{paymentTransactionId:state.payment.id}}).then(({data,error:failure}) => {
+      if (!active) return;
+      if (failure) { setError(specialsError(failure)); return; }
+      setStripeQr(data?.promptPayPayload || null);
+      if (data?.stripeLivemode === false && data.stripeHostedInstructionsUrl) {
+        const url = new URL(data.stripeHostedInstructionsUrl);
+        if (url.protocol === "https:" && url.hostname.endsWith(".stripe.com")) setStripeTestUrl(url.href);
+      }
+    }).catch(e => { if (active) setError(specialsError(e)); });
+    return () => { active = false; };
+  }, [state?.payment.id, state?.payment.mode, state?.checkout.inventory_state, stripeRetry]);
   async function submit(file: File) {
     if (busy) return;
     setBusy(true);
@@ -108,7 +131,7 @@ export function SpecialsPaymentPanel({
         JOKO Specials · {state.order.order_number}
       </h2>
       <p>
-        ฿{Number(state.order.total_amount).toFixed(2)} · {state.receiver_label}
+        ฿{Number(state.order.total_amount).toFixed(2)} · {state.payment.mode === 'stripe_promptpay' ? 'Stripe PromptPay' : state.receiver_label}
       </p>
       <p>
         {state.order.pickup.name_en} / {state.order.pickup.name_th}
@@ -151,26 +174,27 @@ export function SpecialsPaymentPanel({
       ) : released ? (
         <p>
           Checkout expired or cancelled. Your stock hold has been released. If
-          you already transferred, submit the slip below for Admin review.
+          you already paid, {state.payment.mode === 'stripe_promptpay' ? 'any late payment will be reviewed for refund. Do not pay again.' : 'submit the slip below for Admin review.'}
         </p>
       ) : (
         <>
           <p className="font-semibold">
-            Pay and upload the slip within {Math.floor(seconds / 60)}:
+            {state.payment.mode === 'stripe_promptpay' ? 'Pay within' : 'Pay and upload the slip within'} {Math.floor(seconds / 60)}:
             {String(seconds % 60).padStart(2, "0")} /
             ชำระและส่งสลิปภายในเวลาที่กำหนด
           </p>
-          {state.qr_payload && seconds > 0 && (
-            <QRCodeSVG value={buildKShopMasterPayload(state.qr_payload,Number(state.order.total_amount))} size={224} marginSize={4} />
+          {(state.payment.mode === 'stripe_promptpay' ? stripeQr : state.qr_payload) && seconds > 0 && (
+            <QRCodeSVG value={state.payment.mode === 'stripe_promptpay' ? stripeQr! : buildKShopMasterPayload(state.qr_payload!,Number(state.order.total_amount))} size={224} marginSize={4} />
           )}
-          <p>
+          {stripeTestUrl && <p><a href={stripeTestUrl} target="_blank" rel="noreferrer" className="underline">Open Stripe sandbox payment</a> · Test mode: no real bank transfer.</p>}
+          {state.payment.mode === 'stripe_promptpay' ? <p>Scan the Stripe PromptPay QR. Payment is confirmed automatically; no slip upload is needed.</p> : <p>
             Scan the JOKO merchant QR and confirm exactly ฿
             {Number(state.order.total_amount).toFixed(2)}. Check the receiver
             name in your banking app before confirming.
-          </p>
+          </p>}
         </>
       )}
-      {!paid &&
+      {state.payment.mode === 'kshop_master' && !paid &&
         !reconcile &&
         c.financial_state !== "refunded" &&
         (held || released) && (
@@ -194,7 +218,7 @@ export function SpecialsPaymentPanel({
       <div className="flex gap-4">
         <button
           className="underline"
-          onClick={() => void refresh()}
+          onClick={() => { setStripeRetry(s => s + 1); void refresh(); }}
           disabled={busy}
         >
           Refresh status

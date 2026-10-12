@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
-import Stripe from "npm:stripe@22";
+import Stripe from "npm:stripe@22.6.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,7 +63,6 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (orderError) throw orderError;
-    if (order?.order_type === "specials") return jsonResponse({ error: "Use Specials payment verification" }, 409);
     if (!order || order.customer_id !== authData.user.id) return jsonResponse({ error: "Order not found" }, 404);
 
     if (payment.status === "verified" || order.payment_status === "paid") {
@@ -109,7 +108,7 @@ Deno.serve(async (req: Request) => {
       intent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100),
         currency: "thb",
-        payment_method_types: ["promptpay"],
+        allowed_payment_method_types: ["promptpay"],
         payment_method_data: {
           type: "promptpay",
           billing_details: { email: billingEmail },

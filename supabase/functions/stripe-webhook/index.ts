@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
-import Stripe from "npm:stripe@22";
+import Stripe from "npm:stripe@22.6.0";
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -8,11 +8,11 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-const stripe = new Stripe(requiredEnv("STRIPE_SECRET_KEY"));
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 
 async function refundLateOrCancelledPayment(
+  stripe: Stripe,
   paymentIntent: Stripe.PaymentIntent,
   payment: { id: string; order_id: string },
 ): Promise<Stripe.Refund> {
@@ -63,6 +63,11 @@ async function releasePaymentNotifications(orderId: string): Promise<void> {
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
+  // Configuration failures must not masquerade as invalid signatures or crash startup.
+  const secretKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")?.trim();
+  if (!secretKey || !webhookSecret) return new Response("Stripe webhook is not configured", {status:503});
+  const stripe = new Stripe(secretKey);
   const signature = req.headers.get("stripe-signature") || "";
   const rawBody = await req.text();
 
@@ -71,7 +76,7 @@ Deno.serve(async (req: Request) => {
     event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
-      requiredEnv("STRIPE_WEBHOOK_SECRET"),
+      webhookSecret,
       undefined,
       cryptoProvider,
     );
@@ -128,6 +133,26 @@ Deno.serve(async (req: Request) => {
     return Response.json({ received: true });
   }
 
+  if (event.type === "refund.updated") {
+    const refund = event.data.object as Stripe.Refund;
+    const intentId = typeof refund.payment_intent === "string" ? refund.payment_intent : refund.payment_intent?.id;
+    const { data: payment, error: lookupError } = await service.from("payment_transactions")
+      .select("order_id").eq("provider", "stripe").eq("provider_transaction_ref", intentId || "").maybeSingle();
+    if (lookupError) return new Response("Refund lookup failed", {status:500});
+    if (payment) {
+      const { data: order, error: orderError } = await service.from("orders").select("order_type").eq("id",payment.order_id).maybeSingle();
+      if (orderError || !order) return new Response("Refund order lookup failed", {status:500});
+      if (order?.order_type === "specials") {
+        const { error } = await service.rpc("specials_stripe_refund_v1", {
+          p_order:payment.order_id,p_intent:intentId,p_refund:refund.id,p_status:refund.status || "pending",
+        });
+        if (error) return new Response("Refund persistence failed",{status:500});
+      }
+    }
+    const { error } = await service.from("stripe_webhook_events").update({processed_at:new Date().toISOString(),processing_result:"refund_updated"}).eq("event_id",event.id);
+    return error ? new Response("Event persistence failed",{status:500}) : Response.json({received:true});
+  }
+
   if (event.type !== "payment_intent.succeeded") {
     await service.from("stripe_webhook_events").update({
       processed_at: new Date().toISOString(),
@@ -160,11 +185,35 @@ Deno.serve(async (req: Request) => {
 
     const { data: orderState, error: orderStateError } = await service
       .from("orders")
-      .select("status, payment_status")
+      .select("status, payment_status, order_type")
       .eq("id", payment.order_id)
       .maybeSingle();
     if (orderStateError) throw orderStateError;
     if (!orderState) throw new Error("Stripe payment order no longer exists");
+
+    if (orderState.order_type === "specials") {
+      const { data: result, error: resultError } = await service.rpc("specials_finish_stripe_v1", {
+        p_order: payment.order_id, p_intent: paymentIntent.id,
+        p_amount_satang: paymentIntent.amount_received,
+        p_paid_at: new Date(event.created * 1000).toISOString(),
+      });
+      if (resultError) throw resultError;
+      if (result.state === "refund_required") {
+        const refund = await refundLateOrCancelledPayment(stripe, paymentIntent, payment);
+        const { error: refundError } = await service.rpc("specials_stripe_refund_v1", {
+          p_order: payment.order_id, p_intent: paymentIntent.id,
+          p_refund: refund.id, p_status: refund.status || "pending",
+        });
+        if (refundError) throw refundError;
+      } else if (result.state === "verified") {
+        await releasePaymentNotifications(payment.order_id);
+      }
+      const { error: eventError } = await service.from("stripe_webhook_events").update({
+        processed_at: new Date().toISOString(), processing_result: `specials:${result.state}`, last_error: null,
+      }).eq("event_id", event.id);
+      if (eventError) throw eventError;
+      return Response.json({ received: true });
+    }
 
     // A QR can theoretically be paid after JOKO's reservation deadline. Never
     // resurrect released inventory. Refund the late Stripe payment automatically
@@ -181,7 +230,7 @@ Deno.serve(async (req: Request) => {
         if (expireError) throw expireError;
       }
 
-      const refund = await refundLateOrCancelledPayment(paymentIntent, payment);
+      const refund = await refundLateOrCancelledPayment(stripe, paymentIntent, payment);
 
       await service.from("stripe_webhook_events").update({
         processed_at: new Date().toISOString(),
@@ -215,7 +264,7 @@ Deno.serve(async (req: Request) => {
         || freshPayment?.status === "cancelled"
         || freshPayment?.status === "expired"
       ) {
-        const refund = await refundLateOrCancelledPayment(paymentIntent, payment);
+        const refund = await refundLateOrCancelledPayment(stripe, paymentIntent, payment);
         await service.from("stripe_webhook_events").update({
           processed_at: new Date().toISOString(),
           processing_result: `race_payment_refunded:${refund.id}`,
