@@ -144,7 +144,7 @@ export default function SpecialsPage({
         <div className="mb-8 flex flex-wrap gap-x-7 gap-y-3 border-y border-[#55766F]/20 py-4">
           {copy.rules.map(rule => <span key={rule} className="inline-flex items-center gap-2 text-xs text-[#303532]/75"><Check className="h-4 w-4 text-[#55766F]" aria-hidden="true" />{rule}</span>)}
         </div>
-        {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+        {error && (!user || order) && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
         {user && order ? (
           <section className="mx-auto max-w-3xl">
             <SpecialsPaymentPanel orderId={order} />
@@ -200,6 +200,7 @@ export default function SpecialsPage({
               <div className="my-6 flex justify-between gap-3"><span>{copy.total}</span><strong>{money(total)}</strong></div>
               {invalid && <p role="alert" className="mb-4 text-sm text-red-800">{copy.changed}</p>}
               {user ? <button type="button" className={`${actionClass} w-full`} disabled={busy || (!pending && (total <= 0 || invalid || !batch))} onClick={() => void checkout()}>{busy ? copy.busy : pending ? copy.retry : copy.pay}</button> : <button type="button" className={`${actionClass} w-full`} disabled={!batch} onClick={() => setAuthOpen(true)}>{copy.signIn}</button>}
+              {error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
               <p className="mt-4 text-xs leading-6 text-[#303532]/70">{copy.hold}</p>
               {pending && <div className="mt-5 border-t border-[#55766F]/20 pt-4"><p className="text-xs leading-6">{copy.pending}</p><button type="button" className="mt-2 min-h-11 text-sm underline underline-offset-4" onClick={() => onNavigate('orders')}>{copy.orders}</button></div>}
             </aside>
