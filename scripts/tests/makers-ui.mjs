@@ -22,10 +22,24 @@ try {
     assert.ok(attribution.includes(language === 'th' ? 'ร้านที่เลือก' : '&lt;Selected &amp; Shop&gt;'));
     const disclosure = render(SourcingDisclosure);
     assert.ok(disclosure.length > 100);
+    assert.ok(disclosure.includes({en: 'For Makers items only', th: 'สำหรับสินค้า Makers เท่านั้น', zh: '仅适用于 Makers 商品'}[language]));
     const historic = render(MakerSnapshotAttribution, { item: { maker_name_en: 'Original maker', maker_name_th: 'ผู้ผลิตเดิม', maker_name_zh: '' } });
-    assert.ok(historic.includes(language === 'th' ? 'ผู้ผลิตเดิม' : 'Original maker'));
+    assert.ok(historic.includes(language === 'th' ? '(ผู้ผลิตเดิม)' : '(Original maker)'));
     assert.equal(render(MakerSnapshotAttribution, { item: {} }), '');
     assert.match(render(MakerCard, { maker }), /selected-shop/);
+  }
+  const { printOrderDocument } = await server.ssrLoadModule('/src/lib/printOrderDocument.ts');
+  globalThis.window = { location: { origin: 'https://joko.today' } };
+  for (const lang of ['en', 'th', 'zh']) {
+    let html = '';
+    const targetWindow = { document: { open() {}, write(value) { html += value; }, close() {}, querySelectorAll: () => [], getElementById: () => null }, focus() {} };
+    printOrderDocument({ targetWindow, language: lang, documentType: 'confirmation', order: { order_number: 'JT-TEST', payment_status: 'paid', total_amount: 15, order_items: [
+      { product_name: 'Mini croissant', product_name_th: 'มินิครัวซองต์', maker_name_en: 'Original <Maker>', maker_name_th: 'ผู้ผลิตเดิม', quantity: 1, price_at_order: 10 },
+      { product_name: 'JOKO cake', quantity: 1, price_at_order: 5 },
+    ] } });
+    assert.ok(html.includes(lang === 'th' ? 'มินิครัวซองต์ (ผู้ผลิตเดิม)' : 'Mini croissant (Original &lt;Maker&gt;)'));
+    assert.ok(html.includes('JOKO cake'));
+    assert.ok(!html.includes('JOKO cake ('));
   }
   language = 'en';
   const editor = render(MakersManagement);

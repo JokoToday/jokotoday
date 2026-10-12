@@ -12,8 +12,8 @@ export function MakerSnapshotAttribution({
   const { language } = useLanguage();
   const name = item[`maker_name_${language}`] || item.maker_name_en;
   return name ? (
-    <span className="mt-1 block text-xs font-normal text-[#55766F]">
-      {name}
+    <span className="font-normal text-[#55766F]">
+      {` (${name})`}
     </span>
   ) : null;
 }
