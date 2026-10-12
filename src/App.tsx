@@ -14,6 +14,7 @@ import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const MakersPage = lazy(() => import('./pages/MakersPage'));
+const AssistantWidget = lazy(() => import('./app/joko-today/assistant/AssistantWidget'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -563,6 +564,9 @@ function AppContent() {
         />
       )}
       <LINEFriendInvite />
+      {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && ['home', 'products', 'product-detail', 'makers', 'maker-detail', 'our-story', 'how-it-works'].includes(currentPage) && (
+        <Suspense fallback={null}><AssistantWidget onNavigate={handleNavigate} /></Suspense>
+      )}
     </div>
   );
 }
