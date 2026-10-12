@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Award,
-  Banknote,
   Calendar,
   Check,
   Home,
@@ -21,6 +20,7 @@ import {
   User,
 } from 'lucide-react';
 import jsQR from 'jsqr';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { printOrderReceipt } from '../lib/printReceipt';
 import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
@@ -37,6 +37,11 @@ import { LoyaltyRewardRedemption } from '../components/staff/LoyaltyRewardRedemp
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { InternalSignedInAccount } from '../components/InternalSignedInAccount';
+import {
+  bypassPickupReceipt,
+  createPickupHandover,
+  getPickupHandoverStatus,
+} from '../lib/pickupHandover';
 
 interface Customer {
   id: string;
@@ -98,9 +103,7 @@ const getBangkokToday = () => {
   return `${values.year}-${values.month}-${values.day}`;
 };
 
-const paymentComplete = (order: Order) => (
-  order.payment_status === 'paid' && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method || '')
-);
+const paymentComplete = (order: Order) => order.payment_status === 'paid';
 
 const paymentMethodLabel = (order: Order, language: 'en' | 'th' | 'zh') => {
   if (order.payment_method === 'cash') {
@@ -137,6 +140,15 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [activeHandover, setActiveHandover] = useState<{
+    order: Order;
+    handoffId: string;
+    token: string;
+    confirmUrl: string;
+    expiresAt: string;
+    early: boolean;
+  } | null>(null);
+  const [handoverBypassReason, setHandoverBypassReason] = useState('');
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const deepLinkHandledRef = useRef(false);
 
@@ -147,6 +159,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setPickupLocations({});
     setEarlyPickupOrder(null);
     setLastReceiptOrder(null);
+    setActiveHandover(null);
+    setHandoverBypassReason('');
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -332,46 +346,41 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     image.src = objectUrl;
   };
 
-  const recordPayment = async (order: Order, method: 'qr_code' | 'cash') => {
-    try {
-      setUpdatingOrder(order.id);
-      setActionError(null);
-      setActionSuccess(null);
-      setLastReceiptOrder(null);
-      const { data, error: updateError } = await supabase.rpc('staff_record_order_payment_v2', {
-        p_order_id: order.id,
-        p_payment_method: method,
-      });
-      if (updateError) throw updateError;
-      if (!data || typeof data.id !== 'string' || data.payment_status !== 'paid') {
-        throw new Error('Payment was recorded but the confirmation response was invalid.');
-      }
+  const finishPickupInUi = (order: Order, early: boolean, bypassed = false) => {
+    const completedOrder: Order = {
+      ...order,
+      status: 'picked_up',
+      picked_up_at: new Date().toISOString(),
+    };
 
-      const returnedOrder = data as Order;
-      const applyPayment = (item: Order) => (
-        item.id === order.id ? returnedOrder : item
-      );
-      setOrders((current) => current.map(applyPayment));
-      setUpcomingOrders((current) => current.map(applyPayment));
-      setEarlyPickupOrder((current) => current?.id === order.id ? applyPayment(current) : current);
-      setActionSuccess(language === 'en'
-        ? `${method === 'cash' ? 'Cash' : 'QR'} payment recorded: ฿${amountDue(returnedOrder).toFixed(2)}.`
-        : `บันทึกการชำระ${method === 'cash' ? 'เงินสด' : ' QR'} ฿${amountDue(returnedOrder).toFixed(2)} แล้ว`);
-    } catch (err) {
-      console.error('Error recording payment:', err);
-      setActionError(err instanceof Error
-        ? err.message
-        : (language === 'en' ? 'Could not record payment.' : 'ไม่สามารถบันทึกการชำระเงินได้'));
-    } finally {
-      setUpdatingOrder(null);
+    if (early) {
+      setUpcomingOrders((current) => current.filter((item) => item.id !== order.id));
+      setEarlyPickupOrder(null);
+    } else {
+      setOrders((current) => current.map((item) => item.id === order.id ? completedOrder : item));
     }
+
+    setLastReceiptOrder(completedOrder);
+    setHistoryRefreshKey((value) => value + 1);
+    setActionError(null);
+    setActionSuccess(
+      language === 'en'
+        ? (bypassed
+          ? 'Pickup completed by staff fallback. Customer receipt confirmation was bypassed and recorded.'
+          : 'Pickup complete. Customer receipt confirmation was recorded.')
+        : (bypassed
+          ? 'รับสินค้าเสร็จสมบูรณ์โดยใช้ขั้นตอนสำรองของพนักงาน และบันทึกเหตุผลแล้ว'
+          : 'รับสินค้าเสร็จสมบูรณ์ และบันทึกการยืนยันรับสินค้าจากลูกค้าแล้ว')
+    );
   };
 
-  const confirmPickup = async (order: Order, early: boolean) => {
+  const startPickupHandover = async (order: Order, early: boolean) => {
     if (!paymentComplete(order)) {
-      setActionError(language === 'en'
-        ? 'Record payment by QR or Cash before confirming pickup.'
-        : 'กรุณาบันทึกการชำระเงินด้วย QR หรือเงินสดก่อนยืนยันการรับสินค้า');
+      setActionError(
+        language === 'en'
+          ? 'This order is not paid. Online pickup cannot be handed over until payment is verified.'
+          : 'คำสั่งซื้อนี้ยังไม่ได้ชำระเงิน ไม่สามารถส่งมอบสินค้าได้จนกว่าจะยืนยันการชำระเงิน'
+      );
       return;
     }
 
@@ -380,41 +389,94 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setActionError(null);
       setActionSuccess(null);
       setLastReceiptOrder(null);
-      const { data: pickupRows, error: pickupError } = await supabase.rpc('confirm_order_pickup', {
-        p_order_id: order.id,
-      });
-      if (pickupError) throw pickupError;
 
-      const returnedOrder = Array.isArray(pickupRows) && pickupRows[0]
-        ? pickupRows[0] as Order
-        : { ...order, status: 'picked_up', picked_up_at: new Date().toISOString() };
-
-      if (early) {
-        setUpcomingOrders((current) => current.filter((item) => item.id !== order.id));
-        setEarlyPickupOrder(null);
-        setActionSuccess(language === 'en'
-          ? 'Early pickup recorded successfully.'
-          : 'บันทึกการรับสินค้าก่อนกำหนดเรียบร้อยแล้ว');
-      } else {
-        setOrders((current) => current.map((item) => (
-          item.id === order.id ? returnedOrder : item
-        )));
-        setActionSuccess(language === 'en'
-          ? 'Pickup recorded successfully.'
-          : 'บันทึกการรับสินค้าเรียบร้อยแล้ว');
+      const handoff = await createPickupHandover(order.id);
+      if (handoff.state === 'completed') {
+        finishPickupInUi(order, early);
+        return;
+      }
+      if (!handoff.handoffId || !handoff.token || !handoff.confirmUrl || !handoff.expiresAt) {
+        throw new Error('Pickup handover response was incomplete.');
       }
 
-      setLastReceiptOrder(returnedOrder);
-      setHistoryRefreshKey((value) => value + 1);
+      setActiveHandover({
+        order,
+        handoffId: handoff.handoffId,
+        token: handoff.token,
+        confirmUrl: handoff.confirmUrl,
+        expiresAt: handoff.expiresAt,
+        early,
+      });
+      setHandoverBypassReason('');
     } catch (err) {
-      console.error('Error confirming pickup:', err);
-      setActionError(language === 'en'
-        ? 'Could not confirm pickup. Please try again.'
-        : 'ไม่สามารถยืนยันการรับสินค้าได้ กรุณาลองอีกครั้ง');
+      console.error('Error starting pickup handover:', err);
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : (language === 'en' ? 'Could not start pickup handover.' : 'ไม่สามารถเริ่มขั้นตอนส่งมอบสินค้าได้')
+      );
     } finally {
       setUpdatingOrder(null);
     }
   };
+
+  const completePickupWithoutCustomerQr = async () => {
+    if (!activeHandover || !handoverBypassReason.trim()) return;
+    try {
+      setUpdatingOrder(activeHandover.order.id);
+      setActionError(null);
+      await bypassPickupReceipt(activeHandover.handoffId, handoverBypassReason.trim());
+      const { order, early } = activeHandover;
+      setActiveHandover(null);
+      setHandoverBypassReason('');
+      finishPickupInUi(order, early, true);
+    } catch (err) {
+      console.error('Error bypassing customer receipt confirmation:', err);
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : (language === 'en' ? 'Could not complete pickup.' : 'ไม่สามารถดำเนินการรับสินค้าให้เสร็จได้')
+      );
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeHandover) return;
+    let stopped = false;
+
+    const poll = async () => {
+      try {
+        const status = await getPickupHandoverStatus(activeHandover.token);
+        if (stopped) return;
+
+        if (status.state === 'completed') {
+          const { order, early } = activeHandover;
+          setActiveHandover(null);
+          setHandoverBypassReason('');
+          finishPickupInUi(order, early, Boolean(status.bypassed));
+        } else if (status.state === 'expired' || status.state === 'cancelled') {
+          setActiveHandover(null);
+          setHandoverBypassReason('');
+          setActionError(
+            language === 'en'
+              ? 'The pickup confirmation QR expired. Start handover again to generate a new QR.'
+              : 'QR ยืนยันการรับสินค้าหมดอายุ กรุณาเริ่มส่งมอบสินค้าอีกครั้งเพื่อสร้าง QR ใหม่'
+          );
+        }
+      } catch (err) {
+        console.warn('Pickup handover polling failed:', err);
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => void poll(), 2500);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [activeHandover?.token]);
 
   const getContactMethod = () => {
     if (!customer) return null;
@@ -514,7 +576,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                   {language === 'en' ? 'Pickup Desk' : 'จุดรับสินค้า'}
                 </h1>
                 <p className="text-slate-300">
-                  {language === 'en' ? 'Scan customer QR codes to manage orders' : 'สแกน QR โค้ดลูกค้าเพื่อจัดการคำสั่งซื้อ'}
+                  {language === 'en' ? 'Verify pre-payment, hand over orders, and record customer receipt' : 'ตรวจสอบการชำระล่วงหน้า ส่งมอบสินค้า และบันทึกการรับสินค้าของลูกค้า'}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-3">
@@ -808,48 +870,31 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           )}
 
-                          <div className="bg-slate-50 rounded-xl p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                              {language === 'en' ? 'Payment received' : 'รับชำระเงิน'}
+                          <div className={`rounded-xl border p-4 ${
+                            paymentComplete(order)
+                              ? 'border-emerald-200 bg-emerald-50'
+                              : 'border-red-200 bg-red-50'
+                          }`}>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                              {language === 'en' ? 'Payment status' : 'สถานะการชำระเงิน'}
                             </p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <button
-                                onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                } disabled:opacity-50`}
-                              >
-                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
-                              </button>
-                              <button
-                                onClick={() => void recordPayment(order, 'cash')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                                  order.payment_status === 'paid' && order.payment_method === 'cash'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
-                                } disabled:opacity-50`}
-                              >
-                                <Banknote className="w-4 h-4" />
-                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
-                              </button>
-                            </div>
+                            <p className={`text-sm font-bold ${paymentComplete(order) ? 'text-emerald-700' : 'text-red-700'}`}>
+                              {paymentComplete(order)
+                                ? `${language === 'en' ? 'Paid' : 'ชำระแล้ว'} · ${paymentMethodLabel(order, language)} · ฿${Number(order.amount_paid ?? amountDue(order)).toFixed(2)}`
+                                : (language === 'en' ? 'NOT PAID — handover blocked' : 'ยังไม่ได้ชำระ — ไม่สามารถส่งมอบสินค้าได้')}
+                            </p>
                           </div>
 
                           {order.status !== 'picked_up' && (
                             <button
-                              onClick={() => void confirmPickup(order, false)}
+                              onClick={() => void startPickupHandover(order, false)}
                               disabled={updatingOrder === order.id || !paymentComplete(order)}
                               className="w-full mt-4 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                             >
-                              {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                              {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
                               {paymentComplete(order)
-                                ? (language === 'en' ? 'Mark as Picked Up' : 'บันทึกรับสินค้า')
-                                : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
+                                ? (language === 'en' ? 'Hand Over Order' : 'ส่งมอบสินค้า')
+                                : (language === 'en' ? 'Payment required before handover' : 'ต้องชำระเงินก่อนส่งมอบ')}
                             </button>
                           )}
                         </div>
@@ -867,8 +912,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         {language === 'en'
-                          ? 'For an early pickup, record how payment was received first, then confirm the early collection.'
-                          : 'หากรับสินค้าก่อนกำหนด ให้บันทึกวิธีการชำระเงินก่อน แล้วจึงยืนยันการรับสินค้าก่อนกำหนด'}
+                          ? 'Early handover is allowed only for orders whose pre-payment has already been verified.'
+                          : 'การรับสินค้าก่อนกำหนดทำได้เฉพาะคำสั่งซื้อที่ยืนยันการชำระเงินล่วงหน้าแล้ว'}
                       </p>
                     </div>
 
@@ -928,35 +973,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               />
                             )}
 
-                            <div className="mt-4 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                                  order.payment_status === 'paid' && order.payment_method === 'qr_code'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                                } disabled:opacity-50`}
-                              >
-                                {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-                                {language === 'en' ? 'QR received' : 'รับชำระ QR'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void recordPayment(order, 'cash')}
-                                disabled={Boolean(updatingOrder) || order.payment_status === 'paid'}
-                                className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
-                                  order.payment_status === 'paid' && order.payment_method === 'cash'
-                                    ? 'border-slate-700 bg-slate-700 text-white'
-                                    : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-                                } disabled:opacity-50`}
-                              >
-                                <Banknote className="w-4 h-4" />
-                                {language === 'en' ? 'Cash received' : 'รับเงินสด'}
-                              </button>
-                            </div>
-
                             {!confirmingEarly ? (
                               <button
                                 type="button"
@@ -970,8 +986,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 className="mt-3 w-full rounded-lg border-2 border-amber-500 bg-white px-4 py-2.5 font-semibold text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-40"
                               >
                                 {paymentComplete(order)
-                                  ? (language === 'en' ? 'Pick Up Early' : 'รับสินค้าก่อนกำหนด')
-                                  : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
+                                  ? (language === 'en' ? 'Hand Over Early' : 'ส่งมอบสินค้าก่อนกำหนด')
+                                  : (language === 'en' ? 'Payment required first' : 'ต้องชำระเงินก่อน')}
                               </button>
                             ) : (
                               <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
@@ -985,8 +1001,8 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 </p>
                                 <p className="mt-2 text-sm font-semibold text-amber-900">
                                   {language === 'en'
-                                    ? `Payment recorded: ${paymentMethodLabel(order, 'en')}.`
-                                    : `บันทึกการชำระเงินแล้ว: ${paymentMethodLabel(order, 'th')}`}
+                                    ? `Payment verified: ${paymentMethodLabel(order, 'en')}.`
+                                    : `ยืนยันการชำระเงินแล้ว: ${paymentMethodLabel(order, 'th')}`}
                                 </p>
                                 <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                   <button
@@ -999,12 +1015,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => void confirmPickup(order, true)}
+                                    onClick={() => void startPickupHandover(order, true)}
                                     disabled={updatingOrder === order.id}
                                     className="flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
                                   >
                                     {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                    {language === 'en' ? 'Confirm Early Pickup' : 'ยืนยันรับสินค้าก่อนกำหนด'}
+                                    {language === 'en' ? 'Start Early Handover' : 'เริ่มส่งมอบก่อนกำหนด'}
                                   </button>
                                 </div>
                               </div>
@@ -1027,6 +1043,74 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
           </div>
         </div>
       </div>
+
+      {activeHandover && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                <QrCode className="h-6 w-6" />
+              </div>
+              <h2 className="mt-3 text-xl font-bold text-slate-900">
+                {language === 'en' ? 'Customer receipt confirmation' : 'ยืนยันการรับสินค้าจากลูกค้า'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                #{activeHandover.order.order_number} · {language === 'en' ? 'Paid and ready for handover' : 'ชำระแล้ว พร้อมส่งมอบ'}
+              </p>
+            </div>
+
+            <div className="mt-5 flex justify-center rounded-2xl border border-slate-200 bg-white p-5">
+              <QRCodeSVG value={activeHandover.confirmUrl} size={220} level="H" marginSize={2} />
+            </div>
+
+            <p className="mt-4 text-center text-sm font-medium text-slate-700">
+              {language === 'en'
+                ? 'Ask the customer to scan this QR and tap “Confirm I received my order”. This screen will update automatically.'
+                : 'ให้ลูกค้าสแกน QR นี้ แล้วกด “ยืนยันว่าได้รับสินค้าแล้ว” หน้านี้จะอัปเดตอัตโนมัติ'}
+            </p>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              {language === 'en' ? 'QR expires after 15 minutes.' : 'QR หมดอายุภายใน 15 นาที'}
+            </p>
+
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {language === 'en' ? 'Fallback if customer cannot scan' : 'ขั้นตอนสำรองหากลูกค้าสแกนไม่ได้'}
+              </p>
+              <select
+                value={handoverBypassReason}
+                onChange={(event) => setHandoverBypassReason(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800"
+              >
+                <option value="">{language === 'en' ? 'Select reason…' : 'เลือกเหตุผล…'}</option>
+                <option value="Customer has no phone">{language === 'en' ? 'Customer has no phone' : 'ลูกค้าไม่มีโทรศัพท์'}</option>
+                <option value="QR scanning unavailable">{language === 'en' ? 'QR scanning unavailable' : 'ไม่สามารถสแกน QR ได้'}</option>
+                <option value="Customer declined confirmation">{language === 'en' ? 'Customer declined confirmation' : 'ลูกค้าไม่ต้องการยืนยัน'}</option>
+                <option value="Other operational reason">{language === 'en' ? 'Other operational reason' : 'เหตุผลด้านการปฏิบัติงานอื่น'}</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => void completePickupWithoutCustomerQr()}
+                disabled={!handoverBypassReason || updatingOrder === activeHandover.order.id}
+                className="mt-3 w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40"
+              >
+                {language === 'en' ? 'Complete without customer QR' : 'เสร็จสิ้นโดยไม่ใช้ QR ลูกค้า'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveHandover(null);
+                setHandoverBypassReason('');
+              }}
+              className="mt-3 w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+            >
+              {language === 'en' ? 'Close for now' : 'ปิดชั่วคราว'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showScanner && (
         <QRScanner
