@@ -36,9 +36,9 @@ type LocalizedFallback = Record<Language, string>;
 
 const FALLBACKS = {
   orderAgain: {
-    en: 'Order again',
+    en: 'Order this again',
     th: 'สั่งแบบเดิมอีกครั้ง',
-    zh: '再次下单',
+    zh: '再次购买此订单',
   },
   preparing: {
     en: 'Preparing…',
@@ -254,10 +254,10 @@ export function RepeatOrderButton({
         disabled={busy}
         className={variant === 'modal'
           ? 'mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-60'
-          : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-white text-xs font-semibold transition-colors hover:bg-amber-50 disabled:opacity-60'}
+          : 'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-colors disabled:opacity-60 hover:bg-[#CFE3DF]'}
         style={variant === 'modal'
           ? { background: '#9a7b2f' }
-          : { borderColor: '#d9c58f', color: '#8a6d28' }}
+          : { borderColor: 'rgba(85,118,111,0.24)', background: 'rgba(207,227,223,0.58)', color: '#304B45' }}
       >
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
         {buttonLabel}
