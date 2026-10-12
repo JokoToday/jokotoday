@@ -50,6 +50,17 @@ verify_jwt = true
 [functions.payment-handoff-status]
 verify_jwt = false
 
+[functions.create-pickup-handoff]
+verify_jwt = true
+
+# These customer-facing pickup confirmation functions authenticate with a
+# one-time high-entropy token whose SHA-256 hash is stored server-side.
+[functions.pickup-handoff-status]
+verify_jwt = false
+
+[functions.confirm-pickup-receipt]
+verify_jwt = false
+
 # This function performs its own authentication. Normal browser uploads are
 # validated against the signed-in user; mobile handoff uploads are validated
 # against a short-lived, hashed bearer token tied to one payment transaction.

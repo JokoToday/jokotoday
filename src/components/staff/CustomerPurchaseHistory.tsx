@@ -19,6 +19,10 @@ import { supabase } from '../../lib/supabase';
 import { printOrderReceipt } from '../../lib/printReceipt';
 import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
 import { PrintPrepTicketButton } from '../orders/PrintPrepTicketButton';
+import { OrderPrintButtonById } from '../orders/OrderPrintButtonById';
+import { PrintReceiptButton } from '../orders/PrintReceiptButton';
+import { getReceiptsForOrders, type OrderReceiptRecord } from '../../lib/receiptService';
+import { useCMSLabels } from '../../hooks/useCMSLabels';
 
 type StaffLanguage = 'en' | 'th';
 type OrderTypeFilter = 'all' | 'pickup' | 'walk_in';
@@ -87,7 +91,9 @@ export function CustomerPurchaseHistory({
   readOnly = false,
 }: Props) {
   const publishedLogoUrl = usePublishedJokoLogo();
+  const { getLabel } = useCMSLabels();
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, OrderReceiptRecord>>({});
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -116,6 +122,13 @@ export function CustomerPurchaseHistory({
 
       const historyRows = (data || []) as HistoryOrder[];
       setOrders(historyRows);
+
+      try {
+        setReceiptMap(await getReceiptsForOrders(historyRows.map((order) => order.id)));
+      } catch (receiptError) {
+        console.warn('Could not load stored customer receipts:', receiptError);
+        setReceiptMap({});
+      }
 
       const locationIds = Array.from(new Set(
         historyRows.map((order) => order.pickup_location_id).filter(Boolean) as string[]
@@ -407,6 +420,7 @@ export function CustomerPurchaseHistory({
                     const location = order.pickup_location_id ? locations[order.pickup_location_id] : undefined;
                     const handledBy = order.staff_id ? staffNames[order.staff_id] : undefined;
                     const items = Array.isArray(order.order_items) ? order.order_items : [];
+                    const receipt = receiptMap[order.id];
                     const paymentComplete = order.payment_status === 'paid'
                       && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method ?? '');
 
@@ -599,15 +613,33 @@ export function CustomerPurchaseHistory({
                               />
                             )}
 
-                            {!isCancelled && paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
-                              <button
-                                type="button"
-                                onClick={() => printReceipt(order)}
-                                className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-slate-700 bg-white px-4 py-2.5 font-semibold text-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
-                              >
-                                <Printer className="w-4 h-4" />
-                                {language === 'en' ? 'Print Order Receipt' : 'พิมพ์ใบเสร็จรับเงิน'}
-                              </button>
+                            {!isWalkIn && items.length > 0 && (
+                              <OrderPrintButtonById
+                                orderId={order.id}
+                                language={language}
+                                getLabel={getLabel}
+                                className="w-full justify-center py-2.5"
+                              />
+                            )}
+
+                            {receipt ? (
+                              <PrintReceiptButton
+                                receipt={receipt}
+                                language={language}
+                                fullWidth
+                                className="py-2.5"
+                              />
+                            ) : (
+                              !isCancelled && paymentComplete && order.status === 'completed' && (
+                                <button
+                                  type="button"
+                                  onClick={() => printReceipt(order)}
+                                  className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-slate-700 bg-white px-4 py-2.5 font-semibold text-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
+                                >
+                                  <Printer className="w-4 h-4" />
+                                  {language === 'en' ? 'Print legacy receipt' : 'พิมพ์ใบเสร็จเดิม'}
+                                </button>
+                              )
                             )}
                           </div>
                         )}
