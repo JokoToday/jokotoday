@@ -11,9 +11,11 @@ import {
 export function SpecialsPaymentPanel({
   orderId,
   onPaid,
+  onClose,
 }: {
   orderId: string;
   onPaid?: () => void;
+  onClose?: () => void;
 }) {
   const [state, setState] = useState<SpecialsState | null>(null),
     [error, setError] = useState(""),
@@ -111,6 +113,7 @@ export function SpecialsPaymentPanel({
         p_cancel: true,
       });
       await refresh();
+      onClose?.();
     } catch (e) {
       setError(specialsError(e));
     } finally {
@@ -229,9 +232,10 @@ export function SpecialsPaymentPanel({
             disabled={busy}
             onClick={() => void cancel()}
           >
-            Cancel hold
+            Cancel checkout
           </button>
         )}
+        {!held && onClose && <button type="button" className="underline" disabled={busy} onClick={onClose}>Close checkout</button>}
       </div>
       {busy && <p role="status">Submitting slip…</p>}
       {message && <p role="status">{message}</p>}

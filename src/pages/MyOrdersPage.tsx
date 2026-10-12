@@ -278,7 +278,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
             >
               <X className="h-4 w-4" />
             </button>
-            {paymentTarget.order_type === 'specials' ? <SpecialsPaymentPanel orderId={paymentTarget.id} onPaid={() => void loadAll()} /> : <OnlinePromptPayPanel
+            {paymentTarget.order_type === 'specials' ? <SpecialsPaymentPanel orderId={paymentTarget.id} onPaid={() => void loadAll()} onClose={() => { setPaymentTarget(null); void loadAll(); }} /> : <OnlinePromptPayPanel
               orderId={paymentTarget.id}
               language={language}
               onPaid={() => void loadAll()}

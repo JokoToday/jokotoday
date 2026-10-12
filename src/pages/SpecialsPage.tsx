@@ -147,7 +147,11 @@ export default function SpecialsPage({
         {error && (!user || order) && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
         {user && order ? (
           <section className="mx-auto max-w-3xl">
-            <SpecialsPaymentPanel orderId={order} />
+            <SpecialsPaymentPanel orderId={order} onClose={() => {
+              localStorage.removeItem(`specials-order:${user.id}`);
+              setOrder(null);
+              void load();
+            }} />
             <div className="mt-5 flex flex-wrap gap-4">
               <button type="button" className="min-h-11 text-sm text-[#55766F] underline underline-offset-4" onClick={() => {
                 localStorage.removeItem(`specials-order:${user.id}`);
