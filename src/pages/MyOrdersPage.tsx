@@ -10,6 +10,7 @@ import { Order, PickupDay, PickupLocation } from '../components/orders/OrderType
 import { MyOrdersList } from '../components/orders/MyOrdersList';
 import { OnlinePromptPayPanel } from '../components/OnlinePromptPayPanel';
 import { getPaymentSettings } from '../lib/paymentService';
+import { getReceiptsForOrders, type OrderReceiptRecord } from '../lib/receiptService';
 
 interface MyOrdersPageProps {
   onNavigate: (page: string) => void;
@@ -21,6 +22,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
   const { getLabel } = useCMSLabels();
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [receiptMap, setReceiptMap] = useState<Record<string, OrderReceiptRecord>>({});
   const [loading, setLoading] = useState(true);
   const [productMap, setProductMap] = useState<Record<string, CMSProduct>>({});
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
@@ -71,7 +73,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
       const [ordersRes, pickupRes, locationsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
+          .select('id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, picked_up_at, customer_received_at, pickup_code, purchase_type, walk_in_amount, loyalty_points_earned, cancellation_reason_code, cancelled_at')
           .eq('customer_id', user.id)
           .order('created_at', { ascending: false }),
         supabase.from('cms_pickup_days').select('id, day_key, label, label_en, label_th, label_zh, location_id'),
@@ -80,8 +82,16 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
 
       if (ordersRes.error) throw ordersRes.error;
 
-      setOrders(ordersRes.data || []);
+      const loadedOrders = (ordersRes.data || []) as Order[];
+      setOrders(loadedOrders);
       setPickupDays(pickupRes.data || []);
+
+      try {
+        setReceiptMap(await getReceiptsForOrders(loadedOrders.map((order) => order.id)));
+      } catch (receiptError) {
+        console.warn('Could not load customer receipts:', receiptError);
+        setReceiptMap({});
+      }
 
       const locMap: Record<string, PickupLocation> = {};
       (locationsRes.data || []).forEach(l => { locMap[l.id] = l as PickupLocation; });
@@ -213,6 +223,7 @@ export function MyOrdersPage({ onNavigate }: MyOrdersPageProps) {
                 productMap={productMap}
                 pickupDays={pickupDays}
                 locationMap={locationMap}
+                receiptMap={receiptMap}
                 getLabel={getLabel}
                 onNavigate={onNavigate}
                 onCancelRequest={openCancelModal}

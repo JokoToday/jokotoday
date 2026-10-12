@@ -14,15 +14,16 @@ import {
   MessageCircle,
   Package,
   Phone,
-  Printer,
   QrCode,
+  X,
   Store,
   Upload,
   User,
 } from 'lucide-react';
 import jsQR from 'jsqr';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
-import { printOrderReceipt } from '../lib/printReceipt';
+import { createPickupReceiptHandoff } from '../lib/pickupReceiptService';
 import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
 import {
   CustomerLookupNetworkError,
@@ -117,6 +118,20 @@ const amountDue = (order: Order) => Math.max(
   Number(order.total_amount || 0) - Number(order.loyalty_discount_amount || 0)
 );
 
+const extractPickupOrderCode = (value: string): string | null => {
+  const text = value.trim();
+  const direct = text.match(/^JOKO-PICKUP:([A-F0-9]{16})$/i);
+  if (direct) return direct[1].toUpperCase();
+
+  try {
+    const url = new URL(text);
+    const match = url.pathname.match(/^\/pickup-order\/([A-F0-9]{16})$/i);
+    return match ? match[1].toUpperCase() : null;
+  } catch {
+    return null;
+  }
+};
+
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
@@ -131,7 +146,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   const [pickupLocations, setPickupLocations] = useState<Record<string, PickupLocation>>({});
   const [earlyPickupOrder, setEarlyPickupOrder] = useState<Order | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
-  const [lastReceiptOrder, setLastReceiptOrder] = useState<Order | null>(null);
+  const [pickupHandoff, setPickupHandoff] = useState<{
+    orderId: string;
+    orderNumber: string;
+    token: string;
+    expiresAt?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -146,7 +166,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     setUpcomingOrders([]);
     setPickupLocations({});
     setEarlyPickupOrder(null);
-    setLastReceiptOrder(null);
+    setPickupHandoff(null);
     setShowScanner(false);
     setShowManualEntry(false);
     setManualCode('');
@@ -240,7 +260,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setOrders([]);
       setUpcomingOrders([]);
       setEarlyPickupOrder(null);
-      setLastReceiptOrder(null);
+      setPickupHandoff(null);
 
       const customerData = await lookupCustomerByQRToken(lookupValue);
       if (!customerData) {
@@ -260,6 +280,36 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     }
   };
 
+  const findCustomerFromPickupOrderCode = async (pickupCode: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data, error: lookupError } = await supabase.rpc('staff_lookup_pickup_code', {
+        p_pickup_code: pickupCode,
+      });
+      if (lookupError) throw lookupError;
+
+      const shortCode = data && typeof data === 'object' && 'customer_short_code' in data
+        ? String(data.customer_short_code || '')
+        : '';
+      if (!shortCode) {
+        setError(language === 'en'
+          ? 'This pickup QR does not resolve to a customer.'
+          : 'QR รับสินค้านี้ไม่พบข้อมูลลูกค้า');
+        return;
+      }
+
+      await findCustomer(shortCode, 'qr');
+    } catch (lookupError) {
+      console.error('Pickup order QR lookup failed:', lookupError);
+      setError(language === 'en'
+        ? 'Could not open this pickup order. Please try again.'
+        : 'ไม่สามารถเปิดคำสั่งรับสินค้านี้ได้ กรุณาลองอีกครั้ง');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!hasStaffAccess || deepLinkHandledRef.current) return;
     const memberCode = new URLSearchParams(window.location.search).get('member');
@@ -270,6 +320,11 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   const handleScan = async (decodedText: string) => {
     setShowScanner(false);
+    const pickupCode = extractPickupOrderCode(decodedText);
+    if (pickupCode) {
+      await findCustomerFromPickupOrderCode(pickupCode);
+      return;
+    }
     await findCustomer(decodedText);
   };
 
@@ -310,7 +365,12 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
           return;
         }
         if (import.meta.env.DEV) console.debug('[PickupDesk] Decoded QR content:', decoded.data);
-        await findCustomer(decoded.data);
+        const pickupCode = extractPickupOrderCode(decoded.data);
+        if (pickupCode) {
+          await findCustomerFromPickupOrderCode(pickupCode);
+        } else {
+          await findCustomer(decoded.data);
+        }
       } catch (err) {
         if (err instanceof InvalidCustomerCodeError) {
           setError(getLookupErrorMessage(err));
@@ -337,7 +397,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setUpdatingOrder(order.id);
       setActionError(null);
       setActionSuccess(null);
-      setLastReceiptOrder(null);
       const { data, error: updateError } = await supabase.rpc('staff_record_order_payment_v2', {
         p_order_id: order.id,
         p_payment_method: method,
@@ -367,6 +426,28 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
     }
   };
 
+  const openCustomerReceiptConfirmation = async (order: Order) => {
+    const handoff = await createPickupReceiptHandoff(order.id);
+    if (handoff.state === 'completed') {
+      setPickupHandoff(null);
+      setActionSuccess(language === 'en'
+        ? 'Customer receipt is already confirmed and the receipt has been issued.'
+        : 'ลูกค้ายืนยันรับสินค้าแล้ว และออกใบเสร็จเรียบร้อยแล้ว');
+      return;
+    }
+
+    if (!handoff.handoffToken) {
+      throw new Error('Pickup confirmation token was not returned.');
+    }
+
+    setPickupHandoff({
+      orderId: order.id,
+      orderNumber: handoff.orderNumber,
+      token: handoff.handoffToken,
+      expiresAt: handoff.expiresAt,
+    });
+  };
+
   const confirmPickup = async (order: Order, early: boolean) => {
     if (!paymentComplete(order)) {
       setActionError(language === 'en'
@@ -379,7 +460,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       setUpdatingOrder(order.id);
       setActionError(null);
       setActionSuccess(null);
-      setLastReceiptOrder(null);
       const { data: pickupRows, error: pickupError } = await supabase.rpc('confirm_order_pickup', {
         p_order_id: order.id,
       });
@@ -392,20 +472,25 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
       if (early) {
         setUpcomingOrders((current) => current.filter((item) => item.id !== order.id));
         setEarlyPickupOrder(null);
-        setActionSuccess(language === 'en'
-          ? 'Early pickup recorded successfully.'
-          : 'บันทึกการรับสินค้าก่อนกำหนดเรียบร้อยแล้ว');
       } else {
         setOrders((current) => current.map((item) => (
           item.id === order.id ? returnedOrder : item
         )));
-        setActionSuccess(language === 'en'
-          ? 'Pickup recorded successfully.'
-          : 'บันทึกการรับสินค้าเรียบร้อยแล้ว');
       }
 
-      setLastReceiptOrder(returnedOrder);
       setHistoryRefreshKey((value) => value + 1);
+      setActionSuccess(language === 'en'
+        ? 'Staff handover recorded. Ask the customer to scan the confirmation QR.'
+        : 'บันทึกการส่งมอบแล้ว ให้ลูกค้าสแกน QR เพื่อยืนยันรับสินค้า');
+
+      try {
+        await openCustomerReceiptConfirmation(returnedOrder);
+      } catch (handoffError) {
+        console.error('Could not create customer receipt confirmation:', handoffError);
+        setActionError(language === 'en'
+          ? 'Handover was recorded, but the customer confirmation QR could not be created. Use “Customer confirmation QR” to try again.'
+          : 'บันทึกการส่งมอบแล้ว แต่สร้าง QR ยืนยันสำหรับลูกค้าไม่ได้ กรุณากด “QR ยืนยันลูกค้า” เพื่อลองอีกครั้ง');
+      }
     } catch (err) {
       console.error('Error confirming pickup:', err);
       setActionError(language === 'en'
@@ -720,16 +805,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                       <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
                       <p className="text-sm font-medium text-green-700">{actionSuccess}</p>
                     </div>
-                    {lastReceiptOrder && (
-                      <button
-                        type="button"
-                        onClick={() => printOrderReceipt({ order: lastReceiptOrder, customerName: customer.name, language: staffLanguage, logoUrl: publishedLogoUrl })}
-                        className="mt-3 flex items-center gap-2 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100"
-                      >
-                        <Printer className="w-4 h-4" />
-                        {language === 'en' ? 'Print Order Receipt' : 'พิมพ์ใบเสร็จรับเงิน'}
-                      </button>
-                    )}
                   </div>
                 )}
 
@@ -771,15 +846,21 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </div>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              order.status === 'picked_up' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                              order.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : order.status === 'picked_up'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-slate-100 text-slate-700'
                             }`}>
-                              {order.status === 'picked_up'
-                                ? (language === 'en' ? 'Picked Up' : 'รับแล้ว')
-                                : (language === 'en' ? 'Ready' : 'รอรับ')}
+                              {order.status === 'completed'
+                                ? (language === 'en' ? 'Completed' : 'เสร็จสิ้น')
+                                : order.status === 'picked_up'
+                                  ? (language === 'en' ? 'Awaiting customer confirmation' : 'รอลูกค้ายืนยัน')
+                                  : (language === 'en' ? 'Ready' : 'รอรับ')}
                             </span>
                           </div>
 
-                          {order.status !== 'picked_up' && order.order_items?.length > 0 && (
+                          {!['picked_up', 'completed'].includes(order.status) && order.order_items?.length > 0 && (
                             <PrintPrepTicketButton
                               order={order}
                               customerName={order.customer_name || customer.name}
@@ -815,7 +896,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             <div className="grid grid-cols-2 gap-3">
                               <button
                                 onClick={() => void recordPayment(order, 'qr_code')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
+                                disabled={updatingOrder === order.id || ['picked_up', 'completed'].includes(order.status) || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'qr_code'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -827,7 +908,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                               </button>
                               <button
                                 onClick={() => void recordPayment(order, 'cash')}
-                                disabled={updatingOrder === order.id || order.status === 'picked_up' || order.payment_status === 'paid'}
+                                disabled={updatingOrder === order.id || ['picked_up', 'completed'].includes(order.status) || order.payment_status === 'paid'}
                                 className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
                                   order.payment_status === 'paid' && order.payment_method === 'cash'
                                     ? 'border-slate-700 bg-slate-700 text-white'
@@ -840,7 +921,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             </div>
                           </div>
 
-                          {order.status !== 'picked_up' && (
+                          {!['picked_up', 'completed'].includes(order.status) && (
                             <button
                               onClick={() => void confirmPickup(order, false)}
                               disabled={updatingOrder === order.id || !paymentComplete(order)}
@@ -848,8 +929,19 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                             >
                               {updatingOrder === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                               {paymentComplete(order)
-                                ? (language === 'en' ? 'Mark as Picked Up' : 'บันทึกรับสินค้า')
+                                ? (language === 'en' ? 'Confirm staff handover' : 'ยืนยันการส่งมอบโดยพนักงาน')
                                 : (language === 'en' ? 'Record payment first' : 'บันทึกการชำระเงินก่อน')}
+                            </button>
+                          )}
+
+                          {order.status === 'picked_up' && (
+                            <button
+                              type="button"
+                              onClick={() => void openCustomerReceiptConfirmation(order)}
+                              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-[#55766F]/25 bg-[#CFE3DF]/55 px-4 py-2.5 font-semibold text-[#304B45] transition hover:bg-[#CFE3DF]"
+                            >
+                              <QrCode className="h-4 w-4" />
+                              {language === 'en' ? 'Customer confirmation QR' : 'QR ยืนยันลูกค้า'}
                             </button>
                           )}
                         </div>
@@ -963,7 +1055,6 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
                                 onClick={() => {
                                   setActionError(null);
                                   setActionSuccess(null);
-                                  setLastReceiptOrder(null);
                                   setEarlyPickupOrder(order);
                                 }}
                                 disabled={Boolean(updatingOrder) || !paymentComplete(order)}
@@ -1027,6 +1118,65 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
           </div>
         </div>
       </div>
+
+      {pickupHandoff && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#303532]/55 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-[2rem] border border-[#55766F]/18 bg-[#FFF9EE] p-6 text-center shadow-2xl sm:p-8">
+            <button
+              type="button"
+              onClick={() => setPickupHandoff(null)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/75 text-[#303532]/60 transition hover:bg-white"
+              aria-label="Close customer confirmation QR"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#55766F]">JOKO TODAY</p>
+            <h3 className="mt-2 text-2xl font-semibold text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
+              {language === 'en' ? 'Customer receipt confirmation' : 'ยืนยันการรับสินค้าของลูกค้า'}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-[#303532]/65">
+              {language === 'en'
+                ? 'Ask the customer to scan this QR on their phone, check the products, and confirm receipt.'
+                : 'ให้ลูกค้าสแกน QR นี้ด้วยโทรศัพท์ ตรวจสอบสินค้า และยืนยันการรับสินค้า'}
+            </p>
+
+            <div className="mx-auto mt-6 inline-flex rounded-[1.5rem] border border-[#55766F]/15 bg-white p-4 shadow-sm">
+              <QRCodeSVG
+                value={new URL('/receive/' + pickupHandoff.token + '?lang=' + language, window.location.origin).href}
+                size={238}
+                level="H"
+                marginSize={3}
+                aria-label="Customer receipt confirmation QR"
+              />
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-[#CFE3DF]/45 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#55766F]">
+                {language === 'en' ? 'Order' : 'คำสั่งซื้อ'}
+              </p>
+              <p className="mt-1 text-lg font-extrabold text-[#303532]">#{pickupHandoff.orderNumber}</p>
+              {pickupHandoff.expiresAt && (
+                <p className="mt-2 text-xs text-[#303532]/55">
+                  {language === 'en' ? 'QR expires' : 'QR หมดอายุ'}: {new Date(pickupHandoff.expiresAt).toLocaleTimeString(language === 'th' ? 'th-TH' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })}
+                </p>
+              )}
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-[#303532]/50">
+              {language === 'en'
+                ? 'This one-time QR cannot sign in to the customer account and only confirms receipt for this order.'
+                : 'QR แบบใช้ครั้งนี้ไม่สามารถเข้าสู่บัญชีลูกค้าได้ และใช้ยืนยันการรับสินค้าสำหรับคำสั่งซื้อนี้เท่านั้น'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPickupHandoff(null)}
+              className="mt-5 w-full rounded-xl bg-[#3F665E] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#304B45]"
+            >
+              {language === 'en' ? 'Done / close QR' : 'เสร็จ / ปิด QR'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showScanner && (
         <QRScanner
