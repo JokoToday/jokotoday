@@ -19,6 +19,7 @@ type ProductCardProps = {
   preview?: boolean;
   previewLanguage?: "en" | "th" | "zh";
   productHref?: string;
+  commerceUnavailableLabel?: string;
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
@@ -35,6 +36,7 @@ export default function ProductCard({
   preview = false,
   previewLanguage,
   productHref,
+  commerceUnavailableLabel,
   selectedDay,
   selectedDayDisplay,
   onLoginRequired,
@@ -112,7 +114,7 @@ export default function ProductCard({
   const previewOnly = preview || ('product_origin' in product && product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true);
   const previewLabel = language === 'th' ? 'ดูตัวอย่างเท่านั้น' : language === 'zh' ? '仅供预览' : 'Preview only';
   const globallySoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || previewOnly;
-  const isSoldOut = globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
+  const isSoldOut = Boolean(commerceUnavailableLabel) || globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
 
   const getProductImage = () => {
     if ('image' in product) {
@@ -212,7 +214,7 @@ export default function ProductCard({
           <span className="joko-product-card-price text-2xl font-bold text-primary-900">฿{product.price}</span>
           {isSoldOut && !selectedDay && (
             <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
-              {previewOnly ? previewLabel : t.product.soldOut}
+              {commerceUnavailableLabel || (previewOnly ? previewLabel : t.product.soldOut)}
             </span>
           )}
         </div>

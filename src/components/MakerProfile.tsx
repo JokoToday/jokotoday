@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { AuthModal } from "./AuthModal";
+import { getPickupV2CustomerEnabled } from "../lib/pickupV2Rollout";
 import ProductCard from "./ProductCard";
 import { getCustomerPickupAvailabilityV2, type PickupAvailabilityRow } from "../lib/pickupAvailabilityV2";
 import type { Maker } from "../lib/makersService";
@@ -45,15 +47,22 @@ export function MakerProfile({
       product.maker_id === maker.id && product.product_origin === "maker",
   );
   const productIds = selected.map((product) => product.id).sort().join(",");
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const [orderingEnabled, setOrderingEnabled] = useState(false);
   const [availability, setAvailability] = useState<{ key: string; rows: PickupAvailabilityRow[] } | null>(null);
   useEffect(() => {
     let active = true;
     if (preview || !productIds) return;
-    getCustomerPickupAvailabilityV2(productIds.split(","))
-      .then((rows) => { if (active) setAvailability({ key: productIds, rows }); })
-      .catch(() => { if (active) setAvailability({ key: productIds, rows: [] }); });
+    setAvailability(null);
+    setAvailabilityError(false);
+    setOrderingEnabled(false);
+    Promise.all([getCustomerPickupAvailabilityV2(productIds.split(",")), getPickupV2CustomerEnabled()])
+      .then(([rows, enabled]) => { if (active) { setAvailability({ key: productIds, rows }); setOrderingEnabled(enabled); } })
+      .catch(() => { if (active) setAvailabilityError(true); });
     return () => { active = false; };
-  }, [preview, productIds]);
+  }, [preview, productIds, retry]);
   return (
     <>
       {!preview && (
@@ -125,13 +134,21 @@ export function MakerProfile({
               preview={preview}
               previewLanguage={language}
               productHref={`/products/${encodeURIComponent(product.slug)}`}
-              stockRemainingOverride={preview ? null : remaining}
+              onLoginRequired={() => setShowAuthModal(true)}
+              commerceUnavailableLabel={preview ? undefined : availabilityError
+                ? language === "th" ? "ตรวจสอบวันรับสินค้าไม่ได้" : language === "zh" ? "无法查询取货日期" : "Pickup availability unavailable"
+                : availability?.key !== productIds
+                  ? language === "th" ? "กำลังตรวจสอบวันรับสินค้า…" : language === "zh" ? "正在查询取货日期…" : "Checking pickup availability…"
+                  : !orderingEnabled ? language === "th" ? "ยังไม่เปิดรับคำสั่งซื้อ" : language === "zh" ? "暂未开放订购" : "Ordering is not open yet" : undefined}
+              stockRemainingOverride={preview || availability?.key !== productIds || !orderingEnabled ? null : remaining}
               quantityLimitOverride={preview ? 0 : remaining}
               availabilityOverride={{ isAvailable: remaining > 0 && product.is_active, isSoldOut: remaining === 0, isNotOfferedToday: false, remainingStock: remaining }}
             />
           );
         })}
       </div>
+      {!preview && availabilityError && <button type="button" className="mt-4 underline" onClick={() => setRetry((value) => value + 1)}>{language === "th" ? "ลองอีกครั้ง" : language === "zh" ? "重试" : "Try again"}</button>}
+      {!preview && <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />}
       {!selected.length && <p>{labels.products}</p>}
       <SourcingDisclosure previewLanguage={language} />
     </>

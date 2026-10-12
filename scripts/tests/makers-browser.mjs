@@ -98,7 +98,7 @@ const user = {
 let savedMaker;
 let productPatch;
 let orderRequest;
-async function setup({ admin = false, cart = false, mobile = false } = {}) {
+async function setup({ admin = false, cart = false, mobile = false, rollout = true, availabilityFailure = false, delayAvailability = false } = {}) {
   const context = await browser.newContext({
     viewport: mobile
       ? { width: 390, height: 844 }
@@ -147,8 +147,11 @@ async function setup({ admin = false, cart = false, mobile = false } = {}) {
     }
     if (table === "get_published_builder_page_v1")
       return json({ exists: false });
-    if (table === "get_customer_pickup_availability_v2")
+    if (table === "get_customer_pickup_availability_v2") {
+      if (delayAvailability) await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (availabilityFailure) return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Availability failed" }) });
       return json(availability);
+    }
     if (table === "create_online_order_v2") {
       orderRequest = request.postDataJSON();
       return json({
@@ -216,7 +219,7 @@ async function setup({ admin = false, cart = false, mobile = false } = {}) {
         },
       ];
     if (table === "cms_settings")
-      rows = [{ setting_key: "pickup_v2_customer_enabled", value: "true" }];
+      rows = [{ setting_key: "pickup_v2_customer_enabled", value: String(rollout) }];
     for (const [key, value] of url.searchParams)
       if (value.startsWith("eq."))
         rows = rows.filter((row) => String(row[key]) === value.slice(3));
@@ -313,6 +316,25 @@ try {
   assert.ok(await ordering.page.evaluate(() => Object.values(localStorage).some((value) => value.includes("selected-cake"))));
   assert.deepEqual(ordering.errors, []);
   await ordering.context.close();
+  const paused = await setup({ rollout: false });
+  await paused.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(paused.page.getByText("Ordering is not open yet", { exact: true }));
+  assert.equal(await paused.page.locator(".joko-product-card-add").count(), 0);
+  await paused.context.close();
+  const delayed = await setup({ delayAvailability: true });
+  await delayed.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(delayed.page.getByText("Checking pickup availability…", { exact: true }));
+  assert.equal(await delayed.page.getByText("Sold Out", { exact: true }).count(), 0);
+  await expectVisible(delayed.page.locator(".joko-product-card-add"));
+  await delayed.page.getByRole("button", { name: "Like", exact: true }).click();
+  await expectVisible(delayed.page.locator('input[type="email"]'));
+  await delayed.context.close();
+  const failed = await setup({ availabilityFailure: true });
+  await failed.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(failed.page.getByText("Pickup availability unavailable", { exact: true }));
+  await expectVisible(failed.page.getByRole("button", { name: "Try again", exact: true }));
+  assert.equal(await failed.page.locator(".joko-product-card-add").count(), 0);
+  await failed.context.close();
   availability[2].remaining_quantity = 0;
   const unavailable = await setup();
   await unavailable.page.goto(`${base}/makers/morning-makers`);
