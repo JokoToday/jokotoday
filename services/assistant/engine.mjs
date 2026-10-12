@@ -1,22 +1,18 @@
 import { functionTools, projectSnapshot, validateArguments } from './inventory.mjs';
+import { createProvider, DEFAULT_PROFILE } from './providers.mjs';
 
 const MAX_CALLS = 3;
 const MAX_OUTPUT = 1200;
 // 3 × (20,000 input × $0.75/M + 1,200 output × $4.50/M) < $0.10.
 export const TURN_RESERVE_MICROS = 100000;
 export function createOpenAI(key, fetcher = fetch) {
-  return async body => {
-    const response = await fetcher('https://api.openai.com/v1/responses', {
-      method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(20000),
-    });
-    if (!response.ok) throw Error('AI provider unavailable');
-    return response.json();
-  };
+  return createProvider({ ...DEFAULT_PROFILE, apiKey: key }, fetcher);
 }
-export function createEngine({ provider, inventory, budget, log = () => {} }) {
+export function createEngine({ provider, inventory, budget, profile = DEFAULT_PROFILE, log = () => {} }) {
+  let quarantined = false;
   return async ({ message, history = [], language = 'en', requestId }) => {
-    const settle = budget.reserve(TURN_RESERVE_MICROS);
+    if (quarantined) throw Error('Provider usage contract needs review');
+    const settle = budget.reserve(profile.reserveMicros);
     let cost = 0;
     let uncertain = false;
     const snapshots = [];
@@ -26,16 +22,19 @@ Use current inventory tools for product facts, prices, quantities, pickup dates,
     let calls = 0;
     try {
       for (let round = 0; round < MAX_CALLS; round++) {
-        const body = { model: 'gpt-5.4-mini', store: false, instructions, input, tools: functionTools, tool_choice: round === 0 ? 'required' : round === MAX_CALLS - 1 ? 'none' : 'auto', parallel_tool_calls: false, max_output_tokens: MAX_OUTPUT, reasoning: { effort: 'low' } };
+        const body = { model: profile.model, store: false, instructions, input, tools: functionTools, tool_choice: round === 0 ? 'required' : round === MAX_CALLS - 1 ? 'none' : 'auto', parallel_tool_calls: false, max_output_tokens: MAX_OUTPUT, reasoning: { effort: 'low' } };
         // Conservative byte cap plus protocol margin bounds token exposure before dispatch.
         if (Buffer.byteLength(JSON.stringify(body)) > 18000) throw Object.assign(Error('Context too large'), { code: 'context_limit' });
         uncertain = true;
         const response = await provider(body);
         const usage = response.usage;
-        if (!Number.isSafeInteger(usage?.input_tokens) || !Number.isSafeInteger(usage?.output_tokens) || usage.input_tokens < 0 || usage.output_tokens < 0 || usage.input_tokens > 20000 || usage.output_tokens > MAX_OUTPUT) throw Error('Invalid usage');
-        cost += Math.ceil(usage.input_tokens * 0.75 + usage.output_tokens * 4.5);
+        if (!Number.isSafeInteger(usage?.input_tokens) || !Number.isSafeInteger(usage?.output_tokens) || usage.input_tokens < 0 || usage.output_tokens < 0 || usage.input_tokens > 20000 || usage.output_tokens > MAX_OUTPUT) { quarantined = true; throw Error('Invalid usage'); }
+        const callCost = usage.cost_micros ?? Math.ceil(usage.input_tokens * profile.inputRate + usage.output_tokens * profile.outputRate);
+        if (!Number.isSafeInteger(callCost) || callCost < 0 || !Number.isSafeInteger(cost + callCost)) { quarantined = true; throw Error('Invalid provider cost'); }
+        cost += callCost;
         uncertain = false;
-        log({ requestId, event: 'model_usage', inputTokens: usage.input_tokens, outputTokens: usage.output_tokens });
+        if (cost > profile.reserveMicros) { quarantined = true; throw Error('Provider cost exceeds reserve'); }
+        log({ requestId, event: 'model_usage', provider: profile.provider, model: profile.model, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, costMicros: callCost });
         if (response.status !== 'completed' || !Array.isArray(response.output)) throw Error('Incomplete AI response');
         const toolCalls = response.output.filter(item => item.type === 'function_call');
         if (toolCalls.length > 1 || (round === MAX_CALLS - 1 && toolCalls.length)) throw Error('Tool limit');
@@ -59,7 +58,7 @@ Use current inventory tools for product facts, prices, quantities, pickup dates,
       throw Error('Tool loop exhausted');
     } finally {
       // Unknown outcomes keep the entire reservation; never retry provider calls automatically.
-      settle(uncertain ? TURN_RESERVE_MICROS : cost);
+      settle(uncertain ? profile.reserveMicros : cost);
     }
   };
 }

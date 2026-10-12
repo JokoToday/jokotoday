@@ -3,7 +3,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { Budget } from './budget.mjs';
 import { createInventory } from './inventory.mjs';
-import { createEngine, createOpenAI } from './engine.mjs';
+import { createEngine } from './engine.mjs';
+import { createProvider, providerConfig } from './providers.mjs';
 
 const fail = (code, status = 503) => Object.assign(Error(code), { code, status });
 async function readJSON(req) {
@@ -17,7 +18,7 @@ async function readJSON(req) {
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('invalid_request', 400); }
 }
-export function createAssistantServer({ engine, enabled = false, origins = ['http://localhost:5173'], hosts = ['localhost', '127.0.0.1'], now = Date.now, log = () => {} }) {
+export function createAssistantServer({ engine, enabled = false, origins = ['http://localhost:5173'], hosts = ['localhost', '127.0.0.1'], maxConcurrent = 4, now = Date.now, log = () => {} }) {
   const sessions = new Map();
   const rates = new Map();
   let active = 0;
@@ -63,7 +64,7 @@ export function createAssistantServer({ engine, enabled = false, origins = ['htt
         return send(previous.status, previous.result);
       }
       if (session.turns >= 12) throw fail('session_limit', 429);
-      if (active >= 4) throw fail('busy', 429);
+      if (active >= maxConcurrent) throw fail('busy', 429);
       session.last = now(); session.busy = true; session.turns++; active++;
       try {
         const result = await engine({ message: body.message, language: body.language, history: session.history, requestId });
@@ -89,15 +90,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const hosts = (process.env.JOKO_ASSISTANT_HOSTS || 'joko.today,localhost,127.0.0.1').split(',');
   let budget;
   let engine;
+  let profile;
   const log = item => console.log(JSON.stringify(item));
   if (enabled) {
-    if (!process.env.OPENAI_API_KEY) throw Error('Server-side OpenAI key required');
+    profile = providerConfig();
     const allowance = Number(process.env.JOKO_ASSISTANT_MONTHLY_USD || '10');
     if (!Number.isFinite(allowance) || allowance < 0 || allowance > 100) throw Error('Invalid allowance');
     budget = new Budget(process.env.JOKO_ASSISTANT_STATE_DIR || './state', Math.round(allowance * 1000000));
-    engine = createEngine({ provider: createOpenAI(process.env.OPENAI_API_KEY), inventory: createInventory(process.env.JOKO_ASSISTANT_MCP_URL || 'http://127.0.0.1:3100/mcp'), budget, log });
+    engine = createEngine({ provider: createProvider(profile), profile, inventory: createInventory(process.env.JOKO_ASSISTANT_MCP_URL || 'http://127.0.0.1:3100/mcp'), budget, log });
   }
-  const server = createAssistantServer({ engine, enabled, origins, hosts, log });
+  const server = createAssistantServer({ engine, enabled, origins, hosts, maxConcurrent: profile?.maxConcurrent ?? 4, log });
   server.requestTimeout = 10000;
   server.headersTimeout = 10000;
   server.listen(Number(process.env.PORT || '3101'), '127.0.0.1', () => log({ event: 'assistant_started', enabled }));

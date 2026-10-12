@@ -292,17 +292,16 @@ export function OrderDetailModal({
                       {slug ? (
                         <button
                           onClick={() => { onNavigate(`product/${slug}`); onClose(); }}
-                          className="text-sm font-semibold text-stone-900 hover:underline flex items-center gap-1 group text-left truncate max-w-full"
+                          className="text-sm font-semibold text-stone-900 hover:underline flex items-center gap-1 group text-left max-w-full"
                           title={displayName}
                         >
-                          <span className="truncate">{displayName}</span>
+                          <span>{displayName}<MakerSnapshotAttribution item={item} /></span>
                           <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-50 transition-opacity" />
                         </button>
                       ) : (
-                        <p className="text-sm font-semibold text-stone-900 truncate">{displayName}</p>
+                        <p className="text-sm font-semibold text-stone-900">{displayName}<MakerSnapshotAttribution item={item} /></p>
                       )}
                       <p className="text-xs text-stone-400 mt-0.5">
-                        <MakerSnapshotAttribution item={item} />
                         {getLabel('my_orders_page.quantity', language, 'Qty')}: {item.quantity}
                         {' · '}
                         {getLabel('my_orders_page.unit_price', language, 'Unit Price')}: ฿{Number(item.price_at_order).toFixed(2)}

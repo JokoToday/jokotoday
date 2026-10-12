@@ -39,7 +39,7 @@ export class Budget {
     return actual => {
       if (finished) return;
       finished = true;
-      if (!Number.isSafeInteger(actual) || actual < 0 || actual > amount) throw Error('Usage exceeds reserved allowance');
+      if (!Number.isSafeInteger(actual) || actual < 0) throw Error('Invalid usage charge');
       if (this.state.month === month) {
         this.state.charged -= amount - actual;
         try { this.save(); } catch (error) { this.broken = true; throw error; }
