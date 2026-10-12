@@ -18,6 +18,8 @@ const COPY = {
     confirming: 'Confirming…',
     completed: 'Pickup confirmed',
     completedBody: 'Thank you. Your receipt acknowledgement has been recorded and the pickup is complete.',
+    receiptReady: 'Your receipt is stored with this order and queued for Email / LINE delivery.',
+    openOrders: 'Open My Orders',
     expired: 'This pickup QR has expired. Please ask JOKO staff to generate a new one.',
     invalid: 'This pickup confirmation is not available.',
     secure: 'This one-time link only confirms receipt of this specific order.',
@@ -35,6 +37,8 @@ const COPY = {
     confirming: 'กำลังยืนยัน…',
     completed: 'ยืนยันการรับสินค้าแล้ว',
     completedBody: 'ขอบคุณ ระบบได้บันทึกการยืนยันของคุณแล้ว และการรับสินค้าเสร็จสมบูรณ์',
+    receiptReady: 'ใบเสร็จของคุณถูกเก็บไว้กับคำสั่งซื้อนี้ และเข้าคิวสำหรับส่งทางอีเมล / LINE แล้ว',
+    openOrders: 'เปิดคำสั่งซื้อของฉัน',
     expired: 'QR สำหรับรับสินค้านี้หมดอายุแล้ว กรุณาให้พนักงาน JOKO สร้างใหม่',
     invalid: 'ไม่สามารถใช้การยืนยันการรับสินค้านี้ได้',
     secure: 'ลิงก์แบบใช้ครั้งเดียวนี้ใช้สำหรับยืนยันการรับสินค้าของคำสั่งซื้อนี้เท่านั้น',
@@ -52,6 +56,8 @@ const COPY = {
     confirming: '正在确认…',
     completed: '取货已确认',
     completedBody: '谢谢。您的收货确认已记录，本次取货已完成。',
+    receiptReady: '您的收据已保存到此订单，并已排队通过邮箱 / LINE 发送。',
+    openOrders: '打开我的订单',
     expired: '此取货二维码已过期。请让 JOKO 工作人员生成新的二维码。',
     invalid: '此取货确认当前不可用。',
     secure: '此一次性链接仅用于确认收到这一笔订单。',
@@ -87,7 +93,7 @@ function formatDate(value: string | null | undefined, language: Language): strin
 }
 
 export default function PickupReceiptConfirmationPage({ token }: { token: string }) {
-  const language = resolveLanguage();
+  const [language, setLanguage] = useState<Language>(() => resolveLanguage());
   const copy = COPY[language];
   const [status, setStatus] = useState<PickupHandoverStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +132,13 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
     return Math.max(0, Math.ceil((new Date(status.expiresAt).getTime() - now) / 1000));
   }, [status?.expiresAt, now]);
 
+  const changeLanguage = (nextLanguage: Language) => {
+    setLanguage(nextLanguage);
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', nextLanguage);
+    window.history.replaceState({}, '', url);
+  };
+
   const confirm = async () => {
     try {
       setConfirming(true);
@@ -150,7 +163,24 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
   return (
     <main className="joko-mineral-field min-h-screen px-4 py-7 sm:py-12">
       <section className="mx-auto max-w-lg overflow-hidden rounded-[2.25rem] border border-[#55766F]/15 bg-[#FFF9EE]/95 shadow-[0_18px_55px_rgba(59,74,69,0.09)]">
-        <header className="border-b border-[#55766F]/10 bg-[#CFE3DF]/55 px-6 py-7 text-center sm:px-8">
+        <header className="relative border-b border-[#55766F]/10 bg-[#CFE3DF]/55 px-6 py-7 text-center sm:px-8">
+          <div className="absolute right-4 top-4 inline-flex rounded-full border border-[#55766F]/15 bg-[#FFF9EE]/80 p-1 shadow-sm backdrop-blur">
+            {(['en', 'th', 'zh'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => changeLanguage(option)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                  language === option
+                    ? 'bg-[#55766F] text-white'
+                    : 'text-[#3F665E] hover:bg-[#CFE3DF]/70'
+                }`}
+                aria-pressed={language === option}
+              >
+                {option === 'en' ? 'EN' : option === 'th' ? 'ไทย' : '中文'}
+              </button>
+            ))}
+          </div>
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/75 text-[#3F665E]">
             {completed ? <CheckCircle2 className="h-8 w-8" /> : <PackageCheck className="h-7 w-7" />}
           </div>
@@ -169,6 +199,13 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
                 <div>
                   <p className="font-semibold">{copy.completed}</p>
                   <p className="mt-1 text-sm leading-6">{copy.completedBody}</p>
+                  <p className="mt-2 text-sm leading-6">{copy.receiptReady}</p>
+                  <a
+                    href="/my-orders"
+                    className="mt-4 inline-flex rounded-xl bg-[#3F665E] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#304B45]"
+                  >
+                    {copy.openOrders}
+                  </a>
                 </div>
               </div>
             </div>
@@ -179,14 +216,16 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
               <div className="rounded-2xl border border-[#55766F]/15 bg-white/70 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#303532]/45">Order</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#303532]/45">
+                      {language === 'th' ? 'คำสั่งซื้อ' : language === 'zh' ? '订单' : 'Order'}
+                    </p>
                     <p className="mt-1 text-lg font-bold text-[#292D2B]">#{order.orderNumber}</p>
                   </div>
                   <div className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">{copy.paidValue}</div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#55766F]/10 pt-4 text-sm">
                   <div><p className="text-[#303532]/45">{copy.pickup}</p><p className="mt-1 font-semibold text-[#292D2B]">{formatDate(order.pickupDate, language)}</p></div>
-                  <div><p className="text-[#303532]/45">Location</p><p className="mt-1 font-semibold text-[#292D2B]">{order.pickupLocation?.[language] || order.pickupLocation?.en || '—'}</p></div>
+                  <div><p className="text-[#303532]/45">{language === 'th' ? 'สถานที่รับสินค้า' : language === 'zh' ? '取货地点' : 'Location'}</p><p className="mt-1 font-semibold text-[#292D2B]">{order.pickupLocation?.[language] || order.pickupLocation?.en || '—'}</p></div>
                 </div>
               </div>
 
@@ -211,7 +250,7 @@ export default function PickupReceiptConfirmationPage({ token }: { token: string
 
               {status?.expiresAt && (
                 <div className="flex items-center justify-between rounded-xl border border-[#55766F]/15 bg-white/60 px-4 py-3 text-sm">
-                  <span className="flex items-center gap-2 text-[#303532]/55"><Clock className="h-4 w-4" /> QR expires</span>
+                  <span className="flex items-center gap-2 text-[#303532]/55"><Clock className="h-4 w-4" />{language === 'th' ? 'QR หมดอายุใน' : language === 'zh' ? '二维码有效期' : 'QR expires'}</span>
                   <span className="font-mono font-bold text-[#292D2B]">{String(Math.floor(remaining / 60)).padStart(2, '0')}:{String(remaining % 60).padStart(2, '0')}</span>
                 </div>
               )}

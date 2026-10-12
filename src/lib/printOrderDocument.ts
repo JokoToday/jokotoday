@@ -1,3 +1,7 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { QRCodeSVG } from 'qrcode.react';
+
 export type PrintOrderLanguage = 'en' | 'th' | 'zh';
 export type PrintOrderProfile = 'standard' | '80mm' | '58mm';
 export type PrintOrderDocumentType = 'receipt' | 'confirmation' | 'prep_ticket';
@@ -73,6 +77,7 @@ export type PrintOrderCopy = {
   prepTitle: string;
   itemCount: string;
   readyForPickup: string;
+  receiptNumber: string;
 };
 
 export type PrintOrderDocumentOptions = {
@@ -92,6 +97,11 @@ export type PrintOrderDocumentOptions = {
   paymentDescriptions?: Partial<Record<PrintOrderLanguage, string>>;
   copy?: Partial<PrintOrderCopy>;
   copyByLanguage?: Partial<Record<PrintOrderLanguage, Partial<PrintOrderCopy>>>;
+  receiptNumber?: string | null;
+  footerQr?: {
+    value: string;
+    labels?: Partial<Record<PrintOrderLanguage, string>>;
+  } | null;
 };
 
 const PROFILE_STORAGE_KEY = 'jt_print_profile';
@@ -132,6 +142,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     prepTitle: 'Prep / Pickup Ticket',
     itemCount: 'Total items',
     readyForPickup: 'READY FOR PICKUP',
+    receiptNumber: 'Receipt',
   },
   th: {
     title: 'ใบเสร็จรับเงิน',
@@ -168,6 +179,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     prepTitle: 'ใบเตรียม / รับสินค้า',
     itemCount: 'รวมจำนวนสินค้า',
     readyForPickup: 'พร้อมรับสินค้า',
+    receiptNumber: 'เลขที่ใบเสร็จ',
   },
   zh: {
     title: '订单收据',
@@ -204,6 +216,7 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
     prepTitle: '备货 / 取货单',
     itemCount: '商品总数',
     readyForPickup: '可取货',
+    receiptNumber: '收据编号',
   },
 };
 
@@ -322,6 +335,8 @@ export function printOrderDocument({
   paymentDescriptions,
   copy,
   copyByLanguage,
+  receiptNumber,
+  footerQr,
 }: PrintOrderDocumentOptions) {
   const printWindow = targetWindow ?? window.open('', '_blank', 'width=760,height=900');
   if (!printWindow) {
@@ -369,6 +384,16 @@ export function printOrderDocument({
             ? '订单确认单'
             : 'Order Confirmation'))
         : labels.title;
+    const footerQrLabel = footerQr?.labels?.[nextLanguage] || '';
+    const footerQrMarkup = footerQr?.value
+      ? renderToStaticMarkup(createElement(QRCodeSVG, {
+          value: footerQr.value,
+          size: isThermal ? 96 : 118,
+          level: 'M',
+          marginSize: 1,
+          title: footerQrLabel || undefined,
+        }))
+      : '';
 
     const itemRows = items.map((item) => {
       const quantity = Math.max(0, Number(item.quantity ?? item.qty ?? 0));
@@ -409,6 +434,7 @@ export function printOrderDocument({
 
     const standardMeta = `
       ${resolvedCustomerName ? `<div class="meta-card customer"><div class="label">${escapeHtml(labels.customer)}</div><div class="value">${escapeHtml(resolvedCustomerName)}</div></div>` : ''}
+      ${documentType === 'receipt' && receiptNumber ? `<div class="meta-card"><div class="label">${escapeHtml(labels.receiptNumber)}</div><div class="value">${escapeHtml(receiptNumber)}</div></div>` : ''}
       <div class="meta-card"><div class="label">${escapeHtml(labels.order)}</div><div class="value">#${escapeHtml(order.order_number)}</div></div>
       ${order.created_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.ordered)}</div><div class="value">${escapeHtml(formatDate(order.created_at, nextLanguage, false, true))}</div></div>` : ''}
       ${resolvedPickupLabel || order.pickup_date ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickup)}</div><div class="value">${resolvedPickupLabel ? escapeHtml(resolvedPickupLabel) : ''}${resolvedPickupLabel && order.pickup_date ? '<br />' : ''}${order.pickup_date ? escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false)) : ''}</div></div>` : ''}
@@ -419,6 +445,7 @@ export function printOrderDocument({
 
     const thermalMeta = `
       ${resolvedCustomerName ? `<div class="customer-name">${escapeHtml(resolvedCustomerName)}</div>` : ''}
+      ${documentType === 'receipt' && receiptNumber ? `<div class="thermal-meta"><strong>${escapeHtml(labels.receiptNumber)}</strong><span>${escapeHtml(receiptNumber)}</span></div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.order)}</strong><span>#${escapeHtml(order.order_number)}</span></div>
       ${order.pickup_date ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickup)}</strong><span>${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</span></div>` : ''}
       ${order.picked_up_at ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickedUp)}</strong><span>${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</span></div>` : ''}
@@ -456,6 +483,7 @@ export function printOrderDocument({
       <div class="summary">${financialSummary}</div>
       <div class="payment-box"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
       ${documentType === 'receipt' ? `<div class="disclaimer">${escapeHtml(labels.disclaimer)}</div>` : ''}
+      ${footerQrMarkup ? `<div class="receipt-qr">${footerQrMarkup}${footerQrLabel ? `<div>${escapeHtml(footerQrLabel)}</div>` : ''}</div>` : ''}
       <div class="footer">${escapeHtml(labels.thanks)}</div>
     `;
 
@@ -508,6 +536,8 @@ export function printOrderDocument({
     .payment-box { display: flex; justify-content: space-between; gap: 3mm; margin-top: ${isThermal ? '2mm' : '14px'}; padding: ${isThermal ? '2mm 0' : '10px 12px'}; border-top: ${isThermal ? '1px solid #222' : '0'}; border-bottom: ${isThermal ? '1px solid #222' : '0'}; background: ${isThermal ? '#fff' : '#f5f5f5'}; font-size: ${isThermal ? '10px' : '12px'}; }
     .payment-box span { text-align: right; font-weight: 800; }
     .disclaimer { margin-top: 12px; color: #666; text-align: center; font-size: 9px; }
+    .receipt-qr { margin-top: ${isThermal ? '4mm' : '20px'}; text-align: center; color: #4f5f59; font-size: ${isThermal ? '8.5px' : '10px'}; font-weight: 800; letter-spacing: .04em; }
+    .receipt-qr svg { display: block; margin: 0 auto ${isThermal ? '1.5mm' : '7px'}; max-width: 100%; height: auto; }
     .footer { margin-top: ${isThermal ? '4mm' : '22px'}; text-align: center; white-space: pre-line; line-height: 1.5; font-size: ${isThermal ? '9px' : '11px'}; color: #666; }
     .prep-focus { padding: 2mm 0; border-top: 2px solid #111; border-bottom: 2px solid #111; text-align: center; }
     .prep-customer { overflow-wrap: anywhere; font-size: ${nextProfile === '58mm' ? '20px' : '24px'}; font-weight: 900; line-height: 1.05; }

@@ -4,6 +4,7 @@ import { Order, PickupDay, PickupLocation, SortOption } from './OrderTypes';
 import { OrderCard } from './OrderCard';
 import { OrderDetailModal } from './OrderDetailModal';
 import { PrintOrderConfirmationButton } from './PrintOrderConfirmationButton';
+import { PrintOrderReceiptButton } from './PrintOrderReceiptButton';
 import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
@@ -216,6 +217,10 @@ function OrderColumn({
                 <div className="space-y-2">
                   {dayOrders.map(order => {
                     const showPrint = canPrintOrder(order);
+                    const showReceipt = Boolean(order.receipt_snapshot)
+                      || (order.purchase_type === 'walk_in'
+                        && order.payment_status === 'paid'
+                        && ['picked_up', 'completed'].includes(order.status));
                     const showRepeat = allowRepeatOrder && canRepeatOrder(order);
                     const showPay = Boolean(onPayRequest)
                       && (order.purchase_type === 'online' || !order.purchase_type)
@@ -235,7 +240,7 @@ function OrderColumn({
                           getLabel={getLabel}
                           onClick={() => setSelectedOrder(order)}
                         />
-                        {(showPay || showReactivate || showPrint || showRepeat) && (
+                        {(showPay || showReactivate || showPrint || showReceipt || showRepeat) && (
                           <div className="flex justify-end gap-2 pr-1 flex-wrap">
                             {showPay && onPayRequest && (
                               <button
@@ -265,6 +270,13 @@ function OrderColumn({
                                 productMap={productMap}
                                 pickupDays={pickupDays}
                                 locationMap={locationMap}
+                                getLabel={getLabel}
+                              />
+                            )}
+                            {showReceipt && (
+                              <PrintOrderReceiptButton
+                                order={order}
+                                language={language}
                                 getLabel={getLabel}
                               />
                             )}

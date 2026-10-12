@@ -10,15 +10,17 @@ import {
   Loader2,
   MapPin,
   Package,
-  Printer,
   QrCode,
   Store,
   UserRoundCheck,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { printOrderReceipt } from '../../lib/printReceipt';
 import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
+import { useCMSLabels } from '../../hooks/useCMSLabels';
 import { PrintPrepTicketButton } from '../orders/PrintPrepTicketButton';
+import { PrintOrderConfirmationButton } from '../orders/PrintOrderConfirmationButton';
+import { PrintOrderReceiptButton } from '../orders/PrintOrderReceiptButton';
+import type { Order, OrderReceiptSnapshot } from '../orders/OrderTypes';
 
 type StaffLanguage = 'en' | 'th';
 type OrderTypeFilter = 'all' | 'pickup' | 'walk_in';
@@ -29,6 +31,9 @@ type OrderItem = {
   product_name_en?: string;
   product_name_th?: string;
   product_name_zh?: string;
+  maker_name_en?: string | null;
+  maker_name_th?: string | null;
+  maker_name_zh?: string | null;
   name?: string;
   name_th?: string;
   name_zh?: string;
@@ -46,6 +51,7 @@ type HistoryOrder = {
   total_amount: number;
   loyalty_discount_amount?: number | null;
   amount_paid?: number | null;
+  pickup_day?: string | null;
   pickup_date: string | null;
   pickup_location_id: string | null;
   status: string;
@@ -57,9 +63,11 @@ type HistoryOrder = {
   walk_in_amount?: number | null;
   picked_up_at?: string | null;
   staff_id?: string | null;
+  receipt_issued_at?: string | null;
+  receipt_snapshot?: OrderReceiptSnapshot | null;
 };
 
-type PickupLocation = { id: string; name_en: string; name_th: string };
+type PickupLocation = { id: string; name_en: string; name_th: string; name_zh: string | null; maps_url: string | null };
 type StaffProfile = { id: string; name: string | null };
 
 type Props = {
@@ -87,6 +95,7 @@ export function CustomerPurchaseHistory({
   readOnly = false,
 }: Props) {
   const publishedLogoUrl = usePublishedJokoLogo();
+  const { getLabel } = useCMSLabels();
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [locations, setLocations] = useState<Record<string, PickupLocation>>({});
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
@@ -107,7 +116,7 @@ export function CustomerPurchaseHistory({
       const { data, error: orderError } = await supabase
         .from('orders')
         .select(
-          'id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at, staff_id'
+          'id, order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_location_id, status, payment_status, payment_method, created_at, loyalty_points_earned, purchase_type, walk_in_amount, picked_up_at, staff_id, receipt_issued_at, receipt_snapshot'
         )
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
@@ -123,7 +132,7 @@ export function CustomerPurchaseHistory({
       if (locationIds.length) {
         const { data: locationRows, error: locationError } = await supabase
           .from('cms_pickup_locations')
-          .select('id, name_en, name_th')
+          .select('id, name_en, name_th, name_zh, maps_url')
           .in('id', locationIds);
         if (locationError) {
           console.warn('Could not enrich order history with pickup locations:', locationError);
@@ -289,17 +298,6 @@ export function CustomerPurchaseHistory({
     }
   };
 
-  const printReceipt = (order: HistoryOrder) => {
-    if (order.status === 'cancelled') return;
-
-    try {
-      printOrderReceipt({ order, customerName: order.customer_name ?? customerName, language, logoUrl: publishedLogoUrl });
-    } catch (err) {
-      console.error('Could not open receipt print window:', err);
-      setPaymentErrorId(order.id);
-    }
-  };
-
   const typeOptions: Array<{ value: OrderTypeFilter; en: string; th: string }> = [
     { value: 'all', en: 'All', th: 'ทั้งหมด' },
     { value: 'pickup', en: 'Pick-Up', th: 'รับสินค้า' },
@@ -409,6 +407,14 @@ export function CustomerPurchaseHistory({
                     const items = Array.isArray(order.order_items) ? order.order_items : [];
                     const paymentComplete = order.payment_status === 'paid'
                       && ['cash', 'qr_code', 'qr', 'promptpay_online'].includes(order.payment_method ?? '');
+                    const printableOrder = {
+                      ...order,
+                      pickup_day: order.pickup_day || '',
+                      pickup_date: order.pickup_date || '',
+                      order_items: items,
+                    } as unknown as Order;
+                    const canPrintStoredReceipt = Boolean(order.receipt_snapshot)
+                      || (isWalkIn && paymentComplete && ['picked_up', 'completed'].includes(order.status));
 
                     return (
                       <div key={order.id} className={`rounded-xl border bg-white shadow-sm overflow-hidden ${isCancelled ? 'border-red-200' : 'border-slate-200'}`}>
@@ -599,15 +605,30 @@ export function CustomerPurchaseHistory({
                               />
                             )}
 
-                            {!isCancelled && paymentComplete && ['picked_up', 'completed'].includes(order.status) && (
-                              <button
-                                type="button"
-                                onClick={() => printReceipt(order)}
-                                className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-slate-700 bg-white px-4 py-2.5 font-semibold text-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
-                              >
-                                <Printer className="w-4 h-4" />
-                                {language === 'en' ? 'Print Order Receipt' : 'พิมพ์ใบเสร็จรับเงิน'}
-                              </button>
+                            {!isWalkIn && items.length > 0 && (
+                              <PrintOrderConfirmationButton
+                                order={printableOrder}
+                                language={language}
+                                productMap={{}}
+                                pickupDays={[]}
+                                locationMap={locations}
+                                getLabel={getLabel}
+                                className="w-full py-2.5"
+                              />
+                            )}
+
+                            {!isCancelled && canPrintStoredReceipt && (
+                              <PrintOrderReceiptButton
+                                order={printableOrder}
+                                language={language}
+                                getLabel={getLabel}
+                                pickupLocationName={
+                                  location
+                                    ? (language === 'th' ? location.name_th || location.name_en : location.name_en)
+                                    : null
+                                }
+                                className="w-full py-2.5 text-sm"
+                              />
                             )}
                           </div>
                         )}

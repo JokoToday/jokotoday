@@ -11,6 +11,47 @@ export interface OrderItem {
   price_at_order: number;
 }
 
+export interface OrderReceiptSnapshot {
+  version: number;
+  receipt_number: string;
+  issued_at: string;
+  order_id: string;
+  order_number: string;
+  customer?: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+    short_code?: string | null;
+  } | null;
+  items: OrderItem[];
+  amounts: {
+    gross: number;
+    loyalty_discount: number;
+    paid: number;
+    currency: string;
+  };
+  payment: {
+    status: string;
+    method?: string | null;
+  };
+  ordered_at?: string | null;
+  pickup_date?: string | null;
+  picked_up_at?: string | null;
+  pickup_location?: {
+    id?: string | null;
+    name_en?: string | null;
+    name_th?: string | null;
+    name_zh?: string | null;
+    maps_url?: string | null;
+  } | null;
+  loyalty_points_earned?: number | null;
+  handover?: {
+    id?: string | null;
+    confirmation_mode?: 'customer_qr' | 'staff_bypass' | string;
+  } | null;
+  catalog_url?: string | null;
+}
+
 export interface Order {
   id: string;
   order_number: string;
@@ -33,6 +74,8 @@ export interface Order {
   loyalty_points_earned?: number;
   cancellation_reason_code?: string | null;
   cancelled_at?: string | null;
+  receipt_issued_at?: string | null;
+  receipt_snapshot?: OrderReceiptSnapshot | null;
 }
 
 export interface PickupLocation {

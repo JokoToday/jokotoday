@@ -1,13 +1,13 @@
 import { MakerSnapshotAttribution } from '../MakerSnapshotAttribution';
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle, Printer } from 'lucide-react';
+import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
 import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
-import { printOrderReceipt } from '../../lib/printReceipt';
-import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
+import { PrintOrderConfirmationButton } from './PrintOrderConfirmationButton';
+import { PrintOrderReceiptButton } from './PrintOrderReceiptButton';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -43,8 +43,6 @@ export function OrderDetailModal({
   onNavigate,
   onCancelRequest,
 }: OrderDetailModalProps) {
-  const publishedLogoUrl = usePublishedJokoLogo();
-  const [printError, setPrintError] = React.useState('');
   const items: OrderItem[] = order.order_items || [];
 
   const getPickupDayLabel = (val: string): string => {
@@ -139,28 +137,12 @@ export function OrderDetailModal({
   const isRepeatablePastOrder = isOnline
     && items.length > 0
     && (pastPickup || !['pending', 'confirmed', 'ready'].includes(order.status));
-  const canPrintWalkInReceipt = !isOnline && order.status === 'completed' && items.length > 0;
-
-  const handlePrintReceipt = () => {
-    setPrintError('');
-    try {
-      printOrderReceipt({
-        order,
-        customerName: order.customer_name ?? null,
-        language,
-        logoUrl: publishedLogoUrl,
-      });
-    } catch (err) {
-      console.error('Could not open customer receipt print window:', err);
-      setPrintError(
-        language === 'th'
-          ? 'ไม่สามารถเปิดหน้าต่างพิมพ์ได้ กรุณาลองอีกครั้ง'
-          : language === 'zh'
-            ? '无法打开打印窗口，请重试。'
-            : 'Could not open the print window. Please try again.'
-      );
-    }
-  };
+  const canPrintConfirmation = isOnline && items.length > 0;
+  const canPrintReceipt = Boolean(order.receipt_snapshot)
+    || (!isOnline
+      && order.payment_status === 'paid'
+      && ['picked_up', 'completed'].includes(order.status)
+      && items.length > 0);
 
   return createPortal(
     <div
@@ -358,18 +340,27 @@ export function OrderDetailModal({
             </div>
           )}
 
-          {canPrintWalkInReceipt && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={handlePrintReceipt}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-stone-700 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-800 hover:text-white"
-              >
-                <Printer className="h-4 w-4" />
-                {language === 'th' ? 'พิมพ์ใบเสร็จ' : language === 'zh' ? '打印收据' : 'Print Receipt'}
-              </button>
-              {printError && (
-                <p className="mt-2 text-center text-xs font-medium text-red-600">{printError}</p>
+          {(canPrintConfirmation || canPrintReceipt) && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {canPrintConfirmation && (
+                <PrintOrderConfirmationButton
+                  order={order}
+                  language={language}
+                  productMap={productMap}
+                  pickupDays={pickupDays}
+                  locationMap={locationMap}
+                  getLabel={getLabel}
+                  className="w-full py-2.5"
+                />
+              )}
+              {canPrintReceipt && (
+                <PrintOrderReceiptButton
+                  order={order}
+                  language={language}
+                  getLabel={getLabel}
+                  pickupLocationName={locationInfo.name === '—' ? null : locationInfo.name}
+                  className="w-full py-2.5"
+                />
               )}
             </div>
           )}
