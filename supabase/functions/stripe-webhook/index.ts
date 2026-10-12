@@ -100,14 +100,15 @@ Deno.serve(async (req: Request) => {
     payment_intent_id: paymentIntentId,
     received_at: new Date().toISOString(),
   }, { onConflict: "event_id", ignoreDuplicates: true });
-  if (eventInsertError) console.error("Could not record Stripe webhook event", eventInsertError);
+  if (eventInsertError) return new Response("Could not record Stripe webhook event", {status:500});
 
-  const { data: recordedEvent } = await service
+  const { data: recordedEvent, error: eventLookupError } = await service
     .from("stripe_webhook_events")
     .select("processed_at, processing_result")
     .eq("event_id", event.id)
     .maybeSingle();
 
+  if (eventLookupError) return new Response("Could not read Stripe webhook event", {status:500});
   if (recordedEvent?.processed_at) {
     return Response.json({
       received: true,
@@ -289,7 +290,7 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "Stripe webhook processing failed";
     console.error("Stripe webhook processing failed", error);
     await service.from("stripe_webhook_events").update({
-      processed_at: new Date().toISOString(),
+      processed_at: null,
       processing_result: "error",
       last_error: message,
     }).eq("event_id", event.id);

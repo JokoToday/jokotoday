@@ -22,6 +22,7 @@ Only temporary Supabase project `szijiljpasxddzgzckra` was changed. No productio
 - Customer UI renders Stripe QR without slip upload, or merchant QR with EasySlip upload. Admin shows receiver/QR fields only for EasySlip.
 - Test-project migration applied and both Stripe Edge Functions deployed. Hosted unauthenticated intent request returns 401; webhook returns 503 until sandbox secrets are configured.
 - Hosted privilege checks deny Stripe finalization/refund RPC execution to browser users and allow service-role finalization.
+- Webhook failures remain unprocessed and retryable; event-ledger read/write failures stop processing.
 - No real Stripe or EasySlip provider call has been verified.
 
 ## Passed
@@ -30,7 +31,7 @@ Only temporary Supabase project `szijiljpasxddzgzckra` was changed. No productio
 - 106 isolated checkout/payment/pickup/LINE assertions, including current-main payment safety, handover and dual-rail migrations.
 - 11 menu compatibility assertions.
 - 35 actual Edge-handler assertions with mock auth/storage/RPC/provider adapters: successful verification, ownership failure, missing credentials, invalid uploads, expired holds, rejected slips, transport ambiguity, notification outage, LINE accepted/duplicate/429/500/400/timeout/suppression.
-- 35 additional Stripe Edge assertions with the actual Stripe 22.6.0 signature implementation and isolated database/provider adapters: owner authorization, frozen rail, minimum amount, expiry, intent reuse/idempotency, invalid signatures, exact intent/currency/amount, duplicate events, late refunds and refund updates.
+- 45 additional Stripe Edge assertions with the actual Stripe 22.6.0 signature implementation and isolated database/provider adapters: owner authorization, frozen rail, minimum amount, expiry, intent reuse/idempotency, invalid signatures, exact intent/currency/amount, duplicate events, late refunds, refund updates, retry after transient database failure and regular-order routing.
 - Typecheck, lint (36 existing warnings, no errors) and production build.
 - GitHub quality check and Cloudflare preview build for `0876d7a`.
 - Hosted RLS: receipt session table enables RLS, denies browser SELECT, and allows service operations.
