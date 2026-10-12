@@ -277,7 +277,8 @@ try {
   );
   await page.getByRole("link", { name: /Morning Makers/ }).click();
   await expectVisible(page.getByRole("heading", { name: "What we picked" }));
-  await page.getByRole("link", { name: /Selected Cake/ }).click();
+  assert.equal(await page.locator(".joko-product-card").count(), 1);
+  await page.locator(".joko-product-card-title").getByRole("link", { name: "Selected Cake", exact: true }).click();
   await expectVisible(
     page.getByText("Preview only. Ordering is not open yet."),
   );
@@ -303,6 +304,24 @@ try {
   console.log(
     "PASS public listing/profile/product links, homepage and preview-only purchase gate",
   );
+  maker.is_ordering_enabled = true;
+  const ordering = await setup();
+  await ordering.page.goto(`${base}/makers/morning-makers`);
+  const addButton = ordering.page.locator(".joko-product-card-add");
+  await expectVisible(addButton);
+  await addButton.click();
+  assert.ok(await ordering.page.evaluate(() => Object.values(localStorage).some((value) => value.includes("selected-cake"))));
+  assert.deepEqual(ordering.errors, []);
+  await ordering.context.close();
+  availability[2].remaining_quantity = 0;
+  const unavailable = await setup();
+  await unavailable.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(unavailable.page.getByRole("heading", { name: "Selected Cake", exact: true }));
+  assert.equal(await unavailable.page.locator(".joko-product-card-add").count(), 0);
+  await unavailable.context.close();
+  availability[2].remaining_quantity = 10;
+  maker.is_ordering_enabled = false;
+  console.log("PASS shared maker cards: dated stock, add to cart and zero-stock gate");
   const mobile = await setup({ mobile: true });
   await mobile.page.goto(`${base}/makers/morning-makers`);
   await expectVisible(
@@ -376,6 +395,8 @@ try {
     .click();
   await expectVisible(preview.getByText("Selected Cake", { exact: true }));
   await expectVisible(preview.getByText("Mae Rim", { exact: true }));
+  assert.equal(await preview.locator(".joko-product-card").count(), 1);
+  assert.equal(await preview.getByRole("button").count(), 0);
   assert.equal(
     await preview.getByRole("link", { name: /Selected Cake/ }).count(),
     0,
@@ -426,13 +447,13 @@ try {
   maker.is_ordering_enabled = true;
   const checkout = await setup({ cart: true });
   await checkout.page.goto(`${base}/checkout`);
-  await expectVisible(checkout.page.getByText(/JOKO purchases these products/));
+  await expectVisible(checkout.page.getByText(/For Makers items only/));
   for (const product of products)
     await expectVisible(
       checkout.page.getByText(product.name_en, { exact: true }),
     );
   await expectVisible(
-    checkout.page.getByText("Morning Makers", { exact: true }),
+    checkout.page.getByText(/Morning Makers/),
   );
   await checkout.page
     .getByRole("button", { name: "Place Order", exact: true })
@@ -441,7 +462,7 @@ try {
   assert.equal(orderRequest.p_items.length, 3);
   assert.equal(orderRequest.p_pickup_date_id, availability[0].pickup_date_id);
   await expectVisible(
-    checkout.page.getByText("Morning Makers", { exact: true }),
+    checkout.page.getByText(/Morning Makers/),
   );
   if (process.env.JOKO_TEST_SCREENSHOTS)
     await checkout.page.screenshot({

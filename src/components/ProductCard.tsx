@@ -16,6 +16,9 @@ import {
 
 type ProductCardProps = {
   product: Product | CMSProduct;
+  preview?: boolean;
+  previewLanguage?: "en" | "th" | "zh";
+  productHref?: string;
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
   onLoginRequired?: () => void;
@@ -29,6 +32,9 @@ type ProductCardProps = {
 
 export default function ProductCard({
   product,
+  preview = false,
+  previewLanguage,
+  productHref,
   selectedDay,
   selectedDayDisplay,
   onLoginRequired,
@@ -42,7 +48,8 @@ export default function ProductCard({
   const [quantity, setQuantity] = useState(1);
   const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { addToCart } = useCart();
-  const { t, language } = useLanguage();
+  const { t, language: currentLanguage } = useLanguage();
+  const language = previewLanguage || currentLanguage;
   const { user } = useAuth();
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
@@ -102,7 +109,7 @@ export default function ProductCard({
   const quantityLimit = quantityLimitOverride !== undefined
     ? quantityLimitOverride
     : stockRemaining;
-  const previewOnly = 'product_origin' in product && product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true;
+  const previewOnly = preview || ('product_origin' in product && product.product_origin === 'maker' && product.maker?.is_ordering_enabled !== true);
   const previewLabel = language === 'th' ? 'ดูตัวอย่างเท่านั้น' : language === 'zh' ? '仅供预览' : 'Preview only';
   const globallySoldOut = ('is_sold_out' in product ? product.is_sold_out : !product.is_available) || previewOnly;
   const isSoldOut = globallySoldOut || stockRemaining === 0 || quantityLimit === 0;
@@ -120,16 +127,22 @@ export default function ProductCard({
     return product.image_url;
   };
 
+  const productImage = (
+    <img
+      src={getProductImage()}
+      alt={productName}
+      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+      loading="lazy"
+    />
+  );
+
   return (
     <div className="joko-product-card overflow-hidden bg-background shadow-md transition-all duration-300 hover:shadow-xl">
       <div className="joko-product-card-image relative aspect-square overflow-hidden bg-primary-50 group">
-        <img
-          src={getProductImage()}
-          alt={productName}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-          loading="lazy"
-        />
-        <button
+        {productHref && !preview ? (
+          <a href={productHref}>{productImage}</a>
+        ) : productImage}
+        {!preview && <button
           onClick={handleLikeClick}
           className={`
             joko-product-card-like absolute right-3 top-3 rounded-full p-2 shadow-md
@@ -150,8 +163,8 @@ export default function ProductCard({
               ${isLikeAnimating ? 'scale-110' : 'scale-100'}
             `}
           />
-        </button>
-        {likeCount > 0 && (
+        </button>}
+        {!preview && likeCount > 0 && (
           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium text-gray-700 shadow-sm">
             <Heart className="h-3 w-3 fill-primary-500 stroke-primary-500" />
             {likeCount}
@@ -160,8 +173,8 @@ export default function ProductCard({
       </div>
 
       <div className="joko-product-card-body p-4">
-        <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productName}</h3>
-        {'maker' in product && <MakerAttribution maker={product.maker} />}
+        <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productHref && !preview ? <a href={productHref}>{productName}</a> : productName}</h3>
+        {!preview && 'maker' in product && <MakerAttribution maker={product.maker} />}
         <p className="joko-product-card-description mb-4 line-clamp-2 text-sm text-gray-600">{productDescription}</p>
 
         {(nextPickupLabel || basketFit) && (
