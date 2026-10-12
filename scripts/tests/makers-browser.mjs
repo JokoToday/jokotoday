@@ -98,7 +98,7 @@ const user = {
 let savedMaker;
 let productPatch;
 let orderRequest;
-async function setup({ admin = false, cart = false, mobile = false } = {}) {
+async function setup({ admin = false, cart = false, mobile = false, rollout = true, availabilityFailure = false, delayAvailability = false } = {}) {
   const context = await browser.newContext({
     viewport: mobile
       ? { width: 390, height: 844 }
@@ -147,8 +147,11 @@ async function setup({ admin = false, cart = false, mobile = false } = {}) {
     }
     if (table === "get_published_builder_page_v1")
       return json({ exists: false });
-    if (table === "get_customer_pickup_availability_v2")
+    if (table === "get_customer_pickup_availability_v2") {
+      if (delayAvailability) await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (availabilityFailure) return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Availability failed" }) });
       return json(availability);
+    }
     if (table === "create_online_order_v2") {
       orderRequest = request.postDataJSON();
       return json({
@@ -216,7 +219,7 @@ async function setup({ admin = false, cart = false, mobile = false } = {}) {
         },
       ];
     if (table === "cms_settings")
-      rows = [{ setting_key: "pickup_v2_customer_enabled", value: "true" }];
+      rows = [{ setting_key: "pickup_v2_customer_enabled", value: String(rollout) }];
     for (const [key, value] of url.searchParams)
       if (value.startsWith("eq."))
         rows = rows.filter((row) => String(row[key]) === value.slice(3));
@@ -277,7 +280,8 @@ try {
   );
   await page.getByRole("link", { name: /Morning Makers/ }).click();
   await expectVisible(page.getByRole("heading", { name: "What we picked" }));
-  await page.getByRole("link", { name: /Selected Cake/ }).click();
+  assert.equal(await page.locator(".joko-product-card").count(), 1);
+  await page.locator(".joko-product-card-title").getByRole("link", { name: "Selected Cake", exact: true }).click();
   await expectVisible(
     page.getByText("Preview only. Ordering is not open yet."),
   );
@@ -303,6 +307,43 @@ try {
   console.log(
     "PASS public listing/profile/product links, homepage and preview-only purchase gate",
   );
+  maker.is_ordering_enabled = true;
+  const ordering = await setup();
+  await ordering.page.goto(`${base}/makers/morning-makers`);
+  const addButton = ordering.page.locator(".joko-product-card-add");
+  await expectVisible(addButton);
+  await addButton.click();
+  assert.ok(await ordering.page.evaluate(() => Object.values(localStorage).some((value) => value.includes("selected-cake"))));
+  assert.deepEqual(ordering.errors, []);
+  await ordering.context.close();
+  const paused = await setup({ rollout: false });
+  await paused.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(paused.page.getByText("Ordering is not open yet", { exact: true }));
+  assert.equal(await paused.page.locator(".joko-product-card-add").count(), 0);
+  await paused.context.close();
+  const delayed = await setup({ delayAvailability: true });
+  await delayed.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(delayed.page.getByText("Checking pickup availability…", { exact: true }));
+  assert.equal(await delayed.page.getByText("Sold Out", { exact: true }).count(), 0);
+  await expectVisible(delayed.page.locator(".joko-product-card-add"));
+  await delayed.page.getByRole("button", { name: "Like", exact: true }).click();
+  await expectVisible(delayed.page.locator('input[type="email"]'));
+  await delayed.context.close();
+  const failed = await setup({ availabilityFailure: true });
+  await failed.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(failed.page.getByText("Pickup availability unavailable", { exact: true }));
+  await expectVisible(failed.page.getByRole("button", { name: "Try again", exact: true }));
+  assert.equal(await failed.page.locator(".joko-product-card-add").count(), 0);
+  await failed.context.close();
+  availability[2].remaining_quantity = 0;
+  const unavailable = await setup();
+  await unavailable.page.goto(`${base}/makers/morning-makers`);
+  await expectVisible(unavailable.page.getByRole("heading", { name: "Selected Cake", exact: true }));
+  assert.equal(await unavailable.page.locator(".joko-product-card-add").count(), 0);
+  await unavailable.context.close();
+  availability[2].remaining_quantity = 10;
+  maker.is_ordering_enabled = false;
+  console.log("PASS shared maker cards: dated stock, add to cart and zero-stock gate");
   const mobile = await setup({ mobile: true });
   await mobile.page.goto(`${base}/makers/morning-makers`);
   await expectVisible(
@@ -376,6 +417,8 @@ try {
     .click();
   await expectVisible(preview.getByText("Selected Cake", { exact: true }));
   await expectVisible(preview.getByText("Mae Rim", { exact: true }));
+  assert.equal(await preview.locator(".joko-product-card").count(), 1);
+  assert.equal(await preview.getByRole("button").count(), 0);
   assert.equal(
     await preview.getByRole("link", { name: /Selected Cake/ }).count(),
     0,
@@ -426,13 +469,13 @@ try {
   maker.is_ordering_enabled = true;
   const checkout = await setup({ cart: true });
   await checkout.page.goto(`${base}/checkout`);
-  await expectVisible(checkout.page.getByText(/JOKO purchases these products/));
+  await expectVisible(checkout.page.getByText(/For Makers items only/));
   for (const product of products)
     await expectVisible(
       checkout.page.getByText(product.name_en, { exact: true }),
     );
   await expectVisible(
-    checkout.page.getByText("Morning Makers", { exact: true }),
+    checkout.page.getByText(/Morning Makers/),
   );
   await checkout.page
     .getByRole("button", { name: "Place Order", exact: true })
@@ -441,7 +484,7 @@ try {
   assert.equal(orderRequest.p_items.length, 3);
   assert.equal(orderRequest.p_pickup_date_id, availability[0].pickup_date_id);
   await expectVisible(
-    checkout.page.getByText("Morning Makers", { exact: true }),
+    checkout.page.getByText(/Morning Makers/),
   );
   if (process.env.JOKO_TEST_SCREENSHOTS)
     await checkout.page.screenshot({

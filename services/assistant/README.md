@@ -108,6 +108,8 @@ JOKO_ASSISTANT_OUTPUT_USD_PER_MILLION=4.5
 
 The adapter uses `https://openrouter.ai/api/v1/chat/completions`, pins the model and provider allowlist, disables fallback, requires supported request parameters, denies training/data-collection providers, and caps prompt/completion prices and per-request fees. These settings are not a promise of zero retention: review OpenRouter and selected providers' logging policies. Unexpected returned model IDs fail closed. Model IDs returned by the gateway must match the configured ID; use its canonical catalogue ID and test aliases before relying on them.
 
+The adapter does not send `parallel_tool_calls` to OpenRouter because the GPT-5.4 Mini endpoint does not advertise that parameter; with strict routing it excluded all eligible endpoints. The backend independently rejects multiple tool calls. Pickup results include a deterministic `order_cutoff_local` in Asia/Bangkok. Generic Thai croissant spellings map to the common catalogue keyword so different published spellings do not silently hide products.
+
 Example Ollama Cloud configuration (published rates are illustrative; recheck peak rates and account access):
 
 ```dotenv
@@ -156,3 +158,9 @@ The model's prose is AI-generated: tool grounding and instructions reduce errors
 Before production: supply the selected provider's private API key, test actual model English/Thai/date/tool behavior and response latency, verify cost ceilings and usage accounting against provider billing, review privacy/abuse configuration, prepare deployment, then approve rollout. Adapter tests use synthetic provider responses; no live paid-model capability is claimed. Current FAQ coverage is limited to inventory facts; approved opening hours, policy and allergen knowledge are not fabricated.
 
 LINE is a later adapter. Preserve the existing webhook/notification flow, validate signatures, deduplicate events, respect reply timing, and verify messaging costs before connecting it.
+
+## Observed private pilot — 12 October 2026
+
+Direct OpenAI and Ollama adapters remain fixture-tested only. OpenRouter `openai/gpt-5.4-mini` has additionally completed live private-preview checks with the existing public MCP inventory service: English and Thai product queries, product-specific quantities, Bangkok cutoffs, a past pickup date, refusal of private customer/order data, and duplicate-request accounting. A real Chromium mobile session exercised the widget through the same-origin Vite proxy, receiving three matching Thai croissant cards, clearing the conversation, querying a past date in English, and closing with Escape.
+
+Observed successful API questions took approximately 3–5 seconds and cost about USD 0.0017–0.0023 in a small sample; this is not a performance or price guarantee. Earlier failed requests retained conservative budget reservations; the local ledger is an operating allowance, not a receipt for provider billing. These observations are pilot evidence, not comprehensive accuracy certification or production approval.

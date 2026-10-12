@@ -44,7 +44,9 @@ export function chatRequest(body, profile) {
   const toolChoice = body.tool_choice === 'required' ? { type: 'function', function: { name: 'search_joko_products' } } : body.tool_choice;
   const request = { model: profile.model, messages: chatMessages(body), stream: false, tools: body.tools.map(tool => ({ type: 'function', function: { name: tool.name, description: tool.description, parameters: tool.parameters } })), tool_choice: toolChoice, max_tokens: body.max_output_tokens };
   if (profile.provider === 'openrouter') {
-    request.parallel_tool_calls = false;
+    // Not every tool-capable endpoint advertises parallel_tool_calls. The engine
+    // rejects multiple calls itself; sending this flag with require_parameters
+    // can exclude otherwise compatible endpoints (including GPT-5.4 Mini).
     request.provider = { only: profile.providers, allow_fallbacks: false, require_parameters: true, data_collection: 'deny', max_price: { prompt: profile.inputRate, completion: profile.outputRate, request: 0 } };
   }
   return request;

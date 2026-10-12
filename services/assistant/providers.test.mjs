@@ -36,6 +36,7 @@ test('OpenRouter request pins model/provider/cost and requires supported tools',
   assert.equal(body.provider.require_parameters, true); assert.equal(body.provider.data_collection, 'deny');
   assert.deepEqual(body.provider.max_price, { prompt: 2, completion: 10, request: 0 });
   assert.equal(body.tool_choice.function.name, 'search_joko_products'); assert.equal(body.max_tokens, 1200);
+  assert.equal(body.parallel_tool_calls, undefined);
   assert.equal(body.tools[0].function.name, 'search_joko_products');
 });
 test('Ollama translation avoids unsupported fields and preserves tool replay', () => {

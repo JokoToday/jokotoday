@@ -45,6 +45,7 @@ test('valid model tool round uses projected inventory and usage settlement', asy
   assert.match(requests[0].instructions, /Thai/);
   assert.equal(budget.state.charged, 1350);
   assert.equal(result.products[0].pickups[0].locations[0].name.en, 'Mae Rim');
+  assert.equal(result.products[0].pickups[0].order_cutoff_local, '2030-10-18 17:00');
 });
 test('unknown provider outcome remains fully charged', async t => {
   const { budget } = budgetFor(t);
@@ -67,6 +68,9 @@ test('unapproved tools and arbitrary arguments never reach inventory', async t =
   assert.throws(() => validateArguments('search_joko_products', { url: 'http://evil' }));
   assert.throws(() => validateArguments('search_joko_products', { pickup_date: '2030-02-30' }));
   assert.throws(() => createInventory('http://169.254.169.254/mcp'));
+  assert.equal(validateArguments('search_joko_products', { query: 'ครัวซองต์' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: 'ครัวซอง' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: 'ครัวซองต์อัลมอนด์' }).query, 'ครัวซองต์อัลมอนด์');
 });
 test('inventory projection rejects stale/unsafe links and removes private fields', () => {
   const raw = snapshot(); raw.results[0].customer_email = 'private@example.com';

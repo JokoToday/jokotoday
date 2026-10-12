@@ -1,4 +1,6 @@
 import { Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { CMSProduct } from '../../lib/cmsService';
 import { supabase } from '../../lib/supabase';
 import {
@@ -140,7 +142,7 @@ export function PrintOrderConfirmationButton({
 
     const { data: orderState, error } = await supabase
       .from('orders')
-      .select('order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, purchase_type, walk_in_amount, loyalty_points_earned')
+      .select('order_number, customer_name, order_items, total_amount, loyalty_discount_amount, amount_paid, pickup_day, pickup_date, pickup_date_id, pickup_location_id, status, payment_status, payment_method, created_at, purchase_type, walk_in_amount, loyalty_points_earned, pickup_code')
       .eq('id', order.id)
       .maybeSingle();
 
@@ -223,6 +225,49 @@ export function PrintOrderConfirmationButton({
       })
     ) as Record<PrintOrderLanguage, string>;
 
+    const shouldShowPickupQr = Boolean(
+      currentOrder.pickup_code
+      && ['pending', 'confirmed', 'ready'].includes(currentOrder.status),
+    );
+    const pickupQrUrl = shouldShowPickupQr
+      ? new URL(`/pickup-order/${currentOrder.pickup_code}`, window.location.origin).href
+      : null;
+    const pickupQrSvg = pickupQrUrl
+      ? renderToStaticMarkup(
+          <QRCodeSVG
+            value={pickupQrUrl}
+            size={144}
+            level="M"
+            marginSize={2}
+            aria-label="JOKO pickup QR"
+          />,
+        )
+      : null;
+    const pickupQrLabels = Object.fromEntries(
+      languages.map((lang) => [
+        lang,
+        getLabel(
+          'order_confirmation.pickup_qr_title',
+          lang,
+          lang === 'th' ? 'QR สำหรับรับสินค้า' : lang === 'zh' ? '取货二维码' : 'Pickup QR',
+        ),
+      ]),
+    ) as Record<PrintOrderLanguage, string>;
+    const pickupQrTexts = Object.fromEntries(
+      languages.map((lang) => {
+        const help = getLabel(
+          'order_confirmation.pickup_qr_help',
+          lang,
+          lang === 'th'
+            ? 'แสดง QR นี้ให้พนักงาน JOKO เมื่อต้องการรับสินค้า'
+            : lang === 'zh'
+              ? '取货时请向 JOKO 员工出示此二维码。'
+              : 'Show this QR to JOKO staff when collecting your order.',
+        );
+        return [lang, `${help} · #${currentOrder.order_number}`];
+      }),
+    ) as Record<PrintOrderLanguage, string>;
+
     printOrderDocument({
       order: currentOrder,
       customerName: currentOrder.customer_name?.trim() || null,
@@ -235,6 +280,9 @@ export function PrintOrderConfirmationButton({
       statusLabels,
       paymentDescriptions,
       copyByLanguage,
+      footerQrSvg: pickupQrSvg,
+      footerQrLabels: pickupQrLabels,
+      footerQrTexts: pickupQrTexts,
     });
   };
 

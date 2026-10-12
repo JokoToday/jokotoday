@@ -4,7 +4,9 @@ export type NotificationType =
   | "customer_confirmation"
   | "admin_new_order"
   | "customer_cancellation"
-  | "payment_confirmation";
+  | "payment_confirmation"
+  | "customer_receipt_email"
+  | "customer_receipt_line";
 export type NotificationOutcome =
   | "claimed"
   | "already_sent"

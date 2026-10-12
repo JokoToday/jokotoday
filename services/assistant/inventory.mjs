@@ -15,7 +15,9 @@ export function validateArguments(name, args) {
     if (['product_id', 'location_id'].includes(key) && (typeof value !== 'string' || !uuid.test(value))) throw Error('Invalid identifier');
     if (key === 'pickup_date' && (typeof value !== 'string' || !date(value))) throw Error('Invalid date');
     if (key === 'limit' && (!Number.isInteger(value) || value < 1 || value > 10)) throw Error('Invalid limit');
-    result[key] = value;
+    // Public catalogue search is substring-based; these spellings denote the
+    // same generic product family but published Thai names use mixed spellings.
+    result[key] = key === 'query' && /^ครัวซอง(?:ต์|ท์)?$/.test(value.trim()) ? 'croissant' : value;
   }
   if (name === toolNames[1] && !result.product_id) throw Error('Product required');
   if (name === toolNames[0]) result.limit ??= 6;
@@ -36,7 +38,8 @@ export function projectSnapshot(raw, now = Date.now()) {
         if (!uuid.test(l.id)) throw Error('Invalid location');
         return { id: l.id, name: names(l.name ?? { en: l.name_en, th: l.name_th, zh: l.name_zh }) };
       });
-      return { pickup_date: p.pickup_date, remaining_quantity: p.remaining_quantity, order_cutoff_at: p.order_cutoff_at, locations };
+      const order_cutoff_local = new Date(p.order_cutoff_at).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      return { pickup_date: p.pickup_date, remaining_quantity: p.remaining_quantity, order_cutoff_at: p.order_cutoff_at, order_cutoff_local, locations };
     });
     return { id: product.id, name: names(product.name), price: product.price, currency: 'THB', product_url: url.href, pickups, available_to_order: pickups.some(p => p.remaining_quantity > 0 && p.locations.length > 0) };
   });
