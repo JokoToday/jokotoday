@@ -87,6 +87,8 @@ export function SpecialsManagement() {
   const [reason, setReason] = useState("");
   const [customSource, setCustomSource] = useState(false);
   const [customReason, setCustomReason] = useState(false);
+  const [closeReason, setCloseReason] = useState("");
+  const [customCloseReason, setCustomCloseReason] = useState(false);
   const [isolated, setIsolated] = useState(false);
   const [quality, setQuality] = useState(false);
   const storageKey = `joko-specials-operation:${user?.id || ""}`;
@@ -155,6 +157,8 @@ export function SpecialsManagement() {
     setReason("");
     setCustomSource(false);
     setCustomReason(false);
+    setCloseReason("");
+    setCustomCloseReason(false);
     if (!batchId) return;
     void loadSpecialsBatch(batchId)
       .then((data) => {
@@ -275,11 +279,11 @@ export function SpecialsManagement() {
     });
   };
   const close = (action: "close" | "cancel") => {
-    if (!reason.trim()) {
+    if (!closeReason.trim()) {
       setError(copy.reason);
       return;
     }
-    void run(action, { ...batchRequest(), reason: reason.trim() });
+    void run(action, { ...batchRequest(), reason: closeReason.trim() });
   };
 
   return (
@@ -605,71 +609,6 @@ export function SpecialsManagement() {
               </fieldset>
             </form>
           )}
-          <div className="joko-admin-paper-card overflow-x-auto p-5">
-            <table className="w-full text-left text-sm">
-              <caption className="mb-3 text-left joko-admin-title text-xl">
-                {copy.transfer}
-              </caption>
-              <thead>
-                <tr>
-                  {[
-                    copy.product,
-                    copy.allocated,
-                    copy.available,
-                    copy.held,
-                    copy.sold,
-                    "",
-                  ].map((label) => (
-                    <th key={label} className="px-2 py-2">
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-t border-[#55766F]/15">
-                    <td className="px-2 py-3">
-                      {productName(
-                        products.find(
-                          (product) => product.id === item.product_id,
-                        ),
-                      )}
-                    </td>
-                    {[
-                      item.quantity_allocated,
-                      item.quantity_available,
-                      item.quantity_held,
-                      item.quantity_committed,
-                    ].map((value, index) => (
-                      <td key={index} className="px-2 py-3">
-                        {value}
-                      </td>
-                    ))}
-                    <td>
-                      {batch.status === "draft" && (
-                        <button
-                          disabled={locked}
-                          className="joko-admin-secondary-button px-2 py-1"
-                          onClick={() => {
-                            setEditItem(item);
-                            setProductId(item.product_id);
-                            setPrice(
-                              (item.special_price_satang / 100).toFixed(2),
-                            );
-                            setCap(item.max_per_customer?.toString() || "");
-                            setEnabled(item.is_enabled);
-                          }}
-                        >
-                          {copy.edit}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
           <form
             onSubmit={transfer}
             className="joko-admin-paper-card space-y-4 p-5"
@@ -798,6 +737,71 @@ export function SpecialsManagement() {
               </button>
             </fieldset>
           </form>
+          <div className="joko-admin-paper-card overflow-x-auto p-5">
+            <table className="w-full text-left text-sm">
+              <caption className="mb-3 text-left joko-admin-title text-xl">
+                {copy.transfer}
+              </caption>
+              <thead>
+                <tr>
+                  {[
+                    copy.product,
+                    copy.allocated,
+                    copy.available,
+                    copy.held,
+                    copy.sold,
+                    "",
+                  ].map((label) => (
+                    <th key={label} className="px-2 py-2">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="border-t border-[#55766F]/15">
+                    <td className="px-2 py-3">
+                      {productName(
+                        products.find(
+                          (product) => product.id === item.product_id,
+                        ),
+                      )}
+                    </td>
+                    {[
+                      item.quantity_allocated,
+                      item.quantity_available,
+                      item.quantity_held,
+                      item.quantity_committed,
+                    ].map((value, index) => (
+                      <td key={index} className="px-2 py-3">
+                        {value}
+                      </td>
+                    ))}
+                    <td>
+                      {batch.status === "draft" && (
+                        <button
+                          disabled={locked}
+                          className="joko-admin-secondary-button px-2 py-1"
+                          onClick={() => {
+                            setEditItem(item);
+                            setProductId(item.product_id);
+                            setPrice(
+                              (item.special_price_satang / 100).toFixed(2),
+                            );
+                            setCap(item.max_per_customer?.toString() || "");
+                            setEnabled(item.is_enabled);
+                          }}
+                        >
+                          {copy.edit}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="joko-admin-paper-card space-y-3 p-5">
             <p className="text-sm">Prepare batch locks the offers and prices for publishing. It does not open checkout; publish in the section below.</p>
             <p className="text-sm">Release available stock removes unsold units from Specials. Choose their destination and reason in Transfer stock; staff must also move the physical units.</p>
@@ -835,21 +839,33 @@ export function SpecialsManagement() {
                 </>
               )}
             </div>
-            <label className="block text-sm">
+            <label className="block w-full max-w-md text-sm">
               {copy.reason}
-              <input
-                disabled={locked}
-                maxLength={1000}
-                className="joko-admin-field mt-1 w-full"
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
+              <select disabled={locked} className="joko-admin-field mt-1 w-full" value={customCloseReason ? "__other__" : closeReason} onChange={event => {
+                setCustomCloseReason(event.target.value === "__other__");
+                setCloseReason(event.target.value === "__other__" ? "" : event.target.value);
+              }}>
+                <option value="">Select closing / cancellation reason</option>
+                {closeReason && !["Sales finished", "Sold out", "Pickup window ended", "Quality issue / disposal", "Batch created by mistake"].includes(closeReason) && !customCloseReason && <option value={closeReason}>{closeReason}</option>}
+                <option value="Sales finished">Sales finished</option>
+                <option value="Sold out">Sold out</option>
+                <option value="Pickup window ended">Pickup window ended</option>
+                <option value="Quality issue / disposal">Quality issue / disposal</option>
+                <option value="Batch created by mistake">Batch created by mistake</option>
+                <option value="__other__">Other…</option>
+              </select>
+              {customCloseReason && <input aria-label="Other closing reason" disabled={locked} maxLength={1000} className="joko-admin-field mt-2 w-full" value={closeReason} onChange={event => setCloseReason(event.target.value)} />}
             </label>
           </div>
-          <div className="joko-admin-paper-card p-5">
-            <h2 className="joko-admin-title mb-3 text-xl">{copy.history}</h2>
+
+        </>
+      )}
+      <SpecialsOperations batch={batches.find(b => b.id === batchId) || null} onChanged={() => { void loadSpecialsWorkspace().then(data => setBatches(data.batches)); }} />
+      {batch && (
+      <details className="joko-admin-paper-card p-5">
+            <summary className="joko-admin-title cursor-pointer text-xl">{copy.history} ({events.length})</summary>
             {events.length === 0 && <p className="text-sm">{copy.noEvents}</p>}
-            <ol className="space-y-3 text-sm">
+            <ol className="mt-4 space-y-3 text-sm">
               {events.map((event) => (
                 <li
                   key={event.id}
@@ -874,10 +890,8 @@ export function SpecialsManagement() {
                 </li>
               ))}
             </ol>
-          </div>
-        </>
+          </details>
       )}
-      <SpecialsOperations batch={batches.find(b => b.id === batchId) || null} onChanged={() => { void loadSpecialsWorkspace().then(data => setBatches(data.batches)); }} />
     </section>
   );
 }
