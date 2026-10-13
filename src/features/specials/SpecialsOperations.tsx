@@ -154,7 +154,7 @@ export function SpecialsOperations({
               Choose the payment method for new Specials checkouts. Existing
               checkouts keep their original method.
             </p>
-            <label className="block">Payment method
+            <label className="block w-full max-w-md">Payment method
               <select className="mt-1 block w-full rounded border p-2" value={settings.payment_mode || 'stripe_promptpay'} disabled={busy}
                 onChange={e => { setSettings({...settings, payment_mode: e.target.value as Settings['payment_mode']}); setApproved(false); }}>
                 <option value="stripe_promptpay">Stripe PromptPay (default)</option>

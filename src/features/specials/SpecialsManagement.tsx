@@ -613,7 +613,7 @@ export function SpecialsManagement() {
             onSubmit={transfer}
             className="joko-admin-paper-card space-y-4 p-5"
           >
-            <h2 className="joko-admin-title text-xl">{copy.transfer}</h2>
+            <h2 className="joko-admin-title text-xl">{language === "th" ? "ปรับสต็อก Specials" : language === "zh" ? "调整 Specials 库存" : "Adjust Specials stock"}</h2>
             <p className="text-sm">{copy.sourceHint}</p>
             <fieldset disabled={locked} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-3">
@@ -740,7 +740,7 @@ export function SpecialsManagement() {
           <div className="joko-admin-paper-card overflow-x-auto p-5">
             <table className="w-full text-left text-sm">
               <caption className="mb-3 text-left joko-admin-title text-xl">
-                {copy.transfer}
+                {language === "th" ? "สรุปสต็อก" : language === "zh" ? "库存汇总" : "Stock summary"}
               </caption>
               <thead>
                 <tr>
