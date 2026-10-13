@@ -30,6 +30,7 @@ const CreativeLabPage = lazy(() => import('./app/creative-lab/CreativeLabPage'))
 const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
 const StaffScannerPage = lazy(() => import('./pages/StaffScannerPage').then(({ StaffScannerPage }) => ({ default: StaffScannerPage })));
 const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage').then(({ StaffLoginPage }) => ({ default: StaffLoginPage })));
+const SpecialsPickupReceiptConfirmationPage = lazy(() => import('./pages/SpecialsPickupReceiptConfirmationPage'));
 const PickupDeskPage = lazy(() => import('./pages/PickupDeskPage').then(({ PickupDeskPage }) => ({ default: PickupDeskPage })));
 const WalkInDeskPage = lazy(() => import('./pages/WalkInDeskPage').then(({ WalkInDeskPage }) => ({ default: WalkInDeskPage })));
 const MyQRPage = lazy(() => import('./pages/MyQRPage').then(({ MyQRPage }) => ({ default: MyQRPage })));
@@ -121,7 +122,7 @@ function AppContent() {
       const productDetailMatch = path.match(/^\/products\/([^/]+)$/);
       const productQrMatch = path.match(/^\/p\/([^/]+)$/);
       const paymentHandoffMatch = path.match(/^\/pay\/handoff\/([^/]+)$/);
-      const pickupReceiptMatch = path.match(/^\/pickup\/confirm\/([^/]+)$/);
+      const pickupReceiptMatch = path.match(/^\/receive\/([^/]+)$/) || path.match(/^\/pickup\/confirm\/([^/]+)$/);
 
       if (pickupReceiptMatch) {
         setPickupReceiptToken(pickupReceiptMatch[1]);
@@ -424,7 +425,9 @@ function AppContent() {
     }
 
     if (currentPage === 'pickup-receipt-confirmation' && pickupReceiptToken) {
-      return <PickupReceiptConfirmationPage token={pickupReceiptToken} />;
+      return window.location.pathname.startsWith('/pickup/confirm/')
+        ? <SpecialsPickupReceiptConfirmationPage token={pickupReceiptToken} />
+        : <PickupReceiptConfirmationPage token={pickupReceiptToken} />;
     }
 
     switch (currentPage) {
@@ -552,6 +555,7 @@ function AppContent() {
     currentPage === 'auth-callback' ||
     currentPage === 'qr-resolve' ||
     currentPage === 'payment-handoff' ||
+    currentPage === 'pickup-receipt-confirmation' ||
     isJokoShellPage;
   const showCartSidebar = !isStandalonePage || isJokoShellPage;
   const pageContent = (

@@ -32,6 +32,8 @@ export interface Order {
   payment_method?: string | null;
   created_at: string;
   picked_up_at?: string | null;
+  customer_received_at?: string | null;
+  pickup_code?: string | null;
   purchase_type?: 'online' | 'walk_in';
   walk_in_amount?: number;
   loyalty_points_earned?: number;

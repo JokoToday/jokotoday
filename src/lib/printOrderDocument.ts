@@ -31,6 +31,7 @@ export type PrintableOrder = {
   purchase_type?: string | null;
   pickup_date?: string | null;
   picked_up_at?: string | null;
+  customer_received_at?: string | null;
   payment_method?: string | null;
   payment_status?: string | null;
   created_at?: string | null;
@@ -41,6 +42,10 @@ export type PrintableOrder = {
 export type PrintOrderCopy = {
   title: string;
   disclaimer: string;
+  receiptNumber: string;
+  issued: string;
+  received: string;
+  nextOrder: string;
   order: string;
   ordered: string;
   date: string;
@@ -92,6 +97,14 @@ export type PrintOrderDocumentOptions = {
   paymentDescriptions?: Partial<Record<PrintOrderLanguage, string>>;
   copy?: Partial<PrintOrderCopy>;
   copyByLanguage?: Partial<Record<PrintOrderLanguage, Partial<PrintOrderCopy>>>;
+  receiptNumber?: string | null;
+  issuedAt?: string | null;
+  customerReceivedAt?: string | null;
+  footerQrSvg?: string | null;
+  footerQrLabel?: string | null;
+  footerQrLabels?: Partial<Record<PrintOrderLanguage, string>>;
+  footerQrText?: string | null;
+  footerQrTexts?: Partial<Record<PrintOrderLanguage, string>>;
 };
 
 const PROFILE_STORAGE_KEY = 'jt_print_profile';
@@ -100,6 +113,10 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
   en: {
     title: 'Order Receipt',
     disclaimer: 'This document is not a tax invoice.',
+    receiptNumber: 'Receipt',
+    issued: 'Issued',
+    received: 'Customer confirmed receipt',
+    nextOrder: 'Your next order',
     order: 'Order',
     ordered: 'Ordered',
     date: 'Date',
@@ -136,6 +153,10 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
   th: {
     title: 'ใบเสร็จรับเงิน',
     disclaimer: 'เอกสารนี้ไม่ใช่ใบกำกับภาษี',
+    receiptNumber: 'เลขที่ใบเสร็จ',
+    issued: 'ออกเมื่อ',
+    received: 'ลูกค้ายืนยันรับสินค้า',
+    nextOrder: 'สั่งครั้งถัดไป',
     order: 'เลขที่คำสั่งซื้อ',
     ordered: 'วันที่สั่งซื้อ',
     date: 'วันที่และเวลา',
@@ -172,6 +193,10 @@ const COPY: Record<PrintOrderLanguage, PrintOrderCopy> = {
   zh: {
     title: '订单收据',
     disclaimer: '本文件不是税务发票。',
+    receiptNumber: '收据编号',
+    issued: '开具时间',
+    received: '客户确认收货',
+    nextOrder: '再次订购',
     order: '订单号',
     ordered: '下单日期',
     date: '日期和时间',
@@ -322,6 +347,14 @@ export function printOrderDocument({
   paymentDescriptions,
   copy,
   copyByLanguage,
+  receiptNumber,
+  issuedAt,
+  customerReceivedAt,
+  footerQrSvg,
+  footerQrLabel,
+  footerQrLabels,
+  footerQrText,
+  footerQrTexts,
 }: PrintOrderDocumentOptions) {
   const printWindow = targetWindow ?? window.open('', '_blank', 'width=760,height=900');
   if (!printWindow) {
@@ -358,6 +391,8 @@ export function printOrderDocument({
     const resolvedPickupLabel = pickupLabels?.[nextLanguage] ?? pickupLabel ?? null;
     const resolvedPickupLocationName = pickupLocationNames?.[nextLanguage] ?? pickupLocationName ?? null;
     const resolvedStatusLabel = statusLabels?.[nextLanguage] ?? statusLabel ?? null;
+    const resolvedFooterQrLabel = footerQrLabels?.[nextLanguage] ?? footerQrLabel ?? labels.nextOrder;
+    const resolvedFooterQrText = footerQrTexts?.[nextLanguage] ?? footerQrText ?? null;
     const isThermal = nextProfile !== 'standard';
     const isPrep = documentType === 'prep_ticket';
     const documentTitle = isPrep
@@ -407,21 +442,28 @@ export function printOrderDocument({
       return `<button type="button" data-language="${candidate}" class="${candidate === nextLanguage ? 'active' : ''}">${label}</button>`;
     }).join('');
 
+    const resolvedReceivedAt = customerReceivedAt ?? order.customer_received_at ?? null;
     const standardMeta = `
       ${resolvedCustomerName ? `<div class="meta-card customer"><div class="label">${escapeHtml(labels.customer)}</div><div class="value">${escapeHtml(resolvedCustomerName)}</div></div>` : ''}
+      ${documentType === 'receipt' && receiptNumber ? `<div class="meta-card"><div class="label">${escapeHtml(labels.receiptNumber)}</div><div class="value">#${escapeHtml(receiptNumber)}</div></div>` : ''}
+      ${documentType === 'receipt' && issuedAt ? `<div class="meta-card"><div class="label">${escapeHtml(labels.issued)}</div><div class="value">${escapeHtml(formatDate(issuedAt, nextLanguage, false, true))}</div></div>` : ''}
       <div class="meta-card"><div class="label">${escapeHtml(labels.order)}</div><div class="value">#${escapeHtml(order.order_number)}</div></div>
       ${order.created_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.ordered)}</div><div class="value">${escapeHtml(formatDate(order.created_at, nextLanguage, false, true))}</div></div>` : ''}
       ${resolvedPickupLabel || order.pickup_date ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickup)}</div><div class="value">${resolvedPickupLabel ? escapeHtml(resolvedPickupLabel) : ''}${resolvedPickupLabel && order.pickup_date ? '<br />' : ''}${order.pickup_date ? escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false)) : ''}</div></div>` : ''}
       ${order.picked_up_at ? `<div class="meta-card"><div class="label">${escapeHtml(labels.pickedUp)}</div><div class="value">${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</div></div>` : ''}
+      ${documentType === 'receipt' && resolvedReceivedAt ? `<div class="meta-card"><div class="label">${escapeHtml(labels.received)}</div><div class="value">${escapeHtml(formatDate(resolvedReceivedAt, nextLanguage, false, true))}</div></div>` : ''}
       ${resolvedPickupLocationName ? `<div class="meta-card"><div class="label">${escapeHtml(labels.location)}</div><div class="value">${escapeHtml(resolvedPickupLocationName)}</div></div>` : ''}
       ${resolvedStatusLabel || order.status ? `<div class="meta-card"><div class="label">${escapeHtml(labels.status)}</div><div class="value">${escapeHtml(resolvedStatusLabel || order.status || '—')}</div></div>` : ''}
     `;
 
     const thermalMeta = `
       ${resolvedCustomerName ? `<div class="customer-name">${escapeHtml(resolvedCustomerName)}</div>` : ''}
+      ${documentType === 'receipt' && receiptNumber ? `<div class="thermal-meta"><strong>${escapeHtml(labels.receiptNumber)}</strong><span>#${escapeHtml(receiptNumber)}</span></div>` : ''}
+      ${documentType === 'receipt' && issuedAt ? `<div class="thermal-meta"><strong>${escapeHtml(labels.issued)}</strong><span>${escapeHtml(formatDate(issuedAt, nextLanguage, false, true))}</span></div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.order)}</strong><span>#${escapeHtml(order.order_number)}</span></div>
       ${order.pickup_date ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickup)}</strong><span>${escapeHtml(formatDate(order.pickup_date, nextLanguage, true, false))}</span></div>` : ''}
       ${order.picked_up_at ? `<div class="thermal-meta"><strong>${escapeHtml(labels.pickedUp)}</strong><span>${escapeHtml(formatDate(order.picked_up_at, nextLanguage, false, true))}</span></div>` : ''}
+      ${documentType === 'receipt' && resolvedReceivedAt ? `<div class="thermal-meta"><strong>${escapeHtml(labels.received)}</strong><span>${escapeHtml(formatDate(resolvedReceivedAt, nextLanguage, false, true))}</span></div>` : ''}
       ${resolvedPickupLocationName ? `<div class="thermal-meta"><strong>${escapeHtml(labels.location)}</strong><span>${escapeHtml(resolvedPickupLocationName)}</span></div>` : ''}
       <div class="thermal-meta"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
     `;
@@ -457,6 +499,12 @@ export function printOrderDocument({
       <div class="payment-box"><strong>${escapeHtml(labels.payment)}</strong><span>${escapeHtml(paymentDescription)}</span></div>
       ${documentType === 'receipt' ? `<div class="disclaimer">${escapeHtml(labels.disclaimer)}</div>` : ''}
       <div class="footer">${escapeHtml(labels.thanks)}</div>
+      ${footerQrSvg ? `
+        <div class="footer-qr">
+          <div class="footer-qr-label">${escapeHtml(resolvedFooterQrLabel)}</div>
+          <div class="footer-qr-code">${footerQrSvg}</div>
+          ${resolvedFooterQrText ? `<div class="footer-qr-text">${escapeHtml(resolvedFooterQrText)}</div>` : ''}
+        </div>` : ''}
     `;
 
     const thermalWidth = profileWidth(nextProfile);
@@ -509,6 +557,11 @@ export function printOrderDocument({
     .payment-box span { text-align: right; font-weight: 800; }
     .disclaimer { margin-top: 12px; color: #666; text-align: center; font-size: 9px; }
     .footer { margin-top: ${isThermal ? '4mm' : '22px'}; text-align: center; white-space: pre-line; line-height: 1.5; font-size: ${isThermal ? '9px' : '11px'}; color: #666; }
+    .footer-qr { margin: ${isThermal ? '4mm auto 0' : '20px auto 0'}; text-align: center; break-inside: avoid; }
+    .footer-qr-label { margin-bottom: ${isThermal ? '1.5mm' : '7px'}; font-size: ${isThermal ? '9px' : '11px'}; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #333; }
+    .footer-qr-code { display: flex; justify-content: center; }
+    .footer-qr-code svg { width: ${isThermal ? '24mm' : '112px'}; height: ${isThermal ? '24mm' : '112px'}; }
+    .footer-qr-text { margin-top: ${isThermal ? '1mm' : '5px'}; color: #777; font-size: ${isThermal ? '7.5px' : '9px'}; overflow-wrap: anywhere; }
     .prep-focus { padding: 2mm 0; border-top: 2px solid #111; border-bottom: 2px solid #111; text-align: center; }
     .prep-customer { overflow-wrap: anywhere; font-size: ${nextProfile === '58mm' ? '20px' : '24px'}; font-weight: 900; line-height: 1.05; }
     .prep-pickup { margin-top: 1.5mm; font-size: ${nextProfile === '58mm' ? '12px' : '14px'}; font-weight: 800; }

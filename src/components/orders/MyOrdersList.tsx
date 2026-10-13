@@ -4,9 +4,11 @@ import { Order, PickupDay, PickupLocation, SortOption } from './OrderTypes';
 import { OrderCard } from './OrderCard';
 import { OrderDetailModal } from './OrderDetailModal';
 import { PrintOrderConfirmationButton } from './PrintOrderConfirmationButton';
+import { PrintReceiptButton } from './PrintReceiptButton';
 import { RepeatOrderButton } from './RepeatOrderButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
+import type { OrderReceiptRecord } from '../../lib/receiptService';
 
 const PAGE_SIZE = 20;
 
@@ -18,6 +20,7 @@ interface MyOrdersListProps {
   productMap: Record<string, CMSProduct>;
   pickupDays: PickupDay[];
   locationMap: Record<string, PickupLocation>;
+  receiptMap: Record<string, OrderReceiptRecord>;
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
@@ -72,6 +75,7 @@ interface OrderColumnProps {
   productMap: Record<string, CMSProduct>;
   pickupDays: PickupDay[];
   locationMap: Record<string, PickupLocation>;
+  receiptMap: Record<string, OrderReceiptRecord>;
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
   onNavigate: (page: string) => void;
   onCancelRequest: (order: Order) => void;
@@ -95,6 +99,7 @@ function OrderColumn({
   productMap,
   pickupDays,
   locationMap,
+  receiptMap,
   getLabel,
   onNavigate,
   onCancelRequest,
@@ -215,6 +220,7 @@ function OrderColumn({
                 </div>
                 <div className="space-y-2">
                   {dayOrders.map(order => {
+                    const receipt = receiptMap[order.id];
                     const showPrint = canPrintOrder(order);
                     const showRepeat = allowRepeatOrder && canRepeatOrder(order);
                     const showPay = Boolean(onPayRequest)
@@ -234,7 +240,7 @@ function OrderColumn({
                           getLabel={getLabel}
                           onClick={() => setSelectedOrder(order)}
                         />
-                        {(showPay || showReactivate || showPrint || showRepeat) && (
+                        {(showPay || showReactivate || showPrint || showRepeat || receipt) && (
                           <div className="flex justify-end gap-2 pr-1 flex-wrap">
                             {showPay && onPayRequest && (
                               <button
@@ -265,6 +271,12 @@ function OrderColumn({
                                 pickupDays={pickupDays}
                                 locationMap={locationMap}
                                 getLabel={getLabel}
+                              />
+                            )}
+                            {receipt && (
+                              <PrintReceiptButton
+                                receipt={receipt}
+                                language={language}
                               />
                             )}
                             {showRepeat && (
@@ -305,6 +317,7 @@ function OrderColumn({
           productMap={productMap}
           pickupDays={pickupDays}
           locationMap={locationMap}
+          receipt={receiptMap[selectedOrder.id] || null}
           getLabel={getLabel}
           onClose={() => setSelectedOrder(null)}
           onNavigate={onNavigate}
@@ -321,6 +334,7 @@ export function MyOrdersList({
   productMap,
   pickupDays,
   locationMap,
+  receiptMap,
   getLabel,
   onNavigate,
   onCancelRequest,
@@ -376,6 +390,7 @@ export function MyOrdersList({
         productMap={productMap}
         pickupDays={pickupDays}
         locationMap={locationMap}
+        receiptMap={receiptMap}
         getLabel={getLabel}
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}
@@ -400,6 +415,7 @@ export function MyOrdersList({
         productMap={productMap}
         pickupDays={pickupDays}
         locationMap={locationMap}
+        receiptMap={receiptMap}
         getLabel={getLabel}
         onNavigate={onNavigate}
         onCancelRequest={onCancelRequest}

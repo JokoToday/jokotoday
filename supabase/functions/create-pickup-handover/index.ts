@@ -63,6 +63,7 @@ Deno.serve(async (req: Request) => {
 
     if (orderError) throw orderError;
     if (!order) return json({ error: "Order not found" }, 404);
+    if (order.order_type !== "specials") return json({ error: "Use the regular pickup desk" }, 409);
     if (order.purchase_type !== "online") return json({ error: "Customer receipt confirmation is for online pickup orders" }, 409);
     if (order.status === "cancelled") return json({ error: "Cancelled orders cannot be handed over" }, 409);
     if (order.picked_up_at || ["picked_up", "completed"].includes(order.status)) {

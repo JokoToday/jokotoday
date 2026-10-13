@@ -4,10 +4,13 @@ import { createPortal } from 'react-dom';
 import { X, ShoppingBag, ExternalLink, MapPin, Calendar, Package, CheckCircle, Clock, XCircle, Printer } from 'lucide-react';
 import { Order, OrderItem, PickupDay, PickupLocation } from './OrderTypes';
 import { RepeatOrderButton } from './RepeatOrderButton';
+import { PrintOrderConfirmationButton } from './PrintOrderConfirmationButton';
+import { PrintReceiptButton } from './PrintReceiptButton';
 import { CMSProduct } from '../../lib/cmsService';
 import { isPickupDatePast } from '../../lib/availabilityService';
 import { printOrderReceipt } from '../../lib/printReceipt';
 import { usePublishedJokoLogo } from '../../app/joko-today/builder/usePublishedJokoLogo';
+import type { OrderReceiptRecord } from '../../lib/receiptService';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -15,6 +18,7 @@ interface OrderDetailModalProps {
   productMap: Record<string, CMSProduct>;
   pickupDays: PickupDay[];
   locationMap: Record<string, PickupLocation>;
+  receipt?: OrderReceiptRecord | null;
   getLabel: (key: string, lang: 'en' | 'th' | 'zh', fallback: string) => string;
   onClose: () => void;
   onNavigate: (page: string) => void;
@@ -38,6 +42,7 @@ export function OrderDetailModal({
   productMap,
   pickupDays,
   locationMap,
+  receipt,
   getLabel,
   onClose,
   onNavigate,
@@ -140,7 +145,8 @@ export function OrderDetailModal({
   const isRepeatablePastOrder = order.order_type !== 'specials' && isOnline
     && items.length > 0
     && (pastPickup || !['pending', 'confirmed', 'ready'].includes(order.status));
-  const canPrintWalkInReceipt = !isOnline && order.status === 'completed' && items.length > 0;
+  const canPrintOrderConfirmation = isOnline && items.length > 0;
+  const canPrintWalkInReceipt = !isOnline && !receipt && order.status === 'completed' && items.length > 0;
 
   const handlePrintReceipt = () => {
     setPrintError('');
@@ -357,6 +363,27 @@ export function OrderDetailModal({
               </div>
               <span className="text-base font-extrabold" style={{ color: '#92400e' }}>+{order.loyalty_points_earned}</span>
             </div>
+          )}
+
+          {canPrintOrderConfirmation && (
+            <PrintOrderConfirmationButton
+              order={order}
+              language={language}
+              productMap={productMap}
+              pickupDays={pickupDays}
+              locationMap={locationMap}
+              getLabel={getLabel}
+              className="mt-3 w-full justify-center py-2.5"
+            />
+          )}
+
+          {receipt && (
+            <PrintReceiptButton
+              receipt={receipt}
+              language={language}
+              fullWidth
+              className="mt-3 py-2.5"
+            />
           )}
 
           {canPrintWalkInReceipt && (

@@ -90,7 +90,7 @@ export async function getPickupHandoverStatus(token: string): Promise<PickupHand
 }
 
 export async function confirmPickupReceipt(token: string): Promise<{ state: 'completed' }> {
-  const response = await fetch(functionUrl('confirm-pickup-receipt'), {
+  const response = await fetch(functionUrl('confirm-specials-pickup-receipt'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
