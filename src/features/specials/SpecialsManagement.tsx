@@ -92,6 +92,8 @@ export function SpecialsManagement() {
   const locked = busy || loading || Boolean(pending);
   const productName = (product?: SpecialsProduct) =>
     product?.[`name_${language}`] || product?.name_en || "—";
+  const selectedProduct = products.find(product => product.id === productId);
+  const productDescription = (product?: SpecialsProduct) => product?.[`desc_${language}`] || product?.desc_en || "";
   const location = locations.find(
     (candidate) => candidate.id === batch?.pickup_location_id,
   );
@@ -312,7 +314,7 @@ export function SpecialsManagement() {
             </button>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Prepare counted stock, then publish checkout and preview your LINE announcement below.</p>
+        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Select a saved batch below → choose a catalogue product and Specials price → add counted stock → prepare the batch → publish checkout. Saving a draft does not publish it.</p>
         {error && (
           <p
             role="alert"
@@ -486,8 +488,9 @@ export function SpecialsManagement() {
                         <h4 className="font-semibold">
                           {productName(product)}
                         </h4>
+                        {productDescription(product) && <p className="my-2 whitespace-pre-line text-sm">{productDescription(product)}</p>}
                         <p>
-                          <s className="mr-2 text-sm opacity-60">
+                          <s className="mr-2 text-sm text-[#303532]/65 decoration-red-600 decoration-2">
                             {money(item.regular_price_satang)}
                           </s>
                           <strong>{money(item.special_price_satang)}</strong>
@@ -507,7 +510,7 @@ export function SpecialsManagement() {
               </div>
             </>
           ) : (
-            <p className="text-sm">{copy.empty}</p>
+            <p className="text-sm">{batches.length ? "Select a saved batch above to add products, stock and publish it." : copy.empty}</p>
           )}
         </div>
       </div>
@@ -519,6 +522,13 @@ export function SpecialsManagement() {
               className="joko-admin-paper-card space-y-4 p-5"
             >
               <h2 className="joko-admin-title text-xl">{copy.add}</h2>
+              <p className="text-sm">Choose an existing catalogue product. Its name, image and regular price are reused; enter only the Specials price and optional customer limit.</p>
+              {selectedProduct && <div className="rounded-xl border border-[#55766F]/20 p-4">
+                {selectedProduct.image && <img src={selectedProduct.image} alt={productName(selectedProduct)} className="mb-3 h-28 w-28 object-contain" />}
+                <strong>{productName(selectedProduct)}</strong>
+                {productDescription(selectedProduct) && <p className="mt-2 whitespace-pre-line text-sm">{productDescription(selectedProduct)}</p>}
+                <p className="mt-2 text-sm">Regular price: {money(Math.round(selectedProduct.price * 100))}</p>
+              </div>}
               <fieldset disabled={locked} className="grid gap-4 sm:grid-cols-3">
                 <label className="block text-sm">
                   {copy.product}

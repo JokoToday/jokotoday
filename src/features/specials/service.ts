@@ -19,7 +19,7 @@ export async function loadSpecialsWorkspace() {
       .limit(50),
     supabase
       .from("cms_products")
-      .select("id,name_en,name_th,name_zh,price,image,is_active")
+      .select("id,name_en,name_th,name_zh,price,image,desc_en,desc_th,desc_zh,is_active")
       .order("sort_order"),
     supabase
       .from("cms_pickup_locations")

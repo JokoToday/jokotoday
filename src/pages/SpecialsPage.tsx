@@ -176,7 +176,7 @@ export default function SpecialsPage({
                   <div className="p-5">
                     <h3 className="text-xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{name(item)}</h3>
                     {language === 'en' && item.name_th && <p className="mt-1 text-xs text-[#303532]/65">{item.name_th}</p>}
-                    <p className="my-4 flex flex-wrap items-center gap-3"><span className="text-xl font-semibold text-[#C76624]">{money(item.price_satang)}</span>{item.regular_price_satang > item.price_satang && <s className="text-sm text-[#303532]/55">{money(item.regular_price_satang)}</s>}</p>
+                    <p className="my-4 flex flex-wrap items-center gap-3">{item.regular_price_satang > item.price_satang && <span className="text-sm text-[#303532]/65">{language === "th" ? "ราคาปกติ" : language === "zh" ? "原价" : "Regular price"}: <s className="decoration-red-600 decoration-2">{money(item.regular_price_satang)}</s></span>}<span className="text-xl font-semibold text-[#C76624]">{copy.special}: {money(item.price_satang)}</span></p>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="text-xs text-[#55766F]">{item.available > 0 ? `${item.available} ${copy.available}` : copy.soldOut}</span>
                       {(cart[item.id] || 0) > 0 ? <div className="flex items-center gap-2">

@@ -43,6 +43,9 @@ export type SpecialsProduct = {
   name_zh: string | null;
   price: number;
   image: string | null;
+  desc_en: string | null;
+  desc_th: string | null;
+  desc_zh: string | null;
   is_active: boolean;
 };
 export type SpecialsLocation = {
