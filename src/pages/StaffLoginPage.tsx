@@ -199,7 +199,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
 
   if (hasStaffAccess) {
     return (
-      <div className="joko-admin-shell min-h-screen p-4" style={brandingStyle}>
+      <div className="joko-admin-shell joko-ops-typography min-h-screen p-4" style={brandingStyle}>
         <div className="max-w-3xl mx-auto py-10">
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <button
@@ -276,7 +276,7 @@ export function StaffLoginPage({ onNavigate }: StaffLoginPageProps) {
   }
 
   return (
-    <div className="joko-admin-shell flex min-h-screen items-center justify-center p-4" style={brandingStyle}>
+    <div className="joko-admin-shell joko-ops-typography flex min-h-screen items-center justify-center p-4" style={brandingStyle}>
       <button
         onClick={() => onNavigate('home')}
         className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/75 px-4 py-2 font-medium text-[#3F665E] transition hover:bg-[#FFF9EE]"
