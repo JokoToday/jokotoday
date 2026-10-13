@@ -238,7 +238,7 @@ export function SpecialsOperations({
       {batch && (
         <>
           <p>
-            Batch: {batch.status}. Publish makes the Specials checkout public.
+            Selection: {batch.status}. Publish makes the Specials checkout public.
             Sending LINE is a separate deliberate action.
           </p>
           <button

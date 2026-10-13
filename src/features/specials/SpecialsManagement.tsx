@@ -42,7 +42,7 @@ function initialForm(): BatchForm {
   const at = (minutes: number) =>
     bangkokInputValue(new Date(now.getTime() + minutes * 60000));
   return {
-    title: "JOKO Specials",
+    title: "Specials Selection",
     pickup_location_id: "",
     sales_start_at: at(0),
     sales_end_at: at(60),
@@ -65,6 +65,8 @@ export function SpecialsManagement() {
   const [products, setProducts] = useState<SpecialsProduct[]>([]);
   const [locations, setLocations] = useState<SpecialsLocation[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
+  const initialSelectionLoaded = useRef(false);
+  const [pastDate, setPastDate] = useState("");
   const [items, setItems] = useState<SpecialsItem[]>([]);
   const [events, setEvents] = useState<SpecialsAuditEvent[]>([]);
   const [form, setForm] = useState<BatchForm>(initialForm);
@@ -95,6 +97,10 @@ export function SpecialsManagement() {
   const storageKey = `joko-specials-operation:${user?.id || ""}`;
   const batch = batches.find((candidate) => candidate.id === batchId);
   const locked = busy || loading || Boolean(pending);
+  const isActiveSelection = (selection: SpecialsBatch) => !["closed", "cancelled"].includes(selection.status) && new Date(selection.pickup_end_at).getTime() > Date.now();
+  const activeSelections = batches.filter(isActiveSelection).sort((a, b) => b.business_date.localeCompare(a.business_date) || b.sales_start_at.localeCompare(a.sales_start_at));
+  const pastSelections = batches.filter(selection => !isActiveSelection(selection)).sort((a, b) => b.business_date.localeCompare(a.business_date) || b.sales_start_at.localeCompare(a.sales_start_at));
+  const selectionLabel = (selection: SpecialsBatch) => `${selection.business_date} · ${selection.title} · ${selection.status}`;
   const productName = (product?: SpecialsProduct) =>
     product?.[`name_${language}`] || product?.name_en || "—";
   const selectedProduct = products.find(product => product.id === productId);
@@ -119,6 +125,13 @@ export function SpecialsManagement() {
     try {
       const data = await loadSpecialsWorkspace();
       setBatches(data.batches);
+      if (!initialSelectionLoaded.current) {
+        initialSelectionLoaded.current = true;
+        const active = data.batches.filter(selection => !["closed", "cancelled"].includes(selection.status) && new Date(selection.pickup_end_at).getTime() > Date.now());
+        const priority = (selection: SpecialsBatch) => selection.status === "live" ? 0 : selection.status === "prepared" ? 1 : 2;
+        active.sort((a, b) => priority(a) - priority(b) || b.business_date.localeCompare(a.business_date));
+        if (active[0]) setBatchId(active[0].id);
+      }
       setProducts(data.products);
       setLocations(data.locations);
       setError("");
@@ -213,7 +226,7 @@ export function SpecialsManagement() {
       pendingRef.current = null;
       setPending(null);
       setBatchId(result.batch.id);
-      setNotice(action === "save_batch" ? "Draft saved. Add product offers and stock before publishing." : action === "save_item" ? "Offer saved. Add counted stock before preparing the batch." : action === "transfer" ? (request.direction === "in" ? "Stock added to Specials successfully." : "Unsold stock released from Specials successfully.") : action === "prepare" ? "Batch prepared. Use Publish prepared Specials to open checkout." : copy.saved);
+      setNotice(action === "save_batch" ? "Draft saved. Add product offers and stock before publishing." : action === "save_item" ? "Offer saved. Add counted stock before preparing the selection." : action === "transfer" ? (request.direction === "in" ? "Stock added to Specials successfully." : "Unsold stock released from Specials successfully.") : action === "prepare" ? "Selection prepared. Use Publish prepared Specials to open checkout." : copy.saved);
       await refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -326,7 +339,7 @@ export function SpecialsManagement() {
             </button>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Select a saved batch below → choose a catalogue product and Specials price → add counted stock → prepare the batch → publish checkout. Saving a draft does not publish it.</p>
+        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Select a saved selection below → choose a catalogue product and Specials price → add counted stock → prepare the selection → publish checkout. Saving a draft does not publish it.</p>
         {error && (
           <p
             role="alert"
@@ -360,18 +373,25 @@ export function SpecialsManagement() {
         {!loading && batches.length === 0 && (
           <p className="mt-4 text-sm">{copy.empty}</p>
         )}
-        <div className="mt-4 flex flex-wrap gap-2" aria-label={copy.title}>
-          {batches.map((candidate) => (
-            <button
-              key={candidate.id}
-              disabled={locked}
-              onClick={() => setBatchId(candidate.id)}
-              className={`joko-admin-secondary-button px-3 py-2 text-sm ${candidate.id === batchId ? "bg-[#DCEAE3]" : ""}`}
-              aria-pressed={candidate.id === batchId}
-            >
-              {candidate.title} · {candidate.business_date} · {candidate.status}
-            </button>
-          ))}
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <label className="block w-full max-w-md text-sm">
+            {language === "th" ? "ชุด Specials ที่ใช้งานอยู่" : language === "zh" ? "当前 Specials 精选" : "Active selections"}
+            <select className="joko-admin-field mt-1 w-full" disabled={locked} value={activeSelections.some(selection => selection.id === batchId) ? batchId || "" : ""} onChange={event => setBatchId(event.target.value || null)}>
+              <option value="">{activeSelections.length ? "Choose active selection" : "No active selections"}</option>
+              {activeSelections.map(selection => <option key={selection.id} value={selection.id}>{selectionLabel(selection)}</option>)}
+            </select>
+          </label>
+          <label className="block w-full max-w-md text-sm">
+            {language === "th" ? "ชุด Specials ที่ผ่านมา" : language === "zh" ? "往期 Specials 精选" : "Past selections"}
+            <select className="joko-admin-field mt-1 w-full" disabled={locked} value={pastSelections.some(selection => selection.id === batchId) ? batchId || "" : ""} onChange={event => setBatchId(event.target.value || null)}>
+              <option value="">Choose past selection</option>
+              {pastSelections.filter(selection => !pastDate || selection.business_date === pastDate || selection.id === batchId).map(selection => <option key={selection.id} value={selection.id}>{selectionLabel(selection)}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm">Search past selections by date
+            <input type="date" className="joko-admin-field mt-1 block" value={pastDate} disabled={locked} onChange={event => setPastDate(event.target.value)} />
+          </label>
+          {pastDate && <button className="joko-admin-secondary-button px-3 py-2" disabled={locked} onClick={() => setPastDate("")}>Clear date</button>}
         </div>
       </div>
 
@@ -517,7 +537,7 @@ export function SpecialsManagement() {
               </div>
             </>
           ) : (
-            <p className="text-sm">{batches.length ? "Select a saved batch above to add products, stock and publish it." : copy.empty}</p>
+            <p className="text-sm">{batches.length ? "Select a saved selection above to add products, stock and publish it." : copy.empty}</p>
           )}
         </div>
       </div>
@@ -799,7 +819,7 @@ export function SpecialsManagement() {
             </table>
           </div>
           <div className="joko-admin-paper-card space-y-3 p-5">
-            <p className="text-sm">Prepare batch locks the offers and prices for publishing. It does not open checkout; publish in the section below.</p>
+            <p className="text-sm">Prepare selection locks the offers and prices for publishing. It does not open checkout; publish in the section below.</p>
             <p className="text-sm">Release available stock removes unsold units from Specials. Choose their destination and reason in Transfer stock; staff must also move the physical units.</p>
             <div className="flex flex-wrap gap-2">
               {batch.status === "draft" && (
@@ -842,12 +862,12 @@ export function SpecialsManagement() {
                 setCloseReason(event.target.value === "__other__" ? "" : event.target.value);
               }}>
                 <option value="">Select closing / cancellation reason</option>
-                {closeReason && !["Sales finished", "Sold out", "Pickup window ended", "Quality issue / disposal", "Batch created by mistake"].includes(closeReason) && !customCloseReason && <option value={closeReason}>{closeReason}</option>}
+                {closeReason && !["Sales finished", "Sold out", "Pickup window ended", "Quality issue / disposal", "Selection created by mistake"].includes(closeReason) && !customCloseReason && <option value={closeReason}>{closeReason}</option>}
                 <option value="Sales finished">Sales finished</option>
                 <option value="Sold out">Sold out</option>
                 <option value="Pickup window ended">Pickup window ended</option>
                 <option value="Quality issue / disposal">Quality issue / disposal</option>
-                <option value="Batch created by mistake">Batch created by mistake</option>
+                <option value="Selection created by mistake">Selection created by mistake</option>
                 <option value="__other__">Other…</option>
               </select>
               {customCloseReason && <input aria-label="Other closing reason" disabled={locked} maxLength={1000} className="joko-admin-field mt-2 w-full" value={closeReason} onChange={event => setCloseReason(event.target.value)} />}

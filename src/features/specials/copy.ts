@@ -4,7 +4,7 @@ export const specialsLabels = {
     intro: "Prepare today’s surplus, special prices and pickup window.",
     stage:
       "Preparation only. Publishing, customer payments and LINE sending will be enabled after the checkout integration is validated.",
-    newBatch: "New batch",
+    newBatch: "New selection",
     refresh: "Refresh",
     save: "Save draft",
     product: "Product",
@@ -15,9 +15,9 @@ export const specialsLabels = {
     held: "Held",
     sold: "Committed",
     allocated: "Allocated",
-    prepare: "Prepare batch",
-    close: "Close batch",
-    cancel: "Cancel batch",
+    prepare: "Prepare selection",
+    close: "Close selection",
+    cancel: "Cancel selection",
     preview: "Customer preview",
     history: "Audit history",
     transfer: "Transfer stock",
@@ -28,7 +28,7 @@ export const specialsLabels = {
       "I have physically isolated these units and removed them from all other selling channels.",
     quality:
       "These units have no existing customer allocation and meet our quality standards.",
-    titleField: "Batch title",
+    titleField: "Selection title",
     location: "Pickup location",
     start: "Sales start",
     end: "Sales end",
@@ -37,7 +37,7 @@ export const specialsLabels = {
     notes: "Internal notes",
     in: "Transfer in",
     out: "Release available stock",
-    empty: "No batches yet. Create today’s first draft.",
+    empty: "No selections yet. Create today’s first draft.",
     times:
       "All times are Bangkok time. Allow 5 minutes for payment and 15 minutes between sales end and pickup end.",
     retry: "Retry the same operation",
@@ -45,7 +45,7 @@ export const specialsLabels = {
       "This operation has an unresolved result. Retry it before making another change; the original operation key prevents duplicate transfers.",
     saved: "Saved.",
     draftOnly:
-      "Prepared batches are locked. Close or cancel, then record where any remaining stock goes.",
+      "Prepared selections are locked. Close or cancel, then record where any remaining stock goes.",
     today: "Pickup today only",
     leftover:
       "Closing does not move physical stock. Record a release for every unsold unit.",

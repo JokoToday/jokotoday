@@ -8,15 +8,21 @@ import type {
   SpecialsProduct,
 } from "./contracts";
 
+async function loadSelectionHistory() {
+  const selections: SpecialsBatch[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const response = await supabase.from("specials_batches")
+      .select("id,title,business_date,status,pickup_location_id,sales_start_at,sales_end_at,pickup_start_at,pickup_end_at,notes_internal,version")
+      .order("created_at", { ascending: false }).order("id").range(offset, offset + 99);
+    if (response.error) return response;
+    selections.push(...(response.data as SpecialsBatch[]));
+    if (response.data.length < 100) return { data: selections, error: null };
+  }
+}
+
 export async function loadSpecialsWorkspace() {
   const [batches, products, locations] = await Promise.all([
-    supabase
-      .from("specials_batches")
-      .select(
-        "id,title,business_date,status,pickup_location_id,sales_start_at,sales_end_at,pickup_start_at,pickup_end_at,notes_internal,version",
-      )
-      .order("created_at", { ascending: false })
-      .limit(50),
+    loadSelectionHistory(),
     supabase
       .from("cms_products")
       .select("id,name_en,name_th,name_zh,price,image,desc_en,desc_th,desc_zh,is_active")
