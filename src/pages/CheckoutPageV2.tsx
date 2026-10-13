@@ -1,3 +1,5 @@
+import { approximatePickupLabel, pickupWindowLabel, snapshotLocationName } from '../lib/pickupWindows';
+import { getPickupWindowsRequired } from '../lib/pickupWindowService';
 import { MakerAttribution, SourcingDisclosure } from '../components/MakerAttribution';
 import { MakerSnapshotAttribution } from '../components/MakerSnapshotAttribution';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -39,6 +41,7 @@ type ActiveCheckoutSnapshot = {
   orderNumber: string;
   orderPickupDateId: string | null;
   completedPickupDate: string;
+  completedPickupWindow?: string;
   completedTotal: number;
   completedItems: SecureOrderItem[];
   completedLoyaltyPoints: number;
@@ -124,6 +127,8 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [orderNumber, setOrderNumber] = useState('');
   const [orderPickupDateId, setOrderPickupDateId] = useState<string | null>(null);
   const [completedPickupDate, setCompletedPickupDate] = useState('');
+  const [completedPickupWindow, setCompletedPickupWindow] = useState('');
+  const [windowsRequired, setWindowsRequired] = useState<boolean | null>(null);
   const [completedTotal, setCompletedTotal] = useState(0);
   const [completedItems, setCompletedItems] = useState<SecureOrderItem[]>([]);
   const [completedLoyaltyPoints, setCompletedLoyaltyPoints] = useState(0);
@@ -140,6 +145,20 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [paymentWindowMinutes, setPaymentWindowMinutes] = useState(60);
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [checkoutResumeResolved, setCheckoutResumeResolved] = useState(false);
+
+  useEffect(() => {
+    let stopped = false;
+    void getPickupWindowsRequired().then((required) => { if (!stopped) setWindowsRequired(required); })
+      .catch(() => { if (!stopped) setSubmitError(language === 'th' ? 'ไม่สามารถโหลดเวลารับสินค้าได้ กรุณารีเฟรช' : language === 'zh' ? '无法加载取货时间，请刷新页面。' : 'Could not load pickup times. Please refresh.'); });
+    return () => { stopped = true; };
+  }, [language]);
+
+  useEffect(() => {
+    if (windowsRequired && selection && !selection.pickupSlotStart) {
+      pickupEditSessionRef.current = true;
+      setShowPickupEditor(true);
+    }
+  }, [windowsRequired, selection]);
 
   useEffect(() => {
     let cancelledLoad = false;
@@ -194,6 +213,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         setOrderNumber(snapshot.orderNumber);
         setOrderPickupDateId(snapshot.orderPickupDateId);
         setCompletedPickupDate(snapshot.completedPickupDate);
+        setCompletedPickupWindow(snapshot.completedPickupWindow || '');
         setCompletedTotal(snapshot.completedTotal);
         setCompletedItems(snapshot.completedItems);
         setCompletedLoyaltyPoints(snapshot.completedLoyaltyPoints);
@@ -415,7 +435,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       return;
     }
 
-    if (!selection || showPickupEditor) {
+    if (windowsRequired === null || !selection || showPickupEditor || (windowsRequired && !selection.pickupSlotStart)) {
       setSubmitError(language === 'th'
         ? 'กรุณายืนยันวันและสถานที่รับสินค้าก่อนสั่งซื้อ'
         : language === 'zh'
@@ -453,6 +473,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         orderNumber: orderReference,
         pickupDateId: selection.pickupDateId,
         pickupLocationId: selection.pickupLocationId,
+        pickupSlotStart: selection.pickupSlotStart,
+        pickupSlotEnd: selection.pickupSlotEnd,
+        pickupWindowRevision: selection.pickupWindowRevision,
         items: items.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
@@ -468,6 +491,8 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       setOrderNumber(order.order_number);
       setOrderPickupDateId(order.pickup_date_id || selection.pickupDateId);
       setCompletedPickupDate(order.pickup_date || selection.pickupDate);
+      const acceptedWindow = pickupWindowLabel(order.pickup_slot_start, order.pickup_slot_end);
+      setCompletedPickupWindow(acceptedWindow);
       setCompletedTotal(Number(order.total_amount) || totalPrice);
       setCompletedLoyaltyPoints(Number(order.loyalty_points_earned) || 0);
       setCompletedItems(serverItems.length > 0 ? serverItems : items.map((item) => ({
@@ -479,10 +504,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         price_at_order: item.product.price,
       })));
 
-      let persistedLocationName = '';
-      let persistedLocationMapsUrl = '';
+      let persistedLocationName = order.pickup_location_snapshot ? snapshotLocationName(order.pickup_location_snapshot, language) : '';
+      let persistedLocationMapsUrl = order.pickup_location_snapshot?.maps_url || '';
+      setOrderLocationName(persistedLocationName);
+      setOrderLocationMapsUrl(persistedLocationMapsUrl);
       const locationId = order.pickup_location_id || selection.pickupLocationId;
-      if (locationId) {
+      if (locationId && !order.pickup_location_snapshot) {
         const { data: location } = await supabase
           .from('cms_pickup_locations')
           .select('name_en, name_th, name_zh, maps_url')
@@ -526,6 +553,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
         orderNumber: order.order_number,
         orderPickupDateId: order.pickup_date_id || selection.pickupDateId,
         completedPickupDate: order.pickup_date || selection.pickupDate,
+        completedPickupWindow: acceptedWindow,
         completedTotal: Number(order.total_amount) || totalPrice,
         completedItems: persistedItems,
         completedLoyaltyPoints: Number(order.loyalty_points_earned) || 0,
@@ -548,7 +576,9 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
       }).catch((error) => console.error('Failed to send admin order notification:', error));
     } catch (error) {
       console.error('Pickup v2 order creation failed:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to create order. Please try again.');
+      setSubmitError(error instanceof Error && /^PICKUP_WINDOW_/.test(error.message)
+        ? (language === 'th' ? 'กรุณารีเฟรชและเลือกช่วงเวลารับสินค้าอีกครั้ง' : language === 'zh' ? '请刷新页面并重新选择取货时间段。' : 'Please refresh and choose your approximate pickup time again.')
+        : error instanceof Error ? error.message : 'Failed to create order. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -639,6 +669,8 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 </div>
               )}
             </div>
+
+            {completedPickupWindow && <p className="text-sm font-medium text-[#3F665E]">{approximatePickupLabel(language)}: {completedPickupWindow}</p>}
 
             <div className="space-y-3 border-t border-[#55766F]/[.12] pt-4">
               {completedItems.map((item) => (
@@ -889,6 +921,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                   </button>
                 </div>
 
+                {selection.pickupSlotStart && <p className="mt-4 text-sm font-semibold text-[#3F665E]">{approximatePickupLabel(language)}: {pickupWindowLabel(selection.pickupSlotStart, selection.pickupSlotEnd)}</p>}
                 <div className="mt-5 grid sm:grid-cols-2 gap-3">
                   <div className="rounded-xl border border-[#55766F]/[.12] bg-white/[.68] p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">{t.confirmation.pickupDay}</p>
@@ -934,6 +967,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
                 <PickupDateSelectorV2
                   requirements={requirements}
                   value={selection}
+                  windowsRequired={Boolean(windowsRequired)}
                   onChange={handlePickupSelectionChange}
                   onQuantityChange={updateQuantity}
                   onRemoveProduct={removeFromCart}
@@ -1045,7 +1079,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
 
             <button
               type="submit"
-              disabled={isSubmitting || !selection || showPickupEditor}
+              disabled={isSubmitting || windowsRequired === null || !selection || showPickupEditor || Boolean(windowsRequired && !selection.pickupSlotStart)}
               className="w-full rounded-xl bg-[#C76624] py-3.5 font-semibold text-white transition hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-[#A9ACA9]"
             >
               {isSubmitting ? t.checkout.processing : t.checkout.placeOrder}

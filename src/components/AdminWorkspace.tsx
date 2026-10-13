@@ -1,3 +1,4 @@
+import { CustomerNotificationsManagement } from './CustomerNotificationsManagement';
 import { MakersManagement } from './MakersManagement';
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import {
@@ -61,6 +62,7 @@ type WorkspaceTab =
   | 'pickup-products'
   | 'pickup-dates'
   | 'pickup-rollout'
+  | 'customer-notifications'
   | 'commerce-intelligence'
   | 'payment-test'
   | 'loyalty';
@@ -79,6 +81,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
   if (path.startsWith('/admin/qr-pass')) return 'qr-pass';
   if (path.startsWith('/admin/pickup-products')) return 'pickup-products';
   if (path.startsWith('/admin/pickup-dates')) return 'pickup-dates';
+  if (path.startsWith('/admin/customer-notifications')) return 'customer-notifications';
   if (path.startsWith('/admin/pickup-rollout')) return 'pickup-rollout';
   if (path.startsWith('/admin/commerce-intelligence')) return 'commerce-intelligence';
   if (path.startsWith('/admin/payment-test')) return 'payment-test';
@@ -100,6 +103,7 @@ function workspacePath(tab: WorkspaceTab): string {
     case 'qr-pass': return '/admin/qr-pass';
     case 'pickup-products': return '/admin/pickup-products';
     case 'pickup-dates': return '/admin/pickup-dates';
+    case 'customer-notifications': return '/admin/customer-notifications';
     case 'pickup-rollout': return '/admin/pickup-rollout';
     case 'commerce-intelligence': return '/admin/commerce-intelligence';
     case 'payment-test': return '/admin/payment-test';
@@ -206,6 +210,9 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                 <button type="button" onClick={() => selectWorkspaceTab('pickup-dates')} className={tabClass('pickup-dates')}>
                   <CalendarDays className="h-4 w-4" />
                   Pickup Dates
+                </button>
+                <button type="button" onClick={() => selectWorkspaceTab('customer-notifications')} className={tabClass('customer-notifications')}>
+                  <MessageSquareQuote className="h-4 w-4" /> Notifications
                 </button>
                 <button type="button" onClick={() => selectWorkspaceTab('pickup-rollout')} className={tabClass('pickup-rollout')}>
                   <Rocket className="h-4 w-4" />
@@ -330,6 +337,8 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
             </div>
           </AdminSection>
         )}
+
+        {activeTab === 'customer-notifications' && <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6"><CustomerNotificationsManagement /></div>}
 
         {activeTab === 'pickup-rollout' && (
           <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">

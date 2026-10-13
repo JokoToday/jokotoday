@@ -1,3 +1,4 @@
+import type { PickupLocationSnapshot } from './pickupWindows';
 import { supabase } from './supabase';
 
 type SupportedLanguage = 'en' | 'th' | 'zh';
@@ -46,6 +47,9 @@ export interface CreateOnlineOrderV2Input {
   pickupLocationId: string;
   items: CreateOnlineOrderV2Item[];
   notes?: string | null;
+  pickupSlotStart?: string | null;
+  pickupSlotEnd?: string | null;
+  pickupWindowRevision?: number | null;
 }
 
 export interface OnlineOrderRpcResult {
@@ -58,6 +62,10 @@ export interface OnlineOrderRpcResult {
   pickup_date?: string | null;
   pickup_date_id?: string | null;
   pickup_location_id?: string | null;
+  pickup_slot_start?: string | null;
+  pickup_slot_end?: string | null;
+  pickup_window_revision?: number | null;
+  pickup_location_snapshot?: PickupLocationSnapshot | null;
   status?: string;
   payment_status?: string;
   created_at?: string;
@@ -77,12 +85,14 @@ export async function createOnlineOrderV2(
   // customer is actually using without ever blocking checkout on preference sync.
   await syncPreferredLanguageBestEffort();
 
-  const { data, error } = await supabase.rpc('create_online_order_v2', {
+  const withWindow = Boolean(input.pickupSlotStart || input.pickupSlotEnd || input.pickupWindowRevision);
+  const { data, error } = await supabase.rpc(withWindow ? 'create_online_order_with_pickup_window_v1' : 'create_online_order_v2', {
     p_order_number: input.orderNumber,
     p_pickup_date_id: input.pickupDateId,
     p_pickup_location_id: input.pickupLocationId,
     p_items: input.items,
     p_notes: input.notes?.trim() || null,
+    ...(withWindow ? { p_slot_start: input.pickupSlotStart || null, p_slot_end: input.pickupSlotEnd || null, p_window_revision: input.pickupWindowRevision || null } : {}),
   });
 
   if (error) throw new Error(error.message);
