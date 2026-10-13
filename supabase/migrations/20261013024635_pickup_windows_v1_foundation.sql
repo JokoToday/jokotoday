@@ -768,7 +768,10 @@ BEGIN
  SELECT * INTO operation FROM public.pickup_date_locations
  WHERE pickup_date_id=NEW.pickup_date_id AND location_id=NEW.pickup_location_id;
  IF NOT FOUND OR operation.pickup_open_time IS NULL
-   OR NEW.pickup_slot_start<operation.pickup_open_time OR NEW.pickup_slot_end>operation.pickup_close_time THEN
+   OR operation.pickup_slot_minutes IS NULL
+   OR NEW.pickup_slot_start<operation.pickup_open_time OR NEW.pickup_slot_end>operation.pickup_close_time
+   OR extract(epoch FROM (NEW.pickup_slot_end-NEW.pickup_slot_start))<>operation.pickup_slot_minutes*60
+   OR mod(extract(epoch FROM (NEW.pickup_slot_start-operation.pickup_open_time)),operation.pickup_slot_minutes*60)<>0 THEN
   RAISE EXCEPTION 'The original pickup window is no longer available. Please use Order again'; END IF;
  RETURN NEW;
 END;$$;
