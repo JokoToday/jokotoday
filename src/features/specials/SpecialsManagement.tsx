@@ -732,7 +732,7 @@ export function SpecialsManagement() {
                   />
                 </label>
               </div>
-              <label className="block text-sm">
+              <label className="block w-full max-w-md text-sm">
                 {copy.source}
                 <select required className="joko-admin-field mt-1 w-full" value={customSource ? "__other__" : source} onChange={event => {
                   setCustomSource(event.target.value === "__other__");
@@ -748,7 +748,7 @@ export function SpecialsManagement() {
                 </select>
                 {customSource && <input required aria-label="Other source / destination" maxLength={500} className="joko-admin-field mt-2 w-full" value={source} onChange={event => setSource(event.target.value)} />}
               </label>
-              <label className="block text-sm">
+              <label className="block w-full max-w-md text-sm">
                 {copy.reason}
                 <select required className="joko-admin-field mt-1 w-full" value={customReason ? "__other__" : reason} onChange={event => {
                   setCustomReason(event.target.value === "__other__");
