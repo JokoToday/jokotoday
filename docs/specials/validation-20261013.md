@@ -59,3 +59,17 @@ Ready-to-test frontend: https://d049d517.jokotoday-preview.pages.dev/
 Staff should choose Pickup Desk → JOKO Specials, select Test Mae Rim and use JT-1016 for the Stripe-paid staff/customer QR confirmation test.
 
 The earlier deployment block above is resolved. This evidence does not claim completion of authenticated browser handover or provider refund tests. No production deployment, LINE campaign or new provider payment was performed during synchronization.
+
+## Requested full recheck — afternoon, 13 October
+
+- Reran all seven suites at `c4a4234`: 286 assertions passed (62 foundation, 106 checkout/payment/pickup/LINE, 35 Edge adapters, 45 Stripe signatures/adapters, 14 receipt compatibility, 11 menu, 13 preview origins). Typecheck and production build passed; lint remains 0 errors and 37 warnings.
+- Hosted evidence confirms the user's successful workflow was JT-1017: paid, financial verified, fulfillment/order picked_up, receipt confirmed at 2026-10-13 03:36:35 UTC (10:36 Bangkok). JT-1016 remains paid and ready. No test order was artificially completed during this recheck.
+- Stripe connector confirms JT-1017's PaymentIntent succeeded with `livemode=false`. The dedicated JOKO Specials Test account was used; live account was not used. The cancelled JT-1015 intent currently requires a new payment method and has no hosted instructions, so it cannot exercise late success through its previous instructions.
+- Cloud browser checks passed for loaded EN/TH/ZH catalogue, pickup window/cutoff, changing language with a basket, Add cookie and THB40 basket total, and the authorized-Admin login gate. Admin text-editor save/reload and authenticated regular-order browser regression remain blocked by missing browser Admin authentication. Desktop/public checks do not establish mobile visual coverage.
+- Existing tests cover signed-webhook replay, amount/intent/currency mismatch, transient database retry, released-stock late-payment refund requirement, pending versus succeeded refund and out-of-order refund updates. These are isolated-provider tests; a new end-to-end Stripe sandbox refund was not performed. Connected Stripe operation discovery exposed read operations only, and refund-list access returned an authentication error.
+- Test DB has zero `payment_slip_verifications` records and no `specials_line_outbox` jobs. Therefore no provider-backed EasySlip success or LINE acceptance/delivery can be claimed. The 35 adapter assertions cover validation and LINE retry/error handling, but no live broadcast was sent. An isolated test OA and approved provider test slip remain necessary.
+- Hosted RPC privilege matrix continues to deny anonymous/authenticated execution of payment verification, receipt finalization and LINE worker RPCs; service_role is allowed.
+- Security advisor still reports inherited baseline SECURITY DEFINER execute warnings and intentional deny-all session-table RLS notices. No claim of a clean full-project security audit. Advisory remediation: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable.
+- Public preview footer still advertises cash/QR at pickup despite prepaid Specials copy. This is an inherited shared-footer content inconsistency, not a payment bypass; capture it for content correction before rollout.
+
+Release status: draft; do not merge/deploy yet. Pending provider-backed checks and authenticated/mobile Admin/browser checks remain explicit rather than being labelled passed.
