@@ -1,3 +1,4 @@
+import { SpecialsPrice } from '../features/specials/SpecialsPrice';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Check, MapPin, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
@@ -168,15 +169,15 @@ export default function SpecialsPage({
                 {batch && <span className="text-xs text-[#303532]/65">{copy.lasts}</span>}
               </div>
               {batch && items.length ? <div className="grid gap-5 sm:grid-cols-2">
-                {items.map(item => <article key={item.id} className="overflow-hidden rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]">
-                  <div className="relative flex h-44 items-center justify-center bg-[#CFE3DF]/45 sm:h-48">
-                    {item.image ? <img src={item.image} alt={name(item)} loading="lazy" className="h-full w-full object-cover" /> : <ShoppingBag className="h-10 w-10 text-[#55766F]" aria-hidden="true" />}
+                {items.map(item => <article key={item.id} className="joko-product-card overflow-hidden bg-background shadow-md transition-all duration-300 hover:shadow-xl">
+                  <div className="joko-product-card-image relative aspect-square overflow-hidden bg-primary-50 group">
+                    {item.image ? <img src={item.image} alt={name(item)} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]" /> : <ShoppingBag className="h-10 w-10 text-[#55766F]" aria-hidden="true" />}
                     <span className="absolute left-3 top-3 rounded-full bg-[#FFF9EE] px-3 py-1.5 text-xs font-medium text-[#C76624]">{item.available > 0 ? copy.special : copy.soldOut}</span>
                   </div>
-                  <div className="p-5">
-                    <h3 className="text-xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{name(item)}</h3>
+                  <div className="joko-product-card-body p-4">
+                    <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{name(item)}</h3>
                     {language === 'en' && item.name_th && <p className="mt-1 text-xs text-[#303532]/65">{item.name_th}</p>}
-                    <p className="my-4 flex flex-wrap items-center gap-3">{item.regular_price_satang > item.price_satang && <span className="text-sm text-[#303532]/65">{language === "th" ? "ราคาปกติ" : language === "zh" ? "原价" : "Regular price"}: <s className="decoration-red-600 decoration-2">{money(item.regular_price_satang)}</s></span>}<span className="text-xl font-semibold text-[#C76624]">{copy.special}: {money(item.price_satang)}</span></p>
+                    <SpecialsPrice regular={item.regular_price_satang} special={item.price_satang} money={money} />
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="text-xs text-[#55766F]">{item.available > 0 ? `${item.available} ${copy.available}` : copy.soldOut}</span>
                       {(cart[item.id] || 0) > 0 ? <div className="flex items-center gap-2">

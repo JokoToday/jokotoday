@@ -1,3 +1,4 @@
+import { SpecialsPrice } from './SpecialsPrice';
 import { SpecialsOperations } from './SpecialsOperations';
 import { SpecialsPageContentEditor } from './SpecialsPageContentEditor';
 import { specialsLabels } from "./copy";
@@ -500,12 +501,7 @@ export function SpecialsManagement() {
                           {productName(product)}
                         </h4>
                         {productDescription(product) && <p className="my-2 whitespace-pre-line text-sm">{productDescription(product)}</p>}
-                        <p>
-                          <s className="mr-2 text-sm text-[#303532]/65 decoration-red-600 decoration-2">
-                            {money(item.regular_price_satang)}
-                          </s>
-                          <strong>{money(item.special_price_satang)}</strong>
-                        </p>
+                        <SpecialsPrice regular={item.regular_price_satang} special={item.special_price_satang} money={money} />
                         <p className="text-xs">
                           {Math.round(
                             (1 -
