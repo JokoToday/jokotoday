@@ -404,6 +404,7 @@ export function SpecialsManagement() {
           ref={selectionFormRef}
           onSubmit={saveBatch}
           className="joko-admin-paper-card space-y-4 overflow-hidden border-2 border-[#C76624]/35 p-5"
+          style={{ scrollMarginTop: "160px" }}
         >
           <div className="-mx-5 -mt-5 mb-5 bg-[#C76624] px-5 py-4 text-white">
             <h2 className="joko-admin-title text-2xl" style={{ color: "white" }}>{batch ? "Selection details" : "New Selection"}</h2>
