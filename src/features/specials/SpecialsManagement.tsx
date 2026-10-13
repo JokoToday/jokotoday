@@ -327,7 +327,7 @@ export function SpecialsManagement() {
                 setItems([]);
                 setEvents([]);
                 setNotice("New selection ready. Enter its title, pickup location and times, then save the draft.");
-                selectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                selectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                 selectionFormRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
               }}
             >
