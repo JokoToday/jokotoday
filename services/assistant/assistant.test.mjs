@@ -149,6 +149,10 @@ test('Chinese requests and croissant aliases use the approved inventory path', a
   assert.equal(response.status, 200); assert.equal(seenLanguage, 'zh');
   assert.equal(validateArguments('search_joko_products', { query: '可颂' }).query, 'croissant');
   assert.equal(validateArguments('search_joko_products', { query: '牛角包' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: '可颂 croissant' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: 'croissants / 可颂' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: 'almond croissant' }).query, 'almond croissant');
+  assert.equal(validateArguments('search_joko_products', { query: '杏仁可颂' }).query, '杏仁可颂');
   const { budget } = budgetFor(t); let rounds = 0;
   const engine = createEngine({ budget, inventory: async () => snapshot(), provider: async body => { assert.match(body.instructions, /Simplified Chinese/); return rounds++ ? answerResponse : toolResponse; } });
   await engine({ message: '可颂', language: 'zh', requestId: 'fixture' });

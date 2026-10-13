@@ -183,7 +183,7 @@ and free text in Live use the current provider/MCP flow. Conversation histories
 and backend sessions are separate per language and are kept only in memory.
 No English product/name fallback is shown in Thai or Chinese mode. Missing
 translations hide a curated question rather than guessing or machine-translating
-it at runtime. Prices and remaining quantities are never saved as editorial FAQs.
+it at runtime. Prices and remaining quantities should be queried live rather than stored in editorial FAQs.
 
 Admin at `/admin/ask-joko` manages categories, question/answer translations,
 exact-match aliases, enabled state, sort order, related JOKO page links, and the
@@ -227,3 +227,5 @@ rather than dropping reviewed content during rollback.
   saved-answer zero-AI requests, categories, EN/TH/ZH history, safe source cards,
   branding and mobile bounds, error fallbacks, draft save and explicit publication.
   Supabase/model responses are fixtures; this is not authenticated production QA.
+
+Live Chinese pilot diagnosis: the model initially combined generic aliases as `可颂 croissant`, producing zero literal substring matches despite available inventory. The adapter now collapses only known generic family aliases to `croissant` and preserves modifiers; tool descriptions and engine instructions request one literal keyword. Regression tests cover bilingual lists, plural croissants and retaining almond modifiers.

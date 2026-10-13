@@ -4,6 +4,14 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 export const toolNames = ['search_joko_products', 'get_joko_product_availability'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const date = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
+const croissantAliases = new Set(['croissant', 'croissants', 'ครัวซอง', 'ครัวซองต์', 'ครัวซองท์', '可颂', '可頌', '牛角包']);
+function catalogueQuery(value) {
+  const words = value.normalize('NFKC').trim().toLowerCase().split(/[\s/,、]+/).filter(Boolean);
+  // Gateway models sometimes concatenate generic bilingual synonyms. The
+  // catalogue treats that as one literal substring, so collapse only known
+  // generic family aliases. Preserve modifiers such as almond/plain unchanged.
+  return words.length && words.every(word => croissantAliases.has(word)) ? 'croissant' : value;
+}
 export function validateArguments(name, args) {
   if (!toolNames.includes(name) || !args || typeof args !== 'object' || Array.isArray(args)) throw Error('Invalid tool');
   const fields = name === toolNames[0] ? ['query', 'pickup_date', 'location_id', 'limit'] : ['product_id', 'pickup_date', 'location_id'];
@@ -15,9 +23,7 @@ export function validateArguments(name, args) {
     if (['product_id', 'location_id'].includes(key) && (typeof value !== 'string' || !uuid.test(value))) throw Error('Invalid identifier');
     if (key === 'pickup_date' && (typeof value !== 'string' || !date(value))) throw Error('Invalid date');
     if (key === 'limit' && (!Number.isInteger(value) || value < 1 || value > 10)) throw Error('Invalid limit');
-    // Public catalogue search is substring-based; these spellings denote the
-    // same generic product family but published Thai names use mixed spellings.
-    result[key] = key === 'query' && /^(?:ครัวซอง(?:ต์|ท์)?|可颂|可頌|牛角包)$/.test(value.trim()) ? 'croissant' : value;
+    result[key] = key === 'query' ? catalogueQuery(value) : value;
   }
   if (name === toolNames[1] && !result.product_id) throw Error('Product required');
   if (name === toolNames[0]) result.limit ??= 6;
@@ -63,7 +69,7 @@ export function createInventory(endpoint) {
 const nullable = schema => ({ anyOf: [schema, { type: 'null' }] });
 export const functionTools = toolNames.map(name => {
   const properties = { pickup_date: nullable({ type: 'string', description: 'Concrete YYYY-MM-DD date in Asia/Bangkok, or null to list dates' }), location_id: nullable({ type: 'string', description: 'Location UUID from inventory, never guess' }) };
-  if (name === toolNames[0]) { properties.query = { type: 'string', description: 'Product keyword in EN/TH/ZH; empty to discover products and locations' }; properties.limit = { type: 'integer', minimum: 1, maximum: 10 }; }
+  if (name === toolNames[0]) { properties.query = { type: 'string', description: 'One short literal catalogue keyword; use croissant for generic croissants, never a bilingual synonym list. Empty to discover products and locations.' }; properties.limit = { type: 'integer', minimum: 1, maximum: 10 }; }
   else properties.product_id = { type: 'string', description: 'Product UUID returned by search' };
   return { type: 'function', name, strict: true, description: name === toolNames[0] ? 'Search live public JOKO regular preorders. Stock is shared across locations per date; never add it twice.' : 'Recheck live public product availability; no reservation or payment.', parameters: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } };
 });
