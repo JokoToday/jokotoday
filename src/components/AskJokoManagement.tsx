@@ -285,7 +285,7 @@ export function AskJokoManagement() {
             </div>
             <div className="rounded-xl border border-[#d1d8cb] bg-[#faf7ef] p-4">
               <p className="mb-3 text-sm font-medium">Image preview</p>
-              {safeIllustrationUrl(draft.illustration.url) && !imageFailed ? (
+              {draft.illustration.url && safeIllustrationUrl(draft.illustration.url) && !imageFailed ? (
                 <img
                   key={draft.illustration.url}
                   src={draft.illustration.url}
