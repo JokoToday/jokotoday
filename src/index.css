@@ -172,6 +172,29 @@
     font-size: var(--joko-size-nav, 16px);
   }
 
+  .joko-ops-typography {
+    font-family: var(--joko-font-shell, var(--joko-font-body, 'Inter', system-ui, sans-serif));
+    font-size: var(--joko-size-body, 16px);
+    font-weight: var(--joko-font-body-weight, 400);
+  }
+
+  .joko-ops-typography h1,
+  .joko-ops-typography h2,
+  .joko-ops-typography h3,
+  .joko-ops-typography h4,
+  .joko-ops-typography h5,
+  .joko-ops-typography h6 {
+    font-family: var(--joko-font-display, Georgia, serif);
+    font-weight: var(--joko-font-display-weight, 700);
+  }
+
+  .joko-ops-typography button,
+  .joko-ops-typography input,
+  .joko-ops-typography select,
+  .joko-ops-typography textarea {
+    font-family: inherit;
+  }
+
 
   .joko-home-shell .joko-shell-logo {
     height: calc(3.5rem * var(--joko-logo-scale, 1.2));

@@ -24,7 +24,7 @@ import jsQR from 'jsqr';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { createPickupReceiptHandoff } from '../lib/pickupReceiptService';
-import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 import {
   CustomerLookupNetworkError,
   CustomerLookupServiceError,
@@ -135,7 +135,7 @@ const extractPickupOrderCode = (value: string): string | null => {
 export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
-  const publishedLogoUrl = usePublishedJokoLogo();
+  const { logoUrl: publishedLogoUrl, brandingStyle } = useInternalJokoBranding();
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -545,7 +545,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   if (!hasStaffAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="joko-ops-typography min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4" style={brandingStyle}>
         <button
           onClick={() => onNavigate('home')}
           className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"
@@ -581,7 +581,7 @@ export function PickupDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="joko-ops-typography min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4" style={brandingStyle}>
       <button
         onClick={() => onNavigate('home')}
         className="mb-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"

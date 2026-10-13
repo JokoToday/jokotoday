@@ -38,7 +38,7 @@ import { getCategories, getProducts, type CMSCategory, type CMSProduct } from '.
 import { PosWorkspace } from '../components/pos/PosWorkspace';
 import { usePosCart } from '../hooks/usePosCart';
 import { printOrderReceipt } from '../lib/printReceipt';
-import { usePublishedJokoLogo } from '../app/joko-today/builder/usePublishedJokoLogo';
+import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 
 interface Customer {
   id: string;
@@ -113,7 +113,7 @@ function isPurchaseResult(value: unknown): value is PurchaseResult {
 export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { language, setLanguage } = useLanguage();
   const { user, userRole, signOut } = useAuth();
-  const publishedLogoUrl = usePublishedJokoLogo();
+  const { logoUrl: publishedLogoUrl, brandingStyle } = useInternalJokoBranding();
   const hasStaffAccess = Boolean(user) && (userRole === 'staff' || userRole === 'admin');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -653,7 +653,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
 
   if (!hasStaffAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="joko-ops-typography min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4" style={brandingStyle}>
         <button
           onClick={() => onNavigate('home')}
           className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-slate-900 font-medium transition-colors"
@@ -697,7 +697,7 @@ export function WalkInDeskPage({ onNavigate }: { onNavigate: (page: string) => v
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="joko-ops-typography min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4" style={brandingStyle}>
       <button
         type="button"
         onClick={() => onNavigate('home')}
