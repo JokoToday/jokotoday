@@ -164,3 +164,66 @@ LINE is a later adapter. Preserve the existing webhook/notification flow, valida
 Direct OpenAI and Ollama adapters remain fixture-tested only. OpenRouter `openai/gpt-5.4-mini` has additionally completed live private-preview checks with the existing public MCP inventory service: English and Thai product queries, product-specific quantities, Bangkok cutoffs, a past pickup date, refusal of private customer/order data, and duplicate-request accounting. A real Chromium mobile session exercised the widget through the same-origin Vite proxy, receiving three matching Thai croissant cards, clearing the conversation, querying a past date in English, and closing with Escape.
 
 Observed successful API questions took approximately 3–5 seconds and cost about USD 0.0017–0.0023 in a small sample; this is not a performance or price guarantee. Earlier failed requests retained conservative budget reservations; the local ledger is an operating allowance, not a receipt for provider billing. These observations are pilot evidence, not comprehensive accuracy certification or production approval.
+
+## Ask JOKO discovery widget and editorial Admin
+
+The approved interface combines four areas: JOKO essentials (FAQ), Curious Bites,
+Find your kind (maker-confirmed product guidance), and live availability. Category
+dropdowns and question accordions work in English, Thai and Simplified Chinese.
+The title uses the published Homepage display font and charcoal color, with an
+italic brand-accent “curiosity”; header background is Homepage footer #466861,
+and both header labels are opaque white. Illustration upload reuses the existing
+admin-only gallery media endpoint and stores only its public image URL.
+
+Saved question buttons and exact localized questions/aliases display approved
+answers without creating an AI session or making a model request. Partial search
+suggests saved questions; unmatched questions outside Live require the customer
+to select live availability before incurring model usage. Live question buttons
+and free text in Live use the current provider/MCP flow. Conversation histories
+and backend sessions are separate per language and are kept only in memory.
+No English product/name fallback is shown in Thai or Chinese mode. Missing
+translations hide a curated question rather than guessing or machine-translating
+it at runtime. Prices and remaining quantities are never saved as editorial FAQs.
+
+Admin at `/admin/ask-joko` manages categories, question/answer translations,
+exact-match aliases, enabled state, sort order, related JOKO page links, and the
+illustration. `Save draft` is private; `Save & publish` snapshots reviewed content.
+Version checks reject stale saves and publications. Dietary answers are curated
+information, not AI-inferred filters: Admin must verify maker information and
+confirm the checkbox; changing question, answer, category or linked products
+clears that confirmation. No verified product list is invented. Starter gluten-free
+and vegan questions are disabled with empty answers until the maker confirms them.
+This initial version does not add structured dietary flags to the product schema.
+
+### Content migration and rollout boundary
+
+Prepared migration: `supabase/migrations/20261013030405_ask_joko_content_v1.sql`.
+It adds one private singleton editorial table and four narrowly scoped public RPCs.
+Anonymous customers can read only the published snapshot. Admin functions require
+the existing database-backed `private.current_user_is_admin()` check. No existing
+products, orders, payments, customer records or staff permissions are modified.
+RLS is enabled and raw table access is revoked from anonymous/authenticated roles.
+The migration starts with an empty private draft and no published content. Admin
+can load starter questions, review them, save a draft and explicitly publish.
+
+This migration requires separate approval before application to production. The
+website flag stays disabled by default. Without the migration or published content,
+the live inventory question remains usable and curated sections report that saved
+answers are not available yet. Roll back the UI by disabling the widget flag;
+unpublish content by publishing an empty/disabled draft. Keep the private table
+rather than dropping reviewed content during rollback.
+
+### Focused checks for this extension
+
+- `npm test` in this directory: 24 engine, adapter and HTTP tests including Chinese.
+- `node --test scripts/tests/ask-joko-content.test.mjs` from repository root:
+  complete translations, deterministic aliases/ambiguity, image/link validation
+  and starter dietary questions remaining hidden.
+- `JOKO_TEST_PGLITE_MODULE=<installed PGlite module> node scripts/tests/ask-joko-db.mjs`:
+  executes the real migration in an isolated PostgreSQL instance; checks anonymous,
+  customer and admin privileges, draft privacy, publication, maker confirmation,
+  conflict handling and malformed content. No production DB is touched.
+- `scripts/tests/assistant-browser.mjs`: isolated Chromium customer and Admin flows,
+  saved-answer zero-AI requests, categories, EN/TH/ZH history, safe source cards,
+  branding and mobile bounds, error fallbacks, draft save and explicit publication.
+  Supabase/model responses are fixtures; this is not authenticated production QA.

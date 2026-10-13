@@ -1,28 +1,64 @@
-.joko-assistant { position: fixed; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 45; color: #263c3a; font-family: var(--joko-font-body, inherit); }
+.joko-assistant { position: fixed; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 45; color: var(--joko-brand-text, #303532); font-family: var(--joko-font-body, 'Inter', sans-serif); font-weight: var(--joko-font-body-weight, 400); }
 .joko-assistant button, .joko-assistant select, .joko-assistant textarea { font: inherit; }
 .joko-assistant button { cursor: pointer; }
-.joko-assistant button:disabled { opacity: .55; cursor: default; }
-.joko-assistant button:focus-visible, .joko-assistant a:focus-visible, .joko-assistant textarea:focus-visible, .joko-assistant select:focus-visible { outline: 3px solid #236d67; outline-offset: 3px; }
-.joko-assistant-launcher { background: #276f69; color: white; padding: .8rem 1.2rem; border-radius: 1.5rem; box-shadow: 0 3px 16px #16342e33; }
-.joko-assistant-panel { background: #fffcf5; border: 1px solid #a4bdb5; border-radius: 1rem; width: min(390px, calc(100vw - 2rem)); height: min(680px, calc(100dvh - 2rem)); box-shadow: 0 8px 40px #16342e33; display: flex; flex-direction: column; overflow: hidden; }
-.joko-assistant-panel header { display: flex; align-items: center; justify-content: space-between; background: #276f69; color: white; padding: .75rem 1rem; }
-.joko-assistant-panel h2 { font-family: var(--joko-font-display, inherit); font-size: 1.3rem; }
-.joko-assistant-panel header button { font-size: 1.8rem; line-height: 1; padding: .25rem; }
-.joko-assistant-controls { display: flex; align-items: center; justify-content: space-between; padding: .5rem 1rem; font-size: .85rem; }
-.joko-assistant-controls select { padding: .25rem; background: white; border: 1px solid #a4bdb5; border-radius: .3rem; }
-.joko-assistant-disclosure { font-size: .75rem; margin: .25rem 1rem .5rem; }
-.joko-assistant-log { flex: 1; overflow-y: auto; padding: .75rem; min-height: 0; overscroll-behavior: contain; font-size: .9rem; }
-.joko-assistant-message { padding: .6rem .75rem; margin: .7rem 0; border-radius: .75rem; background: #f0eee6; overflow-wrap: anywhere; }
-.joko-assistant-message p { white-space: pre-wrap; }
-.joko-assistant-message.user { background: #e2efeb; margin-left: 2rem; }
-.joko-assistant-message small { display: block; margin-top: .5rem; font-size: .7rem; }
-.joko-assistant-product { background: white; border: 1px solid #cad7cf; padding: .65rem; margin-top: .65rem; border-radius: .5rem; }
-.joko-assistant-product strong, .joko-assistant-product span { display: block; }
-.joko-assistant-product p { margin-top: .3rem; font-size: .8rem; }
-.joko-assistant-product a { display: inline-block; margin-top: .4rem; text-decoration: underline; color: #245f59; }
-.joko-assistant-panel form { display: flex; gap: .5rem; padding: .7rem; border-top: 1px solid #d8dfd6; }
-.joko-assistant-panel textarea { flex: 1; min-width: 0; resize: none; border: 1px solid #a4bdb5; border-radius: .5rem; padding: .5rem; background: white; font-size: .9rem; }
-.joko-assistant-panel form button { align-self: center; background: #276f69; color: white; border-radius: .5rem; padding: .6rem; }
-.joko-assistant-panel footer { display: flex; justify-content: space-between; padding: .5rem 1rem .8rem; font-size: .8rem; text-decoration: underline; }
-.joko-assistant-sample { margin-top: .75rem; padding: .5rem; border: 1px solid #a4bdb5; border-radius: .5rem; text-align: left; }
-@media (max-width: 480px) { .joko-assistant { right: .5rem; bottom: max(.5rem, env(safe-area-inset-bottom)); } .joko-assistant-panel { width: calc(100vw - 1rem); height: min(680px, calc(100dvh - 1rem)); } }
+.joko-assistant button:disabled { cursor: default; opacity: .55; }
+.joko-assistant-launcher { background: #466861; color: #fff; padding: .85rem 1.25rem; border: 1px solid #668780; border-radius: 1.5rem; box-shadow: 0 4px 16px #263c3a25; font-family: var(--joko-font-display, inherit) !important; }
+.joko-assistant [hidden] { display: none !important; }
+.joko-assistant-panel { display: flex; flex-direction: column; width: min(448px, calc(100vw - 2rem)); max-height: min(850px, calc(100dvh - 2rem)); overflow: hidden; border: 1px solid #c8c9b9; border-radius: 17px 17px 8px 8px; background: #fffaf0; box-shadow: 0 12px 40px #20352d25; }
+.joko-assistant-top { display: flex; justify-content: space-between; gap: .75rem; padding: 1rem 1.2rem; background: #466861; color: #fff; align-items: center; flex-shrink: 0; }
+.joko-assistant-top p { color: #fff !important; margin: 0 0 .25rem; font-size: .65rem; letter-spacing: .15rem; }
+.joko-assistant-top h2 { color: #fff !important; font-family: var(--joko-font-display, inherit); font-weight: var(--joko-font-display-weight, 700); font-size: 1.65rem; line-height: 1.2; margin: 0; }
+.joko-assistant-header-actions { display: flex; align-items: center; gap: .4rem; }
+.joko-assistant-header-actions select { border: 1px solid #ffffff65; border-radius: 6px; color: #fff; background: #466861; max-width: 95px; font-size: .75rem; padding: .5rem .25rem; }
+.joko-assistant-header-actions button { border: 0; background: transparent; color: #fff; padding: .6rem; }
+.joko-assistant-scroll { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.joko-assistant-welcome { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 1rem; padding: 1.3rem 1.2rem 1.15rem; border-bottom: 1px solid #ddd8c9; }
+.joko-assistant-welcome h3 { font-family: var(--joko-font-display, inherit); font-weight: 600; font-size: 1.45rem; line-height: 1.3; margin: 0 0 .6rem; color: var(--joko-brand-text, #303532); letter-spacing: -.02em; }
+.joko-assistant-welcome h3 em { font-style: italic; color: var(--joko-brand-accent, #c76624); }
+.joko-assistant-welcome p { font-size: .8rem; line-height: 1.6; margin: 0; color: #59665d; }
+.joko-assistant-illustration { min-height: 95px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .5rem; border: 1px solid #b8bdac; background: #f0eddd; padding: .5rem; transform: rotate(3deg); color: #66795c; box-shadow: 3px 4px 0 #e5e2d2; }
+.joko-assistant-illustration span { text-align: center; font-size: .7rem; }
+.joko-assistant-illustration img { width: 100%; height: 100px; object-fit: contain; }
+.joko-assistant-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: 1rem 1rem 0; }
+.joko-assistant-tabs button { display: flex; align-items: flex-start; text-align: left; gap: .55rem; border: 1px solid #ddd8c9; border-radius: 8px; padding: .8rem .6rem; background: transparent; color: inherit; min-width: 0; }
+.joko-assistant-tabs svg { color: #286c67; flex-shrink: 0; margin-top: .1rem; }
+.joko-assistant-tabs strong { font-family: var(--joko-font-display, inherit); display: block; font-size: .8rem; font-weight: 500; line-height: 1.4; }
+.joko-assistant-tabs small { display: block; color: #687267; font-size: .68rem; margin-top: .2rem; line-height: 1.4; }
+.joko-assistant-tabs button[aria-pressed='true'] { background: #e6ede4; border-color: #71958a; box-shadow: inset 0 -2px 0 #286c67; }
+.joko-assistant-topics { padding: 1.2rem; }
+.joko-assistant-topic-title { display: flex; justify-content: space-between; gap: .5rem; align-items: center; margin-bottom: .65rem; }
+.joko-assistant-topic-title label { font-size: .68rem; letter-spacing: .05rem; text-transform: uppercase; color: #596951; }
+.joko-assistant-topic-title span { font-size: .65rem; color: #576c5c; border: 1px solid #ccd9c9; border-radius: 20px; padding: .2rem .45rem; background: #edf2e9; }
+.joko-assistant-topic-title .is-live { color: #8e4c24; border-color: #e2c8b2; background: #fbefde; }
+.joko-assistant-topics select { width: 100%; padding: .7rem; font-size: .85rem; color: inherit; background: #fffdf7; border: 1px solid #b8c2b2; border-radius: 6px; margin-bottom: .85rem; }
+.joko-assistant-secondary { font-size: .72rem; line-height: 1.6; color: #627164; margin: .4rem 0 .75rem; }
+.joko-assistant-question { border-bottom: 1px solid #ddd8c9; }
+.joko-assistant-question summary { cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; list-style: none; padding: .85rem 0; font-size: .85rem; line-height: 1.5; }
+.joko-assistant-question summary::-webkit-details-marker { display: none; }
+.joko-assistant-question summary::after { content: '+'; color: #286c67; font-size: 1.2rem; }
+.joko-assistant-question[open] summary { color: #286c67; }
+.joko-assistant-question[open] summary::after { content: '−'; }
+.joko-assistant-question p { font-size: .8rem; line-height: 1.75; margin: 0 0 .9rem; white-space: pre-wrap; }
+.joko-assistant a { color: #286c67; text-decoration: underline; overflow-wrap: anywhere; }
+.joko-assistant-question a { display: block; font-size: .75rem; margin-bottom: .8rem; }
+.joko-assistant-hint { display: flex; align-items: center; gap: .4rem; font-size: .68rem; color: #6d7b65; margin: 1rem 0 0; }
+.joko-assistant-sample { display: block; width: 100%; text-align: left; border: 1px solid #d5d9c8; background: #f4f4e8; color: inherit; border-radius: 8px; padding: .75rem; font-size: .8rem !important; margin: .5rem 0; line-height: 1.5; }
+.joko-assistant-log { padding: 0 1.2rem; }
+.joko-assistant-message { margin: .65rem 0; padding: .75rem; border-radius: 10px; background: #e9eee4; font-size: .8rem; line-height: 1.6; overflow-wrap: anywhere; }
+.joko-assistant-message.user { background: #e0efeb; margin-left: 1.5rem; }
+.joko-assistant-message p { margin: 0; white-space: pre-wrap; }
+.joko-assistant-message small { font-size: .65rem; }
+.joko-assistant-message button { display: block; border: 1px solid #a8b9a0; padding: .5rem; border-radius: 5px; background: transparent; margin-top: .6rem; }
+.joko-assistant-product { display: grid; gap: .3rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #cad5c5; }
+.joko-assistant-product p { font-size: .75rem; }
+.joko-assistant-product p small { display: block; }
+.joko-assistant-bottom { border-top: 1px solid #ddd8c9; background: #f5f3e8; padding: .9rem 1.2rem; flex-shrink: 0; }
+.joko-assistant-bottom form { display: flex; align-items: center; gap: .4rem; }
+.joko-assistant-bottom textarea { flex: 1; min-width: 0; max-height: 6rem; resize: vertical; border: 1px solid #abbdae; border-radius: 6px; color: inherit; background: #fffdf7; font-size: .85rem; padding: .7rem; }
+.joko-assistant-bottom form button { display: flex; align-items: center; justify-content: center; background: #286c67; border: 0; border-radius: 6px; color: #fff; min-width: 44px; min-height: 44px; }
+.joko-assistant-bottom .joko-assistant-secondary { font-size: .65rem; margin: .5rem 0 .75rem; }
+.joko-assistant-bottom footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .68rem; }
+.joko-assistant-bottom footer button { padding: .2rem 0; background: transparent; border: 0; border-bottom: 1px solid #adb9a4; color: #536951; }
+.joko-assistant :is(button,select,textarea,summary,a):focus-visible { outline: 2px solid var(--joko-brand-accent, #c76624); outline-offset: 2px; }
+@media (max-width: 480px) { .joko-assistant { right: .5rem; bottom: max(.5rem, env(safe-area-inset-bottom)); } .joko-assistant-panel { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); } .joko-assistant-welcome { grid-template-columns: 1fr 78px; padding: 1rem; } .joko-assistant-welcome h3 { font-size: 1.3rem; } .joko-assistant-tabs strong { font-size: .77rem; } .joko-assistant-bottom textarea { font-size: 16px; } }
+@media (pointer: coarse) { .joko-assistant-top button, .joko-assistant-bottom footer :is(a,button) { min-height: 44px; } }

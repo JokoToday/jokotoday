@@ -57,7 +57,7 @@ export function createAssistantServer({ engine, enabled = false, origins = ['htt
       if (session.busy) throw fail('busy', 409);
       if (url.pathname === '/api/assistant/session' && req.method === 'DELETE') { sessions.delete(body.sessionId); return send(200, { cleared: true }); }
       if (url.pathname !== '/api/assistant/messages' || req.method !== 'POST') throw fail('not_found', 404);
-      if (typeof body.message !== 'string' || !body.message.trim() || body.message.length > 1000 || !['en', 'th'].includes(body.language) || typeof body.clientRequestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.clientRequestId)) throw fail('invalid_request', 400);
+      if (typeof body.message !== 'string' || !body.message.trim() || body.message.length > 1000 || !['en', 'th', 'zh'].includes(body.language) || typeof body.clientRequestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.clientRequestId)) throw fail('invalid_request', 400);
       const previous = session.replies.get(body.clientRequestId);
       if (previous) {
         if (previous.message !== body.message || previous.language !== body.language) throw fail('invalid_request', 400);

@@ -17,7 +17,7 @@ export function validateArguments(name, args) {
     if (key === 'limit' && (!Number.isInteger(value) || value < 1 || value > 10)) throw Error('Invalid limit');
     // Public catalogue search is substring-based; these spellings denote the
     // same generic product family but published Thai names use mixed spellings.
-    result[key] = key === 'query' && /^ครัวซอง(?:ต์|ท์)?$/.test(value.trim()) ? 'croissant' : value;
+    result[key] = key === 'query' && /^(?:ครัวซอง(?:ต์|ท์)?|可颂|可頌|牛角包)$/.test(value.trim()) ? 'croissant' : value;
   }
   if (name === toolNames[1] && !result.product_id) throw Error('Product required');
   if (name === toolNames[0]) result.limit ??= 6;

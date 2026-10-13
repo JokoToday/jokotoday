@@ -40,6 +40,8 @@ import '../app/joko-today/admin/jokoAdmin.css';
 import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 import { InternalSignedInAccount } from './InternalSignedInAccount';
 
+const AskJokoManagement = lazy(() => import('./AskJokoManagement').then(m => ({ default: m.AskJokoManagement })));
+
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
 interface AdminWorkspaceProps {
@@ -47,6 +49,7 @@ interface AdminWorkspaceProps {
 }
 
 type WorkspaceTab =
+  | 'ask-joko'
   | 'cms'
   | 'homepage'
   | 'joko-notes'
@@ -67,6 +70,7 @@ type WorkspaceTab =
 
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
+  if (path.startsWith('/admin/ask-joko')) return 'ask-joko';
   if (path.startsWith('/admin/homepage')) return 'homepage';
   if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/makers')) return 'makers';
@@ -88,6 +92,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
+    case 'ask-joko': return '/admin/ask-joko';
     case 'homepage': return '/admin/homepage';
     case 'joko-notes': return '/admin/page-accents';
     case 'makers': return '/admin/makers';
@@ -170,6 +175,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <LayoutDashboard className="h-4 w-4" />
                   Content & Commerce
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('ask-joko')} className={tabClass('ask-joko')}><MessageSquareQuote className="h-4 w-4" />Ask JOKO</button>
                 <button type="button" onClick={() => selectWorkspaceTab('homepage')} className={tabClass('homepage')}>
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
@@ -250,6 +256,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
         {activeTab === 'makers' && <MakersManagement />}
         {activeTab === 'non-bakery' && <NonBakeryManagement />}
 
+        {activeTab === 'ask-joko' && <Suspense fallback={<p>Loading Ask JOKO…</p>}><AskJokoManagement /></Suspense>}
         {activeTab === 'homepage' && (
           <Suspense fallback={<div className="min-h-[40vh]" aria-busy="true" />}>
             <HomepageBuilderAdmin />

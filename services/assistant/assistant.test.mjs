@@ -140,3 +140,16 @@ test('OpenAI transport uses fixed server key endpoint and no retries', async () 
   });
   await assert.rejects(provider({})); assert.equal(calls, 1);
 });
+
+test('Chinese requests and croissant aliases use the approved inventory path', async t => {
+  let seenLanguage;
+  const api = await apiFor(t, { engine: async ({ language }) => { seenLanguage = language; return { answer: '请选择取货日期。', products: [] }; } });
+  const { sessionId } = await (await api('session', {})).json();
+  const response = await api('messages', { sessionId, clientRequestId: randomUUID(), message: '有哪些可颂？', language: 'zh' });
+  assert.equal(response.status, 200); assert.equal(seenLanguage, 'zh');
+  assert.equal(validateArguments('search_joko_products', { query: '可颂' }).query, 'croissant');
+  assert.equal(validateArguments('search_joko_products', { query: '牛角包' }).query, 'croissant');
+  const { budget } = budgetFor(t); let rounds = 0;
+  const engine = createEngine({ budget, inventory: async () => snapshot(), provider: async body => { assert.match(body.instructions, /Simplified Chinese/); return rounds++ ? answerResponse : toolResponse; } });
+  await engine({ message: '可颂', language: 'zh', requestId: 'fixture' });
+});
