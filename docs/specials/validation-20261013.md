@@ -42,3 +42,20 @@ Consequently the main receipt migration and new compatibility migration are prep
 4. Isolated LINE test integration; no broadcast is authorized by this recovery.
 5. Admin localized editor save/reload and mobile/desktop UI checks against synchronized preview.
 6. Review before production merge/deployment.
+
+## Hosted synchronization completed after explicit approval
+
+The user approved updating only the temporary Specials project. Project metadata was verified as `JOKO Specials Test`, ref `szijiljpasxddzgzckra`. The initial migration request encountered an expired request-state error; inspection confirmed it had not run, and the subsequent approved retry succeeded.
+
+- Main customer receipt migration and post-main Specials compatibility migration applied successfully.
+- Deployed `confirm-specials-pickup-receipt` and guarded `create-pickup-handover`.
+- Deployed regular `create-pickup-handoff`, `pickup-handoff-status` and `confirm-pickup-receipt`, including their reviewed shared dependencies.
+- HTTP checks found preview origins were rejected by the production origin allowlist. Added two exact preview origins, conditional on the exact temporary project's Supabase URL. Other projects, including production, still reject these origins. 13 isolated origin checks verify this boundary; no generic Pages wildcard was added.
+- Nine hosted rejection/preflight checks pass: staff endpoints require authentication; malformed tokens return 400; nonexistent valid-length tokens return 404; regular preview preflight returns 204 with the exact permitted origin.
+- Hosted permissions deny `anon` and `authenticated` execution of both regular and Specials receipt finalizers and permit `service_role`. Receipt/session tables enable RLS. All nine test orders have pickup codes, and both compatibility guards are present.
+- JT-1016 remains confirmed/paid, committed/verified and ready. Its Test Mae Rim pickup window is 2026-10-13 09:00–19:00 Bangkok time. JT-1011 remains picked up.
+
+Ready-to-test frontend: https://d049d517.jokotoday-preview.pages.dev/
+Staff should choose Pickup Desk → JOKO Specials, select Test Mae Rim and use JT-1016 for the Stripe-paid staff/customer QR confirmation test.
+
+The earlier deployment block above is resolved. This evidence does not claim completion of authenticated browser handover or provider refund tests. No production deployment, LINE campaign or new provider payment was performed during synchronization.
