@@ -66,6 +66,7 @@ export function SpecialsManagement() {
   const [locations, setLocations] = useState<SpecialsLocation[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const initialSelectionLoaded = useRef(false);
+  const selectionFormRef = useRef<HTMLFormElement>(null);
   const [pastDate, setPastDate] = useState("");
   const [items, setItems] = useState<SpecialsItem[]>([]);
   const [events, setEvents] = useState<SpecialsAuditEvent[]>([]);
@@ -317,14 +318,17 @@ export function SpecialsManagement() {
           </div>
           <div className="flex gap-2">
             <button
-              className="joko-admin-secondary-button px-3 py-2"
+              type="button"
+              className="joko-admin-primary-button px-4 py-2 disabled:opacity-40"
               disabled={locked}
               onClick={() => {
                 setBatchId(null);
                 setForm(initialForm());
                 setItems([]);
                 setEvents([]);
-                setNotice("");
+                setNotice("New selection ready. Enter its title, pickup location and times, then save the draft.");
+                selectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                selectionFormRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
               }}
             >
               {copy.newBatch}
@@ -397,9 +401,14 @@ export function SpecialsManagement() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <form
+          ref={selectionFormRef}
           onSubmit={saveBatch}
-          className="joko-admin-paper-card space-y-4 p-5"
+          className="joko-admin-paper-card space-y-4 overflow-hidden border-2 border-[#C76624]/35 p-5"
         >
+          <div className="-mx-5 -mt-5 mb-5 bg-[#C76624] px-5 py-4 text-white">
+            <h2 className="joko-admin-title text-2xl" style={{ color: "white" }}>{batch ? "Selection details" : "New Selection"}</h2>
+            <p className="mt-1 text-sm">{batch ? batch.title : "Set the title, pickup location and sales window for your Specials Selection."}</p>
+          </div>
           <fieldset
             disabled={locked || Boolean(batch && batch.status !== "draft")}
             className="space-y-4"
