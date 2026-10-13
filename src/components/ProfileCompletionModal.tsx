@@ -6,7 +6,9 @@ import { useCMSLabels } from '../hooks/useCMSLabels';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { PostSignupCelebration } from './PostSignupCelebration';
 import { EmailVerificationPanel } from './EmailVerificationPanel';
+import { NotificationPreferencesFields } from './NotificationPreferencesFields';
 import { hasLinkedLINE } from '../lib/lineAuth';
+import { getCachedLINEFriendshipStatus } from '../lib/lineOfficialAccount';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 
 interface ProfileCompletionModalProps {
@@ -44,7 +46,10 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     name: '',
     phone: '',
     line_id: '',
+    notification_email_enabled: true,
+    notification_line_enabled: false,
   });
+  const lineFriendship = user?.id ? getCachedLINEFriendshipStatus(user.id) : 'unknown';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,6 +58,8 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       name: userProfile?.name || lineDisplayName(user) || '',
       phone: userProfile?.phone || '',
       line_id: userProfile?.line_id || '',
+      notification_email_enabled: userProfile?.notification_email_enabled ?? true,
+      notification_line_enabled: userProfile?.notification_line_enabled ?? false,
     });
     setError('');
     setShowCelebrationModal(showCelebration);
@@ -99,6 +106,34 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
       ));
       return;
     }
+    if (!formData.notification_email_enabled && !formData.notification_line_enabled) {
+      setError(getLabel(
+        'profile.notifications_required_error',
+        language,
+        language === 'th'
+          ? 'กรุณาเลือกช่องทางการแจ้งเตือนอย่างน้อยหนึ่งช่องทาง'
+          : language === 'zh'
+            ? '请至少选择一种通知方式。'
+            : 'Please select at least one notification channel.',
+      ));
+      return;
+    }
+    if (
+      !formData.notification_email_enabled
+      && formData.notification_line_enabled
+      && (!hasLinkedLINE(user) || lineFriendship !== 'friend')
+    ) {
+      setError(getLabel(
+        'profile.notifications_line_only_error',
+        language,
+        language === 'th'
+          ? 'หากต้องการใช้ LINE เป็นช่องทางการแจ้งเตือนเพียงช่องทางเดียว กรุณาเชื่อมต่อ LINE และเพิ่ม JOKO Today เป็นเพื่อนก่อน'
+          : language === 'zh'
+            ? '如需仅通过 LINE 接收通知，请先关联 LINE 账号并将 JOKO Today 添加为好友。'
+            : 'To use LINE as your only notification channel, connect LINE and add JOKO Today as a friend first.',
+      ));
+      return;
+    }
 
     setLoading(true);
 
@@ -107,6 +142,8 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
+        notification_email_enabled: formData.notification_email_enabled,
+        notification_line_enabled: formData.notification_line_enabled,
       });
       setShowQRCode(true);
     } catch (err) {
@@ -119,7 +156,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
     });
   };
 
@@ -327,6 +364,22 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
               </div>
             </div>
           </div>
+
+          <NotificationPreferencesFields
+            compact
+            emailEnabled={formData.notification_email_enabled}
+            lineEnabled={formData.notification_line_enabled}
+            onEmailChange={(enabled) => setFormData((current) => ({
+              ...current,
+              notification_email_enabled: enabled,
+            }))}
+            onLineChange={(enabled) => setFormData((current) => ({
+              ...current,
+              notification_line_enabled: enabled,
+            }))}
+            lineConnected={hasLinkedLINE(user)}
+            lineFriendship={lineFriendship}
+          />
 
           <button
             type="submit"

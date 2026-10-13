@@ -3,6 +3,7 @@ import { Resend } from "npm:resend";
 import {
   authenticateRequest,
   claimNotification,
+  customerNotificationChannelEnabled,
   finishNotification,
   handlePreflight,
   isValidUuid,
@@ -10,6 +11,7 @@ import {
   notificationIdempotencyKey,
   providerErrorSummary,
   rejectDisallowedOrigin,
+  sendCustomerLineNotification,
 } from "../_shared/order-notifications.ts";
 import {
   buildTransactionalEmailShell,
@@ -287,29 +289,73 @@ Deno.serve(async (req: Request) => {
 
   const order = orderData as Order;
   if (order.status !== "cancelled") return jsonResponse(req, 409, { error: "Order is not cancelled" });
+
+  let emailEnabled = true;
+  let lineEnabled = false;
+  try {
+    [emailEnabled, lineEnabled] = await Promise.all([
+      customerNotificationChannelEnabled(order.customer_id, "email"),
+      customerNotificationChannelEnabled(order.customer_id, "line"),
+    ]);
+  } catch (preferenceError) {
+    console.error("SEC-005: cancellation preference lookup failed", preferenceError);
+    return jsonResponse(req, 500, { error: "Notification service unavailable" });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("preferred_language")
+    .eq("id", order.customer_id)
+    .maybeSingle();
+  let lang: Language = normalizeLanguage(profile?.preferred_language) ?? "en";
+
+  const lineMessage = lang === "th"
+    ? `JOKO TODAY\nยกเลิกคำสั่งซื้อ #${order.order_number} แล้ว\nดูคำสั่งซื้อ: ${MY_ORDERS_URL}`
+    : lang === "zh"
+      ? `JOKO TODAY\n订单 #${order.order_number} 已取消\n查看订单：${MY_ORDERS_URL}`
+      : `JOKO TODAY\nOrder #${order.order_number} has been cancelled\nView your orders: ${MY_ORDERS_URL}`;
+
+  const lineDelivery = lineEnabled
+    ? await sendCustomerLineNotification({
+      orderId: order.id,
+      customerId: order.customer_id,
+      notificationType: "customer_cancellation_line",
+      canonicalEventType: "order_cancelled",
+      language: lang,
+      message: lineMessage,
+    })
+    : "skipped_preference";
+
+  if (!emailEnabled) {
+    return jsonResponse(req, 200, {
+      success: true,
+      status: "skipped_preference",
+      line_status: lineDelivery,
+    });
+  }
+
   if (!order.customer_email) return jsonResponse(req, 409, { error: "Order cannot receive email" });
 
   const claimMode = await claimNotification(supabase, order.id, TYPE);
   let eventId: string | null = null;
-  let lang: Language = "en";
 
   if (claimMode.mode === "error") {
     console.error("SEC-005: cancellation notification claim failed", claimMode.error);
     return jsonResponse(req, 500, { error: "Notification service unavailable" });
   }
   if (claimMode.mode !== "outbox") {
-    return jsonResponse(req, 409, { error: "Cancellation notification event unavailable" });
+    return jsonResponse(req, 409, { error: "Cancellation notification event unavailable", line_status: lineDelivery });
   }
 
   const claim = claimMode.claim;
-  if (claim.outcome === "already_sent") return jsonResponse(req, 200, { success: true, status: "already_sent" });
-  if (claim.outcome === "processing") return jsonResponse(req, 202, { success: true, status: "processing" });
-  if (claim.outcome === "uncertain") return jsonResponse(req, 409, { error: "Notification delivery requires review" });
-  if (claim.outcome === "unavailable") return jsonResponse(req, 409, { error: "Notification event unavailable" });
+  if (claim.outcome === "already_sent") return jsonResponse(req, 200, { success: true, status: "already_sent", line_status: lineDelivery });
+  if (claim.outcome === "processing") return jsonResponse(req, 202, { success: true, status: "processing", line_status: lineDelivery });
+  if (claim.outcome === "uncertain") return jsonResponse(req, 409, { error: "Notification delivery requires review", line_status: lineDelivery });
+  if (claim.outcome === "unavailable") return jsonResponse(req, 409, { error: "Notification event unavailable", line_status: lineDelivery });
   if (claim.outcome !== "claimed" || !claim.event_id) return jsonResponse(req, 400, { error: "Notification request rejected" });
 
   eventId = claim.event_id;
-  lang = normalizeLanguage(claim.language) ?? "en";
+  lang = normalizeLanguage(claim.language) ?? lang;
 
   let location: PickupLocation | null = null;
   if (order.pickup_location_id) {
@@ -349,7 +395,7 @@ Deno.serve(async (req: Request) => {
 
     const persisted = await finishNotification(supabase, eventId, "sent", data?.id ?? null, null);
     if (!persisted) return jsonResponse(req, 503, { error: "Notification delivery state unavailable" });
-    return jsonResponse(req, 200, { success: true, status: "sent" });
+    return jsonResponse(req, 200, { success: true, status: "sent", line_status: lineDelivery });
   } catch (error) {
     const summary = providerErrorSummary(error);
     console.error("SEC-005: cancellation delivery outcome uncertain", summary);

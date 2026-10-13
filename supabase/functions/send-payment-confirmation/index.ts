@@ -3,6 +3,7 @@ import { Resend } from "npm:resend";
 import {
   authenticateNotificationRequest,
   claimNotification,
+  customerNotificationChannelEnabled,
   finishNotification,
   handlePreflight,
   isValidUuid,
@@ -10,6 +11,7 @@ import {
   notificationIdempotencyKey,
   providerErrorSummary,
   rejectDisallowedOrigin,
+  sendCustomerLineNotification,
 } from "../_shared/order-notifications.ts";
 import {
   buildTransactionalEmailShell,
@@ -360,6 +362,52 @@ Deno.serve(async (req: Request) => {
   if (order.payment_status !== "paid" || order.payment_method !== "promptpay_online") {
     return jsonResponse(req, 409, { error: "Online payment is not confirmed" });
   }
+
+  let emailEnabled = true;
+  let lineEnabled = false;
+  try {
+    [emailEnabled, lineEnabled] = await Promise.all([
+      customerNotificationChannelEnabled(order.customer_id, "email"),
+      customerNotificationChannelEnabled(order.customer_id, "line"),
+    ]);
+  } catch (preferenceError) {
+    console.error("Payment confirmation preference lookup failed", preferenceError);
+    return jsonResponse(req, 500, { error: "Notification service unavailable" });
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("preferred_language")
+    .eq("id", order.customer_id)
+    .maybeSingle();
+  let lang = normalizeLanguage(profile?.preferred_language) ?? "en";
+
+  const paidAmount = Number(order.amount_paid ?? order.total_amount ?? 0);
+  const lineMessage = lang === "th"
+    ? `JOKO TODAY\nยืนยันการชำระเงินแล้ว #${order.order_number}\nยอดชำระ ฿${paidAmount.toFixed(2)}\nดูคำสั่งซื้อ: ${MY_ORDERS_URL}`
+    : lang === "zh"
+      ? `JOKO TODAY\n付款已确认 #${order.order_number}\n已付款 ฿${paidAmount.toFixed(2)}\n查看订单：${MY_ORDERS_URL}`
+      : `JOKO TODAY\nPayment confirmed #${order.order_number}\nPaid ฿${paidAmount.toFixed(2)}\nView your orders: ${MY_ORDERS_URL}`;
+
+  const lineDelivery = lineEnabled
+    ? await sendCustomerLineNotification({
+      orderId: order.id,
+      customerId: order.customer_id,
+      notificationType: "payment_confirmation_line",
+      canonicalEventType: "payment_received",
+      language: lang,
+      message: lineMessage,
+    })
+    : "skipped_preference";
+
+  if (!emailEnabled) {
+    return jsonResponse(req, 200, {
+      success: true,
+      status: "skipped_preference",
+      line_status: lineDelivery,
+    });
+  }
+
   if (!order.customer_email) return jsonResponse(req, 409, { error: "Order cannot receive email" });
 
   const claimMode = await claimNotification(supabase, order.id, TYPE);
@@ -368,18 +416,18 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, 500, { error: "Notification service unavailable" });
   }
   if (claimMode.mode !== "outbox") {
-    return jsonResponse(req, 409, { error: "Payment notification event unavailable" });
+    return jsonResponse(req, 409, { error: "Payment notification event unavailable", line_status: lineDelivery });
   }
 
   const claim = claimMode.claim;
-  if (claim.outcome === "already_sent") return jsonResponse(req, 200, { success: true, status: "already_sent" });
-  if (claim.outcome === "processing") return jsonResponse(req, 202, { success: true, status: "processing" });
-  if (claim.outcome === "uncertain") return jsonResponse(req, 409, { error: "Notification delivery requires review" });
-  if (claim.outcome === "unavailable") return jsonResponse(req, 409, { error: "Notification event unavailable" });
+  if (claim.outcome === "already_sent") return jsonResponse(req, 200, { success: true, status: "already_sent", line_status: lineDelivery });
+  if (claim.outcome === "processing") return jsonResponse(req, 202, { success: true, status: "processing", line_status: lineDelivery });
+  if (claim.outcome === "uncertain") return jsonResponse(req, 409, { error: "Notification delivery requires review", line_status: lineDelivery });
+  if (claim.outcome === "unavailable") return jsonResponse(req, 409, { error: "Notification event unavailable", line_status: lineDelivery });
   if (claim.outcome !== "claimed" || !claim.event_id) return jsonResponse(req, 400, { error: "Notification request rejected" });
 
   const eventId = claim.event_id;
-  const lang = normalizeLanguage(claim.language) ?? "en";
+  lang = normalizeLanguage(claim.language) ?? lang;
 
   const { data: paymentTransaction } = await supabase
     .from("payment_transactions")
@@ -434,7 +482,7 @@ Deno.serve(async (req: Request) => {
     const persisted = await finishNotification(supabase, eventId, "sent", data?.id ?? null, null);
     if (!persisted) return jsonResponse(req, 503, { error: "Notification delivery state unavailable" });
 
-    return jsonResponse(req, 200, { success: true, status: "sent" });
+    return jsonResponse(req, 200, { success: true, status: "sent", line_status: lineDelivery });
   } catch (error) {
     const summary = providerErrorSummary(error);
     console.error("Payment confirmation delivery outcome uncertain", summary);
