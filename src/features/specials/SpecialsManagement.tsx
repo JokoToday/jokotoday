@@ -85,6 +85,8 @@ export function SpecialsManagement() {
   const [quantity, setQuantity] = useState("1");
   const [source, setSource] = useState("");
   const [reason, setReason] = useState("");
+  const [customSource, setCustomSource] = useState(false);
+  const [customReason, setCustomReason] = useState(false);
   const [isolated, setIsolated] = useState(false);
   const [quality, setQuality] = useState(false);
   const storageKey = `joko-specials-operation:${user?.id || ""}`;
@@ -151,6 +153,8 @@ export function SpecialsManagement() {
     setQuality(false);
     setSource("");
     setReason("");
+    setCustomSource(false);
+    setCustomReason(false);
     if (!batchId) return;
     void loadSpecialsBatch(batchId)
       .then((data) => {
@@ -730,23 +734,36 @@ export function SpecialsManagement() {
               </div>
               <label className="block text-sm">
                 {copy.source}
-                <input
-                  required
-                  maxLength={500}
-                  className="joko-admin-field mt-1 w-full"
-                  value={source}
-                  onChange={(event) => setSource(event.target.value)}
-                />
+                <select required className="joko-admin-field mt-1 w-full" value={customSource ? "__other__" : source} onChange={event => {
+                  setCustomSource(event.target.value === "__other__");
+                  setSource(event.target.value === "__other__" ? "" : event.target.value);
+                }}>
+                  <option value="">Select source / destination</option>
+                  {locations.map(place => <option key={place.id} value={place.name_en}>{place[`name_${language}`] || place.name_en}</option>)}
+                  <option value="Bakery counter">Bakery counter</option>
+                  <option value="Market stock">Market stock</option>
+                  <option value="Returned to regular sale">Returned to regular sale</option>
+                  <option value="Waste / disposal">Waste / disposal</option>
+                  <option value="__other__">Other…</option>
+                </select>
+                {customSource && <input required aria-label="Other source / destination" maxLength={500} className="joko-admin-field mt-2 w-full" value={source} onChange={event => setSource(event.target.value)} />}
               </label>
               <label className="block text-sm">
                 {copy.reason}
-                <input
-                  required
-                  maxLength={1000}
-                  className="joko-admin-field mt-1 w-full"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                />
+                <select required className="joko-admin-field mt-1 w-full" value={customReason ? "__other__" : reason} onChange={event => {
+                  setCustomReason(event.target.value === "__other__");
+                  setReason(event.target.value === "__other__" ? "" : event.target.value);
+                }}>
+                  <option value="">Select reason</option>
+                  <option value="Today's surplus">Today's surplus</option>
+                  <option value="End-of-day discount">End-of-day discount</option>
+                  <option value="Promotional offer">Promotional offer</option>
+                  <option value="Stock count correction">Stock count correction</option>
+                  <option value="Unsold stock returned">Unsold stock returned</option>
+                  <option value="Quality issue / disposal">Quality issue / disposal</option>
+                  <option value="__other__">Other…</option>
+                </select>
+                {customReason && <input required aria-label="Other reason" maxLength={1000} className="joko-admin-field mt-2 w-full" value={reason} onChange={event => setReason(event.target.value)} />}
               </label>
               {direction === "in" && (
                 <div className="space-y-3">
