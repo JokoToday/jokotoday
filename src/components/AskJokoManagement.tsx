@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, RefreshCw, Save, Send } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, RefreshCw, Save, Send, Upload } from "lucide-react";
 import {
   loadAssistantAdmin,
   publishAssistantContent,
@@ -81,6 +81,9 @@ export function AskJokoManagement() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [preview, setPreview] = useState(false);
+  const imageInput = useRef<HTMLInputElement>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [draft?.illustration.url]);
   const patch = (next: AssistantContent) => {
     setDraft(next);
     setDirty(true);
@@ -259,16 +262,44 @@ export function AskJokoManagement() {
         <fieldset disabled={busy} className="space-y-5 border-0 p-0">
           <section className="joko-admin-paper-card space-y-3 p-5">
             <h3 className="font-semibold">Illustration</h3>
-            <label className="block text-sm">
-              JPG, PNG or WebP
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="joko-admin-secondary-button flex items-center gap-2 px-3 py-2"
+                onClick={() => imageInput.current?.click()}
+              >
+                <Upload size={16} /> Upload image
+              </button>
+              <span className="text-sm">JPG, PNG or WebP. Upload starts after choosing a file.</span>
               <input
+                ref={imageInput}
                 aria-label="Upload Ask JOKO illustration"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => void upload(e.target.files?.[0])}
-                className="mt-2 block w-full text-sm"
+                onChange={(e) => {
+                  void upload(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+                className="hidden"
               />
-            </label>
+            </div>
+            <div className="rounded-xl border border-[#d1d8cb] bg-[#faf7ef] p-4">
+              <p className="mb-3 text-sm font-medium">Image preview</p>
+              {safeIllustrationUrl(draft.illustration.url) && !imageFailed ? (
+                <img
+                  key={draft.illustration.url}
+                  src={draft.illustration.url}
+                  alt={draft.illustration.alt.en || "Ask JOKO illustration preview"}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageFailed(true)}
+                  className="max-h-64 max-w-full rounded-lg object-contain"
+                />
+              ) : (
+                <p className="text-sm text-[#59625b]">
+                  {imageFailed ? "Image could not load. Check the URL or upload again." : "Upload an image or paste a JOKO media URL to preview it here."}
+                </p>
+              )}
+            </div>
             <label className="block text-sm">
               Existing JOKO media URL
               <input
