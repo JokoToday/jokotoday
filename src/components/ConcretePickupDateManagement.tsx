@@ -1,3 +1,4 @@
+import { PickupHoursManagement } from './PickupHoursManagement';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Edit3, RefreshCw, Save, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -709,6 +710,7 @@ export function ConcretePickupDateManagement() {
       <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-700">
         Product capacity overrides remain a separate product/inventory Admin workflow and are not changed from this screen. Customer v2 ordering remains disabled until the separately reviewed frontend cutover.
       </div>
+      <PickupHoursManagement scope="date" />
     </div>
   );
 }
