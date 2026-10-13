@@ -208,7 +208,7 @@ export function SpecialsManagement() {
       pendingRef.current = null;
       setPending(null);
       setBatchId(result.batch.id);
-      setNotice(copy.saved);
+      setNotice(action === "save_batch" ? "Draft saved. Add product offers and stock before publishing." : action === "save_item" ? "Offer saved. Add counted stock before preparing the batch." : action === "transfer" ? (request.direction === "in" ? "Stock added to Specials successfully." : "Unsold stock released from Specials successfully.") : action === "prepare" ? "Batch prepared. Use Publish prepared Specials to open checkout." : copy.saved);
       await refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -284,6 +284,9 @@ export function SpecialsManagement() {
 
   return (
     <section className="space-y-6 pt-6">
+      {notice && <div role="status" className="fixed bottom-6 right-6 z-50 flex max-w-md items-start gap-4 rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 text-[#303532] shadow-lg">
+        <p>{notice}</p><button type="button" aria-label="Dismiss confirmation" className="font-semibold text-[#C76624]" onClick={() => setNotice("")}>×</button>
+      </div>}
       <SpecialsPageContentEditor />
       <div className="joko-admin-paper-card p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -796,7 +799,8 @@ export function SpecialsManagement() {
             </fieldset>
           </form>
           <div className="joko-admin-paper-card space-y-3 p-5">
-            <p className="text-sm">{copy.leftover}</p>
+            <p className="text-sm">Prepare batch locks the offers and prices for publishing. It does not open checkout; publish in the section below.</p>
+            <p className="text-sm">Release available stock removes unsold units from Specials. Choose their destination and reason in Transfer stock; staff must also move the physical units.</p>
             <div className="flex flex-wrap gap-2">
               {batch.status === "draft" && (
                 <button

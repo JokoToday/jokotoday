@@ -146,7 +146,7 @@ export function SpecialsOperations({
       <h2 className="text-xl font-semibold">Checkout, pickup & LINE</h2>
       {settings && (
         <details>
-          <summary className="cursor-pointer font-semibold">
+          <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
             Merchant payment configuration
           </summary>
           <div className="mt-4 space-y-3">
@@ -177,7 +177,7 @@ export function SpecialsOperations({
               />
             </label>
             <button
-              className="rounded border px-4 py-2"
+              className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy}
               onClick={() => void importMaster()}
             >
@@ -226,7 +226,7 @@ export function SpecialsOperations({
               receiver.
             </label>}
             <button
-              className="rounded border px-4 py-2"
+              className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || (settings.enabled && settings.payment_mode === "kshop_master" && !approved)}
               onClick={() => void run(() => action("settings", settings))}
             >
@@ -242,7 +242,7 @@ export function SpecialsOperations({
             Sending LINE is a separate deliberate action.
           </p>
           <button
-            className="rounded border px-4 py-2"
+            className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={busy || batch.status !== "prepared"}
             onClick={() =>
               void run(() =>
@@ -256,7 +256,7 @@ export function SpecialsOperations({
             Publish prepared Specials
           </button>
           <button
-            className="ml-3 rounded border px-4 py-2"
+            className="joko-admin-primary-button ml-3 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={busy || batch.status !== "live"}
             onClick={() =>
               void run(() => action("queue_line", { batch_id: batch.id }))
@@ -276,7 +276,7 @@ export function SpecialsOperations({
               </p>
               {announcement.last_error && <p>{announcement.last_error}</p>}
               <button
-                className="rounded border px-4 py-2"
+                className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={
                   busy ||
                   ["accepted", "suppressed", "sending"].includes(
@@ -302,7 +302,7 @@ export function SpecialsOperations({
             </div>
           )}
           <details>
-            <summary className="cursor-pointer font-semibold">
+            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
               Staff pickup location access
             </summary>
             <p>
@@ -323,7 +323,7 @@ export function SpecialsOperations({
             </select>
             <p>Location: {locationId}</p>
             <button
-              className="mr-3 rounded border px-4 py-2"
+              className="joko-admin-primary-button mr-3 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || !staffId || !locationId}
               onClick={() =>
                 void run(() =>
@@ -338,7 +338,7 @@ export function SpecialsOperations({
               Assign location
             </button>
             <button
-              className="rounded border px-4 py-2"
+              className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || !staffId || !locationId}
               onClick={() =>
                 void run(() =>
@@ -354,7 +354,7 @@ export function SpecialsOperations({
             </button>
           </details>
           <details>
-            <summary className="cursor-pointer font-semibold">
+            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
               Payment reconciliation & actual refunds
             </summary>
             <p>
@@ -385,7 +385,7 @@ export function SpecialsOperations({
                   </p>
                   <p className="break-all text-xs">Order {r.order_id}</p>
                   <button
-                    className="mt-2 underline"
+                    className="joko-admin-primary-button mt-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy || !refundRef.trim() || !refundReason.trim()}
                     onClick={() =>
                       void run(() =>
@@ -402,7 +402,7 @@ export function SpecialsOperations({
                     Record actual full refund
                   </button>
                   <button
-                    className="ml-4 underline"
+                    className="joko-admin-primary-button ml-4 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy || !refundReason.trim()}
                     onClick={() =>
                       void run(() =>
@@ -421,10 +421,10 @@ export function SpecialsOperations({
           </details>
         </>
       )}
-      <button className="underline" disabled={busy} onClick={() => void load()}>
+      <button className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy} onClick={() => void load()}>
         Refresh operations
       </button>
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p role="status" className="rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 font-medium">{notice}</p>}
       {error && (
         <p role="alert" className="text-red-700">
           {error}
