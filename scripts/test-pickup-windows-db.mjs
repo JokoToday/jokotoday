@@ -72,6 +72,15 @@ assert.equal((await q(create, params))[0].result.pickup_location_snapshot.name_e
 await actor(admin);
 stamp = (await q('select updated_at::text stamp from public.pickup_date_locations'))[0].stamp;
 await rejects(hoursSql, ['date', dateId, location, '10:00', '14:00', 30, stamp], /active orders/);
+// A cancelled order can be reactivated only if its frozen slot still matches
+// the current duration and opening-time alignment.
+await q("update public.orders set status='cancelled' where id=$1", [order.id]);
+stamp = (await q('select updated_at::text stamp from public.pickup_date_locations'))[0].stamp;
+await q(hoursSql, ['date', dateId, location, '10:15', '13:15', 30, stamp]);
+await rejects("update public.orders set status='pending' where id=$1", [order.id], /original pickup window/);
+stamp = (await q('select updated_at::text stamp from public.pickup_date_locations'))[0].stamp;
+await q(hoursSql, ['date', dateId, location, '10:30', '14:30', 60, stamp]);
+await rejects("update public.orders set status='pending' where id=$1", [order.id], /original pickup window/);
 await q('select public.admin_set_pickup_windows_required_v1(false)');
 await q("update public.pickup_dates set order_cutoff_at=now()+interval '6 days'");
 await actor(customer);
