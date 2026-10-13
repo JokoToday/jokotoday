@@ -28,6 +28,14 @@ const bundled = await build({
   write: false,
   platform: 'node',
   format: 'esm',
+  // This browser module imports the Vite client; keep the audit isolated from
+  // any real project URL or key when running under Node.
+  define: {
+    'import.meta.env': JSON.stringify({
+      VITE_SUPABASE_URL: 'https://supabase.invalid',
+      VITE_SUPABASE_ANON_KEY: 'isolated-contract-test-key',
+    }),
+  },
 });
 const helper = await import(
   'data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64')
