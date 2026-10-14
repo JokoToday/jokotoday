@@ -1,0 +1,142 @@
+{
+  "production_project": "xvhualoeboobulwgmkla",
+  "test_project": "szijiljpasxddzgzckra",
+  "reviewed_main": "773b22da265d9e43b42a9d5ac9c6c8e6255f1c89",
+  "migrations": [
+    {
+      "file": "20261008101347_joko_specials_inventory_foundation_v1.sql",
+      "sha256": "96ffd787f4f3672a97ca86fbfaa5243eb58b7fe65f0678339a06519992f8fdcb"
+    },
+    {
+      "file": "20261008110550_joko_specials_checkout_v1.sql",
+      "sha256": "f40feae4560af1dba27177d3f8e292a8c0b0f2f958fae0180af383bf7b642281"
+    },
+    {
+      "file": "20261009025239_joko_specials_payment_compatibility_v1.sql",
+      "sha256": "b3ec2cd48eeb141a7ff438f4bc2b009b2b8fbd764471fc719c4c09331544895f"
+    },
+    {
+      "file": "20261010144000_pickup_handover_v1.sql",
+      "sha256": "62d1487d14ef1b62b3a19f31fb39ea0cfa331be1667c58a235047f865f0a6ec9"
+    },
+    {
+      "file": "20261011161020_joko_specials_catalogue_products_v1.sql",
+      "sha256": "cf5c37bf7ae193055d81300def400a0bb0fcf2581fa80dd70628c0faada1739a"
+    },
+    {
+      "file": "20261012094221_joko_specials_pickup_handover_v1.sql",
+      "sha256": "fd92aba3a063f03f15b1e9cf5fe9ae48840d9a4f64920fd8d1db7abb76a7f2a5"
+    },
+    {
+      "file": "20261012100247_joko_specials_main_payment_guards_v1.sql",
+      "sha256": "f03989d473327537ea917f04b1b47d7606a08845b8759e9c6d7abcc6bcd92996"
+    },
+    {
+      "file": "20261012144155_joko_specials_dual_payment_rails_v1.sql",
+      "sha256": "d8274e31f952bfdf710bdb410f077a8cd8d61c196c97ab7b677e8b47b675f383"
+    },
+    {
+      "file": "20261013024901_joko_specials_receipt_compatibility_v1.sql",
+      "sha256": "cf6146b9356318e3519f26fb47d6068d261e95e343f0bcc6db72316eb842c877"
+    },
+    {
+      "file": "20261014040517_joko_specials_noncard_refund_evidence_v1.sql",
+      "sha256": "b23b10f3052744eb9615a416ad097f5143f8dbffb078cf505509c5c190f9fdad"
+    },
+    {
+      "file": "20261014041822_joko_specials_release_guards_v1.sql",
+      "sha256": "212d2b34e73e1e6772aeaa1a247436e0068a38e0c8633cfd90e858ad916c4de9"
+    }
+  ],
+  "sql_bundle_sha256": "47cf9fd0b3a7ec1fb3bc0833fd59ab02ee5a2ef7dfa21f06cf3a4717cd36cc0a",
+  "edge_functions": [
+    {
+      "name": "stripe-promptpay-intent",
+      "verify_jwt": true,
+      "sha256": "de4f367380d978822d09847fb0cdb654148c3bf760b49becbbd844d891b9c01a"
+    },
+    {
+      "name": "stripe-webhook",
+      "verify_jwt": false,
+      "sha256": "ec92cd8745070c2776d43f5f4348e20f17d8be168e58d4a15d2edf747e815b49"
+    },
+    {
+      "name": "specials-retry-stripe-refund",
+      "verify_jwt": true,
+      "sha256": "d5b2cd7b34740e36390ce1ce5a021e8f3775e1fd79daf9cea1b8953c492fa965"
+    },
+    {
+      "name": "specials-merchant-config",
+      "verify_jwt": true,
+      "sha256": "a29e955704feebb0f535b7c52db992f5ad0b34e1e7a47e72d5d34f137e2edc78"
+    },
+    {
+      "name": "create-pickup-handover",
+      "verify_jwt": true,
+      "sha256": "369d289f6174cc46f2fca395dd182225809c6367a7f568e0c39763889ce56041"
+    },
+    {
+      "name": "pickup-handover-status",
+      "verify_jwt": false,
+      "sha256": "69e8e0f5cb96d1103ba48313f3bb7e6741338f3490aa31ea2953a52f74b72bf6"
+    },
+    {
+      "name": "confirm-specials-pickup-receipt",
+      "verify_jwt": false,
+      "sha256": "7d25938cdb4a5c685f3654230b38873c4e409de5da24b29ae9f64fb113340801"
+    },
+    {
+      "name": "bypass-pickup-receipt",
+      "verify_jwt": true,
+      "sha256": "7b3471b0832467359bc52abb61d896a5d141e829807bd42a77b5f9a2e76687b6"
+    },
+    {
+      "name": "specials-line-send",
+      "verify_jwt": true,
+      "sha256": "b870a8f449469c892b10e496e759cd5367975081baf975406b4b20823358dedd"
+    }
+  ],
+  "launch": {
+    "payment_mode": "stripe_promptpay",
+    "payments_enabled_until_smoke_test": false,
+    "SPECIALS_LINE_ENABLED": "false",
+    "VITE_SPECIALS_LINE_ENABLED": "false",
+    "VITE_SPECIALS_EASYSLIP_ENABLED": "false",
+    "scheduled_notifications": "preserve existing controls"
+  },
+  "test_data_imported": false,
+  "shared_function_sources": [
+    {
+      "file": "supabase/functions/_shared/auth-email-routing.ts",
+      "sha256": "88414a1f1baf88f196139bef2a1dd582d993cb2236befe2150454d1e4e75b43a"
+    },
+    {
+      "file": "supabase/functions/_shared/customer-notification-providers.ts",
+      "sha256": "7e274ba3a6d6ffe0453ec350616237efc6d2af43adc4e1ab5a24e57d840d87fc"
+    },
+    {
+      "file": "supabase/functions/_shared/customer-notification-templates.ts",
+      "sha256": "ee44e8a4bc4c85662eb929158d77d76dedecaef48a45af76596e4da5aa31f6c0"
+    },
+    {
+      "file": "supabase/functions/_shared/kshop-master-qr.ts",
+      "sha256": "cbf76e9158099f1039c48f53f361f708be8b08801ef668aadb30254aecca1928"
+    },
+    {
+      "file": "supabase/functions/_shared/notification-webhook-security.ts",
+      "sha256": "31ee0fc37b16d93e843850e04a9b5855656d68b47122f7f1f5529af79746009e"
+    },
+    {
+      "file": "supabase/functions/_shared/order-notifications.ts",
+      "sha256": "03024d7f6ab3efed25c851edee85edf1b69f91bcecd217b09abd94b13deee8d4"
+    },
+    {
+      "file": "supabase/functions/_shared/transactional-email.ts",
+      "sha256": "3d605372a6fe0ff1fbeeb8d5f4aad2d4d80348dffe96266dfb9d147cfd43cd54"
+    }
+  ],
+  "required_database_functions": [
+    "public.resolve_customer_notification_recipient_v1(uuid,text)",
+    "public.notification_channel_allowed_v1(uuid,text)"
+  ]
+}

@@ -78,12 +78,13 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderError } = await service
       .from("orders")
-      .select("id, order_number, customer_id, status, payment_status")
+      .select("id, order_number, customer_id, status, payment_status, order_type")
       .eq("id", orderId)
       .maybeSingle();
 
     if (orderError) throw orderError;
     if (!order) return jsonResponse(req, 404, { error: "Order not found" });
+    if (order.order_type === "specials") return jsonResponse(req, 409, { error: "Use the Specials pickup desk" });
 
     if (order.status === "completed") {
       const { data: receipt } = await service

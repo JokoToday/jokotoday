@@ -1,0 +1,943 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+const { PGlite } = await import(pathToFileURL(process.env.PGLITE_MODULE).href);
+const db = new PGlite();
+let count = 0;
+for (const file of [
+  "supabase/tests/specials_foundation_fixture.sql",
+  "supabase/migrations/20261008101347_joko_specials_inventory_foundation_v1.sql",
+  "supabase/tests/specials_checkout_fixture.sql",
+  "supabase/migrations/20261008110550_joko_specials_checkout_v1.sql",
+])
+  // Real baseline RPCs use lowercase begin; guard installation must accept it.
+  await db.exec(
+    file.endsWith("specials_checkout_fixture.sql")
+      ? (await readFile(file, "utf8")).replace(/\bBEGIN\b/g, "begin")
+      : await readFile(file, "utf8"),
+  );
+// Simulate the later regular migration replacing expiry, then apply the compatibility guard.
+await db.exec(`
+CREATE OR REPLACE FUNCTION public.expire_payment_transaction_v1(p_payment_transaction_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+ UPDATE public.payment_transactions SET status='expired' WHERE id=p_payment_transaction_id; RETURN '{"regular":true}'::jsonb;
+END $$;
+CREATE FUNCTION public.reactivate_expired_online_order_v1(p_order_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+ RETURN '{"regular":true}'::jsonb;
+END $$;
+CREATE FUNCTION public.expire_own_payment_transaction_v1(p_payment_transaction_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+ RETURN public.expire_payment_transaction_v1(p_payment_transaction_id);
+END $$;
+`);
+await db.exec(await readFile("supabase/migrations/20261008213000_payment_handoff_v1.sql", "utf8"));
+await db.exec(await readFile("supabase/migrations/20261009023000_stripe_promptpay_v1.sql", "utf8"));
+// Verify compatibility guards also accept real lowercase function bodies.
+await db.exec(`DO $$ DECLARE f record; BEGIN
+ FOR f IN SELECT oid FROM pg_proc WHERE pronamespace='public'::regnamespace
+ AND proname IN ('expire_payment_transaction_v1','reactivate_expired_online_order_v1','expire_own_payment_transaction_v1') LOOP
+ EXECUTE replace(pg_get_functiondef(f.oid), E'BEGIN\\n', E'begin\\n');
+ END LOOP; END $$;`);
+await db.exec(await readFile("supabase/migrations/20261009025239_joko_specials_payment_compatibility_v1.sql", "utf8"));
+await db.exec(await readFile('supabase/migrations/20261011161020_joko_specials_catalogue_products_v1.sql', 'utf8'));
+await db.exec("CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;");
+await db.exec('CREATE TABLE public.loyalty_redemptions(id uuid,order_id uuid,status text,reward_snapshot jsonb)');
+await db.exec(await readFile('supabase/migrations/20261009103000_payment_safety_hardening_v1.sql','utf8'));
+await db.exec(await readFile('supabase/migrations/20261012100247_joko_specials_main_payment_guards_v1.sql','utf8'));
+// Deliberately configure regular checkout for Stripe throughout Specials tests.
+await db.exec("UPDATE public.payment_settings SET payment_qr_mode='stripe_promptpay'");
+const id = {
+  admin: "00000000-0000-0000-0000-000000000001",
+  customer: "00000000-0000-0000-0000-000000000002",
+  staff: "00000000-0000-0000-0000-000000000003",
+  loc: "20000000-0000-0000-0000-000000000001",
+  product: "10000000-0000-0000-0000-000000000001",
+};
+const actor = async (role, uid = "") => {
+  await db.exec("RESET ROLE");
+  await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [uid]);
+  await db.query("SELECT set_config('request.jwt.claim.role',$1,false)", [role]);
+  await db.exec(`SET ROLE ${role}`);
+};
+const query = async (sql, args = []) => (await db.query(sql, args)).rows;
+const rpc = async (action, request) =>
+  (
+    await query("SELECT public.admin_specials_action_v1($1,$2,$3) r", [
+      action,
+      JSON.stringify(request),
+      crypto.randomUUID(),
+    ])
+  )[0].r;
+const eq = (a, b, label) => {
+  assert.deepEqual(a, b, label);
+  count++;
+};
+const fails = async (fn, rx, label) => {
+  await assert.rejects(fn, rx, label);
+  count++;
+};
+await actor("authenticated", id.admin);
+const now = (
+  await query(
+    "SELECT clock_timestamp() t,(clock_timestamp() AT TIME ZONE 'Asia/Bangkok')::date::text AS business_day",
+  )
+)[0];
+const plus = (n) =>
+  new Date(new Date(now.t).getTime() + n * 60000).toISOString();
+let { batch: b } = await rpc("save_batch", {
+  title: "Specials",
+  business_date: now.business_day,
+  pickup_location_id: id.loc,
+  sales_start_at: plus(-1),
+  sales_end_at: plus(50),
+  pickup_start_at: plus(-1),
+  pickup_end_at: plus(80),
+});
+let { batch, item } = await rpc("save_item", {
+  batch_id: b.id,
+  expected_version: b.version,
+  product_id: id.product,
+  special_price_satang: 10000,
+  max_per_customer: 3,
+});
+b = batch;
+({ batch: b } = await rpc("transfer", {
+  batch_id: b.id,
+  expected_version: b.version,
+  item_id: item.id,
+  item_version: item.version,
+  direction: "in",
+  quantity: 6,
+  source_reference: "Count 1",
+  reason: "Isolated",
+  physically_isolated: true,
+  unallocated_and_good_quality: true,
+}));
+({ batch: b } = await rpc("prepare", {
+  batch_id: b.id,
+  expected_version: b.version,
+}));
+await fails(
+  () => rpc("publish", { batch_id: b.id, expected_version: b.version }),
+  /enabled payment/,
+  "disabled until configured",
+);
+await rpc("settings", {
+  enabled: true,
+  qr_payload:
+    "00020101021129370016A0000006770101110113006681234567853037645802TH6304823E",
+  receiver_bank_code: "KBANK",
+  receiver_bank_number: "1234567890",
+  receiver_label: "JOKO",
+});
+({ batch: b } = await rpc("publish", {
+  batch_id: b.id,
+  expected_version: b.version,
+}));
+eq(b.status, "live", "published");
+await actor("anon");
+const cat = (await query("SELECT public.specials_catalog_v1() r"))[0].r;
+eq(cat.items.length, 1, "public catalog");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '6 minutes' WHERE id=$1",[b.id]);
+await actor("anon");
+eq(Boolean((await query("SELECT public.specials_catalog_v1() r"))[0].r.batch),true,"Specials remains open with six minutes left");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '4 minutes' WHERE id=$1",[b.id]);
+await actor("anon");
+eq((await query("SELECT public.specials_catalog_v1() r"))[0].r,{},"catalog closes five minutes before sales end");
+await actor("authenticated",id.customer);
+await fails(()=>query("SELECT public.specials_checkout_v1($1,$2,$3)",[b.id,JSON.stringify([{item_id:item.id,quantity:1}]),crypto.randomUUID()]),/Checkout is closed/,"database enforces shorter cutoff");
+await actor("postgres");
+await query("UPDATE public.specials_batches SET sales_end_at=$1 WHERE id=$2",[plus(50),b.id]);
+
+await actor("anon");
+eq(cat.batch.notes_internal, undefined, "internal fields hidden");
+await fails(
+  () => query("SELECT * FROM public.specials_checkouts"),
+  /permission denied/,
+  "anonymous checkout hidden",
+);
+await actor("authenticated", id.customer);
+const cart = [{ item_id: item.id, quantity: 2 }],
+  key = crypto.randomUUID();
+const checkout = async (c = cart, k = key) =>
+  (
+    await query("SELECT public.specials_checkout_v1($1,$2,$3) r", [
+      b.id,
+      JSON.stringify(c),
+      k,
+    ])
+  )[0].r;
+const { order_id: order } = await checkout();
+await actor("postgres");
+const deadlines = (await query("SELECT round(extract(epoch FROM c.payment_deadline-c.created_at)) AS hold_seconds, extract(epoch FROM c.verification_deadline-c.payment_deadline)::integer AS grace_seconds, (t.expires_at=c.payment_deadline) AS payment_matches, t.provider, t.payment_mode FROM public.specials_checkouts c JOIN public.payment_transactions t ON t.order_id=c.order_id WHERE c.order_id=$1",[order]))[0];
+eq(Number(deadlines.hold_seconds),300,"Specials holds last exactly five minutes");
+eq(deadlines.grace_seconds,120,"verification grace is two minutes");
+eq(deadlines.payment_matches,true,"payment rail deadline matches stock deadline");
+eq([deadlines.provider,deadlines.payment_mode],['easyslip','kshop_master'],"regular Stripe setting cannot change Specials rail");
+const originalDeadlines = (await query("SELECT payment_deadline,verification_deadline FROM public.specials_checkouts WHERE order_id=$1",[order]))[0];
+await actor("authenticated",id.customer);
+eq((await checkout()).order_id, order, "idempotent checkout");
+await actor("postgres");
+eq((await query("SELECT payment_deadline,verification_deadline FROM public.specials_checkouts WHERE order_id=$1",[order]))[0],originalDeadlines,"checkout retries cannot extend deadlines");
+await actor("authenticated",id.customer);
+eq((await query("SELECT order_id FROM public.specials_checkouts WHERE order_id=$1",[order])).length,1,"customer lifecycle projection is readable for My Orders");
+await fails(
+  () => checkout([{ item_id: item.id, quantity: 1 }], key),
+  /different request/,
+  "key payload protected",
+);
+await fails(
+  () => checkout(cart, crypto.randomUUID()),
+  /existing checkout/,
+  "one active hold",
+);
+await fails(
+  () =>
+    query("UPDATE public.orders SET status=$1 WHERE id=$2", [
+      "picked_up",
+      order,
+    ]),
+  /authorized Specials/,
+  "direct staff/customer bypass blocked",
+);
+for (const sql of [
+  "SELECT public.cancel_online_order($1)",
+  "SELECT public.staff_record_order_payment_v2($1,'cash')",
+  "SELECT * FROM public.confirm_order_pickup($1)",
+])
+  await fails(
+    () => query(sql, [order]),
+    /authorized Specials/,
+    "legacy bypass blocked",
+  );
+const state = async (o = order) =>
+  (await query("SELECT public.specials_customer_state_v1($1) r", [o]))[0].r;
+eq((await state()).order.total_amount, 200, "server price");
+eq((await state()).checkout.inventory_state, "held", "stock held");
+await fails(
+  () =>
+    query("SELECT public.specials_finish_verification_v1($1,$2)", [
+      crypto.randomUUID(),
+      "{}",
+    ]),
+  /permission denied/,
+  "customer cannot forge provider evidence",
+);
+await actor("authenticated", "00000000-0000-0000-0000-000000000004");
+eq((await query("SELECT order_id FROM public.specials_checkouts WHERE order_id=$1",[order])).length,0,"different customer cannot read lifecycle projection");
+await actor("authenticated", id.staff);
+await fails(
+  () => query("SELECT public.specials_customer_state_v1($1)", [order]),
+  /not found/,
+  "different customer blocked",
+);
+await fails(
+  () =>
+    query("SELECT * FROM public.specials_pickup_v1($1,$2)", [order, id.loc]),
+  /Not authorized/,
+  "unassigned desk blocked",
+);
+await actor("service_role");
+const attempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  order,
+  id.customer,
+  attempt,
+  "private/file",
+]);
+await actor("authenticated", id.customer);
+await fails(
+  () => query("SELECT public.specials_customer_state_v1($1,true)", [order]),
+  /Verification in progress/,
+  "cannot cancel during verification",
+);
+await actor("service_role");
+const evidence = {
+  provider_success: true,
+  reference: "bank-ref-1",
+  amount: 200,
+  paid_at: new Date().toISOString(),
+  account_matched: true,
+  bank_code: "KBANK",
+  bank_number: "123-456-7890",
+  duplicate: false,
+};
+const finish = async (a, e) =>
+  (
+    await query("SELECT public.specials_finish_verification_v1($1,$2) r", [
+      a,
+      JSON.stringify(e),
+    ])
+  )[0].r;
+eq(
+  (await finish(attempt, evidence)).state,
+  "verified",
+  "exact recipient and amount commit",
+);
+eq(
+  (await finish(attempt, evidence)).state,
+  "verified",
+  "provider completion replay",
+);
+await actor("postgres");
+let stock = (
+  await query(
+    "SELECT quantity_available,quantity_held,quantity_committed FROM public.specials_items WHERE id=$1",
+    [item.id],
+  )
+)[0];
+eq(
+  stock,
+  { quantity_available: 4, quantity_held: 0, quantity_committed: 2 },
+  "stock conservation",
+);
+eq(
+  (
+    await query("SELECT count(*)::int n FROM public.order_notification_events")
+  )[0].n,
+  2,
+  "notifications only after payment",
+);
+await actor("authenticated", id.admin);
+await rpc("staff_location", {
+  user_id: id.staff,
+  location_id: id.loc,
+  enabled: true,
+});
+await actor("authenticated", id.staff);
+eq(
+  (
+    await query("SELECT * FROM public.specials_pickup_v1($1,$2)", [
+      order,
+      id.loc,
+    ])
+  )[0].status,
+  "picked_up",
+  "paid pickup",
+);
+eq(
+  (
+    await query("SELECT * FROM public.specials_pickup_v1($1,$2)", [
+      order,
+      id.loc,
+    ])
+  )[0].status,
+  "picked_up",
+  "pickup replay",
+);
+await actor("authenticated", id.customer);
+await fails(
+  () => checkout([{ item_id: item.id, quantity: 2 }], crypto.randomUUID()),
+  /quantity limit/,
+  "committed units count against cap",
+);
+const { order_id: late } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await actor("service_role");
+const lateAttempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  late,
+  id.customer,
+  lateAttempt,
+  "private/late",
+]);
+await actor("postgres");
+await query(
+  "UPDATE public.specials_checkouts SET payment_deadline=clock_timestamp()-interval '4 minutes',verification_deadline=clock_timestamp()-interval '1 minute' WHERE order_id=$1",
+  [late],
+);
+await actor("service_role");
+eq(
+  (
+    await finish(lateAttempt, {
+      ...evidence,
+      reference: "bank-ref-late",
+      amount: 100,
+    })
+  ).state,
+  "reconciliation_required",
+  "late payment never reacquires stock",
+);
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT inventory_state,financial_state FROM public.specials_checkouts WHERE order_id=$1",
+      [late],
+    )
+  )[0],
+  { inventory_state: "released", financial_state: "reconciliation_required" },
+  "late money tracked separately",
+);
+await actor("authenticated", id.admin);
+const ann = await rpc("queue_line", { batch_id: b.id });
+const ann2 = await rpc("queue_line", { batch_id: b.id });
+eq(
+  ann.announcement.retry_key,
+  ann2.announcement.retry_key,
+  "one announcement retry key",
+);
+await actor("service_role");
+const line = async (action, result = {}) =>
+  (
+    await query("SELECT public.specials_line_action_v1($1,$2,$3) r", [
+      action,
+      b.id,
+      JSON.stringify(result),
+    ])
+  )[0].r;
+eq((await line("claim")).send, true, "LINE claim");
+eq((await line("claim")).send, false, "LINE concurrent claim blocked");
+await line("finish", { status: "uncertain", error: "timeout" });
+eq(
+  (await line("claim")).retry_key,
+  ann.announcement.retry_key,
+  "LINE retry key retained",
+);
+await line("finish", { status: "accepted", request_id: "accepted-1" });
+eq((await line("claim")).status, "accepted", "accepted campaigns never resend");
+await actor("authenticated", id.admin);
+await rpc("refund_pending", {
+  batch_id: b.id,
+  reference: "bank-ref-late",
+  reason: "Return confirmed transfer",
+});
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT financial_state FROM public.specials_checkouts WHERE order_id=$1",
+      [late],
+    )
+  )[0].financial_state,
+  "refund_pending",
+  "refund intention is separate from actual refund",
+);
+await actor("authenticated", id.admin);
+await rpc("refund", {
+  batch_id: b.id,
+  reference: "bank-ref-late",
+  amount: 100,
+  refund_reference: "refund-1",
+  reason: "Actual transfer returned",
+});
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT financial_state FROM public.specials_checkouts WHERE order_id=$1",
+      [late],
+    )
+  )[0].financial_state,
+  "refunded",
+  "actual refund recorded",
+);
+eq(
+  (
+    await query("SELECT stock_remaining FROM public.cms_products WHERE id=$1", [
+      id.product,
+    ])
+  )[0].stock_remaining,
+  20,
+  "regular stock untouched",
+);
+// Whole-cart rollback and cancellation never leak stock or order rows.
+await actor("authenticated", id.customer);
+const beforeCart = await query("SELECT count(*)::int n FROM public.orders");
+await fails(
+  () =>
+    checkout(
+      [
+        { item_id: item.id, quantity: 1 },
+        { item_id: "99999999-0000-0000-0000-000000000000", quantity: 1 },
+      ],
+      crypto.randomUUID(),
+    ),
+  /sold out/,
+  "all-cart atomic rejection",
+);
+eq(
+  (await query("SELECT count(*)::int n FROM public.orders"))[0].n,
+  beforeCart[0].n,
+  "failed cart creates no order",
+);
+const { order_id: cancelOrder } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await query("SELECT public.specials_customer_state_v1($1,true)", [cancelOrder]);
+await query("SELECT public.specials_customer_state_v1($1,true)", [cancelOrder]);
+eq(
+  (await state(cancelOrder)).checkout.inventory_state,
+  "released",
+  "cancel replay releases exactly once",
+);
+// A verification grace hold survives the existing payment expiry worker.
+const { order_id: grace } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await actor("service_role");
+const graceAttempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  grace,
+  id.customer,
+  graceAttempt,
+  "private/grace",
+]);
+await actor("postgres");
+await query(
+  "UPDATE public.specials_checkouts SET created_at=clock_timestamp()-interval '6 minutes',payment_deadline=clock_timestamp()-interval '1 minute',verification_deadline=clock_timestamp()+interval '1 minute' WHERE order_id=$1",
+  [grace],
+);
+await query(
+  "UPDATE specials_private.attempts SET registered_at=clock_timestamp()-interval '2 minutes' WHERE id=$1",
+  [graceAttempt],
+);
+const gracePaid = (
+  await query("SELECT clock_timestamp()-interval '3 minutes' t")
+)[0].t;
+await actor("service_role");
+const payment = (
+  await query("SELECT id FROM public.payment_transactions WHERE order_id=$1", [
+    grace,
+  ])
+)[0];
+await fails(
+  () => query("SELECT public.reactivate_expired_online_order_v1($1)", [grace]),
+  /authorized Specials workflow/, "regular reactivation cannot reopen Specials",
+);
+await fails(
+  () => query("SELECT public.expire_own_payment_transaction_v1($1)", [payment.id]),
+  /authorized Specials workflow/, "regular customer expiry cannot bypass Specials grace",
+);
+await actor("postgres");
+await fails(
+  () => query("INSERT INTO public.payment_handoff_sessions(payment_transaction_id,order_id,customer_id,token_hash,expires_at) VALUES($1,$2,$3,$4,clock_timestamp()+interval '5 minutes')", [payment.id,grace,id.customer,"specials-test"]),
+  /Specials payment verification/, "privileged regular handoff creation blocked",
+);
+eq((await query("SELECT public.reactivate_expired_online_order_v1($1) r", [crypto.randomUUID()]))[0].r, {regular:true}, "regular reactivation branch preserved");
+await actor("service_role");
+await query("SELECT public.expire_payment_transaction_v1($1)", [payment.id]);
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT inventory_state FROM public.specials_checkouts WHERE order_id=$1",
+      [grace],
+    )
+  )[0].inventory_state,
+  "verifying",
+  "legacy sweep respects grace",
+);
+await actor("service_role");
+eq(
+  (
+    await finish(graceAttempt, {
+      ...evidence,
+      reference: "grace-ref",
+      amount: 100,
+      paid_at: new Date(gracePaid).toISOString(),
+    })
+  ).state,
+  "verified",
+  "timely registered slip succeeds during grace",
+);
+// Pickup server enforces window and location, even for Admin.
+await actor("postgres");
+const original = (
+  await query(
+    "SELECT specials_pickup_snapshot FROM public.orders WHERE id=$1",
+    [grace],
+  )
+)[0].specials_pickup_snapshot;
+await query(
+  "UPDATE public.orders SET specials_pickup_snapshot=jsonb_set(specials_pickup_snapshot,'{start_at}',to_jsonb(clock_timestamp()+interval '10 minutes')) WHERE id=$1",
+  [grace],
+);
+await actor("authenticated", id.admin);
+await fails(
+  () =>
+    query("SELECT * FROM public.specials_pickup_v1($1,$2)", [grace, id.loc]),
+  /Outside same-day/,
+  "future pickup blocked",
+);
+await fails(
+  () =>
+    query("SELECT * FROM public.specials_pickup_v1($1,$2)", [
+      grace,
+      "20000000-0000-0000-0000-000000000002",
+    ]),
+  /Wrong pickup/,
+  "wrong location blocked",
+);
+await actor("postgres");
+await query(
+  "UPDATE public.orders SET specials_pickup_snapshot=$1 WHERE id=$2",
+  [JSON.stringify(original), grace],
+);
+// Receipt references cannot be reused through the regular finalizer.
+await actor("service_role");
+await fails(
+  () =>
+    query(
+      "SELECT public.finalize_verified_payment_v1($1,$2,$3,true,true,false)",
+      [payment.id, "bank-ref-late", 100],
+    ),
+  /Specials payment/,
+  "cross-rail reference reuse blocked",
+);
+await actor("authenticated", id.admin);
+const config = (await query("SELECT public.specials_admin_details_v1() r"))[0].r
+  .settings;
+await fails(
+  () =>
+    rpc("settings", {
+      ...config,
+      qr_payload: config.qr_payload.slice(0, -1) + "0",
+    }),
+  /specials_static_merchant_qr/,
+  "bad QR CRC rejected",
+);
+await actor("authenticated", id.customer);
+await fails(
+  () => query("SELECT public.specials_admin_details_v1()"),
+  /Admin required/,
+  "receiver configuration private",
+);
+await actor("service_role");
+await fails(
+  () => query("SELECT * FROM specials_private.checkout_snapshots"),
+  /permission denied/,
+  "service cannot read raw snapshots directly",
+);
+
+// Missing recipient evidence fails closed; amount mismatch enters the money ledger.
+const other = "00000000-0000-0000-0000-000000000004";
+await actor("authenticated", other);
+const { order_id: mismatch } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await actor("service_role");
+const missingAttempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  mismatch,
+  other,
+  missingAttempt,
+  "private/missing",
+]);
+const missing = { ...evidence, reference: "missing-bank", amount: 100 };
+delete missing.bank_code;
+eq(
+  (await finish(missingAttempt, missing)).state,
+  "rejected",
+  "missing receiver evidence fails closed",
+);
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT count(*)::int n FROM specials_private.receipts WHERE provider_ref='missing-bank'",
+    )
+  )[0].n,
+  0,
+  "wrong recipient is not JOKO money",
+);
+await actor("service_role");
+const mismatchAttempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  mismatch,
+  other,
+  mismatchAttempt,
+  "private/amount",
+]);
+eq(
+  (
+    await finish(mismatchAttempt, {
+      ...evidence,
+      reference: "wrong-amount",
+      amount: 99,
+    })
+  ).state,
+  "reconciliation_required",
+  "wrong amount tracked for reconciliation",
+);
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT amount FROM specials_private.receipts WHERE provider_ref='wrong-amount'",
+    )
+  )[0].amount,
+  "99.00",
+  "actual amount retained",
+);
+await actor("authenticated", other);
+const { order_id: expiry } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await actor("postgres");
+await query(
+  "UPDATE public.specials_checkouts SET payment_deadline=clock_timestamp()-interval '1 second' WHERE order_id=$1",
+  [expiry],
+);
+const beforeExpiry = (
+  await query(
+    "SELECT quantity_available FROM public.specials_items WHERE id=$1",
+    [item.id],
+  )
+)[0].quantity_available;
+await actor("service_role");
+await query("SELECT public.specials_sweep_v1()");
+await query("SELECT public.specials_sweep_v1()");
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT quantity_available FROM public.specials_items WHERE id=$1",
+      [item.id],
+    )
+  )[0].quantity_available,
+  beforeExpiry + 1,
+  "expiry retry returns stock once",
+);
+// Updated receiver settings do not rewrite an existing checkout's immutable snapshot.
+await actor("authenticated", other);
+const { order_id: frozen } = await checkout(
+  [{ item_id: item.id, quantity: 1 }],
+  crypto.randomUUID(),
+);
+await actor("authenticated", id.admin);
+await rpc("settings", { ...config, receiver_bank_number: "9999999999" });
+await actor("service_role");
+const frozenAttempt = crypto.randomUUID();
+await query("SELECT public.specials_begin_verification_v1($1,$2,$3,$4)", [
+  frozen,
+  other,
+  frozenAttempt,
+  "private/frozen",
+]);
+eq(
+  (
+    await finish(frozenAttempt, {
+      ...evidence,
+      reference: "snapshot-ref",
+      amount: 100,
+      paid_at: new Date().toISOString(),
+    })
+  ).state,
+  "verified",
+  "receiver snapshot survives settings change",
+);
+// Closed sales reject new holds but retain already paid pickup rights.
+await actor("authenticated", id.admin);
+const live = (
+  await query("SELECT version FROM public.specials_batches WHERE id=$1", [b.id])
+)[0];
+await rpc("close", {
+  batch_id: b.id,
+  expected_version: live.version,
+  reason: "Sales closed",
+});
+await actor("authenticated", other);
+await fails(
+  () => checkout([{ item_id: item.id, quantity: 1 }], crypto.randomUUID()),
+  /Checkout is closed/,
+  "closed sale rejects new orders",
+);
+await actor("authenticated", id.staff);
+eq(
+  (
+    await query("SELECT * FROM public.specials_pickup_v1($1,$2)", [
+      frozen,
+      id.loc,
+    ])
+  )[0].status,
+  "picked_up",
+  "closing sales preserves paid pickup",
+);
+// No-show is a fulfillment state, never a refund or stock return.
+await actor("postgres");
+await query(
+  "UPDATE public.specials_batches SET pickup_end_at=clock_timestamp()-interval '1 second',sales_end_at=clock_timestamp()-interval '16 minutes',sales_start_at=clock_timestamp()-interval '40 minutes',pickup_start_at=clock_timestamp()-interval '30 minutes' WHERE id=$1",
+  [b.id],
+);
+const noShowStock = (
+  await query(
+    "SELECT quantity_committed FROM public.specials_items WHERE id=$1",
+    [item.id],
+  )
+)[0].quantity_committed;
+await actor("service_role");
+await query("SELECT public.specials_sweep_v1()");
+await actor("postgres");
+eq(
+  (
+    await query(
+      "SELECT financial_state,fulfillment_state FROM public.specials_checkouts WHERE order_id=$1",
+      [grace],
+    )
+  )[0],
+  { financial_state: "verified", fulfillment_state: "no_show" },
+  "no-show does not imply refund",
+);
+eq(
+  (
+    await query(
+      "SELECT quantity_committed FROM public.specials_items WHERE id=$1",
+      [item.id],
+    )
+  )[0].quantity_committed,
+  noShowStock,
+  "no-show stock remains committed",
+);
+
+await actor("postgres");
+eq(
+  (
+    await query("SELECT loyalty_points_earned FROM public.orders WHERE id=$1", [
+      order,
+    ])
+  )[0].loyalty_points_earned,
+  0,
+  "existing loyalty trigger neutralized for Specials",
+);
+// Regular transactions still follow the deployed Stripe selector and retain their deadline.
+const regularOrder = crypto.randomUUID();
+await query("INSERT INTO public.orders(id,customer_id,order_number,customer_name,customer_phone,total_amount) VALUES($1,$2,'REGULAR-TEST','Test','0812345678',100)",[regularOrder,id.customer]);
+const regularPayment=(await query("INSERT INTO public.payment_transactions(order_id,customer_id,amount_due,expires_at) VALUES($1,$2,100,clock_timestamp()+interval '15 minutes') RETURNING provider,payment_mode,round(extract(epoch FROM expires_at-created_at)) AS seconds",[regularOrder,id.customer]))[0];
+eq([regularPayment.provider,regularPayment.payment_mode,Number(regularPayment.seconds)],['stripe','stripe_promptpay',900],"regular Stripe selection and fifteen-minute deadline untouched");
+const ts = await import("typescript");
+const source = await readFile(
+  "supabase/functions/_shared/kshop-master-qr.ts",
+  "utf8",
+);
+const compiled = ts.transpileModule(source, {
+  compilerOptions: {
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2020,
+  },
+}).outputText;
+const { buildKShopMasterPayload } = await import(
+  "data:text/javascript;base64," + Buffer.from(compiled).toString("base64")
+);
+const amountQr = buildKShopMasterPayload(config.qr_payload, 123.45);
+eq(
+  amountQr.includes("5406123.45"),
+  true,
+  "shared K SHOP generator embeds exact amount",
+);
+eq(amountQr.includes("010211"), true, "genuine static initiation preserved");
+eq(
+  amountQr.includes("29370016A00000067701011101130066812345678"),
+  true,
+  "merchant data preserved",
+);
+eq(
+  amountQr.slice(-4),
+  "15C9",
+  "amount QR CRC matches independent golden fixture",
+);
+// Integrate shared handover infrastructure only after exercising the legacy baseline.
+await actor('service_role');
+await db.exec('RESET ROLE');
+await db.exec('GRANT SELECT ON public.orders,public.specials_checkouts TO service_role');
+await db.exec("CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_user::text $$;");
+await db.exec(await readFile('supabase/migrations/20261010144000_pickup_handover_v1.sql', 'utf8'));
+await db.exec(await readFile('supabase/migrations/20261012094221_joko_specials_pickup_handover_v1.sql', 'utf8'));
+await db.query("UPDATE public.specials_batches SET sales_end_at=clock_timestamp()+interval '10 minutes',pickup_end_at=clock_timestamp()+interval '30 minutes' WHERE id=$1",[b.id]);
+// Restore one paid fixture to ready for a new handover, with an open same-day snapshot.
+await db.query("UPDATE public.specials_checkouts SET fulfillment_state='ready',financial_state='verified',inventory_state='committed' WHERE order_id=$1", [grace]);
+await db.query("UPDATE public.orders SET status='confirmed',payment_status='paid',amount_paid=total_amount,picked_up_at=NULL,specials_pickup_snapshot=jsonb_build_object('start_at',clock_timestamp()-interval '1 minute','end_at',clock_timestamp()+interval '30 minutes') WHERE id=$1", [grace]);
+await db.exec("CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;");
+await db.exec("SELECT set_config('request.jwt.claim.role','service_role',false)");
+await actor('service_role');
+const handover = async (staff=id.admin,loc=id.loc,hash='a'.repeat(64)) => (await query('SELECT public.create_specials_pickup_handover_v1($1,$2,$3,$4) AS r',[grace,loc,staff,hash]))[0].r;
+await fails(()=>handover(id.customer),/authorized/, 'customer cannot initiate handover');
+await fails(()=>handover(id.staff,'20000000-0000-0000-0000-000000000002'),/authorized|Wrong/, 'wrong desk blocked');
+await fails(()=>handover(id.admin,'20000000-0000-0000-0000-000000000002'),/Wrong/, 'admin cannot use wrong desk');
+const firstH = await handover(id.staff);
+const h = await handover(id.staff,id.loc,'b'.repeat(64));
+await fails(()=>query('SELECT public.finalize_pickup_handover_v1($1,NULL)',[firstH.handoffId]),/inactive/, 'replaced QR cannot complete pickup');
+await actor('postgres');
+await query("UPDATE public.pickup_handover_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",[h.handoffId]);
+await actor('service_role');
+await fails(()=>query('SELECT public.finalize_pickup_handover_v1($1,NULL)',[h.handoffId]),/expired/, 'expired receipt QR blocked');
+await actor('postgres');
+await query("UPDATE public.pickup_handover_sessions SET expires_at=clock_timestamp()+interval '10 minutes' WHERE id=$1",[h.handoffId]);
+await actor('service_role');
+await fails(()=>query('SELECT public.finalize_regular_pickup_handover_v1($1,NULL)',[h.handoffId]),/Specials handover/, 'regular handover RPC cannot bypass Specials checks');
+eq(h.state,'active','QR handover starts');
+eq((await query('SELECT status FROM public.orders WHERE id=$1',[grace]))[0].status,'confirmed','staff handover does not prematurely complete pickup');
+await fails(()=>query('SELECT public.finalize_pickup_handover_v1($1,$2)',[h.handoffId,'x']),/reason/, 'fallback requires meaningful audit reason');
+const done=(await query('SELECT public.finalize_pickup_handover_v1($1,NULL) AS r',[h.handoffId]))[0].r;
+eq(done.order.status,'picked_up','receipt confirmation completes order');
+eq(done.handover.status,'confirmed','customer receipt recorded');
+eq(done.order.loyalty_points_earned,0,'Specials receives no regular loyalty points');
+eq((await query('SELECT fulfillment_state FROM public.specials_checkouts WHERE order_id=$1',[grace]))[0].fulfillment_state,'picked_up','Specials fulfillment completes with receipt');
+eq((await query('SELECT public.finalize_pickup_handover_v1($1,NULL) AS r',[h.handoffId]))[0].r.idempotent_replay,true,'receipt confirmation is idempotent');
+await actor('authenticated',id.staff);
+await fails(()=>query('SELECT * FROM public.specials_pickup_v1($1,$2)',[grace,id.loc]),/handover/, 'legacy pickup shortcut is closed');
+await fails(()=>handover(),/permission denied/, 'browser cannot call service-only session creator');
+// Dual rail migration preserves historical EasySlip snapshots, while new ones default to Stripe.
+await actor('postgres');
+await db.exec(await readFile('supabase/migrations/20261012144155_joko_specials_dual_payment_rails_v1.sql','utf8'));
+await db.exec(await readFile('supabase/migrations/20261014040517_joko_specials_noncard_refund_evidence_v1.sql','utf8'));
+await db.exec(`CREATE FUNCTION public.claim_order_notification(p_order_id uuid,p_notification_type text) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+ RETURN jsonb_build_object('outcome','claimed'); END $$;`);
+await db.exec(await readFile('supabase/migrations/20261014041822_joko_specials_release_guards_v1.sql','utf8'));
+eq((await query('SELECT payment_mode FROM public.specials_checkouts WHERE order_id=$1',[order]))[0].payment_mode,'kshop_master','existing rail remains EasySlip');
+await query("UPDATE public.specials_batches SET status='live',sales_start_at=clock_timestamp()-interval '1 minute',sales_end_at=clock_timestamp()+interval '30 minutes',pickup_start_at=clock_timestamp()-interval '1 minute',pickup_end_at=clock_timestamp()+interval '60 minutes' WHERE id=$1",[b.id]);
+const stripeCustomer=crypto.randomUUID();
+await query('INSERT INTO auth.users(id) VALUES($1)',[stripeCustomer]);
+await query("INSERT INTO public.user_profiles(id,role,name,phone,email,profile_completed) VALUES($1,'customer','Stripe fixture','0812345678','stripe@example.invalid',true)",[stripeCustomer]);
+await actor('authenticated',id.admin);
+await rpc('settings',{enabled:true,payment_mode:'stripe_promptpay'});
+const currentBatch=(await query('SELECT version FROM public.specials_batches WHERE id=$1',[b.id]))[0];
+await rpc('transfer',{batch_id:b.id,expected_version:currentBatch.version,item_id:item.id,direction:'in',quantity:3,source_reference:'Isolated Stripe stock',reason:'Test only',physically_isolated:true,unallocated_and_good_quality:true});
+await actor('authenticated',stripeCustomer);
+const stripeOrder=(await checkout([{item_id:item.id,quantity:1}],crypto.randomUUID())).order_id;
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[stripeOrder]))[0].r.payment.mode,'stripe_promptpay','customer receives frozen Stripe mode');
+await actor('service_role');
+await fails(()=>query('SELECT public.specials_begin_verification_v1($1,$2,$3,$4)',[stripeOrder,stripeCustomer,crypto.randomUUID(),'fake/slip']),/requires Stripe/, 'EasySlip cannot verify Stripe checkout');
+await actor('postgres');
+await query("UPDATE public.payment_transactions SET provider_transaction_ref='pi_fixture1' WHERE order_id=$1",[stripeOrder]);
+await actor('service_role');
+const stripeFinish=()=>query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp()) r',[stripeOrder,'pi_fixture1',10000]);
+await fails(()=>query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp())',[stripeOrder,'pi_wrong',10000]),/mismatch/,'intent binding enforced');
+await fails(()=>query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp())',[stripeOrder,'pi_fixture1',1]),/mismatch/,'wrong Stripe amount rejected');
+eq((await stripeFinish())[0].r.state,'verified','Stripe commits held stock');
+eq((await stripeFinish())[0].r.state,'verified','duplicate Stripe callback is idempotent');
+await actor('authenticated',id.admin);
+await rpc('settings',{...config,payment_mode:'kshop_master'});
+await actor('authenticated',stripeCustomer);
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[stripeOrder]))[0].r.payment.mode,'stripe_promptpay','Admin change cannot switch existing checkout');
+const easyOrder=(await checkout([{item_id:item.id,quantity:1}],crypto.randomUUID())).order_id;
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[easyOrder]))[0].r.payment.mode,'kshop_master','new checkout selects EasySlip alternative');
+await query('SELECT public.specials_customer_state_v1($1,true)',[easyOrder]);
+await actor('authenticated',id.admin);await rpc('settings',{enabled:true,payment_mode:'stripe_promptpay'});
+await actor('authenticated',stripeCustomer);
+const lateStripe=(await checkout([{item_id:item.id,quantity:1}],crypto.randomUUID())).order_id;
+await query('SELECT public.specials_customer_state_v1($1,true)',[lateStripe]);
+await actor('postgres');await query("UPDATE public.payment_transactions SET provider_transaction_ref='pi_late_fixture' WHERE order_id=$1",[lateStripe]);
+await actor('service_role');
+eq((await query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp()) r',[lateStripe,'pi_late_fixture',10000]))[0].r.state,'refund_required','cancelled stock is not reacquired');
+await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','pending']);
+await actor('authenticated',stripeCustomer);
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refund_pending','pending refund not described as completed');
+await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','succeeded']);
+await actor('authenticated',stripeCustomer);
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refunded','successful refund persisted');
+await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','pending']);
+await actor('authenticated',stripeCustomer);
+eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refunded','older pending refund does not undo successful refund');
+await fails(()=>query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp())',[lateStripe,'pi_late_fixture',10000]),/permission denied/,'customer cannot forge Stripe verification');
+console.log(`${count} Specials checkout/payment/pickup/LINE assertions passed`);
+await db.close();

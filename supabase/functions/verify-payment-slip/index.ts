@@ -164,11 +164,12 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderError } = await service
       .from("orders")
-      .select("id, order_number, customer_id, payment_status, status")
+      .select("id, order_number, customer_id, payment_status, status, order_type")
       .eq("id", payment.order_id)
       .maybeSingle();
 
     if (orderError) throw orderError;
+    if (order?.order_type === "specials") return jsonResponse({ error: "Use the JOKO Specials checkout for this order" }, 409);
     if (!order || order.customer_id !== authorizedCustomerId) {
       return jsonResponse({ error: "Order not found" }, 404);
     }
@@ -439,7 +440,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", handoffId);
     }
 
-    if (!isHandoff) {
+    if (!isHandoff && authorization) {
     try {
       const notificationResponse = await fetch(
         `${requiredEnv("SUPABASE_URL")}/functions/v1/send-payment-confirmation`,

@@ -15,6 +15,14 @@ import {
 } from '../lib/paymentService';
 import { getPaymentProvider } from '../lib/paymentProviders';
 
+function stripeTestInstructionsUrl(intent: PromptPayIntent): string | null {
+  if (intent.stripeLivemode !== false || !intent.stripeHostedInstructionsUrl) return null;
+  try {
+    const url = new URL(intent.stripeHostedInstructionsUrl);
+    return url.protocol === 'https:' && url.hostname.endsWith('.stripe.com') ? url.href : null;
+  } catch { return null; }
+}
+
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -412,6 +420,7 @@ export function OnlineQrPaymentPanel({
                         ? '真实银行 App 无法扫描此测试二维码。启用 Stripe Live 前，请使用 Stripe 测试模拟器。'
                         : 'Real banking apps cannot scan this test QR. Use Stripe’s test simulator until Stripe Live is activated.'}
                   </p>
+                  {stripeTestInstructionsUrl(intent) && <a className="mt-3 inline-block rounded-lg bg-[#C76624] px-4 py-2 text-sm font-semibold text-white" href={stripeTestInstructionsUrl(intent)!} target="_blank" rel="noopener noreferrer">{language === 'th' ? 'เปิดตัวจำลองการชำระเงิน Stripe' : language === 'zh' ? '打开 Stripe 测试模拟器' : 'Open Stripe test simulator'}</a>}
                 </div>
               </div>
             </div>

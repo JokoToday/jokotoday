@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
-import Stripe from "npm:stripe@22";
+import Stripe from "npm:stripe@22.6.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: order, error: orderError } = await service
       .from("orders")
-      .select("id, order_number, customer_id, customer_email, payment_status, status")
+.select("id, order_number, customer_id, customer_email, payment_status, status, order_type")
       .eq("id", payment.order_id)
       .maybeSingle();
 
@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
       intent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100),
         currency: "thb",
-        payment_method_types: ["promptpay"],
+        allowed_payment_method_types: ["promptpay"],
         payment_method_data: {
           type: "promptpay",
           billing_details: { email: billingEmail },

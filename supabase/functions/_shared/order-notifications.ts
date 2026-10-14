@@ -102,6 +102,10 @@ export function isValidUuid(value: unknown): value is string {
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.has(origin)) return true;
+  // Exact allowlist for the isolated Specials sandbox; production origins stay unchanged.
+  if (Deno.env.get("SUPABASE_URL") === "https://szijiljpasxddzgzckra.supabase.co"
+      && (origin === "https://feat-joko-specials-v1.jokotoday-preview.pages.dev"
+          || origin === "https://d049d517.jokotoday-preview.pages.dev")) return true;
   return false;
 }
 

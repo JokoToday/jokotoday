@@ -480,7 +480,7 @@ export const translations: Record<Language, Translations> = {
       contact: 'Contact',
       contactLocation: 'Chiang Mai, Thailand',
       preOrdersOnly: 'Pre-orders only',
-      paymentInfo: 'Payment: Cash or Thai QR code on pickup',
+      paymentInfo: 'Online orders: prepaid by QR payment',
       copyright: 'JOKO TODAY. Baked & Beyond.',
     },
     days: {
@@ -791,7 +791,7 @@ export const translations: Record<Language, Translations> = {
       contact: 'ติดต่อเรา',
       contactLocation: 'เชียงใหม่ ประเทศไทย',
       preOrdersOnly: 'รับสั่งจองล่วงหน้าเท่านั้น',
-      paymentInfo: 'ชำระเงิน: เงินสดหรือพร้อมเพย์เมื่อรับสินค้า',
+      paymentInfo: 'คำสั่งซื้อออนไลน์: ชำระล่วงหน้าผ่าน QR',
       copyright: 'JOKO TODAY. อบด้วยใจ เหนือความคาดหมาย',
     },
     days: {
@@ -1102,7 +1102,7 @@ export const translations: Record<Language, Translations> = {
       contact: '联系我们',
       contactLocation: '泰国清迈',
       preOrdersOnly: '仅接受预订',
-      paymentInfo: '付款：取货时现金或泰国二维码',
+      paymentInfo: '网上订单：通过二维码预付',
       copyright: 'JOKO TODAY。烘焙与超越。',
     },
     days: {

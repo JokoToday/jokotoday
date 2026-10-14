@@ -63,6 +63,14 @@ Deno.serve(async (req: Request) => {
     if (!payment) return json({ error: "Payment transaction not found" }, 404);
     if (payment.customer_id !== authData.user.id) return json({ error: "Forbidden" }, 403);
 
+    const { data: order, error: orderError } = await service
+      .from("orders").select("order_type").eq("id", payment.order_id).maybeSingle();
+    if (orderError) throw orderError;
+    if (!order) return json({ error: "Order not found" }, 404);
+    if (order.order_type === "specials") {
+      return json({ error: "Use Specials payment verification" }, 409);
+    }
+
     if (payment.status === "verified") {
       return json({ state: "verified", paymentTransactionId: payment.id });
     }

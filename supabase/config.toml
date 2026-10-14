@@ -43,6 +43,15 @@ verify_jwt = true
 [functions.joko-ai-gateway]
 verify_jwt = false
 
+# Authenticated Specials handlers also validate the bearer token with getUser.
+[functions.specials-verify-payment]
+verify_jwt = true
+
+[functions.specials-line-send]
+verify_jwt = true
+
+[functions.specials-merchant-config]
+verify_jwt = true
 
 [functions.create-payment-handoff]
 verify_jwt = true
@@ -76,6 +85,19 @@ verify_jwt = false
 [functions.admin-stripe-test-payment]
 verify_jwt = true
 
+
+[functions.create-pickup-handover]
+verify_jwt = true
+
+[functions.pickup-handover-status]
+verify_jwt = false
+
+
+[functions.bypass-pickup-receipt]
+verify_jwt = true
+
+[functions.confirm-specials-pickup-receipt]
+verify_jwt = false
 # Dedicated internal bearer secret is checked by the dispatcher; no browser send API.
 [functions.dispatch-customer-notifications]
 verify_jwt = false
@@ -85,4 +107,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sync-line-oa-friendship]
+verify_jwt = true
+
+
+[functions.specials-retry-stripe-refund]
 verify_jwt = true

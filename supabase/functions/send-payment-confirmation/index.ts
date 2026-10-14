@@ -56,6 +56,7 @@ type Order = {
   payment_method?: string | null;
   status: string;
   pickup_date: string | null;
+  specials_pickup_snapshot?: {name_en:string;name_th:string;start_at:string;end_at:string};
   pickup_location_id: string | null;
   order_items: OrderItem[];
 };
@@ -223,6 +224,9 @@ function buildEmail(
   const copy = COPY[lang];
   const subject = `${copy.subject} · #${order.order_number}`;
   const greeting = `${copy.greetingPrefix}${order.customer_name}${copy.greetingSuffix}`;
+  const amountPaid = Number(order.amount_paid ?? 0);
+  const snapshot = order.specials_pickup_snapshot;
+  const pickupDate = snapshot ? `${snapshot.name_en} / ${snapshot.name_th} · ${new Date(snapshot.start_at).toLocaleString('en-GB',{timeZone:'Asia/Bangkok'})}–${new Date(snapshot.end_at).toLocaleTimeString('en-GB',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'})} (Bangkok) · JOKO Specials` : formatPickupDate(order.pickup_date, lang);
   const gross = money(order.total_amount);
   const discount = Math.max(0, money(order.loyalty_discount_amount));
   const netDue = Math.max(0, gross - discount);
@@ -345,6 +349,7 @@ Deno.serve(async (req: Request) => {
 
   let orderQuery = supabase
     .from("orders")
+    .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, payment_status, payment_method, status, pickup_date, specials_pickup_snapshot")
     .select("id, order_number, customer_id, customer_name, customer_email, total_amount, loyalty_discount_amount, amount_paid, payment_status, payment_method, status, pickup_date, pickup_location_id, order_items")
     .eq("id", orderId)
     .eq("purchase_type", "online");

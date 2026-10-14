@@ -268,4 +268,17 @@ assert.equal((await q('select count(*)::int n from public.notification_deliverie
 await q("insert into public.order_notification_events(order_id,notification_type,language) values($1,'customer_receipt_email','en'),($1,'customer_receipt_line','en')",[suppressedOrder]);
 assert.equal((await q("select count(*)::int n from public.order_notification_events where order_id=$1 and notification_type like 'customer_receipt_%'",[suppressedOrder]))[0].n,2);
 console.log('PASS: notification migration, policy enrollment, Bangkok anchors, per-channel claims, frozen retry, fencing, pickup suppression, LINE replay/order and security grants');
+// Applying Specials after the current preference migration retains its routing and exclusions.
+await db.exec(`ALTER TABLE public.orders ADD COLUMN order_type text DEFAULT 'regular';
+CREATE SCHEMA specials_private;
+CREATE FUNCTION specials_private.operational_action(p_action text,p_request jsonb,p_operation_key uuid) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+ RETURN '{}'::jsonb; END $$;`);
+await db.exec(await readFile(new URL('../supabase/migrations/20261014041822_joko_specials_release_guards_v1.sql',import.meta.url),'utf8'));
+await q("update orders set order_type='specials',payment_status='unpaid' where id=$1",[suppressedOrder]);
+assert.equal((await q("select claim_order_notification($1,'payment_confirmation') r",[suppressedOrder]))[0].r.outcome,'unavailable');
+await q("update orders set payment_status='paid' where id=$1",[suppressedOrder]);
+assert.equal((await q("select claim_order_notification($1,'customer_confirmation') r",[suppressedOrder]))[0].r.outcome,'unavailable');
+await rejects("select specials_private.operational_action('refund','{\"reference\":\"stripe:pi_test\"}',gen_random_uuid())",[],/automatic Stripe refund/);
+assert.deepEqual((await q("select specials_private.operational_action('refund','{\"reference\":\"easyslip-test\"}',gen_random_uuid()) r"))[0].r,{});
+console.log('PASS: current notification preferences retain Specials paid-only notification and Stripe refund boundaries');
 await db.close();

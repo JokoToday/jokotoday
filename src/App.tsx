@@ -16,6 +16,7 @@ import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './
 const MakersPage = lazy(() => import('./pages/MakersPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const OurStoryPage = lazy(() => import('./pages/OurStoryPage'));
@@ -29,6 +30,7 @@ const CreativeLabPage = lazy(() => import('./app/creative-lab/CreativeLabPage'))
 const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage').then(({ CustomerAccountPage }) => ({ default: CustomerAccountPage })));
 const StaffScannerPage = lazy(() => import('./pages/StaffScannerPage').then(({ StaffScannerPage }) => ({ default: StaffScannerPage })));
 const StaffLoginPage = lazy(() => import('./pages/StaffLoginPage').then(({ StaffLoginPage }) => ({ default: StaffLoginPage })));
+const SpecialsPickupReceiptConfirmationPage = lazy(() => import('./pages/SpecialsPickupReceiptConfirmationPage'));
 const PickupDeskPage = lazy(() => import('./pages/PickupDeskPage').then(({ PickupDeskPage }) => ({ default: PickupDeskPage })));
 const WalkInDeskPage = lazy(() => import('./pages/WalkInDeskPage').then(({ WalkInDeskPage }) => ({ default: WalkInDeskPage })));
 const MyQRPage = lazy(() => import('./pages/MyQRPage').then(({ MyQRPage }) => ({ default: MyQRPage })));
@@ -50,6 +52,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   products: '/products',
   makers: '/makers',
   checkout: '/checkout',
+  specials: '/specials',
   about: '/about',
   'our-story': '/our-story',
   'meet-founders': '/meet-joe-and-phuttan',
@@ -119,7 +122,7 @@ function AppContent() {
       const productDetailMatch = path.match(/^\/products\/([^/]+)$/);
       const productQrMatch = path.match(/^\/p\/([^/]+)$/);
       const paymentHandoffMatch = path.match(/^\/pay\/handoff\/([^/]+)$/);
-      const pickupReceiptMatch = path.match(/^\/receive\/([^/]+)$/);
+      const pickupReceiptMatch = path.match(/^\/receive\/([^/]+)$/) || path.match(/^\/pickup\/confirm\/([^/]+)$/);
 
       if (pickupReceiptMatch) {
         setPickupReceiptToken(pickupReceiptMatch[1]);
@@ -422,7 +425,9 @@ function AppContent() {
     }
 
     if (currentPage === 'pickup-receipt-confirmation' && pickupReceiptToken) {
-      return <PickupReceiptConfirmationPage token={pickupReceiptToken} />;
+      return window.location.pathname.startsWith('/pickup/confirm/')
+        ? <SpecialsPickupReceiptConfirmationPage token={pickupReceiptToken} />
+        : <PickupReceiptConfirmationPage token={pickupReceiptToken} />;
     }
 
     switch (currentPage) {
@@ -462,6 +467,8 @@ function AppContent() {
             onNavigate={handleNavigate}
           />
         );
+      case 'specials':
+        return <SpecialsPage onNavigate={handleNavigate} />;
       case 'checkout':
         return <CheckoutPage onNavigate={handleNavigate} />;
       case 'about':
@@ -517,7 +524,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute

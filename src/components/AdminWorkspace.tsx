@@ -41,6 +41,8 @@ import '../app/joko-today/admin/jokoAdmin.css';
 import { useInternalJokoBranding } from '../app/joko-today/internal/useInternalJokoBranding';
 import { InternalSignedInAccount } from './InternalSignedInAccount';
 
+const SpecialsManagement = lazy(() => import('../features/specials/SpecialsManagement').then(({ SpecialsManagement }) => ({ default: SpecialsManagement })));
+
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
 
 interface AdminWorkspaceProps {
@@ -48,6 +50,7 @@ interface AdminWorkspaceProps {
 }
 
 type WorkspaceTab =
+  | 'specials'
   | 'cms'
   | 'homepage'
   | 'joko-notes'
@@ -69,6 +72,7 @@ type WorkspaceTab =
 
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
+  if (path.startsWith('/admin/specials')) return 'specials';
   if (path.startsWith('/admin/homepage')) return 'homepage';
   if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/makers')) return 'makers';
@@ -91,6 +95,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
+    case 'specials': return '/admin/specials';
     case 'homepage': return '/admin/homepage';
     case 'joko-notes': return '/admin/page-accents';
     case 'makers': return '/admin/makers';
@@ -174,6 +179,10 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <LayoutDashboard className="h-4 w-4" />
                   Content & Commerce
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('specials')} className={tabClass('specials')}>
+                  <ShoppingBasket className="h-4 w-4" />
+                  JOKO Specials
+                </button>
                 <button type="button" onClick={() => selectWorkspaceTab('homepage')} className={tabClass('homepage')}>
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
@@ -253,6 +262,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
       </header>
 
       <main className="joko-admin-content pb-14">
+        {activeTab === 'specials' && <Suspense fallback={<div className="p-6">Loading JOKO Specials…</div>}><SpecialsManagement /></Suspense>}
         {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
         {activeTab === 'makers' && <MakersManagement />}
         {activeTab === 'non-bakery' && <NonBakeryManagement />}
