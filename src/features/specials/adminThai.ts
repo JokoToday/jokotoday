@@ -1,4 +1,18 @@
 const thai: Record<string, string> = {
+  "batch_created": "สร้างชุดสินค้าราคาพิเศษ",
+  "batch_updated": "แก้ไขชุดสินค้าราคาพิเศษ",
+  "batch_prepared": "เตรียมชุดสินค้าราคาพิเศษ",
+  "batch_closed": "ปิดชุดสินค้าราคาพิเศษ",
+  "batch_cancelled": "ยกเลิกชุดสินค้าราคาพิเศษ",
+  "item_created": "สร้างข้อเสนอ",
+  "item_updated": "แก้ไขข้อเสนอ",
+  "transfer_in": "โอนสต็อกเข้า",
+  "transfer_out": "นำสต็อกออก",
+  "Same-day batch setup": "กำหนดชุดสินค้าสำหรับวันนี้",
+  "Catalogue offer and price setup": "กำหนดสินค้าและราคาข้อเสนอจากแค็ตตาล็อก",
+  "Offer price and Made by JOKO attestation": "กำหนดราคาข้อเสนอและยืนยันว่าสินค้าผลิตโดย JOKO",
+  "Reviewed inventory and pickup preview; not published": "ตรวจสอบสต็อกและตัวอย่างการรับสินค้าแล้ว ยังไม่เผยแพร่",
+
   "Specials Selection": "ชุดสินค้าราคาพิเศษ",
   "New Selection": "ชุดสินค้าราคาพิเศษใหม่",
   "Selection details": "รายละเอียดชุดสินค้าราคาพิเศษ",
