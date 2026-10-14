@@ -1,6 +1,6 @@
 # Test-only prerequisite for regular checkout release verification
 
-Prepared, not applied. Target: JOKO Specials Test (szijiljpasxddzgzckra).
+Applied atomically after explicit approval on 14 October 2026. Target: JOKO Specials Test (szijiljpasxddzgzckra).
 Production rollout does not include this package.
 
 Root cause: getProducts() queries cms_products with the cms_makers relationship; the sandbox has neither cms_makers nor cms_products.maker_id. Three test catalogue products already exist. Pickup schedules/dates and dated regular inventory are absent.
@@ -16,3 +16,9 @@ Validation: existing Makers isolated SQL suite passed (role permissions, draft v
 Refund gate: JOKO order JT-1018 remains refund_pending; inventory released, fulfillment cancelled. Stripe connector read attempts returned repeated authentication failures, so current provider status/next_action could not be retrieved. PromptPay documentation requires customer bank information for refunds; sandbox behavior is not real-money settlement. Do not enter real bank details or label this refund completed without signed provider evidence.
 
 Approval requested for these two schema migrations and named fixtures in the test project only, since they add RLS/access policies and an order trigger beyond the previously approved notification-preferences migration. The package is atomic and records individual migration history. Stop on an unexpected project or existing Makers schema, rather than applying blindly.
+
+## Hosted verification after application
+
+Makers table/relationship and both migration history entries verified. Customer availability RPC returned TEST — Butter Croissant, 10 units, Saturday 17 October, Test Mae Rim 09:00–17:00 with 30-minute slots. Browser catalogue loads and Add to Cart works. Secure customer email-code sign-in succeeded. Checkout required a slot before confirming date/location. Test regular order JT-1019 (90 THB, no payment) saved 09:00–09:30/revision 1 and reserved one unit; browser cancellation succeeded and dated reserved stock returned to zero. All test notification controls remain paused.
+
+The existing regular payment settings have online_promptpay_enabled=false, payment_qr_mode=promptpay_legacy. This is a legacy regular-order reservation/cancellation regression, not a successful prepaid-payment or pickup-handover test. No payment settings were changed. Stripe Specials refund JT-1018 remains pending; full provider settlement is not claimed. Production was not changed.
