@@ -35,3 +35,7 @@ No test products, orders, customers, inventory, SMTP keys or Stripe keys are cop
 
 Before any paid Specials order exists: disable Specials payments, restore the previously compatible frontend and saved Edge Functions, and verify regular ordering. Preserve the migration history and ledger tables rather than dropping them.
 After a paid Specials order exists: disable new Specials sales, retain fulfillment and refund processing, reconcile outstanding orders/holds/refunds, and choose a compatible frontend rollback. Never blindly remove Specials pickup or financial handling. Do not reset independent transactional notification activation.
+
+## Authorized prepaid test checkpoint
+
+User authorized enabling regular sandbox Stripe prepaid checkout and completing payment/staff/customer receipt testing, plus inspecting the existing Stripe test refund. JOKO Specials Test payment_settings now has online_promptpay_enabled=true and payment_qr_mode=stripe_promptpay; production untouched, all test notification pause controls remain true. Browser timed out opening Stripe Dashboard, then the secure customer sign-in request also timed out. No new regular order/payment was created: latest regular order remains cancelled JT-1019. Payment, staff handover, customer receipt and provider refund settlement remain unverified. Existing Specials JT-1018 remains refund_pending with released inventory. Do not create another refund or mark success manually. Resume secure browser authentication before checkout; verify the Stripe test account before any provider action.
