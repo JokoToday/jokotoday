@@ -41,6 +41,8 @@ Deno.serve(async (req: Request) => {
       .single();
     if (profile?.role !== "admin")
       return response({ error: "Admin required" }, 403);
+    if (Deno.env.get("SPECIALS_LINE_ENABLED") !== "true")
+      return response({ error: "Specials LINE announcements are paused" }, 503);
     const channelToken = env("LINE_MESSAGING_CHANNEL_ACCESS_TOKEN");
     const body = await req.json();
     batch = body.batch_id;

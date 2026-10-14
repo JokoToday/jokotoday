@@ -19,7 +19,7 @@ async function load(name, options={}) {
       return {data:args.p_result,error:null};
     },
   };
-  const env={SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'fake',SUPABASE_ANON_KEY:'fake',EASYSLIP_API_KEY:'fake-provider',LINE_MESSAGING_CHANNEL_ACCESS_TOKEN:'fake-line'};
+  const env={SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'fake',SUPABASE_ANON_KEY:'fake',EASYSLIP_API_KEY:'fake-provider',LINE_MESSAGING_CHANNEL_ACCESS_TOKEN:'fake-line',SPECIALS_LINE_ENABLED:'true'};
   if(options.missingKey)delete env[options.missingKey];
   const fetchStub=async(url,init)=>{calls.fetch.push({url,init});
     if(url.includes('/functions/'))throw new Error('Simulated notification outage');
@@ -53,6 +53,7 @@ h=await load('specials-verify-payment',{beginError:true});eq((await h.invoke()).
 h=await load('specials-verify-payment',{status:400,payload:{success:false,error:{code:'INVALID_SLIP'}}});eq((await h.invoke()).body.state,'rejected');eq(h.calls.rpc[1].args.p_evidence.provider_success,false);
 h=await load('specials-verify-payment',{transportError:true});eq((await h.invoke()).body.state,'verifying');eq(h.calls.rpc.length,1);
 h=await load('specials-line-send');eq((await h.invoke()).status,403);eq(h.calls.fetch.length,0);
+h=await load('specials-line-send',{role:'admin',missingKey:'SPECIALS_LINE_ENABLED'});eq((await h.invoke()).status,503);eq(h.calls.rpc.length,0);eq(h.calls.fetch.length,0);
 h=await load('specials-line-send',{role:'admin'});eq((await h.invoke()).body.status,'accepted');eq(h.calls.fetch[0].init.headers['X-Line-Retry-Key'],'fixed-retry-key');
 h=await load('specials-line-send',{role:'admin',status:409,headers:{'x-line-accepted-request-id':'original-request'}});eq((await h.invoke()).body.status,'accepted');eq(h.calls.rpc[1].args.p_result.request_id,'original-request');
 for(const [status,expected] of [[429,'uncertain'],[500,'uncertain'],[400,'failed']]){h=await load('specials-line-send',{role:'admin',status});eq((await h.invoke()).body.status,expected);}
