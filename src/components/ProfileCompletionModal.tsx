@@ -8,7 +8,7 @@ import { PostSignupCelebration } from './PostSignupCelebration';
 import { EmailVerificationPanel } from './EmailVerificationPanel';
 import { NotificationPreferencesFields } from './NotificationPreferencesFields';
 import { hasLinkedLINE } from '../lib/lineAuth';
-import { getCachedLINEFriendshipStatus } from '../lib/lineOfficialAccount';
+import { refreshLINEFriendshipStatusFromServer } from '../lib/lineOfficialAccount';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 
 interface ProfileCompletionModalProps {
@@ -42,6 +42,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
   const [error, setError] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
   const [showCelebrationModal, setShowCelebrationModal] = useState(showCelebration);
+  const [lineFriendship, setLineFriendship] = useState<'friend' | 'not_friend' | 'unknown'>('unknown');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -49,7 +50,6 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     notification_email_enabled: true,
     notification_line_enabled: false,
   });
-  const lineFriendship = user?.id ? getCachedLINEFriendshipStatus(user.id) : 'unknown';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,6 +64,18 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     setError('');
     setShowCelebrationModal(showCelebration);
   }, [isOpen, showCelebration, userProfile, user]);
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) {
+      setLineFriendship('unknown');
+      return;
+    }
+    let cancelled = false;
+    void refreshLINEFriendshipStatusFromServer(user.id).then((status) => {
+      if (!cancelled) setLineFriendship(status);
+    });
+    return () => { cancelled = true; };
+  }, [isOpen, user?.id]);
 
   if (!isOpen) return null;
 
@@ -379,6 +391,8 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
             }))}
             lineConnected={hasLinkedLINE(user)}
             lineFriendship={lineFriendship}
+            customerId={user?.id}
+            onFriendshipChange={setLineFriendship}
           />
 
           <button

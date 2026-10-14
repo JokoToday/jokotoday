@@ -1,7 +1,8 @@
-import { Mail, MessageCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, Mail, MessageCircle, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCMSLabels } from '../hooks/useCMSLabels';
-import { LINE_OFFICIAL_ACCOUNT_URL, type LINEFriendshipStatus } from '../lib/lineOfficialAccount';
+import { LINE_OFFICIAL_ACCOUNT_URL, refreshLINEFriendshipStatusFromServer, type LINEFriendshipStatus } from '../lib/lineOfficialAccount';
 
 interface NotificationPreferencesFieldsProps {
   emailEnabled: boolean;
@@ -10,6 +11,8 @@ interface NotificationPreferencesFieldsProps {
   onLineChange: (enabled: boolean) => void;
   lineConnected?: boolean;
   lineFriendship?: LINEFriendshipStatus;
+  customerId?: string;
+  onFriendshipChange?: (status: LINEFriendshipStatus) => void;
   compact?: boolean;
 }
 
@@ -20,10 +23,13 @@ export function NotificationPreferencesFields({
   onLineChange,
   lineConnected = false,
   lineFriendship = 'unknown',
+  customerId,
+  onFriendshipChange,
   compact = false,
 }: NotificationPreferencesFieldsProps) {
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
+  const [checkingFriendship, setCheckingFriendship] = useState(false);
 
   const events = [
     getLabel('profile.notifications_type_order', language, language === 'th'
@@ -46,6 +52,28 @@ export function NotificationPreferencesFields({
   const cardClass = compact
     ? 'rounded-xl border border-[#55766F]/16 bg-white/65 p-4'
     : 'rounded-[1.5rem] border border-[#55766F]/14 bg-white/50 p-5 sm:p-6';
+
+  const recheckFriendship = useCallback(async () => {
+    if (!customerId || checkingFriendship) return;
+    setCheckingFriendship(true);
+    try {
+      for (const delay of [0, 1200, 3000, 6000]) {
+        if (delay) await new Promise((resolve) => window.setTimeout(resolve, delay));
+        const status = await refreshLINEFriendshipStatusFromServer(customerId);
+        onFriendshipChange?.(status);
+        if (status === 'friend') return;
+      }
+    } finally {
+      setCheckingFriendship(false);
+    }
+  }, [customerId, checkingFriendship, onFriendshipChange]);
+
+  useEffect(() => {
+    if (!lineEnabled || !customerId) return;
+    const handleFocus = () => { void recheckFriendship(); };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [lineEnabled, customerId, recheckFriendship]);
 
   return (
     <section className={cardClass}>
@@ -140,7 +168,34 @@ export function NotificationPreferencesFields({
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
             {language === 'th' ? 'เพิ่ม JOKO Today ใน LINE' : language === 'zh' ? '在 LINE 添加 JOKO Today' : 'Add JOKO Today on LINE'}
           </a>
+          {customerId && (
+            <button
+              type="button"
+              onClick={() => void recheckFriendship()}
+              disabled={checkingFriendship}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[#06C755]/30 px-3 py-2 font-semibold text-[#285A39] disabled:opacity-60"
+            >
+              {checkingFriendship ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
+              {checkingFriendship
+                ? getLabel('profile.notifications_line_checking', language, language === 'th' ? 'กำลังตรวจสอบ…' : language === 'zh' ? '正在检查…' : 'Checking…')
+                : getLabel('profile.notifications_line_check_status', language, language === 'th' ? 'ตรวจสอบสถานะเพื่อนอีกครั้ง' : language === 'zh' ? '重新检查好友状态' : 'Check friend status again')}
+            </button>
+          )}
         </div>
+      )}
+
+      {lineEnabled && !emailEnabled && (
+        <p className="mt-3 rounded-lg border border-[#C76624]/20 bg-[#FFF5E8] p-3 text-xs leading-relaxed text-[#69401F]">
+          {getLabel(
+            'profile.notifications_line_email_fallback',
+            language,
+            language === 'th'
+              ? 'หากคุณเลิกเป็นเพื่อนกับ JOKO Today ระบบจะเปิดอีเมลโดยอัตโนมัติเพื่อให้ยังรับการแจ้งเตือนคำสั่งซื้อได้'
+              : language === 'zh'
+                ? '如果您不再关注 JOKO Today，系统会自动重新启用电子邮件，以确保您仍能收到订单通知。'
+                : 'If LINE friendship ends, Email will be turned on automatically so important order notifications remain deliverable.',
+          )}
+        </p>
       )}
 
       <div className="mt-4 rounded-xl bg-[#CFE3DF]/35 p-4">

@@ -11,7 +11,7 @@ import { NotificationPreferencesFields } from '../components/NotificationPrefere
 import {
   LINE_OFFICIAL_ACCOUNT_URL,
   dismissLINEFriendInvite,
-  getCachedLINEFriendshipStatus,
+  refreshLINEFriendshipStatusFromServer,
   refreshLINEFriendshipStatus,
   type LINEFriendshipStatus,
 } from '../lib/lineOfficialAccount';
@@ -78,12 +78,15 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       return;
     }
 
-    setLineFriendship(getCachedLINEFriendshipStatus(user.id));
+    setLineFriendship('unknown');
+    void refreshLINEFriendshipStatusFromServer(user.id).then((status) => {
+      if (!cancelled) setLineFriendship(status);
+    });
     if (lineLinked !== true) return;
 
     // A provider token may still be present immediately after LINE OAuth.
-    // If not, keep the most recent cached status; the permanent Add Friend
-    // CTA remains available regardless.
+    // Without one, the server-verified relationship above remains the source
+    // of truth; the permanent Add Friend CTA remains available regardless.
     void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
       if (cancelled || sessionError || !data.session?.provider_token) return;
       const status = await refreshLINEFriendshipStatus(data.session.provider_token, user.id);
@@ -598,6 +601,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               }}
               lineConnected={isLINEConnected}
               lineFriendship={lineFriendship}
+              customerId={user.id}
+              onFriendshipChange={setLineFriendship}
             />
 
             <section className="border-t border-[#55766F]/14 pt-7">

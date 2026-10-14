@@ -6,6 +6,7 @@ import {
   customerNotificationChannelEnabled,
   finishNotification,
   handlePreflight,
+  lineOnlyDeliveryResponse,
   isValidUuid,
   jsonResponse,
   notificationIdempotencyKey,
@@ -326,13 +327,8 @@ Deno.serve(async (req: Request) => {
     })
     : "skipped_preference";
 
-  if (!emailEnabled) {
-    return jsonResponse(req, 200, {
-      success: true,
-      status: "skipped_preference",
-      line_status: lineDelivery,
-    });
-  }
+  const lineOnlyResponse = lineOnlyDeliveryResponse(req, emailEnabled, lineDelivery);
+  if (lineOnlyResponse) return lineOnlyResponse;
 
   if (!order.customer_email) return jsonResponse(req, 409, { error: "Order cannot receive email" });
 

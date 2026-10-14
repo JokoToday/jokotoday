@@ -20,6 +20,30 @@ export type CustomerLineDeliveryStatus =
   | "unavailable"
   | "failed"
   | "uncertain";
+
+export function lineOnlyDeliveryResponse(
+  req: Request,
+  emailEnabled: boolean,
+  lineStatus: CustomerLineDeliveryStatus,
+): Response | null {
+  if (emailEnabled) return null;
+  if (lineStatus === "sent" || lineStatus === "already_sent") {
+    return jsonResponse(req, 200, { success: true, status: lineStatus, line_status: lineStatus });
+  }
+  if (lineStatus === "processing") {
+    return jsonResponse(req, 202, { success: true, status: lineStatus, line_status: lineStatus });
+  }
+
+  const status = lineStatus === "uncertain" || lineStatus === "not_eligible" || lineStatus === "skipped_preference"
+    ? 409
+    : 503;
+  const error = status === 409
+    ? lineStatus === "uncertain"
+      ? "LINE notification outcome requires review"
+      : "LINE notification is not currently deliverable"
+    : "LINE notification could not be delivered; retry is available";
+  return jsonResponse(req, status, { success: false, status: `line_${lineStatus}`, line_status: lineStatus, error });
+}
 export type NotificationOutcome =
   | "claimed"
   | "already_sent"

@@ -83,6 +83,101 @@ ON public.user_profiles
 FOR EACH ROW
 EXECUTE FUNCTION private.guard_customer_notification_preferences_v1();
 
+-- If a LINE-only customer unfollows the OA, restore Email as a deliverable
+-- fallback in the same transaction as the friendship observation. The profile
+-- preference UI explains this behavior before customers select LINE alone.
+CREATE OR REPLACE FUNCTION private.restore_notification_email_after_line_unfollow_v1()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=''
+AS $$
+DECLARE affected_customer uuid;
+BEGIN
+  IF NEW.friendship='friend' THEN
+    RETURN NEW;
+  END IF;
+
+  FOR affected_customer IN
+    UPDATE public.user_profiles up
+    SET notification_email_enabled=true
+    FROM auth.identities i
+    WHERE i.user_id=up.id
+      AND i.provider='custom:line'
+      AND i.provider_id=NEW.line_user_id
+      AND up.notification_line_enabled
+      AND NOT up.notification_email_enabled
+    RETURNING up.id
+  LOOP
+    INSERT INTO private.notification_audit_v1(actor_id,action,before_values,after_values)
+    VALUES (
+      NULL,
+      'line_friendship_fallback_email_enabled',
+      jsonb_build_object('customer_id',affected_customer,'email_enabled',false,'line_enabled',true),
+      jsonb_build_object('customer_id',affected_customer,'email_enabled',true,'line_enabled',true)
+    );
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION private.restore_notification_email_after_line_unfollow_v1()
+  FROM PUBLIC, anon, authenticated;
+
+CREATE TRIGGER restore_notification_email_after_line_unfollow_v1
+AFTER INSERT OR UPDATE OF friendship
+ON private.line_oa_relationships_v1
+FOR EACH ROW
+EXECUTE FUNCTION private.restore_notification_email_after_line_unfollow_v1();
+
+CREATE OR REPLACE FUNCTION public.my_line_oa_friendship_status_v1()
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path=''
+AS $$
+DECLARE
+  v_customer_id uuid := auth.uid();
+  v_provider_context text;
+  v_destination text;
+  v_friendship text;
+BEGIN
+  IF v_customer_id IS NULL THEN
+    RETURN 'unknown';
+  END IF;
+
+  SELECT line_context,line_destination
+  INTO v_provider_context,v_destination
+  FROM private.notification_control_v1
+  WHERE id=true;
+
+  IF v_provider_context IS NULL OR v_destination IS NULL THEN
+    RETURN 'unknown';
+  END IF;
+
+  SELECT r.friendship INTO v_friendship
+  FROM auth.identities i
+  JOIN private.line_oa_relationships_v1 r
+    ON r.line_user_id=i.provider_id
+   AND r.provider_context=v_provider_context
+   AND r.destination=v_destination
+  WHERE i.user_id=v_customer_id
+    AND i.provider='custom:line'
+    AND i.provider_id=i.identity_data->>'sub'
+    AND i.provider_id ~ '^U[0-9a-f]{32}$'
+  LIMIT 1;
+
+  RETURN coalesce(v_friendship,'unknown');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.my_line_oa_friendship_status_v1()
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.my_line_oa_friendship_status_v1()
+  TO authenticated;
+
 ALTER TABLE public.order_notification_events
   DROP CONSTRAINT order_notification_events_notification_type_check;
 
@@ -352,6 +447,24 @@ VALUES
     'You can select LINE now. Messages will start once your LINE account is connected and JOKO Today is added as a friend.',
     'คุณสามารถเลือก LINE ได้ตอนนี้ ข้อความจะเริ่มส่งเมื่อเชื่อมต่อบัญชี LINE และเพิ่ม JOKO Today เป็นเพื่อนแล้ว',
     '您现在可以选择 LINE。关联 LINE 账号并将 JOKO Today 添加为好友后，才会开始接收消息。'
+  ),
+  (
+    'profile.notifications_line_check_status',
+    'Check friend status again',
+    'ตรวจสอบสถานะเพื่อนอีกครั้ง',
+    '重新检查好友状态'
+  ),
+  (
+    'profile.notifications_line_checking',
+    'Checking…',
+    'กำลังตรวจสอบ…',
+    '正在检查…'
+  ),
+  (
+    'profile.notifications_line_email_fallback',
+    'If LINE friendship ends, Email will be turned on automatically so important order notifications remain deliverable.',
+    'หากคุณเลิกเป็นเพื่อนกับ JOKO Today ระบบจะเปิดอีเมลโดยอัตโนมัติเพื่อให้ยังรับการแจ้งเตือนคำสั่งซื้อได้',
+    '如果您不再关注 JOKO Today，系统会自动重新启用电子邮件，以确保您仍能收到订单通知。'
   ),
   (
     'profile.notifications_types_heading',
