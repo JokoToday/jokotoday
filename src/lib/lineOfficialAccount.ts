@@ -38,6 +38,21 @@ export function getCachedLINEFriendshipStatus(userId: string | null | undefined)
   }
 }
 
+export async function refreshLINEFriendshipStatusFromServer(userId: string): Promise<LINEFriendshipStatus> {
+  try {
+    const { data, error } = await supabase.rpc('my_line_oa_friendship_status_v1');
+    if (error) return 'unknown';
+    if (data === 'friend' || data === 'not_friend') {
+      cacheLINEFriendshipStatus(userId, data);
+      return data;
+    }
+  } catch {
+    // Keep the status unknown when the server cannot confirm it. Browser cache
+    // is never authorization for LINE-only preference or delivery.
+  }
+  return 'unknown';
+}
+
 function cacheLINEFriendshipStatus(userId: string, status: Exclude<LINEFriendshipStatus, 'unknown'>) {
   browserStorage('local')?.setItem(
     `${STATUS_PREFIX}${userId}`,

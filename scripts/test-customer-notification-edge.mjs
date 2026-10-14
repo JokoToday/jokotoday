@@ -9,6 +9,16 @@ const load=async(name)=>{
 };
 const originalFetch=globalThis.fetch;
 try {
+ const sharedBuild=await build({entryPoints:[new URL('../supabase/functions/_shared/order-notifications.ts',import.meta.url).pathname],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'mock-client',setup(builder){builder.onResolve({filter:/^npm:@supabase\/supabase-js/},()=>({path:'client',namespace:'mock'}));builder.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:'export function createClient(){return globalThis.__notificationTestClient;}'}));}}]});
+ const shared=await import(`data:text/javascript;base64,${Buffer.from(sharedBuild.outputFiles[0].text).toString('base64')}`);
+ const lineOnly=(status)=>shared.lineOnlyDeliveryResponse(new Request('https://example.invalid'),false,status);
+ assert.equal(lineOnly('sent').status,200);
+ assert.equal(lineOnly('processing').status,202);
+ assert.equal(lineOnly('failed').status,503);
+ assert.equal(lineOnly('unavailable').status,503);
+ assert.equal(lineOnly('uncertain').status,409);
+ assert.equal(lineOnly('not_eligible').status,409);
+ assert.equal(shared.lineOnlyDeliveryResponse(new Request('https://example.invalid'),true,'failed'),null);
  const dispatch=await load('dispatch-customer-notifications');
  let available=true,frozen=null,accepted=0;const requests=[],finished=[];const key=crypto.randomUUID();
  const claim={delivery_id:crypto.randomUUID(),event_id:crypto.randomUUID(),lease_token:crypto.randomUUID(),channel:'email',language:'en',payload:{version:1,event_type:'pickup_reminder',order_number:'JT-TEST',pickup_date:'2026-10-18',location:{name_en:'Test place'}},recipient:'test@example.invalid',provider_key:key,template_version:'pickup-v1'};

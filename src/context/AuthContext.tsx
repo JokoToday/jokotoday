@@ -24,12 +24,16 @@ export interface UserProfile {
   qr_token?: string;
   short_code?: string;
   preferred_language?: Language | null;
+  notification_email_enabled: boolean;
+  notification_line_enabled: boolean;
 }
 
 type ProfileDetails = {
   name: string;
   phone: string;
   line_id?: string;
+  notification_email_enabled: boolean;
+  notification_line_enabled: boolean;
 };
 
 function isSupportedLanguage(value: unknown): value is Language {
@@ -319,6 +323,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         phone: data.phone,
         line_id: data.line_id || null,
+        notification_email_enabled: data.notification_email_enabled,
+        notification_line_enabled: data.notification_line_enabled,
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
@@ -343,6 +349,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         phone: data.phone,
         line_id: data.line_id || null,
+        notification_email_enabled: data.notification_email_enabled,
+        notification_line_enabled: data.notification_line_enabled,
         profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })

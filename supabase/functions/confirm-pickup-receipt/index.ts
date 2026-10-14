@@ -9,6 +9,7 @@ import {
   notificationIdempotencyKey,
   providerErrorSummary,
   rejectDisallowedOrigin,
+  resolveCustomerNotificationRecipient,
   type NotificationType,
 } from "../_shared/order-notifications.ts";
 import {
@@ -20,7 +21,7 @@ import {
 } from "../_shared/transactional-email.ts";
 
 type Language = "en" | "th" | "zh";
-type DeliveryStatus = "sent" | "failed" | "unavailable" | "not_applicable";
+type DeliveryStatus = "sent" | "failed" | "unavailable" | "not_applicable" | "skipped_preference";
 
 type LabelRow = {
   key: string;
@@ -368,13 +369,13 @@ async function sendReceiptLine(
 ): Promise<DeliveryStatus> {
   if (!order.customer_id) return "not_applicable";
 
-  const { data: authUser, error: authError } = await service.auth.admin.getUserById(order.customer_id);
-  if (authError || !authUser.user) return "not_applicable";
-
-  const lineIdentity = authUser.user.identities?.find((identity) => identity.provider === "custom:line");
-  const lineUserId = typeof lineIdentity?.identity_data?.sub === "string"
-    ? lineIdentity.identity_data.sub
-    : null;
+  let lineUserId: string | null = null;
+  try {
+    lineUserId = await resolveCustomerNotificationRecipient(order.customer_id, "line");
+  } catch (error) {
+    console.error("Could not resolve receipt LINE recipient", error);
+    return "unavailable";
+  }
   if (!lineUserId) return "not_applicable";
 
   const channelToken = Deno.env.get("LINE_MESSAGING_CHANNEL_ACCESS_TOKEN")?.trim()
@@ -468,7 +469,7 @@ Deno.serve(async (req: Request) => {
 
     const [{ data: profile }, { data: labelsData, error: labelsError }, { data: nextSetting }] = await Promise.all([
       order.customer_id
-        ? service.from("user_profiles").select("preferred_language").eq("id", order.customer_id).maybeSingle()
+        ? service.from("user_profiles").select("preferred_language, notification_email_enabled, notification_line_enabled").eq("id", order.customer_id).maybeSingle()
         : Promise.resolve({ data: null }),
       service
         .from("cms_labels")
@@ -484,6 +485,8 @@ Deno.serve(async (req: Request) => {
     if (labelsError) throw labelsError;
     const rows = (labelsData || []) as LabelRow[];
     const lang = normalizeLanguage(profile?.preferred_language);
+    const emailNotificationsEnabled = profile?.notification_email_enabled !== false;
+    const lineNotificationsEnabled = profile?.notification_line_enabled === true;
 
     let location: PickupLocationRecord | null = null;
     if (order.pickup_location_id) {
@@ -620,11 +623,11 @@ Deno.serve(async (req: Request) => {
       : order.customer_received_at || issuedAt;
 
     const notificationRows: Array<{ order_id: string; notification_type: NotificationType; language: Language }> = [];
-    if (order.customer_email) {
+    if (emailNotificationsEnabled && order.customer_email) {
       notificationRows.push({ order_id: order.id, notification_type: "customer_receipt_email", language: lang });
     }
 
-    if (order.customer_id) {
+    if (lineNotificationsEnabled && order.customer_id) {
       const { data: authUser } = await service.auth.admin.getUserById(order.customer_id);
       const hasLine = Boolean(authUser.user?.identities?.some((identity) =>
         identity.provider === "custom:line" && typeof identity.identity_data?.sub === "string"
@@ -645,8 +648,12 @@ Deno.serve(async (req: Request) => {
     const myOrdersUrl = appUrl + "/my-orders";
 
     const [emailDelivery, lineDelivery] = await Promise.all([
-      sendReceiptEmail(service, order, receipt, rows, lang, myOrdersUrl),
-      sendReceiptLine(service, order, receipt, rows, lang, myOrdersUrl),
+      emailNotificationsEnabled
+        ? sendReceiptEmail(service, order, receipt, rows, lang, myOrdersUrl)
+        : Promise.resolve<DeliveryStatus>("skipped_preference"),
+      lineNotificationsEnabled
+        ? sendReceiptLine(service, order, receipt, rows, lang, myOrdersUrl)
+        : Promise.resolve<DeliveryStatus>("skipped_preference"),
     ]);
 
     return jsonResponse(req, 200, {

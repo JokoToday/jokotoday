@@ -7,10 +7,11 @@ import { supabase } from '../lib/supabase';
 import { LINE_LINKING_ENABLED, hasLinkedLINE } from '../lib/lineAuth';
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import { NotificationPreferencesFields } from '../components/NotificationPreferencesFields';
 import {
   LINE_OFFICIAL_ACCOUNT_URL,
   dismissLINEFriendInvite,
-  getCachedLINEFriendshipStatus,
+  refreshLINEFriendshipStatusFromServer,
   refreshLINEFriendshipStatus,
   type LINEFriendshipStatus,
 } from '../lib/lineOfficialAccount';
@@ -36,6 +37,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     name: '',
     phone: '',
     line_id: '',
+    notification_email_enabled: true,
+    notification_line_enabled: false,
   });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -48,6 +51,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       name: userProfile.name || lineDisplayName(user) || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
+      notification_email_enabled: userProfile.notification_email_enabled ?? true,
+      notification_line_enabled: userProfile.notification_line_enabled ?? false,
     });
     setProfilePicture(userProfile.profile_picture_url || null);
   }, [userProfile, user]);
@@ -73,12 +78,15 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       return;
     }
 
-    setLineFriendship(getCachedLINEFriendshipStatus(user.id));
+    setLineFriendship('unknown');
+    void refreshLINEFriendshipStatusFromServer(user.id).then((status) => {
+      if (!cancelled) setLineFriendship(status);
+    });
     if (lineLinked !== true) return;
 
     // A provider token may still be present immediately after LINE OAuth.
-    // If not, keep the most recent cached status; the permanent Add Friend
-    // CTA remains available regardless.
+    // Without one, the server-verified relationship above remains the source
+    // of truth; the permanent Add Friend CTA remains available regardless.
     void supabase.auth.getSession().then(async ({ data, error: sessionError }) => {
       if (cancelled || sessionError || !data.session?.provider_token) return;
       const status = await refreshLINEFriendshipStatus(data.session.provider_token, user.id);
@@ -102,9 +110,10 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setProfileSaved(false);
+    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
     setFormData((current) => ({
       ...current,
-      [event.target.name]: event.target.value,
+      [event.target.name]: value,
     }));
   };
 
@@ -170,6 +179,34 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       ));
       return;
     }
+    if (!formData.notification_email_enabled && !formData.notification_line_enabled) {
+      setError(getLabel(
+        'profile.notifications_required_error',
+        language,
+        language === 'th'
+          ? 'กรุณาเลือกช่องทางการแจ้งเตือนอย่างน้อยหนึ่งช่องทาง'
+          : language === 'zh'
+            ? '请至少选择一种通知方式。'
+            : 'Please select at least one notification channel.',
+      ));
+      return;
+    }
+    if (
+      !formData.notification_email_enabled
+      && formData.notification_line_enabled
+      && (!isLINEConnected || lineFriendship !== 'friend')
+    ) {
+      setError(getLabel(
+        'profile.notifications_line_only_error',
+        language,
+        language === 'th'
+          ? 'หากต้องการใช้ LINE เป็นช่องทางการแจ้งเตือนเพียงช่องทางเดียว กรุณาเชื่อมต่อ LINE และเพิ่ม JOKO Today เป็นเพื่อนก่อน'
+          : language === 'zh'
+            ? '如需仅通过 LINE 接收通知，请先关联 LINE 账号并将 JOKO Today 添加为好友。'
+            : 'To use LINE as your only notification channel, connect LINE and add JOKO Today as a friend first.',
+      ));
+      return;
+    }
 
     setLoading(true);
     try {
@@ -177,6 +214,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
+        notification_email_enabled: formData.notification_email_enabled,
+        notification_line_enabled: formData.notification_line_enabled,
       });
       setProfileSaved(true);
     } catch (err) {
@@ -548,6 +587,23 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 )}
               </section>
             )}
+
+            <NotificationPreferencesFields
+              emailEnabled={formData.notification_email_enabled}
+              lineEnabled={formData.notification_line_enabled}
+              onEmailChange={(enabled) => {
+                setProfileSaved(false);
+                setFormData((current) => ({ ...current, notification_email_enabled: enabled }));
+              }}
+              onLineChange={(enabled) => {
+                setProfileSaved(false);
+                setFormData((current) => ({ ...current, notification_line_enabled: enabled }));
+              }}
+              lineConnected={isLINEConnected}
+              lineFriendship={lineFriendship}
+              customerId={user.id}
+              onFriendshipChange={setLineFriendship}
+            />
 
             <section className="border-t border-[#55766F]/14 pt-7">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.preferences', language, 'Preferences')}</h3>
