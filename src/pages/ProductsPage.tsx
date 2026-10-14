@@ -58,6 +58,7 @@ type ProductPickupCalendarRequest = {
 type ProductPickupSelectionState = {
   productId: string;
   selection: PickupSelectionV2;
+  quantity: number;
 };
 
 function formatPickupDate(value: string, language: SupportedLanguage): string {
@@ -478,11 +479,11 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
   };
 
   const selectedProductV2State = selectedProduct && pickupV2Enabled
-    ? catalogPickupSelection?.productId === selectedProduct.id
+    ? browseMode === 'all' && catalogPickupSelection?.productId === selectedProduct.id
       ? getV2ProductDisplayStateForDate(selectedProduct.id, catalogPickupSelection.selection.pickupDateId)
       : getV2ProductDisplayState(selectedProduct.id)
     : null;
-  const selectedProductPickupSelection = selectedProduct && catalogPickupSelection?.productId === selectedProduct.id
+  const selectedProductPickupSelection = selectedProduct && browseMode === 'all' && catalogPickupSelection?.productId === selectedProduct.id
     ? catalogPickupSelection.selection
     : null;
   const selectedProductPickupDisplay = selectedProductPickupSelection
@@ -711,7 +712,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         ) : (
           <div className="joko-products-grid grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
             {filteredProducts.map((product) => {
-              const productPickupSelection = catalogPickupSelection?.productId === product.id
+              const productPickupSelection = browseMode === 'all' && catalogPickupSelection?.productId === product.id
                 ? catalogPickupSelection.selection
                 : null;
               const v2State = pickupV2Enabled
@@ -774,6 +775,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
       <ProductDetailModal
         product={selectedProduct}
+        initialQuantity={selectedProductPickupSelection ? catalogPickupSelection?.quantity : 1}
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
         selectedDay={pickupV2Enabled
@@ -807,7 +809,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
         onConfirm={(selection) => {
           const product = productPickupCalendar?.product;
           if (!product) return;
-          setCatalogPickupSelection({ productId: product.id, selection });
+          setCatalogPickupSelection({ productId: product.id, selection, quantity: productPickupCalendar?.quantity || 1 });
           setProductPickupCalendar(null);
           setSelectedProduct(product);
         }}
