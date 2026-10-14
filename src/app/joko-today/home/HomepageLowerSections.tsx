@@ -67,6 +67,7 @@ const copy = {
     pickupIntro: 'Where, when and when to order by.',
     cutoff: 'Order cutoff',
     maps: 'View on map',
+    pickupLoading: 'Loading pickup details…',
     pickupEmpty: 'Pickup details are temporarily unavailable.',
     newTitle: "New from the Baker’s Table",
     newIntro: 'Experiments, seasonal bakes and genuinely new things from the bakery.',
@@ -117,6 +118,7 @@ const copy = {
     pickupIntro: 'รับที่ไหน วันไหน และต้องสั่งภายในเมื่อไร',
     cutoff: 'ปิดรับออเดอร์',
     maps: 'เปิดแผนที่',
+    pickupLoading: 'กำลังโหลดข้อมูลจุดรับสินค้า…',
     pickupEmpty: 'ข้อมูลจุดรับสินค้ายังไม่พร้อมใช้งานชั่วคราว',
     newTitle: 'ของใหม่จากโต๊ะคนทำขนม',
     newIntro: 'ของทดลอง เมนูตามฤดูกาล และของใหม่จริง ๆ จากเบเกอรี่',
@@ -167,6 +169,7 @@ const copy = {
     pickupIntro: '在哪里、哪一天，以及何时截止下单。',
     cutoff: '预订截止',
     maps: '打开地图',
+    pickupLoading: '正在加载取货信息…',
     pickupEmpty: '取货信息暂时无法显示。',
     newTitle: '烘焙桌上的新东西',
     newIntro: '实验、季节限定，以及真正的新烘焙。',
@@ -307,28 +310,36 @@ export function HomepageLowerSections({
   const showBaking = publishedTopLiked?.visible ?? true;
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
+  const [pickupDataLoading, setPickupDataLoading] = useState(true);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [externalMentions, setExternalMentions] = useState<ExternalMention[]>([]);
 
   useEffect(() => {
     let active = true;
+    void Promise.all([getPickupLocations(), getPickupDays()])
+      .then(([nextLocations, nextPickupDays]) => {
+        if (!active) return;
+        setLocations(nextLocations);
+        setPickupDays(nextPickupDays.filter((day) => day.is_open));
+      })
+      .catch((error) => console.error('Homepage pickup data failed to load:', error))
+      .finally(() => {
+        if (active) setPickupDataLoading(false);
+      });
+
     void Promise.all([
       getProducts(),
-      getPickupLocations(),
-      getPickupDays(),
       getPublishedGalleryItems(undefined, { homepageOnly: true, limit: 5 }),
       getPublishedExternalMentions(undefined, { homepageOnly: true, limit: 3 }),
     ])
-      .then(([nextProducts, nextLocations, nextPickupDays, nextGalleryItems, nextExternalMentions]) => {
+      .then(([nextProducts, nextGalleryItems, nextExternalMentions]) => {
         if (!active) return;
         setProducts(nextProducts);
-        setLocations(nextLocations);
-        setPickupDays(nextPickupDays.filter((day) => day.is_open));
         setGalleryItems(nextGalleryItems);
         setExternalMentions(nextExternalMentions);
       })
-      .catch((error) => console.error('Homepage bakery data failed to load:', error));
+      .catch((error) => console.error('Homepage supporting content failed to load:', error));
     return () => { active = false; };
   }, []);
 
@@ -485,7 +496,15 @@ export function HomepageLowerSections({
                 );
               })}
             </div>
-          ) : <p className="rounded-2xl border border-[#8B765E]/12 bg-white/20 p-6 text-sm text-[#303532]/60">{labels.pickupEmpty}</p>}
+          ) : (
+            <p
+              role={pickupDataLoading ? 'status' : undefined}
+              aria-live={pickupDataLoading ? 'polite' : undefined}
+              className="rounded-2xl border border-[#8B765E]/12 bg-white/20 p-6 text-sm text-[#303532]/60"
+            >
+              {pickupDataLoading ? labels.pickupLoading : labels.pickupEmpty}
+            </p>
+          )}
         </Container>
       </section>
 
