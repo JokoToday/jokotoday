@@ -39,3 +39,11 @@ After a paid Specials order exists: disable new Specials sales, retain fulfillme
 ## Authorized prepaid test checkpoint
 
 User authorized enabling regular sandbox Stripe prepaid checkout and completing payment/staff/customer receipt testing, plus inspecting the existing Stripe test refund. JOKO Specials Test payment_settings now has online_promptpay_enabled=true and payment_qr_mode=stripe_promptpay; production untouched, all test notification pause controls remain true. Browser timed out opening Stripe Dashboard, then the secure customer sign-in request also timed out. No new regular order/payment was created: latest regular order remains cancelled JT-1019. Payment, staff handover, customer receipt and provider refund settlement remain unverified. Existing Specials JT-1018 remains refund_pending with released inventory. Do not create another refund or mark success manually. Resume secure browser authentication before checkout; verify the Stripe test account before any provider action.
+
+## Resumed hosted prepaid test result
+
+PASS: regular dummy order JT-1020, 90 THB, Stripe sandbox PI pi_3UQQZ20s1xeShuff10LsIrDa. Provider test page authorized simulated payment; signed webhook verified the transaction and order became paid/confirmed with 90 THB amount_paid. Signed-in Admin acting through Staff Operations used VIP101 member-code fallback, then Confirm Early Pickup (scheduled 17 October). Dynamic one-time receipt QR opened the customer receipt screen; customer confirmation completed the order and issued JTR-JT-1020. Browser success and final database completed/paid state verified. No real money or goods moved; camera hardware was not tested. All test notifications remain paused; production untouched.
+
+Regular checkout lacked a simulator link despite its test-mode explanation. Added a Stripe-host-only HTTPS instructions link, gated by stripeLivemode=false, with EN/TH/ZH text. Typecheck/build and CI/preview checks passed, deployed to test preview in commit 11c4ceb.
+
+Existing Specials refund gate remains open. Stripe Dashboard sign-in reached an hCaptcha challenge; awaiting user manual completion or action-time approval before proceeding. No second refund created and no manual financial success recorded.
