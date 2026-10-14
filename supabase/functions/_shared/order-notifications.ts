@@ -246,23 +246,19 @@ export async function customerNotificationChannelEnabled(
   customerId: string | null,
   channel: "email" | "line",
 ): Promise<boolean> {
-  if (!customerId) return false;
-
   const admin = createNotificationAdminClient();
   if (!admin) throw new Error("Notification admin client unavailable");
 
-  const { data, error } = await admin
-    .from("user_profiles")
-    .select("notification_email_enabled, notification_line_enabled")
-    .eq("id", customerId)
-    .maybeSingle();
+  // Legacy send endpoints must share the same server-side pause gate as the
+  // unified dispatcher. The service-role-only RPC also checks customer
+  // preferences; null customer IDs are used for internal/admin email.
+  const { data, error } = await admin.rpc("notification_channel_allowed_v1", {
+    p_customer_id: customerId,
+    p_channel: channel,
+  });
 
   if (error) throw error;
-  if (!data) return false;
-
-  return channel === "email"
-    ? data.notification_email_enabled !== false
-    : data.notification_line_enabled === true;
+  return data === true;
 }
 
 

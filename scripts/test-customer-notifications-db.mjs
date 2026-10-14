@@ -13,7 +13,7 @@ CREATE TABLE auth.identities(user_id uuid,provider text,provider_id text,identit
 CREATE TABLE public.cms_labels(key text PRIMARY KEY,text_en text NOT NULL,text_th text NOT NULL,text_zh text,updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE public.payment_transactions(order_id uuid UNIQUE,status text,expires_at timestamptz);`);
 const migrations = await readdir(new URL('../supabase/migrations/', import.meta.url));
-for (const suffix of ['_pickup_windows_v1_foundation.sql', '_customer_notification_delivery_v1.sql', '_customer_notification_preferences_v1.sql']) {
+for (const suffix of ['_pickup_windows_v1_foundation.sql', '_customer_notification_delivery_v1.sql', '_customer_notification_preferences_v1.sql', '_notification_legacy_pause_gate_v1.sql']) {
   if(suffix==='_customer_notification_delivery_v1.sql')await db.exec(`INSERT INTO public.orders(id,order_number,total_amount,customer_name,customer_phone,created_at) VALUES('00000000-0000-4000-8000-000000000010','legacy-email',25,'Historical','000','2020-01-01');
 INSERT INTO public.order_notification_events(order_id,notification_type,status,language,provider_message_id) VALUES('00000000-0000-4000-8000-000000000010','customer_confirmation','sent','en','legacy-provider-id');`);
 
@@ -30,6 +30,33 @@ INSERT INTO public.pickup_dates(id,schedule_id,pickup_date,order_cutoff_at,cance
 INSERT INTO public.pickup_date_locations(pickup_date_id,location_id,pickup_open_time,pickup_close_time,pickup_slot_minutes) VALUES('${date}','${location}','09:00','13:00',30);`);
 const actor = (id) => q("select set_config('request.jwt.claim.sub',$1,false)",[id]);
 const setting = 'select public.admin_notification_setting_v1($1,$2,$3,$4,$5,$6)';
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'email') allowed",[customer]))[0].allowed,false);
+assert.equal((await q("select public.notification_channel_allowed_v1(NULL,'email') allowed"))[0].allowed,false);
+assert.equal((await q("select has_function_privilege('authenticated','public.notification_channel_allowed_v1(uuid,text)','EXECUTE') allowed"))[0].allowed,false);
+await q("update private.notification_control_v1 set paused=false,email_paused=false,line_paused=false where id=true");
+await q("update public.user_profiles set notification_email_enabled=true,notification_line_enabled=true where id=$1",[customer]);
+await q('set role service_role');
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'email') allowed",[customer]))[0].allowed,true);
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'line') allowed",[customer]))[0].allowed,true);
+assert.equal((await q("select public.notification_channel_allowed_v1(NULL,'email') allowed"))[0].allowed,true);
+await q('reset role');
+await q("update private.notification_control_v1 set email_paused=true where id=true");
+await q('set role service_role');
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'email') allowed",[customer]))[0].allowed,false);
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'line') allowed",[customer]))[0].allowed,true);
+assert.equal((await q("select public.notification_channel_allowed_v1(NULL,'email') allowed"))[0].allowed,false);
+await q('reset role');
+await q("update private.notification_control_v1 set paused=true,email_paused=false,line_paused=false where id=true");
+await q('set role service_role');
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'line') allowed",[customer]))[0].allowed,false);
+await q('reset role');
+await q("update private.notification_control_v1 set paused=false,email_paused=false,line_paused=false where id=true");
+await q("update public.user_profiles set notification_line_enabled=false where id=$1",[customer]);
+await q('set role service_role');
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'line') allowed",[customer]))[0].allowed,false);
+assert.equal((await q("select public.notification_channel_allowed_v1($1,'email') allowed",[customer]))[0].allowed,true);
+await q('reset role');
+await q("update private.notification_control_v1 set paused=true,email_paused=true,line_paused=true where id=true");
 await actor(customer);
 await rejects('select public.admin_notification_state_v1()',[],/Admin access/);
 await actor(admin);

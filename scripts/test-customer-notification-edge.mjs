@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 const env = new Map(Object.entries({JOKO_NOTIFICATION_DISPATCH_KEY:'test-dispatch-key-'.repeat(3),SUPABASE_URL:'https://example.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only-service-key',RESEND_API_KEY:'test-only-resend',LINE_MESSAGING_CHANNEL_SECRET:'test-line-secret',LINE_PROVIDER_ID:'123',LINE_OA_DESTINATION:'U'+'2'.repeat(32),LINE_PROVIDER_MATCH_VERIFIED:'true'}));
 let handler;
@@ -11,6 +12,34 @@ const originalFetch=globalThis.fetch;
 try {
  const sharedBuild=await build({entryPoints:[new URL('../supabase/functions/_shared/order-notifications.ts',import.meta.url).pathname],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'mock-client',setup(builder){builder.onResolve({filter:/^npm:@supabase\/supabase-js/},()=>({path:'client',namespace:'mock'}));builder.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:'export function createClient(){return globalThis.__notificationTestClient;}'}));}}]});
  const shared=await import(`data:text/javascript;base64,${Buffer.from(sharedBuild.outputFiles[0].text).toString('base64')}`);
+ let gateValue=true;
+ globalThis.__notificationTestClient={rpc:async(name,args)=>{
+  assert.equal(name,'notification_channel_allowed_v1');
+  assert.equal(args.p_channel,'email');
+  return {data:gateValue,error:null};
+ }};
+ assert.equal(await shared.customerNotificationChannelEnabled('customer-id','email'),true);
+ gateValue=false;
+ assert.equal(await shared.customerNotificationChannelEnabled('customer-id','email'),false);
+ gateValue=true;
+ globalThis.__notificationTestClient={rpc:async()=>({data:null,error:{code:'gate_unavailable'}})};
+ await assert.rejects(shared.customerNotificationChannelEnabled('customer-id','email'),(error)=>error?.code==='gate_unavailable');
+ const customerSenders=['send-order-confirmation','send-order-cancellation','send-payment-confirmation'];
+ for(const name of customerSenders){
+  const source=await readFile(new URL(`../supabase/functions/${name}/index.ts`,import.meta.url),'utf8');
+  assert.match(source,/customerNotificationChannelEnabled\(order\.customer_id,\s*"email"\)/);
+  assert.match(source,/customerNotificationChannelEnabled\(order\.customer_id,\s*"line"\)/);
+ }
+ const adminSource=await readFile(new URL('../supabase/functions/send-admin-order-notification/index.ts',import.meta.url),'utf8');
+ const adminGate=adminSource.indexOf('customerNotificationChannelEnabled(null, "email")');
+ const adminClaim=adminSource.indexOf('claimNotification(supabase, order.id, TYPE)');
+ const adminSend=adminSource.indexOf('resend.emails.send');
+ assert.ok(adminGate>=0 && adminGate<adminClaim && adminGate<adminSend,'admin email must pass the pause gate before claiming or sending');
+ const receiptSource=await readFile(new URL('../supabase/functions/confirm-pickup-receipt/index.ts',import.meta.url),'utf8');
+ const receiptEmail=receiptSource.slice(receiptSource.indexOf('async function sendReceiptEmail('),receiptSource.indexOf('async function sendReceiptLine('));
+ const receiptLine=receiptSource.slice(receiptSource.indexOf('async function sendReceiptLine('),receiptSource.indexOf('Deno.serve('));
+ assert.ok(receiptEmail.indexOf('customerNotificationChannelEnabled(order.customer_id, "email")')>=0 && receiptEmail.indexOf('customerNotificationChannelEnabled(order.customer_id, "email")')<receiptEmail.indexOf('claimNotification('),'receipt email must pass the pause gate before claiming or sending');
+ assert.ok(receiptLine.indexOf('customerNotificationChannelEnabled(order.customer_id, "line")')>=0 && receiptLine.indexOf('customerNotificationChannelEnabled(order.customer_id, "line")')<receiptLine.indexOf('fetch("https://api.line.me/v2/bot/message/push"'),'receipt LINE must pass the pause gate before sending');
  const lineOnly=(status)=>shared.lineOnlyDeliveryResponse(new Request('https://example.invalid'),false,status);
  assert.equal(lineOnly('sent').status,200);
  assert.equal(lineOnly('processing').status,202);

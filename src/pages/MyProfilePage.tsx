@@ -33,6 +33,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const [success, setSuccess] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
   const [error, setError] = useState('');
+  const [notificationChannelError, setNotificationChannelError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -44,6 +45,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const notificationsSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!userProfile) return;
@@ -141,11 +143,21 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   const isLINEConnected = lineLinked === true || (lineLinked === null && hasLinkedLINE(user));
 
+  const scrollToNotificationPreferences = () => {
+    window.requestAnimationFrame(() => {
+      notificationsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      notificationsSectionRef.current
+        ?.querySelector<HTMLInputElement>('input[type="checkbox"]')
+        ?.focus({ preventScroll: true });
+    });
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setSuccess('');
     setProfileSaved(false);
+    setNotificationChannelError('');
 
     if (!formData.name.trim()) {
       setError(getLabel('profile.name_required_error', language, 'Name is required'));
@@ -180,15 +192,16 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       return;
     }
     if (!formData.notification_email_enabled && !formData.notification_line_enabled) {
-      setError(getLabel(
+      setNotificationChannelError(getLabel(
         'profile.notifications_required_error',
         language,
         language === 'th'
-          ? 'กรุณาเลือกช่องทางการแจ้งเตือนอย่างน้อยหนึ่งช่องทาง'
+          ? 'กรุณาเลือกช่องทางการแจ้งเตือนที่คุณต้องการ'
           : language === 'zh'
-            ? '请至少选择一种通知方式。'
-            : 'Please select at least one notification channel.',
+            ? '请选择您偏好的通知方式。'
+            : 'Please selected your preferred notifications channel.',
       ));
+      scrollToNotificationPreferences();
       return;
     }
     if (
@@ -196,7 +209,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       && formData.notification_line_enabled
       && (!isLINEConnected || lineFriendship !== 'friend')
     ) {
-      setError(getLabel(
+      setNotificationChannelError(getLabel(
         'profile.notifications_line_only_error',
         language,
         language === 'th'
@@ -205,6 +218,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             ? '如需仅通过 LINE 接收通知，请先关联 LINE 账号并将 JOKO Today 添加为好友。'
             : 'To use LINE as your only notification channel, connect LINE and add JOKO Today as a friend first.',
       ));
+      scrollToNotificationPreferences();
       return;
     }
 
@@ -588,22 +602,27 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               </section>
             )}
 
-            <NotificationPreferencesFields
-              emailEnabled={formData.notification_email_enabled}
-              lineEnabled={formData.notification_line_enabled}
-              onEmailChange={(enabled) => {
-                setProfileSaved(false);
-                setFormData((current) => ({ ...current, notification_email_enabled: enabled }));
-              }}
-              onLineChange={(enabled) => {
-                setProfileSaved(false);
-                setFormData((current) => ({ ...current, notification_line_enabled: enabled }));
-              }}
-              lineConnected={isLINEConnected}
-              lineFriendship={lineFriendship}
-              customerId={user.id}
-              onFriendshipChange={setLineFriendship}
-            />
+            <div ref={notificationsSectionRef} id="profile-notification-preferences">
+              <NotificationPreferencesFields
+                emailEnabled={formData.notification_email_enabled}
+                lineEnabled={formData.notification_line_enabled}
+                onEmailChange={(enabled) => {
+                  setProfileSaved(false);
+                  setNotificationChannelError('');
+                  setFormData((current) => ({ ...current, notification_email_enabled: enabled }));
+                }}
+                onLineChange={(enabled) => {
+                  setProfileSaved(false);
+                  setNotificationChannelError('');
+                  setFormData((current) => ({ ...current, notification_line_enabled: enabled }));
+                }}
+                lineConnected={isLINEConnected}
+                lineFriendship={lineFriendship}
+                customerId={user.id}
+                onFriendshipChange={setLineFriendship}
+                validationError={notificationChannelError}
+              />
+            </div>
 
             <section className="border-t border-[#55766F]/14 pt-7">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.preferences', language, 'Preferences')}</h3>
@@ -617,20 +636,20 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
               </div>
             </section>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <button type="submit" disabled={loading} className="flex-1 rounded-xl bg-[#C76624] py-3 font-semibold text-white transition hover:bg-[#A95120] disabled:opacity-50">
                 {loading ? getLabel('profile_page.saving', language, 'Saving...') : getLabel('profile_page.save_changes', language, 'Save Changes')}
               </button>
-              <button type="button" onClick={() => onNavigate('my-qr')} className="flex items-center gap-2 rounded-xl border border-[#55766F]/22 bg-[#CFE3DF]/65 px-6 py-3 font-semibold text-[#304B45] transition hover:bg-[#CFE3DF]">
+              {profileSaved && (
+                <p role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#55766F]/25 bg-[#E2ECE6] px-4 py-3 text-sm font-semibold text-[#304B45]">
+                  <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  {language === 'th' ? 'บันทึกสำเร็จ' : language === 'zh' ? '保存成功' : 'Saved successfully'}
+                </p>
+              )}
+              <button type="button" onClick={() => onNavigate('my-qr')} className="flex items-center justify-center gap-2 rounded-xl border border-[#55766F]/22 bg-[#CFE3DF]/65 px-6 py-3 font-semibold text-[#304B45] transition hover:bg-[#CFE3DF]">
                 <QrCode className="w-5 h-5" /> {getLabel('profile_page.view_qr', language, 'View QR')}
               </button>
             </div>
-            {profileSaved && (
-              <p role="status" aria-live="polite" className="flex items-center gap-2 rounded-xl border border-[#55766F]/25 bg-[#E2ECE6] px-4 py-3 text-sm font-semibold text-[#304B45]">
-                <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-                {language === 'th' ? 'บันทึกการเปลี่ยนแปลงแล้ว' : language === 'zh' ? '更改已保存' : 'Changes Saved'}
-              </p>
-            )}
           </form>
         </div>
         </div>
