@@ -9,6 +9,7 @@ import {
   notificationIdempotencyKey,
   providerErrorSummary,
   rejectDisallowedOrigin,
+  customerNotificationChannelEnabled,
   resolveCustomerNotificationRecipient,
   type NotificationType,
 } from "../_shared/order-notifications.ts";
@@ -21,7 +22,7 @@ import {
 } from "../_shared/transactional-email.ts";
 
 type Language = "en" | "th" | "zh";
-type DeliveryStatus = "sent" | "failed" | "unavailable" | "not_applicable" | "skipped_preference";
+type DeliveryStatus = "sent" | "failed" | "unavailable" | "not_applicable" | "skipped_preference" | "paused";
 
 type LabelRow = {
   key: string;
@@ -257,6 +258,13 @@ async function sendReceiptEmail(
 ): Promise<DeliveryStatus> {
   if (!order.customer_email) return "not_applicable";
 
+  try {
+    if (!await customerNotificationChannelEnabled(order.customer_id, "email")) return "paused";
+  } catch (error) {
+    console.error("Could not check receipt email pause gate", error);
+    return "unavailable";
+  }
+
   const claim = await claimNotification(service, order.id, "customer_receipt_email");
   if (claim.mode !== "outbox") return "unavailable";
   if (claim.claim.outcome === "already_sent") return "sent";
@@ -368,6 +376,13 @@ async function sendReceiptLine(
   myOrdersUrl: string,
 ): Promise<DeliveryStatus> {
   if (!order.customer_id) return "not_applicable";
+
+  try {
+    if (!await customerNotificationChannelEnabled(order.customer_id, "line")) return "paused";
+  } catch (error) {
+    console.error("Could not check receipt LINE pause gate", error);
+    return "unavailable";
+  }
 
   let lineUserId: string | null = null;
   try {
@@ -485,8 +500,25 @@ Deno.serve(async (req: Request) => {
     if (labelsError) throw labelsError;
     const rows = (labelsData || []) as LabelRow[];
     const lang = normalizeLanguage(profile?.preferred_language);
-    const emailNotificationsEnabled = profile?.notification_email_enabled !== false;
-    const lineNotificationsEnabled = profile?.notification_line_enabled === true;
+    const emailPreferenceEnabled = profile?.notification_email_enabled !== false;
+    const linePreferenceEnabled = profile?.notification_line_enabled === true;
+    let emailNotificationsEnabled = false;
+    let lineNotificationsEnabled = false;
+    let notificationGateUnavailable = false;
+    try {
+      const [emailAllowed, lineAllowed] = await Promise.all([
+        customerNotificationChannelEnabled(order.customer_id, "email"),
+        order.customer_id
+          ? customerNotificationChannelEnabled(order.customer_id, "line")
+          : Promise.resolve(false),
+      ]);
+      emailNotificationsEnabled = emailPreferenceEnabled && emailAllowed;
+      lineNotificationsEnabled = linePreferenceEnabled && lineAllowed;
+    } catch (gateError) {
+      // Receipt completion is already committed. Fail closed for notification sends.
+      notificationGateUnavailable = true;
+      console.error("Could not check receipt notification pause gates", gateError);
+    }
 
     let location: PickupLocationRecord | null = null;
     if (order.pickup_location_id) {
@@ -650,10 +682,10 @@ Deno.serve(async (req: Request) => {
     const [emailDelivery, lineDelivery] = await Promise.all([
       emailNotificationsEnabled
         ? sendReceiptEmail(service, order, receipt, rows, lang, myOrdersUrl)
-        : Promise.resolve<DeliveryStatus>("skipped_preference"),
+        : Promise.resolve<DeliveryStatus>(!emailPreferenceEnabled ? "skipped_preference" : notificationGateUnavailable ? "unavailable" : "paused"),
       lineNotificationsEnabled
         ? sendReceiptLine(service, order, receipt, rows, lang, myOrdersUrl)
-        : Promise.resolve<DeliveryStatus>("skipped_preference"),
+        : Promise.resolve<DeliveryStatus>(!linePreferenceEnabled ? "skipped_preference" : notificationGateUnavailable ? "unavailable" : "paused"),
     ]);
 
     return jsonResponse(req, 200, {

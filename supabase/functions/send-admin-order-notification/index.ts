@@ -3,6 +3,7 @@ import { Resend } from "npm:resend";
 import {
   authenticateNotificationRequest,
   claimNotification,
+  customerNotificationChannelEnabled,
   finishNotification,
   handlePreflight,
   isValidUuid,
@@ -200,6 +201,21 @@ Deno.serve(async (req: Request) => {
       success: true,
       status: "payment_pending",
       message: "Admin order notification is held until online payment is verified.",
+    });
+  }
+
+  let emailAllowed = false;
+  try {
+    emailAllowed = await customerNotificationChannelEnabled(null, "email");
+  } catch (gateError) {
+    console.error("SEC-005: admin notification pause gate unavailable", gateError);
+    return jsonResponse(req, 503, { error: "Notification service unavailable" });
+  }
+  if (!emailAllowed) {
+    return jsonResponse(req, 202, {
+      success: true,
+      status: "paused",
+      message: "Admin notification held by notification controls.",
     });
   }
 
