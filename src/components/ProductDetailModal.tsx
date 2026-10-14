@@ -17,6 +17,7 @@ import {
 interface ProductDetailModalProps {
   product: CMSProduct | null;
   isOpen: boolean;
+  initialQuantity?: number;
   onClose: () => void;
   selectedDay?: string | null;
   selectedDayDisplay?: string | null;
@@ -32,6 +33,7 @@ interface ProductDetailModalProps {
 export default function ProductDetailModal({
   product,
   isOpen,
+  initialQuantity = 1,
   onClose,
   selectedDay,
   selectedDayDisplay,
@@ -53,14 +55,14 @@ export default function ProductDetailModal({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      setQuantity(1);
+      setQuantity(initialQuantity);
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, initialQuantity]);
 
   if (!isOpen || !product) return null;
 

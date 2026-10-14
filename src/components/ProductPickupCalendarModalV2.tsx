@@ -14,6 +14,7 @@ interface ProductPickupCalendarModalV2Props {
   quantity: number;
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: (selection: PickupSelectionV2) => void;
 }
 
 export function ProductPickupCalendarModalV2({
@@ -21,6 +22,7 @@ export function ProductPickupCalendarModalV2({
   quantity,
   isOpen,
   onClose,
+  onConfirm,
 }: ProductPickupCalendarModalV2Props) {
   const { user } = useAuth();
   const { language } = useLanguage();
@@ -77,7 +79,8 @@ export function ProductPickupCalendarModalV2({
       scheduleLabelTh: null,
       scheduleLabelZh: null,
     });
-    onClose();
+    if (onConfirm) onConfirm(selection);
+    else onClose();
   };
 
   return (
