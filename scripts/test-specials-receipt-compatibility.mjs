@@ -3,7 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 const { PGlite } = await import(pathToFileURL(process.env.PGLITE_MODULE).href);
 const db = new PGlite();
-await db.exec(`
+const fixture = `
 CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
 CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT null::uuid $$;
@@ -13,7 +13,9 @@ CREATE TABLE public.orders(id uuid PRIMARY KEY, customer_id uuid, order_number t
 CREATE TABLE public.order_notification_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_id uuid,notification_type text,status text DEFAULT 'pending',attempt_count integer DEFAULT 0,language text DEFAULT 'en',claimed_at timestamptz,first_attempt_at timestamptz,updated_at timestamptz,last_error text);
 CREATE TABLE public.cms_settings(setting_key text PRIMARY KEY,value text);
 CREATE TABLE public.cms_labels(key text PRIMARY KEY,text_en text,text_th text,text_zh text);
-`);
+`;
+await db.exec(fixture);
+await db.exec(await readFile('supabase/migrations/20261010144000_pickup_handover_v1.sql','utf8'));
 await db.exec(await readFile('supabase/migrations/20261012145114_customer_receipt_pickup_completion_v1.sql','utf8'));
 const file=(await readdir('supabase/migrations')).find(f=>f.endsWith('_joko_specials_receipt_compatibility_v1.sql'));
 await db.exec(await readFile(`supabase/migrations/${file}`,'utf8'));
@@ -39,5 +41,37 @@ eq(replay.receipt_number,'RECEIPT-REGULAR');eq(replay.already_confirmed,true);
 eq((await row('SELECT count(*)::integer n FROM order_receipts WHERE order_id=$1',[regular])).n,1);
 for(const role of ['anon','authenticated']) eq((await row("SELECT has_function_privilege($1,'public.complete_order_customer_receipt(text,text,timestamptz,jsonb)','EXECUTE') ok",[role])).ok,false);
 eq((await row("SELECT has_function_privilege('service_role','public.complete_order_customer_receipt(text,text,timestamptz,jsonb)','EXECUTE') ok")).ok,true);
+// Both chronological installation and adding Specials to an existing regular
+// receipt schema must preserve independent tables and their required fields.
+async function checkTables(database) {
+  const columns = async name => (await database.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1", [name])).rows.map(r => r.column_name);
+  const handover = await columns('pickup_handover_sessions');
+  const handoff = await columns('pickup_handoff_sessions');
+  assert.ok(handover.includes('staff_id')); checks++;
+  assert.ok(handover.includes('customer_confirmed_at')); checks++;
+  assert.ok(handoff.includes('created_by')); checks++;
+  assert.ok(handoff.includes('confirmed_at')); checks++;
+  assert.ok(!handoff.includes('staff_id')); checks++;
+  for (const table of ['pickup_handover_sessions', 'pickup_handoff_sessions']) {
+    const state = (await database.query("SELECT relrowsecurity FROM pg_class WHERE oid=$1::regclass", ['public.' + table])).rows[0];
+    eq(state.relrowsecurity, true);
+    for (const role of ['anon', 'authenticated']) {
+      eq((await database.query("SELECT has_table_privilege($1,$2,'INSERT') ok", [role,'public.' + table])).rows[0].ok, false);
+    }
+  }
+}
+await checkTables(db);
+const existing = new PGlite();
+await existing.exec(fixture);
+await existing.exec(await readFile('supabase/migrations/20261012145114_customer_receipt_pickup_completion_v1.sql','utf8'));
+const existingOrder='20000000-0000-0000-0000-000000000001';
+await existing.query("INSERT INTO orders(id,order_number) VALUES ($1,'EXISTING')",[existingOrder]);
+await existing.query("INSERT INTO pickup_handoff_sessions(order_id,token_hash,expires_at) VALUES ($1,'existing-token',now()+interval '1 hour')",[existingOrder]);
+await existing.exec(await readFile('supabase/migrations/20261010144000_pickup_handover_v1.sql','utf8'));
+await checkTables(existing);
+eq((await existing.query("SELECT token_hash FROM pickup_handoff_sessions WHERE order_id=$1",[existingOrder])).rows[0].token_hash,'existing-token');
+await existing.query("UPDATE pickup_handoff_sessions SET confirmed_at=now() WHERE order_id=$1",[existingOrder]);
+eq((await existing.query("SELECT confirmed_at IS NOT NULL ok FROM pickup_handoff_sessions WHERE order_id=$1",[existingOrder])).rows[0].ok,true);
+await existing.close();
 console.log(`${checks} receipt compatibility assertions passed (actual production receipt migration, isolated Postgres).`);
 await db.close();
