@@ -10,9 +10,10 @@ const rejects = async (sql, args, pattern) => assert.rejects(q(sql, args), patte
 await db.exec(await readFile(new URL('../supabase/tests/pickup_windows_fixture.sql', import.meta.url), 'utf8'));
 await db.exec(`CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,email_confirmed_at timestamptz,deleted_at timestamptz,banned_until timestamptz);
 CREATE TABLE auth.identities(user_id uuid,provider text,provider_id text,identity_data jsonb);
+CREATE TABLE public.cms_labels(key text PRIMARY KEY,text_en text NOT NULL,text_th text NOT NULL,text_zh text,updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE public.payment_transactions(order_id uuid UNIQUE,status text,expires_at timestamptz);`);
 const migrations = await readdir(new URL('../supabase/migrations/', import.meta.url));
-for (const suffix of ['_pickup_windows_v1_foundation.sql', '_customer_notification_delivery_v1.sql']) {
+for (const suffix of ['_pickup_windows_v1_foundation.sql', '_customer_notification_delivery_v1.sql', '_customer_notification_preferences_v1.sql']) {
   if(suffix==='_customer_notification_delivery_v1.sql')await db.exec(`INSERT INTO public.orders(id,order_number,total_amount,customer_name,customer_phone,created_at) VALUES('00000000-0000-4000-8000-000000000010','legacy-email',25,'Historical','000','2020-01-01');
 INSERT INTO public.order_notification_events(order_id,notification_type,status,language,provider_message_id) VALUES('00000000-0000-4000-8000-000000000010','customer_confirmation','sent','en','legacy-provider-id');`);
 
@@ -54,6 +55,20 @@ await q(sync,[customer,lineUser,'123',destination,true,new Date(Date.now()-2000)
 assert.equal((await q('select friendship from private.line_oa_relationships_v1'))[0].friendship,'not_friend');
 await q(sync,[customer,lineUser,'123',destination,true,new Date().toISOString()]);
 assert.equal((await q('select source from private.line_oa_relationships_v1'))[0].source,'login_api');
+
+await actor(customer);
+await q('update public.user_profiles set notification_email_enabled=false,notification_line_enabled=true where id=$1',[customer]);
+assert.equal((await q('select public.my_line_oa_friendship_status_v1() status'))[0].status,'friend');
+await q(webhook,['123',destination,JSON.stringify([event('line-only-unfollow','unfollow',Date.now()+1000)])]);
+assert.deepEqual(
+  (await q('select notification_email_enabled,notification_line_enabled from public.user_profiles where id=$1',[customer]))[0],
+  {notification_email_enabled:true,notification_line_enabled:true},
+);
+assert.equal((await q("select count(*)::int n from private.notification_audit_v1 where action='line_friendship_fallback_email_enabled' and after_values->>'customer_id'=$1",[customer]))[0].n,1);
+assert.equal((await q('select public.my_line_oa_friendship_status_v1() status'))[0].status,'not_friend');
+await q(webhook,['123',destination,JSON.stringify([event('line-only-refollow','follow',Date.now()+2000)])]);
+assert.equal((await q('select public.my_line_oa_friendship_status_v1() status'))[0].status,'friend');
+await actor(admin);
 
 await q(setting,['pickup_reminder',true,true,true,1440,1]);
 await q(setting,['pickup_completed',true,true,true,0,1]);

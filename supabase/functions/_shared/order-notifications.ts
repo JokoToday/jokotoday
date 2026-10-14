@@ -2,11 +2,48 @@ import { createClient, type SupabaseClient, type User } from "npm:@supabase/supa
 
 export type NotificationType =
   | "customer_confirmation"
+  | "customer_confirmation_line"
   | "admin_new_order"
   | "customer_cancellation"
+  | "customer_cancellation_line"
   | "payment_confirmation"
+  | "payment_confirmation_line"
   | "customer_receipt_email"
   | "customer_receipt_line";
+
+export type CustomerLineDeliveryStatus =
+  | "sent"
+  | "already_sent"
+  | "skipped_preference"
+  | "not_eligible"
+  | "processing"
+  | "unavailable"
+  | "failed"
+  | "uncertain";
+
+export function lineOnlyDeliveryResponse(
+  req: Request,
+  emailEnabled: boolean,
+  lineStatus: CustomerLineDeliveryStatus,
+): Response | null {
+  if (emailEnabled) return null;
+  if (lineStatus === "sent" || lineStatus === "already_sent") {
+    return jsonResponse(req, 200, { success: true, status: lineStatus, line_status: lineStatus });
+  }
+  if (lineStatus === "processing") {
+    return jsonResponse(req, 202, { success: true, status: lineStatus, line_status: lineStatus });
+  }
+
+  const status = lineStatus === "uncertain" || lineStatus === "not_eligible" || lineStatus === "skipped_preference"
+    ? 409
+    : 503;
+  const error = status === 409
+    ? lineStatus === "uncertain"
+      ? "LINE notification outcome requires review"
+      : "LINE notification is not currently deliverable"
+    : "LINE notification could not be delivered; retry is available";
+  return jsonResponse(req, status, { success: false, status: `line_${lineStatus}`, line_status: lineStatus, error });
+}
 export type NotificationOutcome =
   | "claimed"
   | "already_sent"
@@ -199,6 +236,156 @@ export async function claimNotification(
     return { mode: "error", error: new Error("Invalid notification claim response") };
   }
   return { mode: "outbox", claim: data as ClaimResult };
+}
+
+export async function customerNotificationChannelEnabled(
+  customerId: string | null,
+  channel: "email" | "line",
+): Promise<boolean> {
+  if (!customerId) return false;
+
+  const admin = createNotificationAdminClient();
+  if (!admin) throw new Error("Notification admin client unavailable");
+
+  const { data, error } = await admin
+    .from("user_profiles")
+    .select("notification_email_enabled, notification_line_enabled")
+    .eq("id", customerId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return false;
+
+  return channel === "email"
+    ? data.notification_email_enabled !== false
+    : data.notification_line_enabled === true;
+}
+
+
+export async function resolveCustomerNotificationRecipient(
+  customerId: string | null,
+  channel: "email" | "line",
+): Promise<string | null> {
+  if (!customerId) return null;
+
+  const admin = createNotificationAdminClient();
+  if (!admin) throw new Error("Notification admin client unavailable");
+
+  const { data, error } = await admin.rpc("resolve_customer_notification_recipient_v1", {
+    p_customer_id: customerId,
+    p_channel: channel,
+  });
+
+  if (error) throw error;
+  return typeof data === "string" && data.trim().length > 0 ? data.trim() : null;
+}
+
+export async function sendCustomerLineNotification(args: {
+  orderId: string;
+  customerId: string | null;
+  notificationType: Extract<
+    NotificationType,
+    "customer_confirmation_line" | "payment_confirmation_line" | "customer_cancellation_line"
+  >;
+  canonicalEventType: "order_confirmed" | "payment_received" | "order_cancelled";
+  language: "en" | "th" | "zh";
+  message: string;
+}): Promise<CustomerLineDeliveryStatus> {
+  if (!args.customerId) return "not_eligible";
+
+  let enabled = false;
+  try {
+    enabled = await customerNotificationChannelEnabled(args.customerId, "line");
+  } catch (error) {
+    console.error("LINE notification preference lookup failed", error);
+    return "unavailable";
+  }
+  if (!enabled) return "skipped_preference";
+
+  let recipient: string | null = null;
+  try {
+    recipient = await resolveCustomerNotificationRecipient(args.customerId, "line");
+  } catch (error) {
+    console.error("LINE notification recipient lookup failed", error);
+    return "unavailable";
+  }
+  if (!recipient) return "not_eligible";
+
+  const admin = createNotificationAdminClient();
+  if (!admin) return "unavailable";
+
+  const { error: seedError } = await admin
+    .from("order_notification_events")
+    .upsert({
+      order_id: args.orderId,
+      notification_type: args.notificationType,
+      language: args.language,
+      canonical_event_type: args.canonicalEventType,
+      worker_owner: "legacy",
+      event_state: "ready",
+      customer_id: args.customerId,
+    }, { onConflict: "order_id,notification_type", ignoreDuplicates: true });
+
+  if (seedError) {
+    console.error("Could not seed LINE notification event", seedError.message);
+    return "unavailable";
+  }
+
+  const claimMode = await claimNotification(admin, args.orderId, args.notificationType);
+  if (claimMode.mode !== "outbox") return "unavailable";
+
+  const claim = claimMode.claim;
+  if (claim.outcome === "already_sent") return "already_sent";
+  if (claim.outcome === "processing") return "processing";
+  if (claim.outcome === "uncertain") return "uncertain";
+  if (claim.outcome !== "claimed" || !claim.event_id) return "unavailable";
+
+  const token = Deno.env.get("LINE_MESSAGING_CHANNEL_ACCESS_TOKEN")?.trim()
+    || Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")?.trim();
+  if (!token) {
+    await finishNotification(admin, claim.event_id, "failed", null, "LINE provider not configured");
+    return "unavailable";
+  }
+
+  const text = args.message.trim().slice(0, 4900);
+  if (!text) {
+    await finishNotification(admin, claim.event_id, "failed", null, "LINE message is empty");
+    return "failed";
+  }
+
+  try {
+    const response = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: recipient,
+        messages: [{ type: "text", text }],
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 800);
+      await finishNotification(
+        admin,
+        claim.event_id,
+        "failed",
+        null,
+        `LINE ${response.status}: ${detail}`,
+      );
+      return "failed";
+    }
+
+    const requestId = response.headers.get("x-line-request-id") || "line-push";
+    await finishNotification(admin, claim.event_id, "sent", requestId, null);
+    return "sent";
+  } catch (error) {
+    const summary = providerErrorSummary(error);
+    await finishNotification(admin, claim.event_id, "uncertain", null, summary);
+    return "uncertain";
+  }
 }
 
 export async function finishNotification(
