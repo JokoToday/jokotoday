@@ -1,4 +1,9 @@
 const thai: Record<string, string> = {
+  "Merchant QR + EasySlip is paused pending provider validation.": "QR ร้านค้าและ EasySlip ยังปิดอยู่ระหว่างรอตรวจสอบกับผู้ให้บริการ",
+  "Specials LINE announcements are paused.": "การส่งประกาศ Specials ผ่าน LINE ยังปิดอยู่",
+  "Stripe refund completed.": "Stripe คืนเงินเรียบร้อยแล้ว",
+  "Stripe refund requested. Customer bank details are required; check the Stripe email.": "ส่งคำขอคืนเงินผ่าน Stripe แล้ว ลูกค้าต้องแจ้งข้อมูลบัญชีธนาคาร โปรดตรวจสอบอีเมลจาก Stripe",
+  "Stripe refund requested. Waiting for Stripe confirmation.": "ส่งคำขอคืนเงินผ่าน Stripe แล้ว กำลังรอการยืนยันจาก Stripe",
   "Retry Stripe refund": "ลองคืนเงินผ่าน Stripe อีกครั้ง",
   "batch_created": "สร้างชุดสินค้าราคาพิเศษ",
   "batch_updated": "แก้ไขชุดสินค้าราคาพิเศษ",

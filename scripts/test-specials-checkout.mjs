@@ -890,6 +890,9 @@ await fails(()=>handover(),/permission denied/, 'browser cannot call service-onl
 await actor('postgres');
 await db.exec(await readFile('supabase/migrations/20261012144155_joko_specials_dual_payment_rails_v1.sql','utf8'));
 await db.exec(await readFile('supabase/migrations/20261014040517_joko_specials_noncard_refund_evidence_v1.sql','utf8'));
+await db.exec(`CREATE FUNCTION public.claim_order_notification(p_order_id uuid,p_notification_type text) RETURNS jsonb LANGUAGE plpgsql AS $$ BEGIN
+ RETURN jsonb_build_object('outcome','claimed'); END $$;`);
+await db.exec(await readFile('supabase/migrations/20261014041822_joko_specials_release_guards_v1.sql','utf8'));
 eq((await query('SELECT payment_mode FROM public.specials_checkouts WHERE order_id=$1',[order]))[0].payment_mode,'kshop_master','existing rail remains EasySlip');
 await query("UPDATE public.specials_batches SET status='live',sales_start_at=clock_timestamp()-interval '1 minute',sales_end_at=clock_timestamp()+interval '30 minutes',pickup_start_at=clock_timestamp()-interval '1 minute',pickup_end_at=clock_timestamp()+interval '60 minutes' WHERE id=$1",[b.id]);
 const stripeCustomer=crypto.randomUUID();

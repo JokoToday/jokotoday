@@ -83,8 +83,8 @@ export function SpecialsOperations({
     setError("");
     setNotice("");
     try {
-      await action();
-      setNotice(specialsAdminText(language, "Saved."));
+      const result = await action();
+      setNotice(typeof result === "string" ? result : specialsAdminText(language, "Saved."));
       await load();
       onChanged();
     } catch (e) {
@@ -155,9 +155,10 @@ export function SpecialsOperations({
             <label className="block w-full max-w-md">{specialsAdminText(language, "Payment method")}<select className="mt-1 block w-full rounded border p-2" value={settings.payment_mode || 'stripe_promptpay'} disabled={busy}
                 onChange={e => { setSettings({...settings, payment_mode: e.target.value as Settings['payment_mode']}); setApproved(false); }}>
                 <option value="stripe_promptpay">{specialsAdminText(language, "Stripe PromptPay (default)")}</option>
-                <option value="kshop_master">{specialsAdminText(language, "Merchant PromptPay QR + EasySlip verification")}</option>
+                <option value="kshop_master" disabled={import.meta.env.VITE_SPECIALS_EASYSLIP_ENABLED !== "true"}>{specialsAdminText(language, "Merchant PromptPay QR + EasySlip verification")}</option>
               </select>
             </label>
+            {import.meta.env.VITE_SPECIALS_EASYSLIP_ENABLED !== 'true' && <p>{specialsAdminText(language, 'Merchant QR + EasySlip is paused pending provider validation.')}</p>}
             {settings.payment_mode === 'stripe_promptpay' && <p>{specialsAdminText(language, "Stripe confirms payment automatically. No slip upload. Changes apply to new checkouts only.")}</p>}
             {settings.payment_mode === "kshop_master" && <>
             <p>{specialsAdminText(language, "Use a genuine merchant QR whose receiver matches the account registered with EasySlip.")}</p>
@@ -259,6 +260,7 @@ export function SpecialsOperations({
               <p>
                 {language === "th" ? "สถานะ LINE:" : "LINE status:"} {specialsAdminText(language, announcement.status)}. {language === "th" ? "รับคำขอแล้ว หมายถึง LINE รับคำขอ API แล้ว แต่ยังไม่ยืนยันการส่งถึงหรือการอ่าน ผู้รับคือเพื่อนของบัญชี JOKO LINE Official Account ที่มีสิทธิ์รับข้อความ" : "Accepted means LINE accepted the API request; delivery and reading are not confirmed. Audience: eligible friends of the JOKO LINE Official Account."}
               </p>
+              {import.meta.env.VITE_SPECIALS_LINE_ENABLED !== "true" && <p>{specialsAdminText(language, "Specials LINE announcements are paused.")}</p>}
               {announcement.last_error && <p>{announcement.last_error}</p>}
               <button
                 className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
@@ -267,7 +269,7 @@ export function SpecialsOperations({
                   ["accepted", "suppressed", "sending"].includes(
                     announcement.status,
                   ) ||
-                  batch.status !== "live"
+                  batch.status !== "live" || import.meta.env.VITE_SPECIALS_LINE_ENABLED !== "true"
                 }
                 onClick={() =>
                   void run(async () => {
@@ -361,11 +363,12 @@ export function SpecialsOperations({
                       const { data, error } = await supabase.functions.invoke("specials-retry-stripe-refund", { body: { order_id: r.order_id } });
                       if (error) throw error;
                       if (data?.error) throw new Error(data.error);
+                      return specialsAdminText(language, data?.status === "succeeded" ? "Stripe refund completed." : data?.status === "requires_action" ? "Stripe refund requested. Customer bank details are required; check the Stripe email." : "Stripe refund requested. Waiting for Stripe confirmation.");
                     })}
                   >{specialsAdminText(language, "Retry Stripe refund")}</button>}
                   <button
                     className="joko-admin-primary-button mt-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-                    disabled={busy || !refundRef.trim() || !refundReason.trim()}
+                    disabled={busy || r.provider_ref.startsWith("stripe:") || !refundRef.trim() || !refundReason.trim()}
                     onClick={() =>
                       void run(() =>
                         action("refund", {
@@ -380,7 +383,7 @@ export function SpecialsOperations({
                   >{specialsAdminText(language, "Record actual full refund")}</button>
                   <button
                     className="joko-admin-primary-button ml-4 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
-                    disabled={busy || !refundReason.trim()}
+                    disabled={busy || r.provider_ref.startsWith("stripe:") || !refundReason.trim()}
                     onClick={() =>
                       void run(() =>
                         action("refund_pending", {
