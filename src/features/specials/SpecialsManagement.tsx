@@ -60,7 +60,7 @@ function errorMessage(error: unknown) {
 
 export function SpecialsManagement() {
   const { user } = useAuth();
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const copy = specialsLabels[language];
   const [batches, setBatches] = useState<SpecialsBatch[]>([]);
   const [products, setProducts] = useState<SpecialsProduct[]>([]);
@@ -317,7 +317,10 @@ export function SpecialsManagement() {
             </h1>
             <p className="mt-2 text-sm">{copy.intro}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <div role="group" aria-label="Specials Admin language" className="flex gap-1">
+              {(['en', 'th'] as const).map(lang => <button type="button" key={lang} aria-pressed={language === lang} className={language === lang ? "joko-admin-primary-button px-3 py-2" : "joko-admin-secondary-button px-3 py-2"} onClick={() => setLanguage(lang)}>{lang === 'th' ? 'ไทย' : 'EN'}</button>)}
+            </div>
             <button
               type="button"
               className="joko-admin-primary-button px-4 py-2 disabled:opacity-40"
