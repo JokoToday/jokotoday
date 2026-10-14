@@ -112,6 +112,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
   const [checkoutDates, setCheckoutDates] = useState<CommonPickupDateAvailability[]>([]);
   const [preferredSelectionResolved, setPreferredSelectionResolved] = useState(false);
   const [showPickupEditor, setShowPickupEditor] = useState(false);
+  const [pickupSelectionConfirmed, setPickupSelectionConfirmed] = useState(false);
   const pickupEditSessionRef = useRef(false);
   const [notes, setNotes] = useState('');
   // Optional final extras are reviewed after the pickup has been confirmed.
@@ -349,6 +350,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
 
   const beginPickupEdit = () => {
     pickupEditSessionRef.current = true;
+    setPickupSelectionConfirmed(false);
     setShowPickupEditor(true);
   };
 
@@ -379,6 +381,7 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
 
   const handlePickupSelectionChange = (next: PickupSelectionV2 | null) => {
     setSelection(next);
+    setPickupSelectionConfirmed(Boolean(next));
     setHasBakeryExtras(false);
     setHasNonBakeryExtras(false);
     setDeclinedExtras(false);
@@ -907,6 +910,12 @@ export default function CheckoutPageV2({ onNavigate }: CheckoutPageV2Props) {
               </div>
             ) : selection && selectedCheckoutDate && selectedCheckoutLocation && !showPickupEditor ? (
               <div className="rounded-[1.5rem] border border-[#55766F]/[.16] bg-[#CFE3DF]/[.34] p-5 sm:p-6">
+                {pickupSelectionConfirmed && (
+                  <p role="status" aria-live="polite" className="mb-4 flex items-center gap-2 text-sm font-semibold text-[#3F665E]">
+                    <CheckCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {language === 'th' ? 'ยืนยันวันและสถานที่รับสินค้าแล้ว' : language === 'zh' ? '取货日期和地点已确认' : 'Date & Location confirmed'}
+                  </p>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div>
                     <h2 className="font-semibold text-gray-900">{confirmTitle}</h2>

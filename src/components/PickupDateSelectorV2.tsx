@@ -98,6 +98,7 @@ export function PickupDateSelectorV2({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pendingSlotStart, setPendingSlotStart] = useState('');
+  const [confirmedSelectionKey, setConfirmedSelectionKey] = useState<string | null>(null);
   const [activeDateId, setActiveDateId] = useState<string | null>(value?.pickupDateId || null);
   const [pendingLocationId, setPendingLocationId] = useState<string | null>(value?.pickupLocationId || null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthStart(new Date()));
@@ -315,6 +316,7 @@ export function PickupDateSelectorV2({
       pickupSlotEnd: chosenWindow?.end || null,
       pickupWindowRevision: chosenWindow ? pendingLocation?.pickup_window_revision || null : null,
     });
+    setConfirmedSelectionKey(`${date.pickupDateId}:${pendingLocationId}:${chosenWindow?.start || ''}`);
   };
 
   const changeLocationFilter = (nextLocationId: string) => {
@@ -344,6 +346,14 @@ export function PickupDateSelectorV2({
     : language === 'zh'
       ? '确认取货日期和地点'
       : 'Confirm date & location';
+  const currentSelectionKey = activeCommonDate && pendingLocationId
+    ? `${activeCommonDate.pickupDateId}:${pendingLocationId}:${chosenWindow?.start || ''}`
+    : null;
+  const pickupConfirmationMessage = language === 'th'
+    ? 'ยืนยันวันและสถานที่รับสินค้าแล้ว'
+    : language === 'zh'
+      ? '取货日期和地点已确认'
+      : 'Date & Location confirmed';
   const dateStepComplete = Boolean(activeCommonDate);
   const locationStepActive = Boolean(activeCommonDate && !pendingLocationId);
   const locationStepComplete = Boolean(activeCommonDate && pendingLocationId);
@@ -793,6 +803,12 @@ export function PickupDateSelectorV2({
                         <CheckCircle2 className="w-5 h-5" />
                         {confirmPickupLabel}
                       </button>
+                      {currentSelectionKey && confirmedSelectionKey === currentSelectionKey && (
+                        <p role="status" aria-live="polite" className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-[#3F665E]">
+                          <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                          {pickupConfirmationMessage}
+                        </p>
+                      )}
                       <p className="mt-2 text-center text-xs text-[#303532]/50">
                         {language === 'th'
                           ? 'ขั้นตอนนี้ยืนยันการรับสินค้าก่อนที่คุณจะสั่งซื้อ'
