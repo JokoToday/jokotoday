@@ -46,6 +46,9 @@ jobs:
           npm install --prefix /tmp/joko-makers-tests --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.5.8
           JOKO_TEST_PGLITE_MODULE=/tmp/joko-makers-tests/node_modules/@electric-sql/pglite/dist/index.js node scripts/tests/makers-db.mjs
 
+      - name: Payment confirmation email regression
+        run: node scripts/test-payment-confirmation-email.mjs
+
       - name: Typecheck
         run: npm run typecheck
 

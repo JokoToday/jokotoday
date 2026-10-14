@@ -1,7 +1,7 @@
 {
   "production_project": "xvhualoeboobulwgmkla",
   "test_project": "szijiljpasxddzgzckra",
-  "reviewed_main": "773b22da265d9e43b42a9d5ac9c6c8e6255f1c89",
+  "reviewed_main": "e75a88b665f65c9319f963a8ebe602fa5729c53f",
   "migrations": [
     {
       "file": "20261008101347_joko_specials_inventory_foundation_v1.sql",
@@ -94,6 +94,11 @@
       "name": "specials-line-send",
       "verify_jwt": true,
       "sha256": "b870a8f449469c892b10e496e759cd5367975081baf975406b4b20823358dedd"
+    },
+    {
+      "name": "send-payment-confirmation",
+      "verify_jwt": true,
+      "sha256": "53e4a979ab72ed0105e75478300816e5ec4e80b770093db96f6b2af313211fb1"
     }
   ],
   "launch": {
