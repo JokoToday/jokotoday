@@ -47,3 +47,7 @@ PASS: regular dummy order JT-1020, 90 THB, Stripe sandbox PI pi_3UQQZ20s1xeShuff
 Regular checkout lacked a simulator link despite its test-mode explanation. Added a Stripe-host-only HTTPS instructions link, gated by stripeLivemode=false, with EN/TH/ZH text. Typecheck/build and CI/preview checks passed, deployed to test preview in commit 11c4ceb.
 
 Existing Specials refund gate remains open. Stripe Dashboard sign-in reached an hCaptcha challenge; awaiting user manual completion or action-time approval before proceeding. No second refund created and no manual financial success recorded.
+
+## Provider refund evidence, 14 October evening
+
+Stripe connector GET /v1/refunds succeeded for JOKO Specials Test account acct_1UPlIn0s1xeShuff (livemode=false). Existing refund pyr_1UQJKU0s1xeShuffb6ANWH3x for PI pi_3UQJGG0s1xeShuff1FhpAHmX, amount 11000 satang, is requires_action. next_action.type=display_details records an email sent to the test customer requiring refund-account details. This is the actual outstanding action, not automatic settlement delay. No second refund, status override, real bank details or provider mutation performed. The browser is currently timing out, so the customer email/form step still requires user access. JOKO JT-1018 remains refund_pending with inventory released; JT-1020 remains completed/paid (90 THB).
