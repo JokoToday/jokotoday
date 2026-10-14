@@ -130,7 +130,7 @@ export default function Footer({ onNavigate, variant = 'default' }: FooterProps)
             </div>
           </div>
 
-          <div>
+          <div id="joko-contact">
             <h4 className="mb-4 font-semibold">{t.footer.contact}</h4>
             <div className={`space-y-2 text-sm ${mutedClass}`}>
               <p>{t.footer.contactLocation}</p>
