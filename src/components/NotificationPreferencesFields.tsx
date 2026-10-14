@@ -14,6 +14,7 @@ interface NotificationPreferencesFieldsProps {
   customerId?: string;
   onFriendshipChange?: (status: LINEFriendshipStatus) => void;
   compact?: boolean;
+  validationError?: string;
 }
 
 export function NotificationPreferencesFields({
@@ -26,6 +27,7 @@ export function NotificationPreferencesFields({
   customerId,
   onFriendshipChange,
   compact = false,
+  validationError = '',
 }: NotificationPreferencesFieldsProps) {
   const { language } = useLanguage();
   const { getLabel } = useCMSLabels();
@@ -50,8 +52,8 @@ export function NotificationPreferencesFields({
   ];
 
   const cardClass = compact
-    ? 'rounded-xl border border-[#55766F]/16 bg-white/65 p-4'
-    : 'rounded-[1.5rem] border border-[#55766F]/14 bg-white/50 p-5 sm:p-6';
+    ? 'rounded-xl border border-[#55766F]/24 bg-[#CFE3DF]/72 p-4'
+    : 'rounded-[1.5rem] border border-[#55766F]/32 bg-[#BDD8D2] p-5 shadow-[0_8px_24px_rgba(85,118,111,0.12)] sm:p-6';
 
   const recheckFriendship = useCallback(async () => {
     if (!customerId || checkingFriendship) return;
@@ -76,11 +78,11 @@ export function NotificationPreferencesFields({
   }, [lineEnabled, customerId, recheckFriendship]);
 
   return (
-    <section className={cardClass}>
+    <section className={cardClass} aria-invalid={Boolean(validationError)}>
       <h3 className="text-lg font-semibold text-[#303532]">
         {getLabel('profile.notifications_heading', language, language === 'th' ? 'รับการแจ้งเตือนผ่าน' : language === 'zh' ? '通知方式' : 'Notifications via')}
       </h3>
-      <p className="mt-1 text-sm leading-relaxed text-[#303532]/65">
+      <p className="mt-1 text-sm leading-relaxed text-[#303532]/70">
         {getLabel(
           'profile.notifications_intro',
           language,
@@ -92,8 +94,17 @@ export function NotificationPreferencesFields({
         )}
       </p>
 
+      {validationError && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-[#B74934]/28 bg-[#FFF0EC] px-4 py-3 text-sm font-semibold text-[#8A2F20]"
+        >
+          {validationError}
+        </p>
+      )}
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#55766F]/18 bg-[#FFF9EE]/80 p-4">
+        <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${emailEnabled ? 'border-[#466861]/45 bg-white/92 shadow-sm' : 'border-[#55766F]/22 bg-white/58'}`}>
           <input
             type="checkbox"
             checked={emailEnabled}
@@ -119,7 +130,7 @@ export function NotificationPreferencesFields({
           </span>
         </label>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#06C755]/24 bg-[#E9F8EE]/72 p-4">
+        <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${lineEnabled ? 'border-[#06C755]/48 bg-[#F2FFF5] shadow-sm' : 'border-[#55766F]/22 bg-white/58'}`}>
           <input
             type="checkbox"
             checked={lineEnabled}
