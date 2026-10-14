@@ -1,7 +1,7 @@
 {
   "production_project": "xvhualoeboobulwgmkla",
   "test_project": "szijiljpasxddzgzckra",
-  "reviewed_main": "9d8f8633088404987d0d4dae3c796eabbf45b9dc",
+  "reviewed_main": "773b22da265d9e43b42a9d5ac9c6c8e6255f1c89",
   "migrations": [
     {
       "file": "20261008101347_joko_specials_inventory_foundation_v1.sql",
@@ -48,7 +48,7 @@
       "sha256": "212d2b34e73e1e6772aeaa1a247436e0068a38e0c8633cfd90e858ad916c4de9"
     }
   ],
-  "sql_bundle_sha256": "e4848985e46835d82fd36a6da564d0ada2ce23b634b19ad88ec37efcf5101acc",
+  "sql_bundle_sha256": "47cf9fd0b3a7ec1fb3bc0833fd59ab02ee5a2ef7dfa21f06cf3a4717cd36cc0a",
   "edge_functions": [
     {
       "name": "stripe-promptpay-intent",
@@ -104,5 +104,39 @@
     "VITE_SPECIALS_EASYSLIP_ENABLED": "false",
     "scheduled_notifications": "preserve existing controls"
   },
-  "test_data_imported": false
+  "test_data_imported": false,
+  "shared_function_sources": [
+    {
+      "file": "supabase/functions/_shared/auth-email-routing.ts",
+      "sha256": "88414a1f1baf88f196139bef2a1dd582d993cb2236befe2150454d1e4e75b43a"
+    },
+    {
+      "file": "supabase/functions/_shared/customer-notification-providers.ts",
+      "sha256": "7e274ba3a6d6ffe0453ec350616237efc6d2af43adc4e1ab5a24e57d840d87fc"
+    },
+    {
+      "file": "supabase/functions/_shared/customer-notification-templates.ts",
+      "sha256": "ee44e8a4bc4c85662eb929158d77d76dedecaef48a45af76596e4da5aa31f6c0"
+    },
+    {
+      "file": "supabase/functions/_shared/kshop-master-qr.ts",
+      "sha256": "cbf76e9158099f1039c48f53f361f708be8b08801ef668aadb30254aecca1928"
+    },
+    {
+      "file": "supabase/functions/_shared/notification-webhook-security.ts",
+      "sha256": "31ee0fc37b16d93e843850e04a9b5855656d68b47122f7f1f5529af79746009e"
+    },
+    {
+      "file": "supabase/functions/_shared/order-notifications.ts",
+      "sha256": "03024d7f6ab3efed25c851edee85edf1b69f91bcecd217b09abd94b13deee8d4"
+    },
+    {
+      "file": "supabase/functions/_shared/transactional-email.ts",
+      "sha256": "3d605372a6fe0ff1fbeeb8d5f4aad2d4d80348dffe96266dfb9d147cfd43cd54"
+    }
+  ],
+  "required_database_functions": [
+    "public.resolve_customer_notification_recipient_v1(uuid,text)",
+    "public.notification_channel_allowed_v1(uuid,text)"
+  ]
 }

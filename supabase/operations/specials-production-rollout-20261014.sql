@@ -7,6 +7,7 @@ DO $preflight$
 BEGIN
  IF to_regclass('public.specials_batches') IS NOT NULL THEN RAISE EXCEPTION 'Specials already exists; inspect migration history instead of reapplying'; END IF;
  IF to_regprocedure('public.resolve_customer_notification_recipient_v1(uuid,text)') IS NULL THEN RAISE EXCEPTION 'Complete the current-main notification-preferences rollout first'; END IF;
+ IF to_regprocedure('public.notification_channel_allowed_v1(uuid,text)') IS NULL THEN RAISE EXCEPTION 'Complete current-main legacy notification pause-gate rollout first'; END IF;
  -- Preserve independently approved transactional notification controls; this bundle does not change them.
 END $preflight$;
 

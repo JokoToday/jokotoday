@@ -5,15 +5,22 @@ Scope: Stripe PromptPay, Specials Selection administration in English/Thai, disc
 
 ## Evidence and remaining gates
 
-Test-only customer_notification_preferences_v1 and Specials release guards applied atomically on 14 October; migration history, preference columns, service-role-only recipient resolver, paid-only Specials notification exclusion and automatic Stripe refund boundary verified. All three test notification pause flags remain true.
-Notification preferences/claims/security SQL suite passed; 106 checkout/payment/pickup/LINE assertions passed. Earlier foundation, endpoint, SDK, receipt, retry-auth and pickup-window suites passed. Typecheck/build passed; lint: 0 errors, 36 existing warnings; dependency audit: 0 vulnerabilities.
-Hosted EN/Thai save/publish/stock and 320/390-pixel iframe rendering were verified earlier. These are browser viewport checks, not a physical phone or bank-app check. After secure email-code reauthentication, deployed Thai Admin and disabled EasySlip explanation were verified. Approved test Makers prerequisites and dated fixtures are now applied. Hosted regular catalogue/cart/sign-in, mandatory 09:00–09:30 pickup-slot confirmation, order JT-1019 creation and cancellation passed; dated inventory reserved then fully released. Regular test payment settings remain disabled, so prepaid regular payment and pickup handover are still unverified. Isolated regular pickup-window tests passed.
-Actual cancelled test PromptPay payment JT-1018 reached refund_pending using Stripe pyr_ evidence and the original idempotency key; stock remained released. Provider refund settlement remains unproven. Do not claim it refunded until the provider reports success; customer bank details may be required.
+Final review against origin/main 773b22d (PR #285) completed on 14 October. Main was merged into the Specials branch without conflicts; current profile feedback, canonical LINE handling, receipt notification pause gates and service-role-only legacy notification gate are retained.
+
+PASS: hosted English/Thai Specials Admin save, publish, stock and responsive 320/390-pixel rendering. PASS: regular sandbox prepaid order JT-1020, 90 THB, signed Stripe payment verification, Admin acting through Staff Operations with member-code fallback, early-pickup confirmation, dynamic one-time receipt QR and customer confirmation; final order completed/paid, receipt JTR-JT-1020. No real money or physical goods moved; camera hardware was not tested.
+
+PASS: canceled late-payment Specials order JT-1018, 110 THB. Customer completed Stripe's sandbox bank-details form using dummy values. Stripe refund pyr_1UQJKU0s1xeShuffb6ANWH3x reports succeeded; JOKO automatically reconciled financial_state=refunded and inventory_state=released. No duplicate refund or manual success override.
+
+Fresh combined-branch validation: 319 focused Specials assertions across foundation, checkout/payment/pickup, real-SDK webhook signatures, isolated Edge adapters, menu/origin, receipt compatibility and refund retry boundaries. Notification SQL and Edge suites passed, including current pause gates and Specials payment/refund guards. Typecheck/build passed; lint has 0 errors and 36 existing warnings. LINE auth/onboarding and Tailwind compatibility audits passed.
+
+Read-only production preflight: Specials is absent; notification recipient resolver and legacy channel pause gate exist. Global/email/LINE notification controls are all paused. Production migration history records notification preferences under runtime version 20261014112740 and profile copy under 20261014114500; check function/schema presence rather than pushing branch history. Production frontend observed at release 20261014-185607-6d44788598f1 (PR #284), behind reviewed main PR #285. Refresh these observations immediately before rollout; preserve any independently approved newer deployment or notification controls.
+
+Remaining execution gates: explicit approval for this production rollout, fresh backup and exact merged-SHA lock, then production smoke verification. Physical phone camera and live bank-app payment remain launch validation, not completed sandbox checks. Stripe email branding/languages are deferred separately by the owner.
 
 ## Reviewed package
 
-- supabase/operations/specials-production-rollout-20261014.sql: atomic 11-migration bundle, individual history entries, aborts if Specials already exists or current-main notification recipient resolver is absent.
-- docs/specials/production-release-manifest-20261014.json: exact file hashes, reviewed main revision, nine endpoint names and JWT settings.
+- supabase/operations/specials-production-rollout-20261014.sql: atomic 11-migration bundle, individual history entries, aborts if Specials already exists or either current-main notification recipient resolver or legacy channel pause gate is absent.
+- docs/specials/production-release-manifest-20261014.json: exact migration/endpoint/shared-source hashes, reviewed main revision, nine endpoint names and JWT settings, and required database function signatures.
 - scripts/prepare-specials-release.py: regenerates the bundle without contacting any database.
 - /home/nerd/jokotoday-deploy-main.pr236.sh: server deployment template. EXPECTED_SHA is deliberately unset until an approved merge supplies an exact revision.
 - Temporary responsive test page removed from the release.
@@ -22,7 +29,7 @@ No test products, orders, customers, inventory, SMTP keys or Stripe keys are cop
 
 ## One proposed rollout
 
-1. Finish the authenticated hosted regression and resolve or explicitly accept the outstanding provider refund-settlement gate. Refresh main, production revision, migration history and notification controls immediately before approval. Independently complete the current-main notification-preferences production rollout if its resolver is absent. Do not db push the entire branch.
+1. Refresh main, production revision, migration history and notification controls immediately before approval. This package is reviewed against 773b22d; if main changes, integrate/review its relevant changes and regenerate the manifest before executing. Require both notification recipient resolver and legacy channel pause gate. Do not db push the entire branch.
 2. After explicit production approval, record a fresh production database backup and the current release path; export the deployed shared Stripe Edge Function sources/configuration for rollback. Confirm the backup is restorable and record its location privately.
 3. Merge the reviewed PR and lock its exact merge SHA in the deployment template. Regenerate/review the manifest if main or release files changed; stop if deployed prerequisites differ.
 4. Apply only the reviewed atomic SQL bundle to production project xvhualoeboobulwgmkla. Verify every history entry, RLS/grants, service-only financial functions and notification/refund guards. Leave Specials payment enabled=false and payment mode stripe_promptpay.
@@ -35,19 +42,3 @@ No test products, orders, customers, inventory, SMTP keys or Stripe keys are cop
 
 Before any paid Specials order exists: disable Specials payments, restore the previously compatible frontend and saved Edge Functions, and verify regular ordering. Preserve the migration history and ledger tables rather than dropping them.
 After a paid Specials order exists: disable new Specials sales, retain fulfillment and refund processing, reconcile outstanding orders/holds/refunds, and choose a compatible frontend rollback. Never blindly remove Specials pickup or financial handling. Do not reset independent transactional notification activation.
-
-## Authorized prepaid test checkpoint
-
-User authorized enabling regular sandbox Stripe prepaid checkout and completing payment/staff/customer receipt testing, plus inspecting the existing Stripe test refund. JOKO Specials Test payment_settings now has online_promptpay_enabled=true and payment_qr_mode=stripe_promptpay; production untouched, all test notification pause controls remain true. Browser timed out opening Stripe Dashboard, then the secure customer sign-in request also timed out. No new regular order/payment was created: latest regular order remains cancelled JT-1019. Payment, staff handover, customer receipt and provider refund settlement remain unverified. Existing Specials JT-1018 remains refund_pending with released inventory. Do not create another refund or mark success manually. Resume secure browser authentication before checkout; verify the Stripe test account before any provider action.
-
-## Resumed hosted prepaid test result
-
-PASS: regular dummy order JT-1020, 90 THB, Stripe sandbox PI pi_3UQQZ20s1xeShuff10LsIrDa. Provider test page authorized simulated payment; signed webhook verified the transaction and order became paid/confirmed with 90 THB amount_paid. Signed-in Admin acting through Staff Operations used VIP101 member-code fallback, then Confirm Early Pickup (scheduled 17 October). Dynamic one-time receipt QR opened the customer receipt screen; customer confirmation completed the order and issued JTR-JT-1020. Browser success and final database completed/paid state verified. No real money or goods moved; camera hardware was not tested. All test notifications remain paused; production untouched.
-
-Regular checkout lacked a simulator link despite its test-mode explanation. Added a Stripe-host-only HTTPS instructions link, gated by stripeLivemode=false, with EN/TH/ZH text. Typecheck/build and CI/preview checks passed, deployed to test preview in commit 11c4ceb.
-
-Existing Specials refund gate remains open. Stripe Dashboard sign-in reached an hCaptcha challenge; awaiting user manual completion or action-time approval before proceeding. No second refund created and no manual financial success recorded.
-
-## Provider refund evidence, 14 October evening
-
-Stripe connector GET /v1/refunds succeeded for JOKO Specials Test account acct_1UPlIn0s1xeShuff (livemode=false). Existing refund pyr_1UQJKU0s1xeShuffb6ANWH3x for PI pi_3UQJGG0s1xeShuff1FhpAHmX, amount 11000 satang, is requires_action. next_action.type=display_details records an email sent to the test customer requiring refund-account details. This is the actual outstanding action, not automatic settlement delay. No second refund, status override, real bank details or provider mutation performed. The browser is currently timing out, so the customer email/form step still requires user access. JOKO JT-1018 remains refund_pending with inventory released; JT-1020 remains completed/paid (90 THB).
