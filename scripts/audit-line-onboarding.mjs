@@ -73,6 +73,7 @@ assert.doesNotMatch(modal, /formData\.(?:whatsapp|wechat_id)/);
 assert.match(profile, /notificationsSectionRef/);
 assert.match(profile, /scrollToNotificationPreferences/);
 assert.match(profile, /Please selected your preferred notifications channel\./);
+assert.match(profile, /Saved successfully/);
 const notificationPreferences = get('src/components/NotificationPreferencesFields.tsx');
 assert.match(notificationPreferences, /validationError/);
 assert.match(notificationPreferences, /bg-\[#BDD8D2\]/);
