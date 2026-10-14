@@ -209,7 +209,7 @@ export function SpecialsOperations({
                   setSettings({ ...settings, enabled: e.target.checked })
                 }
               />{" "}
-              Enable Specials payments
+              {specialsAdminText(language, "Enable Specials payments")}
             </label>
             {settings.payment_mode === "kshop_master" && <label className="block">
               <input
@@ -217,8 +217,7 @@ export function SpecialsOperations({
                 checked={approved}
                 onChange={(e) => setApproved(e.target.checked)}
               />{" "}
-              I tested this QR in a banking app and checked the exact registered
-              receiver.
+              {specialsAdminText(language, "I tested this QR in a banking app and checked the exact registered receiver.")}
             </label>}
             <button
               className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
