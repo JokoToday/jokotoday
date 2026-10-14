@@ -100,3 +100,14 @@ verify_jwt = true
 
 [functions.confirm-specials-pickup-receipt]
 verify_jwt = false
+# Dedicated internal bearer secret is checked by the dispatcher; no browser send API.
+[functions.dispatch-customer-notifications]
+verify_jwt = false
+
+# LINE authenticates exact raw bytes with x-line-signature.
+[functions.line-oa-webhook]
+verify_jwt = false
+
+[functions.sync-line-oa-friendship]
+verify_jwt = true
+
