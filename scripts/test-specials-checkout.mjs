@@ -889,6 +889,7 @@ await fails(()=>handover(),/permission denied/, 'browser cannot call service-onl
 // Dual rail migration preserves historical EasySlip snapshots, while new ones default to Stripe.
 await actor('postgres');
 await db.exec(await readFile('supabase/migrations/20261012144155_joko_specials_dual_payment_rails_v1.sql','utf8'));
+await db.exec(await readFile('supabase/migrations/20261014040517_joko_specials_noncard_refund_evidence_v1.sql','utf8'));
 eq((await query('SELECT payment_mode FROM public.specials_checkouts WHERE order_id=$1',[order]))[0].payment_mode,'kshop_master','existing rail remains EasySlip');
 await query("UPDATE public.specials_batches SET status='live',sales_start_at=clock_timestamp()-interval '1 minute',sales_end_at=clock_timestamp()+interval '30 minutes',pickup_start_at=clock_timestamp()-interval '1 minute',pickup_end_at=clock_timestamp()+interval '60 minutes' WHERE id=$1",[b.id]);
 const stripeCustomer=crypto.randomUUID();
@@ -925,13 +926,13 @@ await query('SELECT public.specials_customer_state_v1($1,true)',[lateStripe]);
 await actor('postgres');await query("UPDATE public.payment_transactions SET provider_transaction_ref='pi_late_fixture' WHERE order_id=$1",[lateStripe]);
 await actor('service_role');
 eq((await query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp()) r',[lateStripe,'pi_late_fixture',10000]))[0].r.state,'refund_required','cancelled stock is not reacquired');
-await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','re_fixture','pending']);
+await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','pending']);
 await actor('authenticated',stripeCustomer);
 eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refund_pending','pending refund not described as completed');
-await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','re_fixture','succeeded']);
+await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','succeeded']);
 await actor('authenticated',stripeCustomer);
 eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refunded','successful refund persisted');
-await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','re_fixture','pending']);
+await actor('service_role');await query('SELECT public.specials_stripe_refund_v1($1,$2,$3,$4)',[lateStripe,'pi_late_fixture','pyr_fixture','pending']);
 await actor('authenticated',stripeCustomer);
 eq((await query('SELECT public.specials_customer_state_v1($1) r',[lateStripe]))[0].r.checkout.financial_state,'refunded','older pending refund does not undo successful refund');
 await fails(()=>query('SELECT public.specials_finish_stripe_v1($1,$2,$3,clock_timestamp())',[lateStripe,'pi_late_fixture',10000]),/permission denied/,'customer cannot forge Stripe verification');

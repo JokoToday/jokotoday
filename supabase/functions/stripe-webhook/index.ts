@@ -201,6 +201,7 @@ Deno.serve(async (req: Request) => {
       if (resultError) throw resultError;
       if (result.state === "refund_required") {
         const refund = await refundLateOrCancelledPayment(stripe, paymentIntent, payment);
+        console.info("Stripe Specials late-refund evidence", { refund_id: refund.id, status: refund.status });
         const { error: refundError } = await service.rpc("specials_stripe_refund_v1", {
           p_order: payment.order_id, p_intent: paymentIntent.id,
           p_refund: refund.id, p_status: refund.status || "pending",

@@ -1,4 +1,5 @@
 const thai: Record<string, string> = {
+  "Retry Stripe refund": "ลองคืนเงินผ่าน Stripe อีกครั้ง",
   "batch_created": "สร้างชุดสินค้าราคาพิเศษ",
   "batch_updated": "แก้ไขชุดสินค้าราคาพิเศษ",
   "batch_prepared": "เตรียมชุดสินค้าราคาพิเศษ",

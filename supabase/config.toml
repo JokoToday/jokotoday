@@ -92,8 +92,6 @@ verify_jwt = true
 [functions.pickup-handover-status]
 verify_jwt = false
 
-[functions.confirm-pickup-receipt]
-verify_jwt = false
 
 [functions.bypass-pickup-receipt]
 verify_jwt = true
@@ -111,3 +109,6 @@ verify_jwt = false
 [functions.sync-line-oa-friendship]
 verify_jwt = true
 
+
+[functions.specials-retry-stripe-refund]
+verify_jwt = true

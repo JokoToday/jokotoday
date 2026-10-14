@@ -354,6 +354,15 @@ export function SpecialsOperations({
                     {r.provider_ref} · ฿{r.amount} · {specialsAdminText(language, r.disposition)}
                   </p>
                   <p className="break-all text-xs">{specialsAdminText(language, "Order")} {r.order_id}</p>
+                  {r.provider_ref.startsWith("stripe:") && r.disposition === "refund_pending" && <button
+                    className="joko-admin-primary-button mt-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={busy}
+                    onClick={() => void run(async () => {
+                      const { data, error } = await supabase.functions.invoke("specials-retry-stripe-refund", { body: { order_id: r.order_id } });
+                      if (error) throw error;
+                      if (data?.error) throw new Error(data.error);
+                    })}
+                  >{specialsAdminText(language, "Retry Stripe refund")}</button>}
                   <button
                     className="joko-admin-primary-button mt-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy || !refundRef.trim() || !refundReason.trim()}
