@@ -1,3 +1,4 @@
+import { specialsAdminText } from './adminThai';
 import { SpecialsPrice } from './SpecialsPrice';
 import { SpecialsOperations } from './SpecialsOperations';
 import { SpecialsPageContentEditor } from './SpecialsPageContentEditor';
@@ -37,12 +38,12 @@ type BatchForm = {
   pickup_end_at: string;
   notes_internal: string;
 };
-function initialForm(): BatchForm {
+function initialForm(language = "en"): BatchForm {
   const now = new Date();
   const at = (minutes: number) =>
     bangkokInputValue(new Date(now.getTime() + minutes * 60000));
   return {
-    title: "Specials Selection",
+    title: specialsAdminText(language, "Specials Selection"),
     pickup_location_id: "",
     sales_start_at: at(0),
     sales_end_at: at(60),
@@ -70,7 +71,7 @@ export function SpecialsManagement() {
   const [pastDate, setPastDate] = useState("");
   const [items, setItems] = useState<SpecialsItem[]>([]);
   const [events, setEvents] = useState<SpecialsAuditEvent[]>([]);
-  const [form, setForm] = useState<BatchForm>(initialForm);
+  const [form, setForm] = useState<BatchForm>(() => initialForm(language));
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -101,7 +102,7 @@ export function SpecialsManagement() {
   const isActiveSelection = (selection: SpecialsBatch) => !["closed", "cancelled"].includes(selection.status) && new Date(selection.pickup_end_at).getTime() > Date.now();
   const activeSelections = batches.filter(isActiveSelection).sort((a, b) => b.business_date.localeCompare(a.business_date) || b.sales_start_at.localeCompare(a.sales_start_at));
   const pastSelections = batches.filter(selection => !isActiveSelection(selection)).sort((a, b) => b.business_date.localeCompare(a.business_date) || b.sales_start_at.localeCompare(a.sales_start_at));
-  const selectionLabel = (selection: SpecialsBatch) => `${selection.business_date} · ${selection.title} · ${selection.status}`;
+  const selectionLabel = (selection: SpecialsBatch) => `${selection.business_date} · ${selection.title} · ${specialsAdminText(language, selection.status)}`;
   const productName = (product?: SpecialsProduct) =>
     product?.[`name_${language}`] || product?.name_en || "—";
   const selectedProduct = products.find(product => product.id === productId);
@@ -153,10 +154,10 @@ export function SpecialsManagement() {
       setPending(value);
     } catch {
       setError(
-        "Could not restore the pending operation. Check the audit history before transferring stock.",
+        specialsAdminText(language, "Could not restore the pending operation. Check the audit history before transferring stock."),
       );
     }
-  }, [storageKey]);
+  }, [storageKey, language]);
   useEffect(() => {
     const generation = ++batchLoadGeneration.current;
     setItems([]);
@@ -227,7 +228,7 @@ export function SpecialsManagement() {
       pendingRef.current = null;
       setPending(null);
       setBatchId(result.batch.id);
-      setNotice(action === "save_batch" ? "Draft saved. Add product offers and stock before publishing." : action === "save_item" ? "Offer saved. Add counted stock before preparing the selection." : action === "transfer" ? (request.direction === "in" ? "Stock added to Specials successfully." : "Unsold stock released from Specials successfully.") : action === "prepare" ? "Selection prepared. Use Publish prepared Specials to open checkout." : copy.saved);
+      setNotice(action === "save_batch" ? specialsAdminText(language, "Draft saved. Add product offers and stock before publishing.") : action === "save_item" ? specialsAdminText(language, "Offer saved. Add counted stock before preparing the selection.") : action === "transfer" ? (request.direction === "in" ? specialsAdminText(language, "Stock added to Specials successfully.") : specialsAdminText(language, "Unsold stock released from Specials successfully.")) : action === "prepare" ? specialsAdminText(language, "Selection prepared. Use Publish prepared Specials to open checkout.") : copy.saved);
       await refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -304,7 +305,7 @@ export function SpecialsManagement() {
   return (
     <section className="space-y-6 pt-6">
       {notice && <div role="status" className="fixed bottom-6 right-6 z-50 flex max-w-md items-start gap-4 rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 text-[#303532] shadow-lg">
-        <p>{notice}</p><button type="button" aria-label="Dismiss confirmation" className="font-semibold text-[#C76624]" onClick={() => setNotice("")}>×</button>
+        <p>{notice}</p><button type="button" aria-label={specialsAdminText(language, "Dismiss confirmation")} className="font-semibold text-[#C76624]" onClick={() => setNotice("")}>×</button>
       </div>}
       <SpecialsPageContentEditor />
       <div className="joko-admin-paper-card p-5 sm:p-6">
@@ -323,10 +324,10 @@ export function SpecialsManagement() {
               disabled={locked}
               onClick={() => {
                 setBatchId(null);
-                setForm(initialForm());
+                setForm(initialForm(language));
                 setItems([]);
                 setEvents([]);
-                setNotice("New selection ready. Enter its title, pickup location and times, then save the draft.");
+                setNotice(specialsAdminText(language, "New selection ready. Enter its title, pickup location and times, then save the draft."));
                 selectionFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                 selectionFormRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
               }}
@@ -343,7 +344,7 @@ export function SpecialsManagement() {
             </button>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">Select a saved selection below → choose a catalogue product and Specials price → add counted stock → prepare the selection → publish checkout. Saving a draft does not publish it.</p>
+        <p className="mt-4 rounded-xl bg-[#E6EEE9] p-3 text-sm">{specialsAdminText(language, "Select a saved selection below \u2192 choose a catalogue product and Specials price \u2192 add counted stock \u2192 prepare the selection \u2192 publish checkout. Saving a draft does not publish it.")}</p>
         {error && (
           <p
             role="alert"
@@ -381,21 +382,20 @@ export function SpecialsManagement() {
           <label className="block w-full max-w-md text-sm">
             {language === "th" ? "ชุด Specials ที่ใช้งานอยู่" : language === "zh" ? "当前 Specials 精选" : "Active selections"}
             <select className="joko-admin-field mt-1 w-full" disabled={locked} value={activeSelections.some(selection => selection.id === batchId) ? batchId || "" : ""} onChange={event => setBatchId(event.target.value || null)}>
-              <option value="">{activeSelections.length ? "Choose active selection" : "No active selections"}</option>
+              <option value="">{activeSelections.length ? specialsAdminText(language, "Choose active selection") : specialsAdminText(language, "No active selections")}</option>
               {activeSelections.map(selection => <option key={selection.id} value={selection.id}>{selectionLabel(selection)}</option>)}
             </select>
           </label>
           <label className="block w-full max-w-md text-sm">
             {language === "th" ? "ชุด Specials ที่ผ่านมา" : language === "zh" ? "往期 Specials 精选" : "Past selections"}
             <select className="joko-admin-field mt-1 w-full" disabled={locked} value={pastSelections.some(selection => selection.id === batchId) ? batchId || "" : ""} onChange={event => setBatchId(event.target.value || null)}>
-              <option value="">Choose past selection</option>
+              <option value="">{specialsAdminText(language, "Choose past selection")}</option>
               {pastSelections.filter(selection => !pastDate || selection.business_date === pastDate || selection.id === batchId).map(selection => <option key={selection.id} value={selection.id}>{selectionLabel(selection)}</option>)}
             </select>
           </label>
-          <label className="block text-sm">Search past selections by date
-            <input type="date" className="joko-admin-field mt-1 block" value={pastDate} disabled={locked} onChange={event => setPastDate(event.target.value)} />
+          <label className="block text-sm">{specialsAdminText(language, "Search past selections by date")}<input type="date" className="joko-admin-field mt-1 block" value={pastDate} disabled={locked} onChange={event => setPastDate(event.target.value)} />
           </label>
-          {pastDate && <button className="joko-admin-secondary-button px-3 py-2" disabled={locked} onClick={() => setPastDate("")}>Clear date</button>}
+          {pastDate && <button className="joko-admin-secondary-button px-3 py-2" disabled={locked} onClick={() => setPastDate("")}>{specialsAdminText(language, "Clear date")}</button>}
         </div>
       </div>
 
@@ -407,8 +407,8 @@ export function SpecialsManagement() {
           style={{ scrollMarginTop: "160px" }}
         >
           <div className="-mx-5 -mt-5 mb-5 bg-[#C76624] px-5 py-4 text-white">
-            <h2 className="joko-admin-title text-2xl" style={{ color: "white" }}>{batch ? "Selection details" : "New Selection"}</h2>
-            <p className="mt-1 text-sm">{batch ? batch.title : "Set the title, pickup location and sales window for your Specials Selection."}</p>
+            <h2 className="joko-admin-title text-2xl" style={{ color: "white" }}>{batch ? specialsAdminText(language, "Selection details") : specialsAdminText(language, "New Selection")}</h2>
+            <p className="mt-1 text-sm">{batch ? batch.title : specialsAdminText(language, "Set the title, pickup location and sales window for your Specials Selection.")}</p>
           </div>
           <fieldset
             disabled={locked || Boolean(batch && batch.status !== "draft")}
@@ -547,7 +547,7 @@ export function SpecialsManagement() {
               </div>
             </>
           ) : (
-            <p className="text-sm">{batches.length ? "Select a saved selection above to add products, stock and publish it." : copy.empty}</p>
+            <p className="text-sm">{batches.length ? specialsAdminText(language, "Select a saved selection above to add products, stock and publish it.") : copy.empty}</p>
           )}
         </div>
       </div>
@@ -559,12 +559,12 @@ export function SpecialsManagement() {
               className="joko-admin-paper-card space-y-4 p-5"
             >
               <h2 className="joko-admin-title text-xl">{copy.add}</h2>
-              <p className="text-sm">Choose an existing catalogue product. Its name, image and regular price are reused; enter only the Specials price and optional customer limit.</p>
+              <p className="text-sm">{specialsAdminText(language, "Choose an existing catalogue product. Its name, image and regular price are reused; enter only the Specials price and optional customer limit.")}</p>
               {selectedProduct && <div className="rounded-xl border border-[#55766F]/20 p-4">
                 {selectedProduct.image && <img src={selectedProduct.image} alt={productName(selectedProduct)} className="mb-3 h-28 w-28 object-contain" />}
                 <strong>{productName(selectedProduct)}</strong>
                 {productDescription(selectedProduct) && <p className="mt-2 whitespace-pre-line text-sm">{productDescription(selectedProduct)}</p>}
-                <p className="mt-2 text-sm">Regular price: {money(Math.round(selectedProduct.price * 100))}</p>
+                <p className="mt-2 text-sm">{specialsAdminText(language, "Regular price:")} {money(Math.round(selectedProduct.price * 100))}</p>
               </div>}
               <fieldset disabled={locked} className="grid gap-4 sm:grid-cols-3">
                 <label className="block text-sm">
@@ -706,15 +706,15 @@ export function SpecialsManagement() {
                   setCustomSource(event.target.value === "__other__");
                   setSource(event.target.value === "__other__" ? "" : event.target.value);
                 }}>
-                  <option value="">Select source / destination</option>
+                  <option value="">{specialsAdminText(language, "Select source / destination")}</option>
                   {locations.map(place => <option key={place.id} value={place.name_en}>{place[`name_${language}`] || place.name_en}</option>)}
-                  <option value="Bakery counter">Bakery counter</option>
-                  <option value="Market stock">Market stock</option>
-                  <option value="Returned to regular sale">Returned to regular sale</option>
-                  <option value="Waste / disposal">Waste / disposal</option>
-                  <option value="__other__">Other…</option>
+                  <option value="Bakery counter">{specialsAdminText(language, "Bakery counter")}</option>
+                  <option value="Market stock">{specialsAdminText(language, "Market stock")}</option>
+                  <option value="Returned to regular sale">{specialsAdminText(language, "Returned to regular sale")}</option>
+                  <option value="Waste / disposal">{specialsAdminText(language, "Waste / disposal")}</option>
+                  <option value="__other__">{specialsAdminText(language, "Other\u2026")}</option>
                 </select>
-                {customSource && <input required aria-label="Other source / destination" maxLength={500} className="joko-admin-field mt-2 w-full" value={source} onChange={event => setSource(event.target.value)} />}
+                {customSource && <input required aria-label={specialsAdminText(language, "Other source / destination")} maxLength={500} className="joko-admin-field mt-2 w-full" value={source} onChange={event => setSource(event.target.value)} />}
               </label>
               <label className="block w-full max-w-md text-sm">
                 {copy.reason}
@@ -722,16 +722,16 @@ export function SpecialsManagement() {
                   setCustomReason(event.target.value === "__other__");
                   setReason(event.target.value === "__other__" ? "" : event.target.value);
                 }}>
-                  <option value="">Select reason</option>
-                  <option value="Today's surplus">Today's surplus</option>
-                  <option value="End-of-day discount">End-of-day discount</option>
-                  <option value="Promotional offer">Promotional offer</option>
-                  <option value="Stock count correction">Stock count correction</option>
-                  <option value="Unsold stock returned">Unsold stock returned</option>
-                  <option value="Quality issue / disposal">Quality issue / disposal</option>
-                  <option value="__other__">Other…</option>
+                  <option value="">{specialsAdminText(language, "Select reason")}</option>
+                  <option value="Today's surplus">{specialsAdminText(language, "Today's surplus")}</option>
+                  <option value="End-of-day discount">{specialsAdminText(language, "End-of-day discount")}</option>
+                  <option value="Promotional offer">{specialsAdminText(language, "Promotional offer")}</option>
+                  <option value="Stock count correction">{specialsAdminText(language, "Stock count correction")}</option>
+                  <option value="Unsold stock returned">{specialsAdminText(language, "Unsold stock returned")}</option>
+                  <option value="Quality issue / disposal">{specialsAdminText(language, "Quality issue / disposal")}</option>
+                  <option value="__other__">{specialsAdminText(language, "Other\u2026")}</option>
                 </select>
-                {customReason && <input required aria-label="Other reason" maxLength={1000} className="joko-admin-field mt-2 w-full" value={reason} onChange={event => setReason(event.target.value)} />}
+                {customReason && <input required aria-label={specialsAdminText(language, "Other reason")} maxLength={1000} className="joko-admin-field mt-2 w-full" value={reason} onChange={event => setReason(event.target.value)} />}
               </label>
               {direction === "in" && (
                 <div className="space-y-3">
@@ -829,8 +829,8 @@ export function SpecialsManagement() {
             </table>
           </div>
           <div className="joko-admin-paper-card space-y-3 p-5">
-            <p className="text-sm">Prepare selection locks the offers and prices for publishing. It does not open checkout; publish in the section below.</p>
-            <p className="text-sm">Release available stock removes unsold units from Specials. Choose their destination and reason in Transfer stock; staff must also move the physical units.</p>
+            <p className="text-sm">{specialsAdminText(language, "Prepare selection locks the offers and prices for publishing. It does not open checkout; publish in the section below.")}</p>
+            <p className="text-sm">{specialsAdminText(language, "Release available stock removes unsold units from Specials. Choose their destination and reason in Transfer stock; staff must also move the physical units.")}</p>
             <div className="flex flex-wrap gap-2">
               {batch.status === "draft" && (
                 <button
@@ -871,16 +871,16 @@ export function SpecialsManagement() {
                 setCustomCloseReason(event.target.value === "__other__");
                 setCloseReason(event.target.value === "__other__" ? "" : event.target.value);
               }}>
-                <option value="">Select closing / cancellation reason</option>
+                <option value="">{specialsAdminText(language, "Select closing / cancellation reason")}</option>
                 {closeReason && !["Sales finished", "Sold out", "Pickup window ended", "Quality issue / disposal", "Selection created by mistake"].includes(closeReason) && !customCloseReason && <option value={closeReason}>{closeReason}</option>}
-                <option value="Sales finished">Sales finished</option>
-                <option value="Sold out">Sold out</option>
-                <option value="Pickup window ended">Pickup window ended</option>
-                <option value="Quality issue / disposal">Quality issue / disposal</option>
-                <option value="Selection created by mistake">Selection created by mistake</option>
-                <option value="__other__">Other…</option>
+                <option value="Sales finished">{specialsAdminText(language, "Sales finished")}</option>
+                <option value="Sold out">{specialsAdminText(language, "Sold out")}</option>
+                <option value="Pickup window ended">{specialsAdminText(language, "Pickup window ended")}</option>
+                <option value="Quality issue / disposal">{specialsAdminText(language, "Quality issue / disposal")}</option>
+                <option value="Selection created by mistake">{specialsAdminText(language, "Selection created by mistake")}</option>
+                <option value="__other__">{specialsAdminText(language, "Other\u2026")}</option>
               </select>
-              {customCloseReason && <input aria-label="Other closing reason" disabled={locked} maxLength={1000} className="joko-admin-field mt-2 w-full" value={closeReason} onChange={event => setCloseReason(event.target.value)} />}
+              {customCloseReason && <input aria-label={specialsAdminText(language, "Other closing reason")} disabled={locked} maxLength={1000} className="joko-admin-field mt-2 w-full" value={closeReason} onChange={event => setCloseReason(event.target.value)} />}
             </label>
           </div>
 
@@ -898,7 +898,7 @@ export function SpecialsManagement() {
                   className="border-b border-[#55766F]/15 pb-3"
                 >
                   <p>
-                    <strong>{event.event_type}</strong> ·{" "}
+                    <strong>{specialsAdminText(language, event.event_type)}</strong> ·{" "}
                     {bangkokInputValue(new Date(event.created_at)).replace(
                       "T",
                       " ",
@@ -908,7 +908,7 @@ export function SpecialsManagement() {
                       : ""}
                   </p>
                   <p>
-                    {event.source_reference} · {event.reason}
+                    {specialsAdminText(language, event.source_reference || "")} · {specialsAdminText(language, event.reason)}
                   </p>
                   <p className="break-all text-xs opacity-55">
                     {event.actor_id}

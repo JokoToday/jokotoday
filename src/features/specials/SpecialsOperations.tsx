@@ -1,3 +1,5 @@
+import { useLanguage } from '../../context/LanguageContext';
+import { specialsAdminText } from './adminThai';
 import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { supabase } from "../../lib/supabase";
@@ -31,6 +33,7 @@ export function SpecialsOperations({
   batch: SpecialsBatch | null;
   onChanged: () => void;
 }) {
+  const { language } = useLanguage();
   const [settings, setSettings] = useState<Settings | null>(null),
     [receipts, setReceipts] = useState<Receipt[]>([]),
     [announcement, setAnnouncement] = useState<Announcement | null>(null),
@@ -81,7 +84,7 @@ export function SpecialsOperations({
     setNotice("");
     try {
       await action();
-      setNotice("Saved.");
+      setNotice(specialsAdminText(language, "Saved."));
       await load();
       onChanged();
     } catch (e) {
@@ -113,7 +116,7 @@ export function SpecialsOperations({
       );
       setApproved(false);
       setNotice(
-        "Master QR imported. Check the receiver and save the configuration.",
+        specialsAdminText(language, "Master QR imported. Check the receiver and save the configuration."),
       );
     } catch (error) {
       setError(specialsError(error));
@@ -129,12 +132,12 @@ export function SpecialsOperations({
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Could not read QR image");
+      if (!ctx) throw new Error(specialsAdminText(language, "Could not read QR image"));
       ctx.drawImage(bitmap, 0, 0);
       bitmap.close();
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const qr = jsQR(pixels.data, pixels.width, pixels.height);
-      if (!qr) throw new Error("No QR found in image");
+      if (!qr) throw new Error(specialsAdminText(language, "No QR found in image"));
       setSettings((s) => (s ? { ...s, qr_payload: qr.data } : s));
       setApproved(false);
     } catch (e) {
@@ -143,29 +146,23 @@ export function SpecialsOperations({
   }
   return (
     <section className="space-y-4 rounded-2xl border border-[#d8ded9] bg-white p-5">
-      <h2 className="text-xl font-semibold">Checkout, pickup & LINE</h2>
+      <h2 className="text-xl font-semibold">{specialsAdminText(language, "Checkout, pickup & LINE")}</h2>
       {settings && (
         <details>
-          <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
-            Merchant payment configuration
-          </summary>
+          <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">{specialsAdminText(language, "Merchant payment configuration")}</summary>
           <div className="mt-4 space-y-3">
-            <p>
-              Choose the payment method for new Specials checkouts. Existing
-              checkouts keep their original method.
-            </p>
-            <label className="block w-full max-w-md">Payment method
-              <select className="mt-1 block w-full rounded border p-2" value={settings.payment_mode || 'stripe_promptpay'} disabled={busy}
+            <p>{specialsAdminText(language, "Choose the payment method for new Specials checkouts. Existing checkouts keep their original method.")}</p>
+            <label className="block w-full max-w-md">{specialsAdminText(language, "Payment method")}<select className="mt-1 block w-full rounded border p-2" value={settings.payment_mode || 'stripe_promptpay'} disabled={busy}
                 onChange={e => { setSettings({...settings, payment_mode: e.target.value as Settings['payment_mode']}); setApproved(false); }}>
-                <option value="stripe_promptpay">Stripe PromptPay (default)</option>
-                <option value="kshop_master">Merchant PromptPay QR + EasySlip verification</option>
+                <option value="stripe_promptpay">{specialsAdminText(language, "Stripe PromptPay (default)")}</option>
+                <option value="kshop_master">{specialsAdminText(language, "Merchant PromptPay QR + EasySlip verification")}</option>
               </select>
             </label>
-            {settings.payment_mode === 'stripe_promptpay' && <p>Stripe confirms payment automatically. No slip upload. Changes apply to new checkouts only.</p>}
+            {settings.payment_mode === 'stripe_promptpay' && <p>{specialsAdminText(language, "Stripe confirms payment automatically. No slip upload. Changes apply to new checkouts only.")}</p>}
             {settings.payment_mode === "kshop_master" && <>
-            <p>Use a genuine merchant QR whose receiver matches the account registered with EasySlip.</p>
+            <p>{specialsAdminText(language, "Use a genuine merchant QR whose receiver matches the account registered with EasySlip.")}</p>
             <label className="block">
-              Merchant QR image{" "}
+              {specialsAdminText(language, "Merchant QR image")}{" "}
               <input
                 type="file"
                 accept="image/*"
@@ -180,9 +177,7 @@ export function SpecialsOperations({
               className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy}
               onClick={() => void importMaster()}
-            >
-              Import existing K SHOP master QR
-            </button>
+            >{specialsAdminText(language, "Import existing K SHOP master QR")}</button>
             {(
               [
                 "qr_payload",
@@ -192,7 +187,7 @@ export function SpecialsOperations({
               ] as const
             ).map((key) => (
               <label key={key} className="block">
-                {key.replace(/_/g, " ")}
+                {specialsAdminText(language, key.replace(/_/g, " "))}
                 <input
                   className="mt-1 block w-full rounded border p-2"
                   value={settings[key]}
@@ -229,17 +224,14 @@ export function SpecialsOperations({
               className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || (settings.enabled && settings.payment_mode === "kshop_master" && !approved)}
               onClick={() => void run(() => action("settings", settings))}
-            >
-              Save payment configuration
-            </button>
+            >{specialsAdminText(language, "Save payment configuration")}</button>
           </div>
         </details>
       )}
       {batch && (
         <>
           <p>
-            Selection: {batch.status}. Publish makes the Specials checkout public.
-            Sending LINE is a separate deliberate action.
+            {language === "th" ? "สถานะชุดสินค้า:" : "Selection:"} {specialsAdminText(language, batch.status)}. {language === "th" ? "การเผยแพร่จะเปิดให้ลูกค้าสั่งซื้อ Specials ส่วนการส่ง LINE ต้องกดส่งแยกต่างหาก" : "Publish makes the Specials checkout public. Sending LINE is a separate deliberate action."}
           </p>
           <button
             className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
@@ -252,27 +244,21 @@ export function SpecialsOperations({
                 }),
               )
             }
-          >
-            Publish prepared Specials
-          </button>
+          >{specialsAdminText(language, "Publish prepared Specials")}</button>
           <button
             className="joko-admin-primary-button ml-3 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={busy || batch.status !== "live"}
             onClick={() =>
               void run(() => action("queue_line", { batch_id: batch.id }))
             }
-          >
-            Prepare LINE preview
-          </button>
+          >{specialsAdminText(language, "Prepare LINE preview")}</button>
           {announcement && (
             <div className="space-y-3 rounded-xl bg-[#f1f4ee] p-4">
               <pre className="whitespace-pre-wrap font-sans">
                 {announcement.message}
               </pre>
               <p>
-                LINE status: {announcement.status}. Accepted means LINE accepted
-                the API request; delivery and reading are not confirmed.
-                Audience: eligible friends of the JOKO LINE Official Account.
+                {language === "th" ? "สถานะ LINE:" : "LINE status:"} {specialsAdminText(language, announcement.status)}. {language === "th" ? "รับคำขอแล้ว หมายถึง LINE รับคำขอ API แล้ว แต่ยังไม่ยืนยันการส่งถึงหรือการอ่าน ผู้รับคือเพื่อนของบัญชี JOKO LINE Official Account ที่มีสิทธิ์รับข้อความ" : "Accepted means LINE accepted the API request; delivery and reading are not confirmed. Audience: eligible friends of the JOKO LINE Official Account."}
               </p>
               {announcement.last_error && <p>{announcement.last_error}</p>}
               <button
@@ -296,32 +282,27 @@ export function SpecialsOperations({
                 }
               >
                 {announcement.status === "queued"
-                  ? "Send this LINE announcement"
-                  : "Retry the same LINE announcement"}
+                  ? specialsAdminText(language, "Send this LINE announcement")
+                  : specialsAdminText(language, "Retry the same LINE announcement")}
               </button>
             </div>
           )}
           <details>
-            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
-              Staff pickup location access
-            </summary>
-            <p>
-              Only assigned staff and Admin can hand over Specials at this
-              location.
-            </p>
+            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">{specialsAdminText(language, "Staff pickup location access")}</summary>
+            <p>{specialsAdminText(language, "Only assigned staff and Admin can hand over Specials at this location.")}</p>
             <select
               className="my-3 rounded border p-2"
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
             >
-              <option value="">Choose staff</option>
+              <option value="">{specialsAdminText(language, "Choose staff")}</option>
               {staff.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
             </select>
-            <p>Location: {locationId}</p>
+            <p>{specialsAdminText(language, "Location:")} {locationId}</p>
             <button
               className="joko-admin-primary-button mr-3 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || !staffId || !locationId}
@@ -334,9 +315,7 @@ export function SpecialsOperations({
                   }),
                 )
               }
-            >
-              Assign location
-            </button>
+            >{specialsAdminText(language, "Assign location")}</button>
             <button
               className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy || !staffId || !locationId}
@@ -349,28 +328,20 @@ export function SpecialsOperations({
                   }),
                 )
               }
-            >
-              Remove access
-            </button>
+            >{specialsAdminText(language, "Remove access")}</button>
           </details>
           <details>
-            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">
-              Payment reconciliation & actual refunds
-            </summary>
-            <p>
-              Return the money through the bank first, then record its full
-              amount and reference. Recording a refund does not return committed
-              items to stock.
-            </p>
+            <summary className="w-fit cursor-pointer rounded-lg bg-[#C76624] px-4 py-2 font-semibold text-white">{specialsAdminText(language, "Payment reconciliation & actual refunds")}</summary>
+            <p>{specialsAdminText(language, "Return the money through the bank first, then record its full amount and reference. Recording a refund does not return committed items to stock.")}</p>
             <input
               className="my-2 block rounded border p-2"
-              placeholder="Actual bank refund reference"
+              placeholder={specialsAdminText(language, "Actual bank refund reference")}
               value={refundRef}
               onChange={(e) => setRefundRef(e.target.value)}
             />
             <input
               className="my-2 block rounded border p-2"
-              placeholder="Reason"
+              placeholder={specialsAdminText(language, "Reason")}
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
             />
@@ -381,9 +352,9 @@ export function SpecialsOperations({
               .map((r) => (
                 <div className="my-3 rounded border p-3" key={r.provider_ref}>
                   <p>
-                    {r.provider_ref} · ฿{r.amount} · {r.disposition}
+                    {r.provider_ref} · ฿{r.amount} · {specialsAdminText(language, r.disposition)}
                   </p>
-                  <p className="break-all text-xs">Order {r.order_id}</p>
+                  <p className="break-all text-xs">{specialsAdminText(language, "Order")} {r.order_id}</p>
                   <button
                     className="joko-admin-primary-button mt-2 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy || !refundRef.trim() || !refundReason.trim()}
@@ -398,9 +369,7 @@ export function SpecialsOperations({
                         }),
                       )
                     }
-                  >
-                    Record actual full refund
-                  </button>
+                  >{specialsAdminText(language, "Record actual full refund")}</button>
                   <button
                     className="joko-admin-primary-button ml-4 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={busy || !refundReason.trim()}
@@ -413,17 +382,13 @@ export function SpecialsOperations({
                         }),
                       )
                     }
-                  >
-                    Mark refund pending
-                  </button>
+                  >{specialsAdminText(language, "Mark refund pending")}</button>
                 </div>
               ))}
           </details>
         </>
       )}
-      <button className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy} onClick={() => void load()}>
-        Refresh operations
-      </button>
+      <button className="joko-admin-primary-button px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy} onClick={() => void load()}>{specialsAdminText(language, "Refresh operations")}</button>
       {notice && <p role="status" className="rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 font-medium">{notice}</p>}
       {error && (
         <p role="alert" className="text-red-700">

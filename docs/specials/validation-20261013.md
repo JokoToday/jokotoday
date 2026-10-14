@@ -73,3 +73,8 @@ The earlier deployment block above is resolved. This evidence does not claim com
 - Public preview footer still advertises cash/QR at pickup despite prepaid Specials copy. This is an inherited shared-footer content inconsistency, not a payment bypass; capture it for content correction before rollout.
 
 Release status: draft; do not merge/deploy yet. Pending provider-backed checks and authenticated/mobile Admin/browser checks remain explicit rather than being labelled passed.
+
+
+## 14 October — Thai Admin wording
+
+Added Thai labels, dropdown options, selection/stock explanations, success confirmations, payment and LINE settings, status labels, and accessibility labels. Specials Selection uses ชุดสินค้าราคาพิเศษ. Dropdown values and stored audit data remain unchanged; translation affects display only. Typecheck and build pass; lint has zero errors (38 existing warnings, none in Specials). Static translation coverage verified. Thai browser layout and latest hosted preview remain to be verified. No production changes.
