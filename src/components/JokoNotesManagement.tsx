@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { uploadGalleryImage } from '../lib/mediaService';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../lib/pageAccentPreview';
 import {
   JOKO_BUBBLE_PAGES,
+  JOKO_ILLUSTRATION_PAGES,
   JOKO_NOTE_PAGES,
   JOKO_NOTES_SITE_KEY,
   adminDeleteJokoNote,
@@ -66,36 +67,32 @@ const EMPTY_DRAFT: JokoNoteDraft = {
   is_published: false,
 };
 
-function draftFromNote(note: JokoNote | null, pageKey: string): JokoNoteDraft {
-  if (!note) {
-    const notePage = JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
-    if (notePage) {
-      return {
-        ...EMPTY_DRAFT,
-        page_key: notePage.pageKey,
-        placement_key: notePage.placements[0].placementKey,
-      };
-    }
+function draftFromNote(
+  note: JokoNote | null,
+  pageKey: string,
+  accentType: JokoAccentType,
+): JokoNoteDraft {
+  const definition = getJokoAccentPage(pageKey, accentType);
+  const placementKey = definition?.placements[0]?.placementKey || EMPTY_DRAFT.placement_key;
 
-    const bubblePage = JOKO_BUBBLE_PAGES.find((page) => page.pageKey === pageKey);
-    if (bubblePage) {
-      return {
-        ...EMPTY_DRAFT,
-        page_key: bubblePage.pageKey,
-        placement_key: bubblePage.placements[0].placementKey,
-        accent_type: 'bubble',
-      };
-    }
-
-    return { ...EMPTY_DRAFT };
+  if (!note || note.accent_type !== accentType) {
+    return {
+      ...EMPTY_DRAFT,
+      page_key: pageKey,
+      placement_key: placementKey,
+      accent_type: accentType,
+      bubble_size: accentType === 'illustration' ? 'large' : 'medium',
+      rotation: accentType === 'illustration' ? 0 : 2,
+      is_published: note?.is_published ?? false,
+    };
   }
 
   return {
     site_key: note.site_key,
     page_key: note.page_key,
     placement_key: note.placement_key,
-    accent_type: note.accent_type || 'note',
-    bubble_size: note.bubble_size || 'medium',
+    accent_type: note.accent_type || accentType,
+    bubble_size: note.bubble_size || (accentType === 'illustration' ? 'large' : 'medium'),
     bubble_image_url: note.bubble_image_url || null,
     bubble_alt: note.bubble_alt || null,
     title_en: note.title_en,
@@ -133,7 +130,9 @@ export function JokoNotesManagement() {
   const [notes, setNotes] = useState<JokoNote[]>([]);
   const [assets, setAssets] = useState<PageAccentAsset[]>([]);
   const [selectedPageKey, setSelectedPageKey] = useState(FIRST_PAGE.pageKey);
+  const [selectedAccentType, setSelectedAccentType] = useState<JokoAccentType>('note');
   const [previewLanguage, setPreviewLanguage] = useState<LanguageCode>('en');
+  const initializedPageRef = useRef<string | null>(null);
   const [draft, setDraft] = useState<JokoNoteDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -143,10 +142,17 @@ export function JokoNotesManagement() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const existing = useMemo(
-    () => notes.find((note) => note.page_key === selectedPageKey) || null,
+  const pageRecords = useMemo(
+    () => notes.filter((note) => note.page_key === selectedPageKey),
     [notes, selectedPageKey],
   );
+
+  const existing = useMemo(() => {
+    if (selectedPageKey === 'home') {
+      return pageRecords.find((note) => note.accent_type === selectedAccentType) || null;
+    }
+    return pageRecords[0] || null;
+  }, [pageRecords, selectedPageKey, selectedAccentType]);
 
   const notePageDefinition = useMemo(
     () => JOKO_NOTE_PAGES.find((page) => page.pageKey === selectedPageKey),
@@ -158,17 +164,27 @@ export function JokoNotesManagement() {
     [selectedPageKey],
   );
 
+  const illustrationPageDefinition = useMemo(
+    () => JOKO_ILLUSTRATION_PAGES.find((page) => page.pageKey === selectedPageKey),
+    [selectedPageKey],
+  );
+
   const accentPageDefinition = useMemo(
-    () => getJokoAccentPage(selectedPageKey, draft.accent_type)
+    () => getJokoAccentPage(selectedPageKey, selectedAccentType)
+      || illustrationPageDefinition
       || bubblePageDefinition
       || notePageDefinition
       || FIRST_PAGE,
-    [selectedPageKey, draft.accent_type, bubblePageDefinition, notePageDefinition],
+    [selectedPageKey, selectedAccentType, illustrationPageDefinition, bubblePageDefinition, notePageDefinition],
   );
 
   const noteSupported = Boolean(notePageDefinition);
   const bubbleSupported = Boolean(bubblePageDefinition);
-  const pageLabel = notePageDefinition?.label || bubblePageDefinition?.label || selectedPageKey;
+  const illustrationSupported = Boolean(illustrationPageDefinition);
+  const pageLabel = notePageDefinition?.label
+    || bubblePageDefinition?.label
+    || illustrationPageDefinition?.label
+    || selectedPageKey;
 
   const load = async () => {
     setLoading(true);
@@ -201,13 +217,25 @@ export function JokoNotesManagement() {
   }, []);
 
   useEffect(() => {
-    setDraft(draftFromNote(existing, selectedPageKey));
-  }, [existing, selectedPageKey]);
+    if (loading || initializedPageRef.current === selectedPageKey) return;
+
+    const savedType = pageRecords[0]?.accent_type;
+    const fallbackType: JokoAccentType = selectedPageKey === 'home'
+      ? (pageRecords.some((note) => note.accent_type === 'bubble') ? 'bubble' : 'illustration')
+      : savedType || (noteSupported ? 'note' : bubbleSupported ? 'bubble' : 'illustration');
+
+    setSelectedAccentType(savedType && selectedPageKey !== 'home' ? savedType : fallbackType);
+    initializedPageRef.current = selectedPageKey;
+  }, [loading, selectedPageKey, pageRecords, noteSupported, bubbleSupported]);
+
+  useEffect(() => {
+    setDraft(draftFromNote(existing, selectedPageKey, selectedAccentType));
+  }, [existing, selectedPageKey, selectedAccentType]);
 
   useEffect(() => {
     setNotice('');
     setError('');
-  }, [selectedPageKey]);
+  }, [selectedPageKey, selectedAccentType]);
 
   const patch = (next: Partial<JokoNoteDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
@@ -216,16 +244,12 @@ export function JokoNotesManagement() {
   const changeAccentType = (accentType: JokoAccentType) => {
     const definition = getJokoAccentPage(selectedPageKey, accentType);
     if (!definition) return;
-    patch({
-      accent_type: accentType,
-      page_key: selectedPageKey,
-      placement_key: definition.placements[0].placementKey,
-    });
+    setSelectedAccentType(accentType);
     setNotice('');
     setError('');
   };
 
-  const upload = async (file: File | null, kind: 'note' | 'bubble') => {
+  const upload = async (file: File | null, kind: 'note' | 'bubble' | 'illustration') => {
     if (!file) return;
 
     if (kind === 'bubble' && (!newAssetName.trim() || !newAssetAlt.trim())) {
@@ -238,7 +262,7 @@ export function JokoNotesManagement() {
     try {
       const ticket = await uploadGalleryImage({
         file,
-        gallerySlot: kind === 'bubble' ? 'page-accents' : 'joko-notes',
+        gallerySlot: kind === 'note' ? 'joko-notes' : 'page-accents',
       });
 
       if (kind === 'bubble') {
@@ -259,7 +283,9 @@ export function JokoNotesManagement() {
         setNotice('Bubble added to the reusable library and selected for this page. Preview or save when ready.');
       } else {
         patch({ image_url: ticket.publicUrl });
-        setNotice('Note image uploaded. Save the Page Accent to keep this change.');
+        setNotice(kind === 'illustration'
+          ? 'Hero illustration uploaded. Preview it on the Homepage, then save or publish when ready.'
+          : 'Note image uploaded. Save the Page Accent to keep this change.');
       }
     } catch (err) {
       console.error('Page Accent upload failed', err);
