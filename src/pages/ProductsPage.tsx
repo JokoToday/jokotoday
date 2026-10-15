@@ -629,6 +629,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
           </div>
 
+          <JokoNoteSlot
+            pageKey="products"
+            placementKey="below-browse-controls"
+            className="mb-7 max-w-sm"
+          />
+
         </div>
 
         <div className="mb-9">
