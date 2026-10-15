@@ -52,7 +52,9 @@ export function JokoBubbleSlot({ pageKey, placementKey, className = '' }: JokoBu
           ...draft,
         });
       } else {
-        setBubble(null);
+        // Homepage accents intentionally coexist. Previewing the Hero
+        // illustration must not hide an already-published lower-page bubble.
+        loadPublished();
       }
 
       const timeout = window.setTimeout(() => {
