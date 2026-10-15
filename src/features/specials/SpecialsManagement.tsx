@@ -67,6 +67,11 @@ export function SpecialsManagement() {
   const [locations, setLocations] = useState<SpecialsLocation[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const initialSelectionLoaded = useRef(false);
+  // A catalogue shortcut prepares an editor only; it never writes stock or publishes.
+  const [requestedProductId, setRequestedProductId] = useState(() =>
+    new URLSearchParams(window.location.search).get("product") || "",
+  );
+  const offerFormRef = useRef<HTMLFormElement>(null);
   const selectionFormRef = useRef<HTMLFormElement>(null);
   const [pastDate, setPastDate] = useState("");
   const [items, setItems] = useState<SpecialsItem[]>([]);
@@ -132,7 +137,10 @@ export function SpecialsManagement() {
         const active = data.batches.filter(selection => !["closed", "cancelled"].includes(selection.status) && new Date(selection.pickup_end_at).getTime() > Date.now());
         const priority = (selection: SpecialsBatch) => selection.status === "live" ? 0 : selection.status === "prepared" ? 1 : 2;
         active.sort((a, b) => priority(a) - priority(b) || b.business_date.localeCompare(a.business_date));
-        if (active[0]) setBatchId(active[0].id);
+        const preferred = requestedProductId
+          ? active.find(selection => selection.status === "draft") || active[0]
+          : active[0];
+        if (preferred) setBatchId(preferred.id);
       }
       setProducts(data.products);
       setLocations(data.locations);
@@ -142,7 +150,7 @@ export function SpecialsManagement() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [requestedProductId]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -175,18 +183,33 @@ export function SpecialsManagement() {
     setCustomReason(false);
     setCloseReason("");
     setCustomCloseReason(false);
-    if (!batchId) return;
+    if (!batchId) {
+      if (products.some(product => product.id === requestedProductId && product.is_active))
+        setProductId(requestedProductId);
+      return;
+    }
     void loadSpecialsBatch(batchId)
       .then((data) => {
         if (generation !== batchLoadGeneration.current) return;
         setItems(data.items);
         setEvents(data.events);
+        const product = products.find(product => product.id === requestedProductId);
+        const existing = data.items.find(item => item.product_id === requestedProductId);
+        if (product && (product.is_active || existing)) {
+          setProductId(product.id);
+          setEditItem(existing || null);
+          setPrice(existing ? (existing.special_price_satang / 100).toFixed(2) : "");
+          setCap(existing?.max_per_customer?.toString() || "");
+          setEnabled(existing?.is_enabled ?? true);
+          setTransferItemId(existing?.id || "");
+          requestAnimationFrame(() => offerFormRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }));
+        }
       })
       .catch((err) => {
         if (generation === batchLoadGeneration.current)
           setError(errorMessage(err));
       });
-  }, [batchId, batches]);
+  }, [batchId, batches, products, requestedProductId]);
   useEffect(() => {
     if (!batch) return;
     setForm({
@@ -228,6 +251,12 @@ export function SpecialsManagement() {
       pendingRef.current = null;
       setPending(null);
       setBatchId(result.batch.id);
+      if (action === "save_item" && requestedProductId) {
+        setRequestedProductId("");
+        const url = new URL(window.location.href);
+        url.searchParams.delete("product");
+        window.history.replaceState(window.history.state, "", url);
+      }
       setNotice(action === "save_batch" ? specialsAdminText(language, "Draft saved. Add product offers and stock before publishing.") : action === "save_item" ? specialsAdminText(language, "Offer saved. Add counted stock before preparing the selection.") : action === "transfer" ? (request.direction === "in" ? specialsAdminText(language, "Stock added to Specials successfully.") : specialsAdminText(language, "Unsold stock released from Specials successfully.")) : action === "prepare" ? specialsAdminText(language, "Selection prepared. Use Publish prepared Specials to open checkout.") : copy.saved);
       await refresh();
     } catch (err) {
@@ -306,6 +335,20 @@ export function SpecialsManagement() {
     <section className="space-y-6 pt-6">
       {notice && <div role="status" className="fixed bottom-6 right-6 z-50 flex max-w-md items-start gap-4 rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 text-[#303532] shadow-lg">
         <p>{notice}</p><button type="button" aria-label={specialsAdminText(language, "Dismiss confirmation")} className="font-semibold text-[#C76624]" onClick={() => setNotice("")}>×</button>
+      </div>}
+      {requestedProductId && !loading && <div role="status" className="rounded-xl border border-[#A85225]/40 bg-[#FFF7EC] p-4 text-[#303532]">
+        <strong>{language === "th" ? "เพิ่มใน Specials" : language === "zh" ? "添加到特惠" : "Add to Specials"}: {productName(products.find(product => product.id === requestedProductId))}</strong>
+        <p className="mt-1 text-sm">{!products.some(product => product.id === requestedProductId && (product.is_active || items.some(item => item.product_id === product.id)))
+          ? (language === "th" ? "ไม่พบสินค้าหรือสินค้าถูกปิดใช้งาน กรุณาเลือกสินค้าอื่น" : language === "zh" ? "商品不存在或已停用。请选择其他商品。" : "This product is unavailable or inactive. Choose another catalogue product.")
+          : !batch ? (language === "th" ? "บันทึกชุดสินค้าราคาพิเศษแบบร่างก่อน สินค้าที่เลือกจะพร้อมให้แก้ไข จากนั้นกำหนดราคา บันทึกข้อเสนอ และเพิ่มสต็อกที่นับแล้ว" : language === "zh" ? "先保存新的特惠选品草稿。所选商品将自动填入，然后设置价格、保存优惠并添加清点后的库存。" : "Save a new Specials Selection draft first. Your product will be preselected; set its price, save the offer, then add counted stock.")
+          : batch.status !== "draft" ? (language === "th" ? "ชุดนี้ล็อกราคาแล้ว เลือกชุดแบบร่างหรือกดสร้างชุดใหม่เพื่อเพิ่มข้อเสนอ" : language === "zh" ? "此选品的价格已锁定。请选择草稿或新建选品来添加优惠。" : "This selection has locked offers. Choose a draft or New selection to add an offer. Existing stock can still be managed below.")
+          : (language === "th" ? "สินค้าถูกเลือกแล้ว ตรวจสอบราคาและบันทึกข้อเสนอ จากนั้นเพิ่มสต็อกที่นับแล้ว ยังไม่มีการเผยแพร่สินค้าอัตโนมัติ" : language === "zh" ? "商品已选中。检查价格并保存优惠，然后添加清点后的库存。不会自动发布。" : "Product selected. Review the price and save the offer, then add counted stock. Nothing is published automatically.")}</p>
+        <button type="button" className="mt-2 text-sm underline" onClick={() => {
+          setRequestedProductId("");
+          const url = new URL(window.location.href);
+          url.searchParams.delete("product");
+          window.history.replaceState(window.history.state, "", url);
+        }}>{language === "th" ? "ปิดทางลัด" : language === "zh" ? "关闭快捷操作" : "Dismiss shortcut"}</button>
       </div>}
       <SpecialsPageContentEditor />
       <div className="joko-admin-paper-card p-5 sm:p-6">
@@ -558,6 +601,8 @@ export function SpecialsManagement() {
         <>
           {batch.status === "draft" && (
             <form
+              ref={offerFormRef}
+              style={{ scrollMarginTop: "calc(var(--joko-header-height, 96px) + 24px)" }}
               onSubmit={saveItem}
               className="joko-admin-paper-card space-y-4 p-5"
             >
