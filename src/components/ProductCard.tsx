@@ -52,7 +52,7 @@ export default function ProductCard({
   const { addToCart } = useCart();
   const { t, language: currentLanguage } = useLanguage();
   const language = previewLanguage || currentLanguage;
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { isLiked, getLikeCount, toggleProductLike } = useLikes();
 
   const availability = availabilityOverride ?? getAvailabilityStatus(product, selectedDay || null);
@@ -177,6 +177,14 @@ export default function ProductCard({
       <div className="joko-product-card-body p-4">
         <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productHref && !preview ? <a href={productHref}>{productName}</a> : productName}</h3>
         {!preview && 'maker' in product && <MakerAttribution maker={product.maker} />}
+        {!preview && user && userRole === 'admin' && (
+          <a
+            href={`/admin/specials?product=${encodeURIComponent(product.id)}`}
+            className="mb-3 inline-flex rounded-lg bg-[#A85225] px-3 py-2 text-sm font-semibold text-white hover:bg-[#85411D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A85225]"
+          >
+            {language === 'th' ? 'เพิ่มใน Specials' : language === 'zh' ? '添加到特惠' : 'Add to Specials'}
+          </a>
+        )}
         <p className="joko-product-card-description mb-4 line-clamp-2 text-sm text-gray-600">{productDescription}</p>
 
         {(nextPickupLabel || basketFit) && (
