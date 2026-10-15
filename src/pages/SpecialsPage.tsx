@@ -125,7 +125,7 @@ export default function SpecialsPage({
     <main className="joko-mineral-field min-h-screen text-[#303532]">
       {authOpen && <Suspense fallback={null}><AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} initialAction="signup" /></Suspense>}
       <div className="relative z-10 mx-auto max-w-6xl px-4 py-9 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mb-8 grid items-center gap-7 md:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="mb-8 grid items-start gap-7 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55766F]">{pageCopy.eyebrow}</p>
             <h1 className="mt-3 text-4xl leading-tight tracking-[-0.035em] sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
@@ -134,13 +134,24 @@ export default function SpecialsPage({
             <span className="mt-4 block h-[3px] w-40 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
             <p className="mt-5 max-w-xl whitespace-pre-line text-base leading-7 text-[#303532]/75">{pageCopy.intro}</p>
           </div>
-          {batch && <aside className="rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
+          <div className="flex flex-col items-end gap-5">
+            <img
+              src="/images/specials/croissant-tiny-bag.webp"
+              alt=""
+              aria-hidden="true"
+              width={800}
+              height={600}
+              decoding="async"
+              className="pointer-events-none w-52 max-w-full object-contain sm:w-64 md:w-full"
+            />
+          {batch && <aside className="w-full rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>
             <h2 className="mt-3 text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{location}</h2>
             <p className="mt-3 text-sm">{date(batch.pickup_start_at)} · {time(batch.pickup_start_at)}–{time(batch.pickup_end_at)}</p>
             <p className="mt-2 text-xs text-[#303532]/70">{copy.closes} {time(new Date(new Date(batch.sales_end_at).getTime() - 5 * 60000).toISOString())} · {copy.timezone}</p>
             {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-[#55766F] underline underline-offset-4"><MapPin className="h-4 w-4" />{copy.maps}</a>}
           </aside>}
+          </div>
         </div>
         <div className="mb-8 flex flex-wrap gap-x-7 gap-y-3 border-y border-[#55766F]/20 py-4">
           {copy.rules.map(rule => <span key={rule} className="inline-flex items-center gap-2 text-xs text-[#303532]/75"><Check className="h-4 w-4 text-[#55766F]" aria-hidden="true" />{rule}</span>)}
