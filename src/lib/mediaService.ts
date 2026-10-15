@@ -99,6 +99,50 @@ async function stripImageMetadata(file: File): Promise<File> {
   });
 }
 
+function canUsePreviewStorageFallback(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const hostname = window.location.hostname.toLowerCase();
+  const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '').toLowerCase();
+
+  return hostname.endsWith('.jokotoday-preview.pages.dev')
+    && supabaseUrl.includes('szijiljpasxddzgzckra.supabase.co');
+}
+
+async function uploadPreviewGalleryFallback(
+  file: File,
+  gallerySlot: string,
+): Promise<MediaUploadTicket> {
+  const extension = PRODUCT_IMAGE_EXTENSIONS[
+    file.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number]
+  ];
+  const objectKey = `page-accent-preview/${gallerySlot}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from('assets')
+    .upload(objectKey, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Preview media fallback failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from('assets').getPublicUrl(objectKey);
+  if (!data.publicUrl) {
+    throw new Error('Preview media fallback did not return a public URL.');
+  }
+
+  return {
+    uploadUrl: '',
+    publicUrl: data.publicUrl,
+    objectKey,
+    expiresIn: 0,
+  };
+}
+
 async function requestUploadTicket(
   file: File,
   payload: Record<string, unknown>,
@@ -242,10 +286,24 @@ export async function uploadGalleryImage(
   }
 
   const sanitizedFile = await stripImageMetadata(file);
-  const ticket = await requestUploadTicket(sanitizedFile, {
-    assetKind: 'gallery',
-    gallerySlot: slot,
-  });
-  await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
-  return ticket;
+
+  try {
+    const ticket = await requestUploadTicket(sanitizedFile, {
+      assetKind: 'gallery',
+      gallerySlot: slot,
+    });
+    await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
+    return ticket;
+  } catch (error) {
+    if (!canUsePreviewStorageFallback()) throw error;
+
+    console.warn(
+      '[JOKO Media] R2 upload unavailable in the Cloudflare preview; using isolated test Supabase Storage.',
+      error,
+    );
+    onProgress?.(15);
+    const ticket = await uploadPreviewGalleryFallback(sanitizedFile, slot);
+    onProgress?.(100);
+    return ticket;
+  }
 }
