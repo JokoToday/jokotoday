@@ -232,7 +232,7 @@ export function HomepageExperiencePage({
 
             <div
               className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
-              style={{ left: '22%' }}
+              style={{ left: '34%' }}
             >
               <img
                 src={BAKERY_HERO}
@@ -244,8 +244,8 @@ export function HomepageExperiencePage({
               />
             </div>
 
-            <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(21rem,.72fr)_minmax(39rem,1.48fr)] xl:items-start xl:gap-4">
-              <div className="relative max-w-[31rem] xl:pt-10 2xl:pt-12">
+            <div className="relative z-20 grid gap-7 xl:grid-cols-[minmax(34rem,.95fr)_minmax(34rem,1.05fr)] xl:items-start xl:gap-6">
+              <div className="relative max-w-[36rem] xl:pt-10 2xl:pt-12">
                 <HeroTypography
                   as="p" kind="eyebrow" value={[{ text: eyebrow }]}
                   style={publishedHero?.type === 'home.hero.v1' ? publishedHero.props.eyebrowStyle : undefined}
@@ -269,31 +269,60 @@ export function HomepageExperiencePage({
                   className="mt-5 max-w-[29rem] leading-7"
                 />
 
-                <div className="relative mt-7">
-                  <JokoIllustrationSlot
-                    pageKey="home"
-                    placementKey="hero-primary-cta"
-                    className="pointer-events-none absolute -left-[7.25rem] -top-7 z-30 hidden xl:block"
-                  />
+                <div className="mt-7 xl:mt-8">
+                  <div className="flex items-end gap-3 2xl:gap-4">
+                    <JokoIllustrationSlot
+                      pageKey="home"
+                      placementKey="hero-primary-cta"
+                      onActivate={() => onNavigate('products-bakery')}
+                      className="z-30 hidden self-end xl:block"
+                    />
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate('products-bakery')}
-                      className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
-                    >
-                      <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
-                      {heroPrimaryLabel}
-                      <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={showHowItWorks}
-                      className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
-                    >
-                      <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
-                      {heroSecondaryLabel}
-                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('products-bakery')}
+                          className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
+                        >
+                          <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
+                          {heroPrimaryLabel}
+                          <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={showHowItWorks}
+                          className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
+                        >
+                          <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
+                          {heroSecondaryLabel}
+                        </button>
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-3 gap-2 border-t border-[#55766F]/15 pt-4 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
+                        <a
+                          href={selectUrl}
+                          className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                        >
+                          <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
+                          <span>{labels.select}</span>
+                        </a>
+                        <a
+                          href={preorderUrl}
+                          className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                        >
+                          <CalendarCheck className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
+                          <span>{labels.preorder}</span>
+                        </a>
+                        <a
+                          href={pickupUrl}
+                          className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                        >
+                          <MapPin className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
+                          <span>{labels.pickup}</span>
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -311,30 +340,6 @@ export function HomepageExperiencePage({
                     />
                   </div>
                 )}
-
-                <div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#55766F]/15 pt-5 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
-                  <a
-                    href={selectUrl}
-                    className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                  >
-                    <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.select}</span>
-                  </a>
-                  <a
-                    href={preorderUrl}
-                    className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                  >
-                    <CalendarCheck className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.preorder}</span>
-                  </a>
-                  <a
-                    href={pickupUrl}
-                    className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                  >
-                    <MapPin className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
-                    <span>{labels.pickup}</span>
-                  </a>
-                </div>
 
               </div>
 
