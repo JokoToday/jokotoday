@@ -55,6 +55,35 @@ function loadImage(file: File): Promise<HTMLImageElement> {
  * Re-encodes product imagery before upload so EXIF/GPS and other source
  * metadata never leave the browser. Brand logos keep their original pixels.
  */
+export async function imageHasTransparency(file: File): Promise<boolean> {
+  if (file.type !== 'image/png' && file.type !== 'image/webp') return false;
+
+  const image = await loadImage(file);
+  const maxDimension = 256;
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return false;
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 250) {
+      canvas.width = 0;
+      canvas.height = 0;
+      return true;
+    }
+  }
+
+  canvas.width = 0;
+  canvas.height = 0;
+  return false;
+}
+
 async function stripImageMetadata(file: File): Promise<File> {
   const image = await loadImage(file);
   const canvas = document.createElement('canvas');
