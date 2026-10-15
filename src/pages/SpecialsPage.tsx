@@ -134,16 +134,16 @@ export default function SpecialsPage({
             <span className="mt-4 block h-[3px] w-40 -rotate-1 rounded-full bg-[#D98242]/75" aria-hidden="true" />
             <p className="mt-5 max-w-xl whitespace-pre-line text-base leading-7 text-[#303532]/75">{pageCopy.intro}</p>
           </div>
-          <div className="flex flex-col items-end gap-5">
-            <img
-              src="/images/specials/croissant-tiny-bag.webp"
+          {(pageContent.illustration.visible && pageContent.illustration.url || batch) && <div className="flex flex-col items-end gap-5">
+            {pageContent.illustration.visible && pageContent.illustration.url && <img
+              src={pageContent.illustration.url}
               alt=""
               aria-hidden="true"
               width={800}
               height={600}
               decoding="async"
-              className="pointer-events-none w-52 max-w-full object-contain sm:w-64 md:w-full"
-            />
+              className="pointer-events-none h-auto w-52 max-w-full object-contain sm:w-64 md:w-full"
+            />}
           {batch && <aside className="w-full rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>
             <h2 className="mt-3 text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{location}</h2>
@@ -151,7 +151,7 @@ export default function SpecialsPage({
             <p className="mt-2 text-xs text-[#303532]/70">{copy.closes} {time(new Date(new Date(batch.sales_end_at).getTime() - 5 * 60000).toISOString())} · {copy.timezone}</p>
             {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-[#55766F] underline underline-offset-4"><MapPin className="h-4 w-4" />{copy.maps}</a>}
           </aside>}
-          </div>
+          </div>}
         </div>
         <div className="mb-8 flex flex-wrap gap-x-7 gap-y-3 border-y border-[#55766F]/20 py-4">
           {copy.rules.map(rule => <span key={rule} className="inline-flex items-center gap-2 text-xs text-[#303532]/75"><Check className="h-4 w-4 text-[#55766F]" aria-hidden="true" />{rule}</span>)}
