@@ -541,7 +541,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
 
           <JokoNoteSlot
             pageKey="products"
-            placementKey="below-browse-controls"
+            placementKey="below-categories"
             className="mx-auto w-full max-w-[17rem] lg:mt-3"
           />
 
@@ -689,12 +689,6 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
             })}
           </div>
         </div>
-
-        <JokoNoteSlot
-          pageKey="products"
-          placementKey="below-categories"
-          className="mb-10 max-w-sm"
-        />
 
         {loading || (pickupV2Enabled && v2AvailabilityLoading && v2AvailabilityRows.length === 0) ? (
           <div className="py-20 text-center">
