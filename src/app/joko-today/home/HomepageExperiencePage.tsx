@@ -270,15 +270,14 @@ export function HomepageExperiencePage({
                 />
 
                 <div className="mt-7 xl:mt-8">
-                  <div className="flex items-end gap-3 2xl:gap-4">
+                  <div className="flex items-end gap-0">
                     <JokoIllustrationSlot
                       pageKey="home"
                       placementKey="hero-primary-cta"
-                      onActivate={() => onNavigate('products-bakery')}
-                      className="z-30 hidden self-end xl:block"
+                      className="z-30 -mr-2 hidden self-end translate-y-2 xl:block 2xl:-mr-3"
                     />
 
-                    <div className="min-w-0 flex-1">
+                    <div className="relative z-20 min-w-0 flex-1">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <button
                           type="button"
@@ -298,31 +297,31 @@ export function HomepageExperiencePage({
                           {heroSecondaryLabel}
                         </button>
                       </div>
-
-                      <div className="mt-5 grid grid-cols-3 gap-2 border-t border-[#55766F]/15 pt-4 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
-                        <a
-                          href={selectUrl}
-                          className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                        >
-                          <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
-                          <span>{labels.select}</span>
-                        </a>
-                        <a
-                          href={preorderUrl}
-                          className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                        >
-                          <CalendarCheck className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
-                          <span>{labels.preorder}</span>
-                        </a>
-                        <a
-                          href={pickupUrl}
-                          className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                        >
-                          <MapPin className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
-                          <span>{labels.pickup}</span>
-                        </a>
-                      </div>
                     </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-3 gap-2 border-t border-[#55766F]/15 pt-4 text-left text-[10px] leading-4 text-[#304B45]/82 sm:text-xs">
+                    <a
+                      href={selectUrl}
+                      className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                    >
+                      <MousePointer2 className="h-6 w-6 text-[#6E9A4F]" strokeWidth={1.45} aria-hidden="true" />
+                      <span>{labels.select}</span>
+                    </a>
+                    <a
+                      href={preorderUrl}
+                      className="flex items-center gap-2 rounded-lg border-r border-[#55766F]/14 px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                    >
+                      <CalendarCheck className="h-6 w-6 text-[#668C4E]" strokeWidth={1.45} aria-hidden="true" />
+                      <span>{labels.preorder}</span>
+                    </a>
+                    <a
+                      href={pickupUrl}
+                      className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-white/20 hover:text-[#303532] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
+                    >
+                      <MapPin className="h-6 w-6 text-[#C76624]" strokeWidth={1.45} aria-hidden="true" />
+                      <span>{labels.pickup}</span>
+                    </a>
                   </div>
                 </div>
 
