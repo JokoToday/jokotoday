@@ -7,6 +7,7 @@ import {
 } from '../lib/jokoNotesService';
 import { getActivePageAccentPreview, removePageAccentPreview } from '../lib/pageAccentPreview';
 import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
+import { useLanguage } from '../context/LanguageContext';
 
 const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
   small: 'w-[7.25rem] 2xl:w-[8rem]',
@@ -33,6 +34,8 @@ export function JokoIllustrationSlot({
   className = '',
   onActivate,
 }: JokoIllustrationSlotProps) {
+  const { language } = useLanguage();
+  const lang = language === 'th' || language === 'zh' ? language : 'en';
   const [illustration, setIllustration] = useState<JokoAccentRecord | null>(null);
 
   useEffect(() => {
@@ -96,7 +99,7 @@ export function JokoIllustrationSlot({
     && activePreview.draft.accent_type === 'illustration'
     && activePreview.draft.placement_key === placementKey,
   );
-  const localized = localizeJokoNote(illustration, 'en');
+  const localized = localizeJokoNote(illustration, lang);
 
   const image = (
     <div
