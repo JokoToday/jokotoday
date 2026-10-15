@@ -684,18 +684,6 @@ export function JokoNotesManagement() {
                 </label>
               </div>
 
-              <label className="block text-sm font-medium text-[#303532]">
-                Click target <span className="font-normal text-[#303532]/50">(optional)</span>
-                <input
-                  value={draft.link_url || ''}
-                  onChange={(event) => patch({ link_url: event.target.value || null })}
-                  className="joko-admin-field mt-1 w-full max-w-md"
-                  placeholder="/products"
-                />
-                <span className="mt-1 block text-xs leading-5 text-[#303532]/48">
-                  Leave blank for a decorative-only illustration. For running Joe, <strong>/products</strong> makes the character clickable toward the Bakery.
-                </span>
-              </label>
             </>
           ) : draft.accent_type === 'bubble' ? (
             <>
@@ -865,6 +853,19 @@ export function JokoNotesManagement() {
                   <input type="number" min={-6} max={6} value={draft.rotation} onChange={(event) => patch({ rotation: Number(event.target.value) })} className="joko-admin-field mt-1 w-full" />
                 </label>
               </div>
+
+              <label className="block text-sm font-medium text-[#303532]">
+                Click target <span className="font-normal text-[#303532]/50">(optional)</span>
+                <input
+                  value={draft.link_url || ''}
+                  onChange={(event) => patch({ link_url: event.target.value || null })}
+                  className="joko-admin-field mt-1 w-full max-w-md"
+                  placeholder="/products"
+                />
+                <span className="mt-1 block text-xs leading-5 text-[#303532]/48">
+                  Use <strong>/products</strong> for running Joe so clicking the character opens the Bakery. Leave blank for decorative-only artwork.
+                </span>
+              </label>
             </>
           )}
 
@@ -965,22 +966,38 @@ export function JokoNotesManagement() {
             )}
           </div>
         ) : (
-          <div className="mt-10 overflow-hidden rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/28 p-6">
-            <div className="relative mx-auto min-h-56 max-w-md rounded-2xl bg-[#D9ECE9]/72 px-5 py-7">
-              <div className="absolute bottom-7 left-[42%] rounded-xl bg-[#C76624] px-5 py-3 text-sm font-semibold text-white shadow-sm">
-                Explore the Bakery →
-              </div>
+          <div className="mt-8 rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/28 p-5">
+            <div className="mx-auto max-w-md rounded-2xl bg-[#D9ECE9]/78 px-4 py-5">
               {draft.image_url ? (
-                <img
-                  src={draft.image_url}
-                  alt={preview.imageAlt}
-                  className={`absolute bottom-4 left-4 h-auto object-contain ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]} ${draft.link_url ? 'cursor-pointer' : ''}`}
-                  style={{ transform: `rotate(${draft.rotation || 0}deg)` }}
-                />
+                <>
+                  <div className="flex items-end justify-center gap-0">
+                    <div
+                      className={`shrink-0 ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
+                      style={{ transform: `translateX(8px) rotate(${draft.rotation || 0}deg)` }}
+                    >
+                      <img
+                        src={draft.image_url}
+                        alt={preview.imageAlt}
+                        className="block h-auto w-full object-contain"
+                      />
+                    </div>
+                    <div className="relative z-10 mb-5 min-w-[9.25rem] rounded-xl bg-[#C76624] px-4 py-3 text-center text-sm font-semibold leading-5 text-white shadow-sm">
+                      Explore the Bakery →
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-center gap-5 border-t border-[#55766F]/15 pt-3 text-[11px] text-[#304B45]/72">
+                    <span>Select</span>
+                    <span>Pre-Order</span>
+                    <span>Pickup</span>
+                  </div>
+                  <p className="mt-3 text-center text-xs leading-5 text-[#303532]/48">
+                    Miniature layout preview. “Preview on Homepage” shows the exact responsive placement.
+                  </p>
+                </>
               ) : (
-                <p className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm leading-6 text-[#303532]/50">
+                <div className="flex min-h-52 items-center justify-center px-8 text-center text-sm leading-6 text-[#303532]/50">
                   Upload a transparent Hero illustration to preview its relationship to the primary action.
-                </p>
+                </div>
               )}
             </div>
           </div>
