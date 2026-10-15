@@ -467,7 +467,7 @@ export function JokoNotesManagement() {
             <p className="joko-admin-eyebrow">Website personality</p>
             <h2 className="joko-admin-title mt-1 text-2xl font-semibold">Page Accents</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62">
-              Ordinary pages use one accent: either a personal JOKO Note or an illustrated brand bubble. The long Homepage is the deliberate exception: its existing Hero note can coexist with one lower-page bubble. Safe zones remain responsive and design-controlled.
+              Ordinary pages use one accent: either a personal JOKO Note or an illustrated brand bubble. The Homepage is the deliberate exception: its Builder-owned Hero note can coexist with a lower-page bubble and one design-controlled Hero illustration. Safe zones remain responsive and code-owned.
             </p>
           </div>
           <button type="button" onClick={() => void load()} disabled={loading || saving} className="joko-admin-secondary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
@@ -491,7 +491,7 @@ export function JokoNotesManagement() {
 
           <fieldset>
             <legend className="text-sm font-medium text-[#303532]">Accent type</legend>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => changeAccentType('note')}
@@ -521,6 +521,22 @@ export function JokoNotesManagement() {
                 <span className="mt-1 block text-xs leading-5 text-[#303532]/55">
                   Single-language illustrated brand reaction. The artwork is intentionally not translated.
                   {!bubbleSupported ? ' No bubble safe zone is registered for this page yet.' : ''}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => changeAccentType('illustration')}
+                disabled={!illustrationSupported}
+                className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${draft.accent_type === 'illustration'
+                  ? 'border-[#6E9A4F] bg-[#EEF5E7]/85 shadow-sm'
+                  : 'border-[#55766F]/14 bg-white/45 hover:border-[#6E9A4F]/40'}`}
+                aria-pressed={draft.accent_type === 'illustration'}
+              >
+                <span className="block font-semibold text-[#303532]">Hero illustration</span>
+                <span className="mt-1 block text-xs leading-5 text-[#303532]/55">
+                  Transparent character artwork that points attention toward the primary Hero action.
+                  {!illustrationSupported ? ' This safe zone is currently Homepage-only.' : ''}
                 </span>
               </button>
             </div>
@@ -560,7 +576,7 @@ export function JokoNotesManagement() {
               })}
             </div>
             <p className="mt-2 text-xs leading-5 text-[#303532]/48">
-              Changing accent type changes the available safe zones. Ordinary pages keep one Page Accent row. On the Homepage, this lower-page accent is separate from the existing Builder-owned Hero note.
+              Changing accent type changes the available safe zones. Ordinary pages keep one Page Accent row. On the Homepage, the lower-page bubble and Hero illustration are stored independently, and both remain separate from the Builder-owned Hero note.
             </p>
           </div>
 
@@ -657,7 +673,7 @@ export function JokoNotesManagement() {
                 </label>
               </div>
             </>
-          ) : (
+          ) : draft.accent_type === 'bubble' ? (
             <>
               <div className="rounded-2xl border border-[#C76624]/16 bg-[#FFF2E8]/45 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -766,12 +782,74 @@ export function JokoNotesManagement() {
                 </select>
               </label>
             </>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-[#6E9A4F]/18 bg-[#EEF5E7]/62 p-4">
+                <p className="text-sm font-semibold text-[#303532]">Hero illustration</p>
+                <p className="mt-1 text-xs leading-5 text-[#303532]/55">
+                  Upload a transparent PNG or WebP. The image stays editable here; only its responsive anchor beside the primary Hero button is fixed in code.
+                </p>
+                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-4 text-sm font-semibold text-[#55766F] transition hover:bg-white">
+                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                  {uploading ? 'Uploading Hero illustration…' : 'Upload Hero illustration'}
+                  <input
+                    type="file"
+                    accept="image/webp,image/png"
+                    className="sr-only"
+                    disabled={uploading}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] || null;
+                      event.currentTarget.value = '';
+                      void upload(file, 'illustration');
+                    }}
+                  />
+                </label>
+                <p className="mt-2 text-center text-xs text-[#303532]/50">
+                  Transparent artwork works best. EXIF/GPS metadata is stripped before upload.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="block text-sm font-medium text-[#303532] md:col-span-2">
+                  Illustration URL
+                  <input value={draft.image_url || ''} onChange={(event) => patch({ image_url: event.target.value || null })} className="joko-admin-field mt-1 w-full" placeholder="https://…" />
+                </label>
+                <label className="block text-sm font-medium text-[#303532]">
+                  Illustration size
+                  <select value={draft.bubble_size} onChange={(event) => patch({ bubble_size: event.target.value as JokoBubbleSize })} className="joko-admin-field mt-1 w-full">
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-4">
+                {(['en', 'th', 'zh'] as const).map((language) => (
+                  <label key={language} className="text-xs font-medium text-[#303532]">
+                    {language === 'en' ? 'English alt text' : language === 'th' ? 'Alt text ไทย' : 'Alt text 中文'}
+                    <input
+                      value={draft[`image_alt_${language}` as keyof JokoNoteDraft] as string || ''}
+                      onChange={(event) => patch({ [`image_alt_${language}`]: event.target.value || null } as Partial<JokoNoteDraft>)}
+                      className="joko-admin-field mt-1 w-full"
+                      placeholder={language === 'en' ? 'Joe running toward Explore the Bakery' : ''}
+                    />
+                  </label>
+                ))}
+                <label className="text-xs font-medium text-[#303532]">
+                  Rotation
+                  <input type="number" min={-6} max={6} value={draft.rotation} onChange={(event) => patch({ rotation: Number(event.target.value) })} className="joko-admin-field mt-1 w-full" />
+                </label>
+              </div>
+            </>
           )}
 
-          <label className="block text-sm font-medium text-[#303532]">
-            Link URL <span className="font-normal text-[#303532]/50">(optional)</span>
-            <input value={draft.link_url || ''} onChange={(event) => patch({ link_url: event.target.value || null })} className="joko-admin-field mt-1 w-full max-w-md" placeholder="/products" />
-          </label>
+          {draft.accent_type !== 'illustration' && (
+            <label className="block text-sm font-medium text-[#303532]">
+              Link URL <span className="font-normal text-[#303532]/50">(optional)</span>
+              <input value={draft.link_url || ''} onChange={(event) => patch({ link_url: event.target.value || null })} className="joko-admin-field mt-1 w-full max-w-md" placeholder="/products" />
+            </label>
+          )}
 
           <label className="flex items-center justify-between gap-4 rounded-2xl border border-[#55766F]/15 bg-[#FFF9EE]/70 p-4">
             <span>
@@ -848,7 +926,7 @@ export function JokoNotesManagement() {
               imageLayout={draft.image_layout}
             />
           </div>
-        ) : (
+        ) : draft.accent_type === 'bubble' ? (
           <div className="mt-10 flex min-h-48 items-center justify-center rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/18 p-6">
             {draft.bubble_image_url ? (
               <img
@@ -862,15 +940,35 @@ export function JokoNotesManagement() {
               </p>
             )}
           </div>
+        ) : (
+          <div className="mt-10 overflow-hidden rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/28 p-6">
+            <div className="relative mx-auto min-h-56 max-w-md rounded-2xl bg-[#D9ECE9]/72 px-5 py-7">
+              <div className="absolute bottom-7 left-[42%] rounded-xl bg-[#C76624] px-5 py-3 text-sm font-semibold text-white shadow-sm">
+                Explore the Bakery →
+              </div>
+              {draft.image_url ? (
+                <img
+                  src={draft.image_url}
+                  alt={preview.imageAlt}
+                  className={`absolute bottom-4 left-4 h-auto object-contain ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
+                  style={{ transform: `rotate(${draft.rotation || 0}deg)` }}
+                />
+              ) : (
+                <p className="absolute inset-0 flex items-center justify-center px-8 text-center text-sm leading-6 text-[#303532]/50">
+                  Upload a transparent Hero illustration to preview its relationship to the primary action.
+                </p>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="mt-8 rounded-2xl border border-[#55766F]/12 bg-[#CFE3DF]/35 p-4 text-sm leading-6 text-[#303532]/70">
-          <p className="font-semibold text-[#303532]">Either / or rule</p>
+          <p className="font-semibold text-[#303532]">Controlled accent rule</p>
           <p className="mt-1">
-            Ordinary pages can publish one JOKO Note or one speech bubble, never both. The Homepage is the intentional exception: its existing Hero notebook note can coexist with one lower-page bubble because the two moments are separated by several sections of scrolling.
+            Ordinary pages can publish one JOKO Note or one speech bubble, never both. The Homepage can additionally publish one Hero illustration because it occupies a separate, fixed safe zone beside the primary action.
           </p>
           <p className="mt-2 text-xs text-[#303532]/50">
-            Bubble safe zones currently registered: {JOKO_BUBBLE_PAGES.map((page) => page.label).join(', ')}.
+            Bubble safe zones: {JOKO_BUBBLE_PAGES.map((page) => page.label).join(', ')} · Hero illustration safe zones: {JOKO_ILLUSTRATION_PAGES.map((page) => page.label).join(', ')}.
           </p>
         </div>
       </section>
