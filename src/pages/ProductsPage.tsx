@@ -551,7 +551,7 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
             className="mx-auto lg:absolute lg:left-[39%] lg:top-7 lg:-translate-x-1/2 xl:left-[40%]"
           />
 
-          <div className="min-w-0 lg:pt-1">
+          <div className="min-w-0 lg:col-start-3 lg:pt-1">
             {!rolloutResolved ? (
               <div className="joko-products-control-card py-12 text-center text-sm text-[#303532]/60">
                 {language === 'th' ? 'กำลังโหลดสินค้า…' : language === 'zh' ? '正在加载商品…' : 'Loading products…'}
