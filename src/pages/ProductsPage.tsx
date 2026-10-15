@@ -522,9 +522,8 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
     <div className="joko-products-page joko-mineral-field min-h-screen">
       <div className="relative z-10 mx-auto max-w-[88rem] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <div className="relative mb-7">
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(32rem,1.28fr)] lg:gap-10 xl:gap-14">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(15rem,0.85fr)_minmax(10rem,0.55fr)_minmax(27rem,1.6fr)] lg:gap-6 xl:gap-10">
             <div className="max-w-2xl">
-            <button className="mb-4 rounded-full border border-[#758b78] px-4 py-2 text-sm" onClick={() => onNavigate?.('specials')}>JOKO Specials · Same-day pickup / รับวันนี้</button>
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#3F665E] sm:text-[11px]">
               JOKO TODAY
             </p>
@@ -539,6 +538,12 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
               {t.product.preOrderOnly}
             </p>
           </div>
+
+          <JokoNoteSlot
+            pageKey="products"
+            placementKey="below-browse-controls"
+            className="mx-auto w-full max-w-[17rem] lg:mt-3"
+          />
 
           <JokoBubbleSlot
             pageKey="products"
@@ -625,12 +630,6 @@ export default function ProductsPage({ initialProductSlug, qrSource, onProductOp
           </div>
 
         </div>
-
-        <JokoNoteSlot
-          pageKey="products"
-          placementKey="below-browse-controls"
-          className="mb-9 ml-auto max-w-sm lg:mr-[7%]"
-        />
 
         <div className="mb-9">
           <div className="joko-products-category-strip flex flex-wrap gap-2.5 p-2.5 sm:gap-3 sm:p-3">
