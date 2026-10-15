@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 export const JOKO_NOTES_SITE_KEY = 'joko-today';
 
-export type JokoAccentType = 'note' | 'bubble';
+export type JokoAccentType = 'note' | 'bubble' | 'illustration';
 export type JokoBubbleSize = 'small' | 'medium' | 'large';
 export type JokoNoteFontPreset = 'handwritten' | 'display' | 'body';
 export type JokoNoteImageLayout = 'stacked' | 'portrait' | 'tiny-sketch';
@@ -154,6 +154,21 @@ export const JOKO_BUBBLE_PAGES: readonly JokoNotePageDefinition[] = [
   },
 ] as const;
 
+export const JOKO_ILLUSTRATION_PAGES: readonly JokoNotePageDefinition[] = [
+  {
+    pageKey: 'home',
+    label: 'Homepage',
+    description: 'A transparent character or editorial illustration anchored to a design-controlled Hero safe zone.',
+    placements: [
+      {
+        placementKey: 'hero-primary-cta',
+        label: 'Hero primary action',
+        description: 'Dedicated bottom-left Hero character lane beside the primary “Explore the Bakery” action. The layout reserves real space for the artwork on desktop and hides it on cramped layouts.',
+      },
+    ],
+  },
+] as const;
+
 export function getJokoNotePage(pageKey: string): JokoNotePageDefinition | undefined {
   return JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
 }
@@ -162,11 +177,17 @@ export function getJokoBubblePage(pageKey: string): JokoNotePageDefinition | und
   return JOKO_BUBBLE_PAGES.find((page) => page.pageKey === pageKey);
 }
 
+export function getJokoIllustrationPage(pageKey: string): JokoNotePageDefinition | undefined {
+  return JOKO_ILLUSTRATION_PAGES.find((page) => page.pageKey === pageKey);
+}
+
 export function getJokoAccentPage(
   pageKey: string,
   accentType: JokoAccentType,
 ): JokoNotePageDefinition | undefined {
-  return accentType === 'bubble' ? getJokoBubblePage(pageKey) : getJokoNotePage(pageKey);
+  if (accentType === 'bubble') return getJokoBubblePage(pageKey);
+  if (accentType === 'illustration') return getJokoIllustrationPage(pageKey);
+  return getJokoNotePage(pageKey);
 }
 
 export function isRegisteredJokoAccentPlacement(
@@ -242,6 +263,25 @@ export async function getPublishedJokoBubble(
   return (data as JokoNote | null) ?? null;
 }
 
+export async function getPublishedJokoIllustration(
+  pageKey: string,
+  placementKey: string,
+  siteKey = JOKO_NOTES_SITE_KEY,
+): Promise<JokoNote | null> {
+  const { data, error } = await supabase
+    .from('site_joko_notes')
+    .select('*')
+    .eq('site_key', siteKey)
+    .eq('page_key', pageKey)
+    .eq('placement_key', placementKey)
+    .eq('accent_type', 'illustration')
+    .eq('is_published', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as JokoNote | null) ?? null;
+}
+
 export async function adminListJokoNotes(siteKey = JOKO_NOTES_SITE_KEY): Promise<JokoNote[]> {
   const { data, error } = await supabase
     .from('site_joko_notes')
@@ -266,6 +306,9 @@ export async function adminSaveJokoNote(
   }
   if (draft.accent_type === 'bubble' && !draft.bubble_alt?.trim()) {
     throw new Error('Add an accessibility label that accurately describes the bubble wording.');
+  }
+  if (draft.accent_type === 'illustration' && !draft.image_url) {
+    throw new Error('Upload or choose a Hero illustration before saving.');
   }
 
   if (id) {

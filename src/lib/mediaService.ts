@@ -55,6 +55,35 @@ function loadImage(file: File): Promise<HTMLImageElement> {
  * Re-encodes product imagery before upload so EXIF/GPS and other source
  * metadata never leave the browser. Brand logos keep their original pixels.
  */
+export async function imageHasTransparency(file: File): Promise<boolean> {
+  if (file.type !== 'image/png' && file.type !== 'image/webp') return false;
+
+  const image = await loadImage(file);
+  const maxDimension = 256;
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return false;
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  for (let index = 3; index < pixels.length; index += 4) {
+    if (pixels[index] < 250) {
+      canvas.width = 0;
+      canvas.height = 0;
+      return true;
+    }
+  }
+
+  canvas.width = 0;
+  canvas.height = 0;
+  return false;
+}
+
 async function stripImageMetadata(file: File): Promise<File> {
   const image = await loadImage(file);
   const canvas = document.createElement('canvas');
@@ -97,6 +126,50 @@ async function stripImageMetadata(file: File): Promise<File> {
     type: outputType,
     lastModified: Date.now(),
   });
+}
+
+function canUsePreviewStorageFallback(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const hostname = window.location.hostname.toLowerCase();
+  const supabaseUrl = String(import.meta.env.VITE_SUPABASE_URL || '').toLowerCase();
+
+  return hostname.endsWith('.jokotoday-preview.pages.dev')
+    && supabaseUrl.includes('szijiljpasxddzgzckra.supabase.co');
+}
+
+async function uploadPreviewGalleryFallback(
+  file: File,
+  gallerySlot: string,
+): Promise<MediaUploadTicket> {
+  const extension = PRODUCT_IMAGE_EXTENSIONS[
+    file.type as (typeof PRODUCT_IMAGE_ACCEPTED_TYPES)[number]
+  ];
+  const objectKey = `page-accent-preview/${gallerySlot}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from('assets')
+    .upload(objectKey, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Preview media fallback failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from('assets').getPublicUrl(objectKey);
+  if (!data.publicUrl) {
+    throw new Error('Preview media fallback did not return a public URL.');
+  }
+
+  return {
+    uploadUrl: '',
+    publicUrl: data.publicUrl,
+    objectKey,
+    expiresIn: 0,
+  };
 }
 
 async function requestUploadTicket(
@@ -242,10 +315,24 @@ export async function uploadGalleryImage(
   }
 
   const sanitizedFile = await stripImageMetadata(file);
-  const ticket = await requestUploadTicket(sanitizedFile, {
-    assetKind: 'gallery',
-    gallerySlot: slot,
-  });
-  await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
-  return ticket;
+
+  try {
+    const ticket = await requestUploadTicket(sanitizedFile, {
+      assetKind: 'gallery',
+      gallerySlot: slot,
+    });
+    await putFile(ticket.uploadUrl, sanitizedFile, onProgress);
+    return ticket;
+  } catch (error) {
+    if (!canUsePreviewStorageFallback()) throw error;
+
+    console.warn(
+      '[JOKO Media] R2 upload unavailable in the Cloudflare preview; using isolated test Supabase Storage.',
+      error,
+    );
+    onProgress?.(15);
+    const ticket = await uploadPreviewGalleryFallback(sanitizedFile, slot);
+    onProgress?.(100);
+    return ticket;
+  }
 }

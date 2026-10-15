@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { uploadGalleryImage } from '../lib/mediaService';
+import { imageHasTransparency, uploadGalleryImage } from '../lib/mediaService';
 import {
   adminListPageAccentAssets,
   adminSavePageAccentAsset,
@@ -12,6 +12,7 @@ import {
 } from '../lib/pageAccentPreview';
 import {
   JOKO_BUBBLE_PAGES,
+  JOKO_ILLUSTRATION_PAGES,
   JOKO_NOTE_PAGES,
   JOKO_NOTES_SITE_KEY,
   adminDeleteJokoNote,
@@ -66,36 +67,33 @@ const EMPTY_DRAFT: JokoNoteDraft = {
   is_published: false,
 };
 
-function draftFromNote(note: JokoNote | null, pageKey: string): JokoNoteDraft {
-  if (!note) {
-    const notePage = JOKO_NOTE_PAGES.find((page) => page.pageKey === pageKey);
-    if (notePage) {
-      return {
-        ...EMPTY_DRAFT,
-        page_key: notePage.pageKey,
-        placement_key: notePage.placements[0].placementKey,
-      };
-    }
+function draftFromNote(
+  note: JokoNote | null,
+  pageKey: string,
+  accentType: JokoAccentType,
+): JokoNoteDraft {
+  const definition = getJokoAccentPage(pageKey, accentType);
+  const placementKey = definition?.placements[0]?.placementKey || EMPTY_DRAFT.placement_key;
 
-    const bubblePage = JOKO_BUBBLE_PAGES.find((page) => page.pageKey === pageKey);
-    if (bubblePage) {
-      return {
-        ...EMPTY_DRAFT,
-        page_key: bubblePage.pageKey,
-        placement_key: bubblePage.placements[0].placementKey,
-        accent_type: 'bubble',
-      };
-    }
-
-    return { ...EMPTY_DRAFT };
+  if (!note || note.accent_type !== accentType) {
+    return {
+      ...EMPTY_DRAFT,
+      page_key: pageKey,
+      placement_key: placementKey,
+      accent_type: accentType,
+      bubble_size: accentType === 'illustration' ? 'large' : 'medium',
+      rotation: accentType === 'illustration' ? 0 : 2,
+      link_url: accentType === 'illustration' ? '/products' : null,
+      is_published: note?.is_published ?? false,
+    };
   }
 
   return {
     site_key: note.site_key,
     page_key: note.page_key,
     placement_key: note.placement_key,
-    accent_type: note.accent_type || 'note',
-    bubble_size: note.bubble_size || 'medium',
+    accent_type: note.accent_type || accentType,
+    bubble_size: note.bubble_size || (accentType === 'illustration' ? 'large' : 'medium'),
     bubble_image_url: note.bubble_image_url || null,
     bubble_alt: note.bubble_alt || null,
     title_en: note.title_en,
@@ -133,7 +131,9 @@ export function JokoNotesManagement() {
   const [notes, setNotes] = useState<JokoNote[]>([]);
   const [assets, setAssets] = useState<PageAccentAsset[]>([]);
   const [selectedPageKey, setSelectedPageKey] = useState(FIRST_PAGE.pageKey);
+  const [selectedAccentType, setSelectedAccentType] = useState<JokoAccentType>('note');
   const [previewLanguage, setPreviewLanguage] = useState<LanguageCode>('en');
+  const initializedPageRef = useRef<string | null>(null);
   const [draft, setDraft] = useState<JokoNoteDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -143,10 +143,17 @@ export function JokoNotesManagement() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const existing = useMemo(
-    () => notes.find((note) => note.page_key === selectedPageKey) || null,
+  const pageRecords = useMemo(
+    () => notes.filter((note) => note.page_key === selectedPageKey),
     [notes, selectedPageKey],
   );
+
+  const existing = useMemo(() => {
+    if (selectedPageKey === 'home') {
+      return pageRecords.find((note) => note.accent_type === selectedAccentType) || null;
+    }
+    return pageRecords[0] || null;
+  }, [pageRecords, selectedPageKey, selectedAccentType]);
 
   const notePageDefinition = useMemo(
     () => JOKO_NOTE_PAGES.find((page) => page.pageKey === selectedPageKey),
@@ -158,17 +165,27 @@ export function JokoNotesManagement() {
     [selectedPageKey],
   );
 
+  const illustrationPageDefinition = useMemo(
+    () => JOKO_ILLUSTRATION_PAGES.find((page) => page.pageKey === selectedPageKey),
+    [selectedPageKey],
+  );
+
   const accentPageDefinition = useMemo(
-    () => getJokoAccentPage(selectedPageKey, draft.accent_type)
+    () => getJokoAccentPage(selectedPageKey, selectedAccentType)
+      || illustrationPageDefinition
       || bubblePageDefinition
       || notePageDefinition
       || FIRST_PAGE,
-    [selectedPageKey, draft.accent_type, bubblePageDefinition, notePageDefinition],
+    [selectedPageKey, selectedAccentType, illustrationPageDefinition, bubblePageDefinition, notePageDefinition],
   );
 
   const noteSupported = Boolean(notePageDefinition);
   const bubbleSupported = Boolean(bubblePageDefinition);
-  const pageLabel = notePageDefinition?.label || bubblePageDefinition?.label || selectedPageKey;
+  const illustrationSupported = Boolean(illustrationPageDefinition);
+  const pageLabel = notePageDefinition?.label
+    || bubblePageDefinition?.label
+    || illustrationPageDefinition?.label
+    || selectedPageKey;
 
   const load = async () => {
     setLoading(true);
@@ -201,13 +218,25 @@ export function JokoNotesManagement() {
   }, []);
 
   useEffect(() => {
-    setDraft(draftFromNote(existing, selectedPageKey));
-  }, [existing, selectedPageKey]);
+    if (loading || initializedPageRef.current === selectedPageKey) return;
+
+    const savedType = pageRecords[0]?.accent_type;
+    const fallbackType: JokoAccentType = selectedPageKey === 'home'
+      ? (pageRecords.some((note) => note.accent_type === 'bubble') ? 'bubble' : 'illustration')
+      : savedType || (noteSupported ? 'note' : bubbleSupported ? 'bubble' : 'illustration');
+
+    setSelectedAccentType(savedType && selectedPageKey !== 'home' ? savedType : fallbackType);
+    initializedPageRef.current = selectedPageKey;
+  }, [loading, selectedPageKey, pageRecords, noteSupported, bubbleSupported]);
+
+  useEffect(() => {
+    setDraft(draftFromNote(existing, selectedPageKey, selectedAccentType));
+  }, [existing, selectedPageKey, selectedAccentType]);
 
   useEffect(() => {
     setNotice('');
     setError('');
-  }, [selectedPageKey]);
+  }, [selectedPageKey, selectedAccentType]);
 
   const patch = (next: Partial<JokoNoteDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
@@ -216,16 +245,12 @@ export function JokoNotesManagement() {
   const changeAccentType = (accentType: JokoAccentType) => {
     const definition = getJokoAccentPage(selectedPageKey, accentType);
     if (!definition) return;
-    patch({
-      accent_type: accentType,
-      page_key: selectedPageKey,
-      placement_key: definition.placements[0].placementKey,
-    });
+    setSelectedAccentType(accentType);
     setNotice('');
     setError('');
   };
 
-  const upload = async (file: File | null, kind: 'note' | 'bubble') => {
+  const upload = async (file: File | null, kind: 'note' | 'bubble' | 'illustration') => {
     if (!file) return;
 
     if (kind === 'bubble' && (!newAssetName.trim() || !newAssetAlt.trim())) {
@@ -236,9 +261,19 @@ export function JokoNotesManagement() {
     setUploading(true);
     setError('');
     try {
+      if (kind === 'illustration') {
+        if (file.type !== 'image/png' && file.type !== 'image/webp') {
+          throw new Error('Hero illustrations must be transparent PNG or WebP files.');
+        }
+        const hasTransparency = await imageHasTransparency(file);
+        if (!hasTransparency) {
+          throw new Error('This Hero illustration has an opaque background. Please use a PNG or WebP with a transparent background so no white frame appears.');
+        }
+      }
+
       const ticket = await uploadGalleryImage({
         file,
-        gallerySlot: kind === 'bubble' ? 'page-accents' : 'joko-notes',
+        gallerySlot: kind === 'note' ? 'joko-notes' : 'page-accents',
       });
 
       if (kind === 'bubble') {
@@ -259,7 +294,9 @@ export function JokoNotesManagement() {
         setNotice('Bubble added to the reusable library and selected for this page. Preview or save when ready.');
       } else {
         patch({ image_url: ticket.publicUrl });
-        setNotice('Note image uploaded. Save the Page Accent to keep this change.');
+        setNotice(kind === 'illustration'
+          ? 'Hero illustration uploaded. Preview it on the Homepage, then save or publish when ready.'
+          : 'Note image uploaded. Save the Page Accent to keep this change.');
       }
     } catch (err) {
       console.error('Page Accent upload failed', err);
@@ -291,6 +328,10 @@ export function JokoNotesManagement() {
       setError('Add note content before previewing.');
       return;
     }
+    if (draft.accent_type === 'illustration' && !draft.image_url) {
+      setError('Upload a Hero illustration before previewing.');
+      return;
+    }
 
     const token = createPageAccentPreview({
       ...draft,
@@ -315,6 +356,10 @@ export function JokoNotesManagement() {
       setError('Add an accessibility label that accurately describes the bubble wording.');
       return;
     }
+    if (draft.accent_type === 'illustration' && !draft.image_url) {
+      setError('Upload a Hero illustration before saving.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -337,22 +382,39 @@ export function JokoNotesManagement() {
             bubble_alt: nullable(draft.bubble_alt || ''),
             link_url: nullable(draft.link_url || ''),
           }
-        : {
-            ...draft,
-            title_en: nullable(draft.title_en || ''),
-            title_th: nullable(draft.title_th || ''),
-            title_zh: nullable(draft.title_zh || ''),
-            body_en: nullable(draft.body_en || ''),
-            body_th: nullable(draft.body_th || ''),
-            body_zh: nullable(draft.body_zh || ''),
-            image_url: nullable(draft.image_url || ''),
-            image_alt_en: nullable(draft.image_alt_en || ''),
-            image_alt_th: nullable(draft.image_alt_th || ''),
-            image_alt_zh: nullable(draft.image_alt_zh || ''),
-            bubble_image_url: null,
-            bubble_alt: null,
-            link_url: nullable(draft.link_url || ''),
-          };
+        : draft.accent_type === 'illustration'
+          ? {
+              ...draft,
+              title_en: null,
+              title_th: null,
+              title_zh: null,
+              body_en: null,
+              body_th: null,
+              body_zh: null,
+              image_url: nullable(draft.image_url || ''),
+              image_alt_en: nullable(draft.image_alt_en || ''),
+              image_alt_th: nullable(draft.image_alt_th || ''),
+              image_alt_zh: nullable(draft.image_alt_zh || ''),
+              bubble_image_url: null,
+              bubble_alt: null,
+              link_url: nullable(draft.link_url || ''),
+            }
+          : {
+              ...draft,
+              title_en: nullable(draft.title_en || ''),
+              title_th: nullable(draft.title_th || ''),
+              title_zh: nullable(draft.title_zh || ''),
+              body_en: nullable(draft.body_en || ''),
+              body_th: nullable(draft.body_th || ''),
+              body_zh: nullable(draft.body_zh || ''),
+              image_url: nullable(draft.image_url || ''),
+              image_alt_en: nullable(draft.image_alt_en || ''),
+              image_alt_th: nullable(draft.image_alt_th || ''),
+              image_alt_zh: nullable(draft.image_alt_zh || ''),
+              bubble_image_url: null,
+              bubble_alt: null,
+              link_url: nullable(draft.link_url || ''),
+            };
 
       const wasPublished = existing?.is_published ?? false;
       const placementLabel = accentPageDefinition.placements.find(
@@ -362,7 +424,11 @@ export function JokoNotesManagement() {
       await adminSaveJokoNote(normalized, existing?.id);
       await load();
 
-      const accentLabel = draft.accent_type === 'bubble' ? 'Bubble' : 'JOKO Note';
+      const accentLabel = draft.accent_type === 'bubble'
+        ? 'Bubble'
+        : draft.accent_type === 'illustration'
+          ? 'Hero illustration'
+          : 'JOKO Note';
       if (draft.is_published) {
         setNotice(`${accentLabel} published successfully on ${pageLabel} → ${placementLabel}.`);
       } else if (wasPublished) {
@@ -412,7 +478,7 @@ export function JokoNotesManagement() {
             <p className="joko-admin-eyebrow">Website personality</p>
             <h2 className="joko-admin-title mt-1 text-2xl font-semibold">Page Accents</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#303532]/62">
-              Ordinary pages use one accent: either a personal JOKO Note or an illustrated brand bubble. The long Homepage is the deliberate exception: its existing Hero note can coexist with one lower-page bubble. Safe zones remain responsive and design-controlled.
+              Ordinary pages use one accent: either a personal JOKO Note or an illustrated brand bubble. The Homepage is the deliberate exception: its Builder-owned Hero note can coexist with a lower-page bubble and one design-controlled Hero illustration. Safe zones remain responsive and code-owned.
             </p>
           </div>
           <button type="button" onClick={() => void load()} disabled={loading || saving} className="joko-admin-secondary-button inline-flex items-center gap-2 px-3 py-2 text-xs">
@@ -436,7 +502,7 @@ export function JokoNotesManagement() {
 
           <fieldset>
             <legend className="text-sm font-medium text-[#303532]">Accent type</legend>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div className="mt-2 grid gap-3 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => changeAccentType('note')}
@@ -466,6 +532,22 @@ export function JokoNotesManagement() {
                 <span className="mt-1 block text-xs leading-5 text-[#303532]/55">
                   Single-language illustrated brand reaction. The artwork is intentionally not translated.
                   {!bubbleSupported ? ' No bubble safe zone is registered for this page yet.' : ''}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => changeAccentType('illustration')}
+                disabled={!illustrationSupported}
+                className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${draft.accent_type === 'illustration'
+                  ? 'border-[#6E9A4F] bg-[#EEF5E7]/85 shadow-sm'
+                  : 'border-[#55766F]/14 bg-white/45 hover:border-[#6E9A4F]/40'}`}
+                aria-pressed={draft.accent_type === 'illustration'}
+              >
+                <span className="block font-semibold text-[#303532]">Hero illustration</span>
+                <span className="mt-1 block text-xs leading-5 text-[#303532]/55">
+                  Transparent character artwork that points attention toward the primary Hero action.
+                  {!illustrationSupported ? ' This safe zone is currently Homepage-only.' : ''}
                 </span>
               </button>
             </div>
@@ -505,7 +587,7 @@ export function JokoNotesManagement() {
               })}
             </div>
             <p className="mt-2 text-xs leading-5 text-[#303532]/48">
-              Changing accent type changes the available safe zones. Ordinary pages keep one Page Accent row. On the Homepage, this lower-page accent is separate from the existing Builder-owned Hero note.
+              Changing accent type changes the available safe zones. Ordinary pages keep one Page Accent row. On the Homepage, the lower-page bubble and Hero illustration are stored independently, and both remain separate from the Builder-owned Hero note.
             </p>
           </div>
 
@@ -601,8 +683,9 @@ export function JokoNotesManagement() {
                   <input type="number" min={-6} max={6} value={draft.rotation} onChange={(event) => patch({ rotation: Number(event.target.value) })} className="joko-admin-field mt-1 w-full" />
                 </label>
               </div>
+
             </>
-          ) : (
+          ) : draft.accent_type === 'bubble' ? (
             <>
               <div className="rounded-2xl border border-[#C76624]/16 bg-[#FFF2E8]/45 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -711,12 +794,87 @@ export function JokoNotesManagement() {
                 </select>
               </label>
             </>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-[#6E9A4F]/18 bg-[#EEF5E7]/62 p-4">
+                <p className="text-sm font-semibold text-[#303532]">Hero illustration</p>
+                <p className="mt-1 text-xs leading-5 text-[#303532]/55">
+                  Upload a transparent PNG or WebP. The image stays editable here; the Hero reserves a dedicated character lane so the artwork never sits on top of the copy or buttons.
+                </p>
+                <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-4 text-sm font-semibold text-[#55766F] transition hover:bg-white">
+                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                  {uploading ? 'Uploading Hero illustration…' : 'Upload Hero illustration'}
+                  <input
+                    type="file"
+                    accept="image/webp,image/png"
+                    className="sr-only"
+                    disabled={uploading}
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] || null;
+                      event.currentTarget.value = '';
+                      void upload(file, 'illustration');
+                    }}
+                  />
+                </label>
+                <p className="mt-2 text-center text-xs text-[#303532]/50">
+                  Transparent artwork works best. EXIF/GPS metadata is stripped before upload.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="block text-sm font-medium text-[#303532] md:col-span-2">
+                  Illustration URL
+                  <input value={draft.image_url || ''} onChange={(event) => patch({ image_url: event.target.value || null })} className="joko-admin-field mt-1 w-full" placeholder="https://…" />
+                </label>
+                <label className="block text-sm font-medium text-[#303532]">
+                  Illustration size
+                  <select value={draft.bubble_size} onChange={(event) => patch({ bubble_size: event.target.value as JokoBubbleSize })} className="joko-admin-field mt-1 w-full">
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-4">
+                {(['en', 'th', 'zh'] as const).map((language) => (
+                  <label key={language} className="text-xs font-medium text-[#303532]">
+                    {language === 'en' ? 'English alt text' : language === 'th' ? 'Alt text ไทย' : 'Alt text 中文'}
+                    <input
+                      value={draft[`image_alt_${language}` as keyof JokoNoteDraft] as string || ''}
+                      onChange={(event) => patch({ [`image_alt_${language}`]: event.target.value || null } as Partial<JokoNoteDraft>)}
+                      className="joko-admin-field mt-1 w-full"
+                      placeholder={language === 'en' ? 'Joe running toward Explore the Bakery' : ''}
+                    />
+                  </label>
+                ))}
+                <label className="text-xs font-medium text-[#303532]">
+                  Rotation
+                  <input type="number" min={-6} max={6} value={draft.rotation} onChange={(event) => patch({ rotation: Number(event.target.value) })} className="joko-admin-field mt-1 w-full" />
+                </label>
+              </div>
+
+              <label className="block text-sm font-medium text-[#303532]">
+                Click target <span className="font-normal text-[#303532]/50">(optional)</span>
+                <input
+                  value={draft.link_url || ''}
+                  onChange={(event) => patch({ link_url: event.target.value || null })}
+                  className="joko-admin-field mt-1 w-full max-w-md"
+                  placeholder="/products"
+                />
+                <span className="mt-1 block text-xs leading-5 text-[#303532]/48">
+                  Use <strong>/products</strong> for running Joe so clicking the character opens the Bakery. Leave blank for decorative-only artwork.
+                </span>
+              </label>
+            </>
           )}
 
-          <label className="block text-sm font-medium text-[#303532]">
-            Link URL <span className="font-normal text-[#303532]/50">(optional)</span>
-            <input value={draft.link_url || ''} onChange={(event) => patch({ link_url: event.target.value || null })} className="joko-admin-field mt-1 w-full max-w-md" placeholder="/products" />
-          </label>
+          {draft.accent_type !== 'illustration' && (
+            <label className="block text-sm font-medium text-[#303532]">
+              Link URL <span className="font-normal text-[#303532]/50">(optional)</span>
+              <input value={draft.link_url || ''} onChange={(event) => patch({ link_url: event.target.value || null })} className="joko-admin-field mt-1 w-full max-w-md" placeholder="/products" />
+            </label>
+          )}
 
           <label className="flex items-center justify-between gap-4 rounded-2xl border border-[#55766F]/15 bg-[#FFF9EE]/70 p-4">
             <span>
@@ -793,7 +951,7 @@ export function JokoNotesManagement() {
               imageLayout={draft.image_layout}
             />
           </div>
-        ) : (
+        ) : draft.accent_type === 'bubble' ? (
           <div className="mt-10 flex min-h-48 items-center justify-center rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/18 p-6">
             {draft.bubble_image_url ? (
               <img
@@ -807,15 +965,51 @@ export function JokoNotesManagement() {
               </p>
             )}
           </div>
+        ) : (
+          <div className="mt-8 rounded-3xl border border-[#55766F]/10 bg-[#DCE9EC]/28 p-5">
+            <div className="mx-auto max-w-md rounded-2xl bg-[#D9ECE9]/78 px-4 py-5">
+              {draft.image_url ? (
+                <>
+                  <div className="flex items-start justify-center gap-0">
+                    <div
+                      className={`shrink-0 ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
+                      style={{ transform: `translateX(8px) rotate(${draft.rotation || 0}deg)` }}
+                    >
+                      <img
+                        src={draft.image_url}
+                        alt={preview.imageAlt}
+                        className="block h-auto w-full object-contain"
+                      />
+                    </div>
+                    <div className="relative z-10 mt-10 min-w-[9.25rem] rounded-xl bg-[#C76624] px-4 py-3 text-center text-sm font-semibold leading-5 text-white shadow-sm">
+                      Explore the Bakery →
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-center gap-5 border-t border-[#55766F]/15 pt-3 text-[11px] text-[#304B45]/72">
+                    <span>Select</span>
+                    <span>Pre-Order</span>
+                    <span>Pickup</span>
+                  </div>
+                  <p className="mt-3 text-center text-xs leading-5 text-[#303532]/48">
+                    Miniature layout preview. “Preview on Homepage” shows the exact responsive placement.
+                  </p>
+                </>
+              ) : (
+                <div className="flex min-h-52 items-center justify-center px-8 text-center text-sm leading-6 text-[#303532]/50">
+                  Upload a transparent Hero illustration to preview its relationship to the primary action.
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="mt-8 rounded-2xl border border-[#55766F]/12 bg-[#CFE3DF]/35 p-4 text-sm leading-6 text-[#303532]/70">
-          <p className="font-semibold text-[#303532]">Either / or rule</p>
+          <p className="font-semibold text-[#303532]">Controlled accent rule</p>
           <p className="mt-1">
-            Ordinary pages can publish one JOKO Note or one speech bubble, never both. The Homepage is the intentional exception: its existing Hero notebook note can coexist with one lower-page bubble because the two moments are separated by several sections of scrolling.
+            Ordinary pages can publish one JOKO Note or one speech bubble, never both. The Homepage can additionally publish one Hero illustration because it occupies a separate, fixed safe zone beside the primary action.
           </p>
           <p className="mt-2 text-xs text-[#303532]/50">
-            Bubble safe zones currently registered: {JOKO_BUBBLE_PAGES.map((page) => page.label).join(', ')}.
+            Bubble safe zones: {JOKO_BUBBLE_PAGES.map((page) => page.label).join(', ')} · Hero illustration safe zones: {JOKO_ILLUSTRATION_PAGES.map((page) => page.label).join(', ')}.
           </p>
         </div>
       </section>
