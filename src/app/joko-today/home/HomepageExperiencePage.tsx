@@ -270,14 +270,14 @@ export function HomepageExperiencePage({
                 />
 
                 <div className="mt-7 xl:mt-8">
-                  <div className="flex items-end gap-0">
+                  <div className="flex items-start gap-0">
                     <JokoIllustrationSlot
                       pageKey="home"
                       placementKey="hero-primary-cta"
-                      className="z-30 -mr-2 hidden self-end translate-y-2 xl:block 2xl:-mr-3"
+                      className="z-30 -mr-2 hidden self-start xl:block 2xl:-mr-3"
                     />
 
-                    <div className="relative z-20 min-w-0 flex-1">
+                    <div className="relative z-20 mt-10 min-w-0 flex-1 2xl:mt-11">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <button
                           type="button"
