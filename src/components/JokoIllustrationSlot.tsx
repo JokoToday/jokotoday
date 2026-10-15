@@ -9,9 +9,9 @@ import { getActivePageAccentPreview, removePageAccentPreview } from '../lib/page
 import { PageAccentPreviewBadge } from './PageAccentPreviewBadge';
 
 const SIZE_CLASSES: Record<JokoBubbleSize, string> = {
-  small: 'w-[5.75rem] 2xl:w-[6.5rem]',
-  medium: 'w-[7.25rem] 2xl:w-[8rem]',
-  large: 'w-[8.75rem] 2xl:w-[9.75rem]',
+  small: 'w-[7.25rem] 2xl:w-[8rem]',
+  medium: 'w-[9rem] 2xl:w-[10rem]',
+  large: 'w-[10.75rem] 2xl:w-[12rem]',
 };
 
 interface JokoIllustrationSlotProps {
