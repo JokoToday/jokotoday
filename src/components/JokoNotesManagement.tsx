@@ -970,7 +970,7 @@ export function JokoNotesManagement() {
             <div className="mx-auto max-w-md rounded-2xl bg-[#D9ECE9]/78 px-4 py-5">
               {draft.image_url ? (
                 <>
-                  <div className="flex items-end justify-center gap-0">
+                  <div className="flex items-start justify-center gap-0">
                     <div
                       className={`shrink-0 ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
                       style={{ transform: `translateX(8px) rotate(${draft.rotation || 0}deg)` }}
@@ -981,7 +981,7 @@ export function JokoNotesManagement() {
                         className="block h-auto w-full object-contain"
                       />
                     </div>
-                    <div className="relative z-10 mb-5 min-w-[9.25rem] rounded-xl bg-[#C76624] px-4 py-3 text-center text-sm font-semibold leading-5 text-white shadow-sm">
+                    <div className="relative z-10 mt-10 min-w-[9.25rem] rounded-xl bg-[#C76624] px-4 py-3 text-center text-sm font-semibold leading-5 text-white shadow-sm">
                       Explore the Bakery →
                     </div>
                   </div>
