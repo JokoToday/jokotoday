@@ -18,6 +18,7 @@ interface JokoIllustrationSlotProps {
   pageKey: string;
   placementKey: string;
   className?: string;
+  onActivate?: () => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export function JokoIllustrationSlot({
   pageKey,
   placementKey,
   className = '',
+  onActivate,
 }: JokoIllustrationSlotProps) {
   const [illustration, setIllustration] = useState<JokoAccentRecord | null>(null);
 
@@ -63,7 +65,9 @@ export function JokoIllustrationSlot({
           ...draft,
         });
       } else {
-        setIllustration(null);
+        // Homepage accents intentionally coexist. Previewing a bubble must not
+        // make an already-published Hero illustration disappear.
+        loadPublished();
       }
 
       const timeout = window.setTimeout(() => {
@@ -94,27 +98,48 @@ export function JokoIllustrationSlot({
   );
   const localized = localizeJokoNote(illustration, 'en');
 
+  const image = (
+    <div
+      className="origin-bottom-right"
+      style={{ transform: `rotate(${illustration.rotation || 0}deg)` }}
+    >
+      <img
+        src={illustration.image_url}
+        alt={localized.imageAlt}
+        className="block h-auto w-full object-contain"
+        loading="eager"
+        decoding="async"
+      />
+    </div>
+  );
+
+  const wrapperClass = `relative shrink-0 ${SIZE_CLASSES[illustration.bubble_size]} ${className}`;
+  const interactiveClass = 'cursor-pointer rounded-xl transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C76624]/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#D9ECE9]';
+
   return (
-    <>
-      <div
-        className={`${SIZE_CLASSES[illustration.bubble_size]} ${className}`}
-        aria-hidden={!localized.imageAlt}
-      >
-        <div
-          className="origin-bottom-right"
-          style={{ transform: `rotate(${illustration.rotation || 0}deg)` }}
+    <div className={wrapperClass}>
+      {illustration.link_url ? (
+        <a
+          href={illustration.link_url}
+          className={`block ${interactiveClass}`}
+          aria-label={localized.imageAlt || 'Open linked page'}
         >
-          <img
-            src={illustration.image_url}
-            alt={localized.imageAlt}
-            className="block h-auto w-full object-contain"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
-      </div>
+          {image}
+        </a>
+      ) : onActivate ? (
+        <button
+          type="button"
+          onClick={onActivate}
+          className={`block border-0 bg-transparent p-0 text-left ${interactiveClass}`}
+          aria-label={localized.imageAlt || 'Open linked page'}
+        >
+          {image}
+        </button>
+      ) : (
+        <div aria-hidden={!localized.imageAlt}>{image}</div>
+      )}
       {isPreview && <PageAccentPreviewBadge />}
-    </>
+    </div>
   );
 }
 
