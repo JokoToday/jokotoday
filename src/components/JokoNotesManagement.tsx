@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Eye, ImagePlus, Loader2, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { uploadGalleryImage } from '../lib/mediaService';
+import { imageHasTransparency, uploadGalleryImage } from '../lib/mediaService';
 import {
   adminListPageAccentAssets,
   adminSavePageAccentAsset,
@@ -83,6 +83,7 @@ function draftFromNote(
       accent_type: accentType,
       bubble_size: accentType === 'illustration' ? 'large' : 'medium',
       rotation: accentType === 'illustration' ? 0 : 2,
+      link_url: accentType === 'illustration' ? '/products' : null,
       is_published: note?.is_published ?? false,
     };
   }
@@ -260,6 +261,16 @@ export function JokoNotesManagement() {
     setUploading(true);
     setError('');
     try {
+      if (kind === 'illustration') {
+        if (file.type !== 'image/png' && file.type !== 'image/webp') {
+          throw new Error('Hero illustrations must be transparent PNG or WebP files.');
+        }
+        const hasTransparency = await imageHasTransparency(file);
+        if (!hasTransparency) {
+          throw new Error('This Hero illustration has an opaque background. Please use a PNG or WebP with a transparent background so no white frame appears.');
+        }
+      }
+
       const ticket = await uploadGalleryImage({
         file,
         gallerySlot: kind === 'note' ? 'joko-notes' : 'page-accents',
@@ -386,7 +397,7 @@ export function JokoNotesManagement() {
               image_alt_zh: nullable(draft.image_alt_zh || ''),
               bubble_image_url: null,
               bubble_alt: null,
-              link_url: null,
+              link_url: nullable(draft.link_url || ''),
             }
           : {
               ...draft,
@@ -672,6 +683,19 @@ export function JokoNotesManagement() {
                   <input type="number" min={-6} max={6} value={draft.rotation} onChange={(event) => patch({ rotation: Number(event.target.value) })} className="joko-admin-field mt-1 w-full" />
                 </label>
               </div>
+
+              <label className="block text-sm font-medium text-[#303532]">
+                Click target <span className="font-normal text-[#303532]/50">(optional)</span>
+                <input
+                  value={draft.link_url || ''}
+                  onChange={(event) => patch({ link_url: event.target.value || null })}
+                  className="joko-admin-field mt-1 w-full max-w-md"
+                  placeholder="/products"
+                />
+                <span className="mt-1 block text-xs leading-5 text-[#303532]/48">
+                  Leave blank for a decorative-only illustration. For running Joe, <strong>/products</strong> makes the character clickable toward the Bakery.
+                </span>
+              </label>
             </>
           ) : draft.accent_type === 'bubble' ? (
             <>
@@ -787,7 +811,7 @@ export function JokoNotesManagement() {
               <div className="rounded-2xl border border-[#6E9A4F]/18 bg-[#EEF5E7]/62 p-4">
                 <p className="text-sm font-semibold text-[#303532]">Hero illustration</p>
                 <p className="mt-1 text-xs leading-5 text-[#303532]/55">
-                  Upload a transparent PNG or WebP. The image stays editable here; only its responsive anchor beside the primary Hero button is fixed in code.
+                  Upload a transparent PNG or WebP. The image stays editable here; the Hero reserves a dedicated character lane so the artwork never sits on top of the copy or buttons.
                 </p>
                 <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-4 text-sm font-semibold text-[#55766F] transition hover:bg-white">
                   {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
@@ -950,7 +974,7 @@ export function JokoNotesManagement() {
                 <img
                   src={draft.image_url}
                   alt={preview.imageAlt}
-                  className={`absolute bottom-4 left-4 h-auto object-contain ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]}`}
+                  className={`absolute bottom-4 left-4 h-auto object-contain ${BUBBLE_PREVIEW_WIDTH[draft.bubble_size]} ${draft.link_url ? 'cursor-pointer' : ''}`}
                   style={{ transform: `rotate(${draft.rotation || 0}deg)` }}
                 />
               ) : (
