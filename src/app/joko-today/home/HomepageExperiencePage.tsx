@@ -18,6 +18,7 @@ import type { BuilderRichText, HomeHeroSection, HomeTopLikedSection } from '../.
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
+import { JokoIllustrationSlot } from '../../../components/JokoIllustrationSlot';
 import '../shell/jokoNavPencil.css';
 
 interface HomepageExperiencePageProps {
@@ -268,24 +269,32 @@ export function HomepageExperiencePage({
                   className="mt-5 max-w-[29rem] leading-7"
                 />
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('products-bakery')}
-                    className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
-                  >
-                    <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
-                    {heroPrimaryLabel}
-                    <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={showHowItWorks}
-                    className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
-                  >
-                    <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
-                    {heroSecondaryLabel}
-                  </button>
+                <div className="relative mt-7">
+                  <JokoIllustrationSlot
+                    pageKey="home"
+                    placementKey="hero-primary-cta"
+                    className="pointer-events-none absolute -left-[7.25rem] -top-7 z-30 hidden xl:block"
+                  />
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('products-bakery')}
+                      className="joko-shell-primary-button inline-flex min-h-12 items-center justify-center rounded-2xl px-6 py-3.5 font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#55766F] focus:ring-offset-2 focus:ring-offset-[#D9ECE9]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
+                    >
+                      <ShoppingBasket className="mr-3 h-5 w-5" strokeWidth={1.7} aria-hidden="true" />
+                      {heroPrimaryLabel}
+                      <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={showHowItWorks}
+                      className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
+                    >
+                      <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
+                      {heroSecondaryLabel}
+                    </button>
+                  </div>
                 </div>
 
                 {showHeroNotebookNote && (
