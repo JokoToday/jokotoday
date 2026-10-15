@@ -163,7 +163,7 @@ export const JOKO_ILLUSTRATION_PAGES: readonly JokoNotePageDefinition[] = [
       {
         placementKey: 'hero-primary-cta',
         label: 'Hero primary action',
-        description: 'Bottom-left of the Hero copy, visually guiding attention toward the primary “Explore the Bakery” action. Hidden on cramped layouts.',
+        description: 'Dedicated bottom-left Hero character lane beside the primary “Explore the Bakery” action. The layout reserves real space for the artwork on desktop and hides it on cramped layouts.',
       },
     ],
   },
