@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   ArrowRight,
   PlayCircle,
@@ -215,7 +216,16 @@ export function HomepageExperiencePage({
 
   return (
     <>
-      <section className="joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8">
+      <section className={`joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8 ${heroOnly && fullBleedHero ? 'joko-hero-draft-full-bleed' : ''}`}
+        style={heroOnly && fullBleedHero ? ({
+          '--joko-hero-desktop': `url("${heroImage.replaceAll('"', '%22')}")`,
+          '--joko-hero-mobile': `url("${(publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileImageUrl : undefined) || heroImage}")`,
+          '--joko-hero-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusX ?? 65 : 65}%`,
+          '--joko-hero-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusY ?? 40 : 40}%`,
+          '--joko-hero-mobile-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusX ?? 50 : 50}%`,
+          '--joko-hero-mobile-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusY ?? 45 : 45}%`,
+          '--joko-hero-text-opacity': (publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroTextOverlay ?? 85 : 85) / 100,
+        } as CSSProperties) : undefined}>
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             {showHeroNotebookNote && (
