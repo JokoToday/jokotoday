@@ -17,6 +17,12 @@ import {
 } from '../lib/lineOfficialAccount';
 import { Container } from '../platform/design-system';
 import type { Language } from '../translations';
+import {
+  EMPTY_DELIVERY_ADDRESS,
+  normalizeDeliveryAddress,
+  validateSavedDeliveryAddress,
+  type CustomerDeliveryAddress,
+} from '../lib/deliveryAddress';
 
 interface MyProfilePageProps {
   onNavigate: (page: string) => void;
@@ -40,6 +46,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     line_id: '',
     notification_email_enabled: true,
     notification_line_enabled: false,
+    default_delivery_address: { ...EMPTY_DELIVERY_ADDRESS },
   });
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -55,6 +62,10 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       line_id: userProfile.line_id || '',
       notification_email_enabled: userProfile.notification_email_enabled ?? true,
       notification_line_enabled: userProfile.notification_line_enabled ?? false,
+      default_delivery_address: {
+        ...EMPTY_DELIVERY_ADDRESS,
+        ...(userProfile.default_delivery_address || {}),
+      },
     });
     setProfilePicture(userProfile.profile_picture_url || null);
   }, [userProfile, user]);
@@ -116,6 +127,17 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     setFormData((current) => ({
       ...current,
       [event.target.name]: value,
+    }));
+  };
+
+  const handleDeliveryAddressChange = (field: keyof CustomerDeliveryAddress, value: string) => {
+    setProfileSaved(false);
+    setFormData((current) => ({
+      ...current,
+      default_delivery_address: {
+        ...current.default_delivery_address,
+        [field]: value,
+      },
     }));
   };
 
@@ -222,6 +244,16 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       return;
     }
 
+    const deliveryAddressError = validateSavedDeliveryAddress(formData.default_delivery_address);
+    if (deliveryAddressError) {
+      setError(language === 'th'
+        ? 'กรุณาตรวจสอบที่อยู่จัดส่งและลิงก์แผนที่ โดยลิงก์ต้องเป็น HTTPS'
+        : language === 'zh'
+          ? '请检查配送地址和地图链接；地图链接必须使用 HTTPS。'
+          : 'Please check the delivery address and map link. Map links must use HTTPS.');
+      return;
+    }
+
     setLoading(true);
     try {
       await updateProfileDetails({
@@ -230,6 +262,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
         line_id: formData.line_id.trim() || undefined,
         notification_email_enabled: formData.notification_email_enabled,
         notification_line_enabled: formData.notification_line_enabled,
+        default_delivery_address: normalizeDeliveryAddress(formData.default_delivery_address),
       });
       setProfileSaved(true);
     } catch (err) {
@@ -319,6 +352,51 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setUploadingPicture(false);
     }
   };
+
+  const deliveryAddressCopy = {
+    en: {
+      heading: 'Saved delivery address',
+      description: 'Optional. We can pre-fill a future JOKO Store delivery with this address. You can confirm or change it at checkout.',
+      fields: [
+        { key: 'address_line_1', label: 'House number / building / room', type: 'text', maxLength: 200 },
+        { key: 'address_line_2', label: 'Village / soi / road (optional)', type: 'text', maxLength: 200 },
+        { key: 'subdistrict', label: 'Subdistrict', type: 'text', maxLength: 120 },
+        { key: 'district', label: 'District', type: 'text', maxLength: 120 },
+        { key: 'province', label: 'Province', type: 'text', maxLength: 120 },
+        { key: 'postal_code', label: 'Postal code', type: 'text', maxLength: 20 },
+        { key: 'map_url', label: 'Google Maps link or map pin (optional)', type: 'url', maxLength: 2048 },
+        { key: 'instructions', label: 'Delivery instructions (optional)', type: 'text', maxLength: 500 },
+      ],
+    },
+    th: {
+      heading: 'ที่อยู่จัดส่งที่บันทึกไว้',
+      description: 'ไม่บังคับ เราสามารถกรอกที่อยู่นี้ล่วงหน้าสำหรับการจัดส่งจาก JOKO Store คุณยืนยันหรือเปลี่ยนที่อยู่ได้ตอนสั่งซื้อ',
+      fields: [
+        { key: 'address_line_1', label: 'บ้านเลขที่ / อาคาร / ห้อง', type: 'text', maxLength: 200 },
+        { key: 'address_line_2', label: 'หมู่บ้าน / ซอย / ถนน (ไม่บังคับ)', type: 'text', maxLength: 200 },
+        { key: 'subdistrict', label: 'ตำบล / แขวง', type: 'text', maxLength: 120 },
+        { key: 'district', label: 'อำเภอ / เขต', type: 'text', maxLength: 120 },
+        { key: 'province', label: 'จังหวัด', type: 'text', maxLength: 120 },
+        { key: 'postal_code', label: 'รหัสไปรษณีย์', type: 'text', maxLength: 20 },
+        { key: 'map_url', label: 'ลิงก์ Google Maps หรือหมุดแผนที่ (ไม่บังคับ)', type: 'url', maxLength: 2048 },
+        { key: 'instructions', label: 'คำแนะนำการจัดส่ง (ไม่บังคับ)', type: 'text', maxLength: 500 },
+      ],
+    },
+    zh: {
+      heading: '已保存的配送地址',
+      description: '选填。以后使用 JOKO Store 配送时可自动填入此地址，结账时仍可确认或修改。',
+      fields: [
+        { key: 'address_line_1', label: '门牌号 / 大楼 / 房间号', type: 'text', maxLength: 200 },
+        { key: 'address_line_2', label: '小区 / 巷 / 道路（选填）', type: 'text', maxLength: 200 },
+        { key: 'subdistrict', label: '街道 / 分区', type: 'text', maxLength: 120 },
+        { key: 'district', label: '区 / 县', type: 'text', maxLength: 120 },
+        { key: 'province', label: '府 / 省', type: 'text', maxLength: 120 },
+        { key: 'postal_code', label: '邮政编码', type: 'text', maxLength: 20 },
+        { key: 'map_url', label: 'Google 地图链接或地图定位（选填）', type: 'url', maxLength: 2048 },
+        { key: 'instructions', label: '配送说明（选填）', type: 'text', maxLength: 500 },
+      ],
+    },
+  }[language];
 
   if (!user) {
     return (
@@ -423,6 +501,29 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.phone_label', language, 'Phone Number')} <span className="text-red-500">*</span>
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
+              </div>
+            </section>
+
+            <section className="rounded-[1.5rem] bg-white/48 p-5 sm:p-6">
+              <h3 className="mb-2 text-lg font-semibold text-[#303532]">{deliveryAddressCopy.heading}</h3>
+              <p className="mb-4 text-sm text-gray-600">{deliveryAddressCopy.description}</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {deliveryAddressCopy.fields.map((field) => (
+                  <label key={field.key} className="block text-sm font-medium text-gray-700">
+                    {field.label}
+                    <input
+                      type={field.type}
+                      maxLength={field.maxLength}
+                      value={formData.default_delivery_address[field.key as keyof CustomerDeliveryAddress]}
+                      onChange={(event) => handleDeliveryAddressChange(
+                        field.key as keyof CustomerDeliveryAddress,
+                        event.target.value,
+                      )}
+                      className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
+                      disabled={loading}
+                    />
+                  </label>
+                ))}
               </div>
             </section>
 
