@@ -257,6 +257,12 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && !/^\/(checkout|admin|my-|staff|pickup|walk-in)/.test(window.location.pathname) && (
+                <button type="button" data-joko-ask-launcher onClick={() => window.dispatchEvent(new Event('joko-ask-open'))}
+                  className="rounded-full border border-[#A44F1D]/30 bg-[#F4EFE5] px-3 py-2 text-xs font-bold text-[#8B471F] shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-[#55766F]">
+                  ASK JOKO
+                </button>
+              )}
               <div className="hidden items-center gap-1 md:flex" aria-label="Language">
                 {languageOptions.map((option) => (
                   <button

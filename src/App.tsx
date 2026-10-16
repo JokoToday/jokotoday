@@ -45,6 +45,8 @@ const LegalPage = lazy(() => import('./app/joko-today/legal/LegalPage'));
 const PaymentHandoffPage = lazy(() => import('./pages/PaymentHandoffPage'));
 const PickupReceiptConfirmationPage = lazy(() => import('./pages/PickupReceiptConfirmationPage'));
 
+const AssistantWidget = lazy(() => import('./app/joko-today/assistant/AssistantWidget'));
+
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
@@ -591,6 +593,9 @@ function AppContent() {
           onCheckout={() => handleNavigate('checkout')}
           onStartShopping={() => handleNavigate('products')}
         />
+      )}
+      {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && ['home', 'products', 'product-detail', 'makers', 'maker-detail', 'our-story', 'how-it-works', 'diy', 'about'].includes(currentPage) && (
+        <Suspense fallback={null}><AssistantWidget onNavigate={handleNavigate} /></Suspense>
       )}
       <LINEFriendInvite />
     </div>
