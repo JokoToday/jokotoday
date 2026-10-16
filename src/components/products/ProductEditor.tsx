@@ -122,6 +122,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
   const [storeCategoryId, setStoreCategoryId] = useState('');
   const [storePublished, setStorePublished] = useState(false);
+  const [newStoreCategory, setNewStoreCategory] = useState({ en: '', th: '', zh: '' });
+  const [creatingStoreCategory, setCreatingStoreCategory] = useState(false);
   const [storeLoaded, setStoreLoaded] = useState(false);
   const [makers, setMakers] = useState<Maker[]>([]);
   useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
@@ -155,6 +157,30 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       setErrors((current) => ({ ...current, pickup_days: 'Could not load pickup schedule.' }));
     });
   }, []);
+
+  const createStoreCategory = async () => {
+    if (!newStoreCategory.en.trim() || !newStoreCategory.th.trim()) {
+      setErrors((old) => ({ ...old, store: 'English and Thai Store category names are required.' }));
+      return;
+    }
+    const slug = newStoreCategory.en.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) { setErrors((old) => ({ ...old, store: 'Use an English category name containing letters or numbers.' })); return; }
+    setCreatingStoreCategory(true);
+    try {
+      const { data, error } = await supabase.from('store_categories')
+        .insert({ slug, name_en: newStoreCategory.en.trim(), name_th: newStoreCategory.th.trim(), name_zh: newStoreCategory.zh.trim() || null })
+        .select('id,slug,name_en,name_th,name_zh,is_active,sort_order').single();
+      if (error) throw error;
+      setStoreCategories((old) => [...old, data]);
+      setStoreCategoryId(data.id);
+      setNewStoreCategory({ en: '', th: '', zh: '' });
+      setErrors((old) => { const next = { ...old }; delete next.store; return next; });
+    } catch {
+      setErrors((old) => ({ ...old, store: 'Unable to create category. Check uniqueness and Admin permissions.' }));
+    } finally {
+      setCreatingStoreCategory(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
@@ -386,6 +412,15 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
                 {storeCategories.map((category) => <option key={category.id} value={category.id}>{category.name_en}</option>)}
               </select>
             </label>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-[#55766F]">Add a Store category</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <input aria-label="English Store category" placeholder="English *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.en} onChange={(e) => setNewStoreCategory((old) => ({ ...old, en: e.target.value }))} />
+                <input aria-label="Thai Store category" placeholder="Thai *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.th} onChange={(e) => setNewStoreCategory((old) => ({ ...old, th: e.target.value }))} />
+                <input aria-label="Chinese Store category" placeholder="中文" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.zh} onChange={(e) => setNewStoreCategory((old) => ({ ...old, zh: e.target.value }))} />
+              </div>
+              <button type="button" disabled={creatingStoreCategory || !storeLoaded} onClick={() => void createStoreCategory()} className="mt-2 rounded-lg border border-[#55766F] px-3 py-2 text-sm disabled:opacity-50">Create category</button>
+            </details>
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={storePublished} disabled={!storeCategoryId || !storeLoaded} onChange={(e) => setStorePublished(e.target.checked)} />
               Publish in JOKO Store preview
