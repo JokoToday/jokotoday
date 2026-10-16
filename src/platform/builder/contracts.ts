@@ -72,11 +72,13 @@ export interface HomeAboutCardImage {
 
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
-export type TopMenuKey = 'home' | 'products' | 'other-products' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about';
+export type TopMenuKey = 'home' | 'products' | 'other-products' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy';
 export interface TopMenuItem {
   key: TopMenuKey;
   visible: boolean;
   labels?: LocalizedText;
+  descriptions?: LocalizedText;
+  href?: string;
 }
 
 export interface BuilderHomepageBranding {
@@ -152,6 +154,8 @@ export interface HomeHeroJourneyLinks {
 export interface HomeHeroProps {
   /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
   logoUrl?: string;
+  /** Published bakery illustration shared by desktop and mobile layouts. */
+  heroImageUrl?: string;
   title: LocalizedText;
   /** Controlled rich text for the Hero title. Plain title remains the fallback/source for legacy revisions. */
   titleRichText?: LocalizedRichText;
