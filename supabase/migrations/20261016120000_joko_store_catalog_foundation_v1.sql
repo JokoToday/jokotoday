@@ -13,6 +13,7 @@ create table if not exists public.store_product_assignments (
   product_id uuid primary key references public.cms_products(id) on delete cascade,
   store_category_id uuid references public.store_categories(id) on delete set null,
   is_published boolean not null default false,
+  constraint published_store_products_have_category check (not is_published or store_category_id is not null),
   assigned_at timestamptz not null default now()
 );
 create index if not exists store_product_category_idx on public.store_product_assignments (store_category_id);
