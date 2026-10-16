@@ -244,11 +244,11 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   }
 
   if (value.topMenu !== undefined) {
-    if (!Array.isArray(value.topMenu) || ![6, 7, 8].includes(value.topMenu.length)) {
-      pushIssue(issues, 'branding.topMenu', 'Top menu must contain the six original destinations and may include Specials and Makers.');
+    if (!Array.isArray(value.topMenu) || ![6, 7, 8, 9].includes(value.topMenu.length)) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must preserve the original destinations and may include Specials, Makers and DIY.');
     } else {
       const required = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
-      const allowed = [...required, 'specials', 'makers'];
+      const allowed = [...required, 'specials', 'makers', 'diy'];
       const keys = new Set<string>();
       const menu = value.topMenu;
       if (required.some((key) => !menu.some((item: unknown) => isRecord(item) && item.key === key))) {
@@ -262,6 +262,15 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
         }
         keys.add(String(item.key));
         if (typeof item.visible !== 'boolean') pushIssue(issues, `${path}.visible`, 'Visibility must be a boolean.');
+        if (item.href !== undefined && (typeof item.href !== 'string' || !/^\/(?!\/)[a-zA-Z0-9/#?&=_-]*$/.test(item.href))) {
+          pushIssue(issues, `${path}.href`, 'Use a safe internal URL beginning with /.');
+        }
+        if (item.descriptions !== undefined) {
+          if (!isRecord(item.descriptions) || Object.values(item.descriptions).some((description) =>
+            typeof description !== 'string' || description.length > 120)) {
+            pushIssue(issues, `${path}.descriptions`, 'Descriptions must be at most 120 characters.');
+          }
+        }
         if (item.labels !== undefined) {
           validateOptionalLocalizedText(item.labels, `${path}.labels`, issues, ['en', 'th', 'zh']);
           if (isRecord(item.labels) && Object.values(item.labels).some((label) => typeof label !== 'string' || !label.trim() || label.length > 50)) {
@@ -412,6 +421,12 @@ function validateSection(
         ) {
           pushIssue(issues, `${path}.props.logoUrl`, 'Logo must be a bundled path or HTTPS URL.');
         }
+      }
+      if (value.props.heroImageUrl !== undefined && (
+        !isNonEmptyString(value.props.heroImageUrl)
+        || (!value.props.heroImageUrl.startsWith('/') && !/^https:\/\//i.test(value.props.heroImageUrl))
+      )) {
+        pushIssue(issues, `${path}.props.heroImageUrl`, 'Hero image must be a bundled path or HTTPS URL.');
       }
       if (value.props.notebookNote !== undefined) {
         if (!isRecord(value.props.notebookNote)) {

@@ -595,6 +595,9 @@ export function JokoHomepageEditor({
 
   const selectedSection = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const hero = document.sections.find((section) => section.type === 'home.hero.v1');
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const [heroImageError, setHeroImageError] = useState('');
+
 
   const updateBranding = (next: BuilderHomepageBranding) => {
     onDocumentChange({ ...document, branding: next });
@@ -788,6 +791,20 @@ export function JokoHomepageEditor({
                         const next = [...menu]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; changeMenu(next);
                       }}>↓</button>
                   </div>
+                  <label className="mt-2 block text-[11px] text-[#303532]/70">Description ({locale})</label>
+                  <input aria-label={`${item.key} ${locale} menu description`}
+                    className="mt-1 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    maxLength={120} value={item.descriptions?.[locale] ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, descriptions: { ...entry.descriptions, [locale]: event.target.value },
+                    } : entry))} />
+                  <label className="mt-2 block text-[11px] text-[#303532]/70">Optional internal destination (e.g. /about)</label>
+                  <input aria-label={`${item.key} destination URL`} type="text"
+                    className="mt-1 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    placeholder="Use existing destination" value={item.href ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, href: event.target.value,
+                    } : entry))} />
                   <input aria-label={`${item.key} ${locale} menu label`} className="mt-2 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
                     maxLength={50} value={item.labels?.[locale] ?? ''}
                     onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
@@ -811,6 +828,36 @@ export function JokoHomepageEditor({
             />
           )}
 
+          {hero?.type === 'home.hero.v1' && (
+            <div className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-4">
+              <p className="text-sm font-semibold text-[#303532]">Homepage bakery hero image</p>
+              <p className="mt-1 text-xs text-[#303532]/60">Upload the approved illustration, save the draft, preview on desktop/mobile, then publish. Existing live image remains until publication.</p>
+              <img src={hero.props.heroImageUrl || '/assets/home-experience/joko-bakery-full-v2.webp'}
+                alt="Current bakery hero" className="mt-3 w-full max-h-40 rounded-xl object-contain bg-[#F4EFE5]" />
+              <input aria-label="Upload bakery hero image" type="file" accept="image/png,image/jpeg,image/webp"
+                className="mt-3 block w-full text-xs" disabled={heroImageUploading}
+                onChange={async (event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (!file) return;
+                  setHeroImageUploading(true);
+                  reportUploadState('hero-image', true);
+                  setHeroImageError('');
+                  try {
+                    const result = await uploadGalleryImage({ file, gallerySlot: 'homepage-hero' });
+                    updateSection(hero.id, (section) => section.type === 'home.hero.v1'
+                      ? { ...section, props: { ...section.props, heroImageUrl: result.publicUrl } } : section);
+                  } catch (error) {
+                    setHeroImageError(error instanceof Error ? error.message : 'Image upload failed');
+                  } finally {
+                    setHeroImageUploading(false);
+                    reportUploadState('hero-image', false);
+                    event.target.value = '';
+                  }
+                }} />
+              {heroImageUploading && <p className="mt-2 text-xs">Uploading hero image…</p>}
+              {heroImageError && <p role="alert" className="mt-2 text-xs text-red-700">{heroImageError}</p>}
+            </div>
+          )}
           <RangeField
             label="Logo size"
             value={branding.logoScale}

@@ -203,6 +203,9 @@ export function HomepageExperiencePage({
     onNavigate('how-it-works');
   };
 
+  const heroImage = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroImageUrl?.trim()
+    ? publishedHero.props.heroImageUrl : BAKERY_HERO;
+
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -235,7 +238,7 @@ export function HomepageExperiencePage({
               style={{ left: '34%' }}
             >
               <img
-                src={BAKERY_HERO}
+                src={heroImage}
                 alt={heroMediaAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 style={desktopHeroMask}
@@ -345,7 +348,7 @@ export function HomepageExperiencePage({
               <div className="relative min-w-0 xl:min-h-[40rem] 2xl:min-h-[44rem]">
                 <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
                   <img
-                    src={BAKERY_HERO}
+                    src={heroImage}
                     alt={heroMediaAlt}
                     className="joko-bakery-hero-image-mobile mx-auto w-full object-contain"
                     decoding="async"
