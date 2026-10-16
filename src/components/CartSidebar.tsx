@@ -26,6 +26,7 @@ const INITIAL_PICKUP_FINDER_STATE: PickupFinderStateV2 = {
 
 export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebarProps) {
   const { items, removeFromCart, updateQuantity, totalPrice, isCartOpen, setIsCartOpen } = useCart();
+  const hasStoreItems = items.some((item) => item.product.catalog_scope === 'store_only');
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { getLabel } = useCMSLabels();
@@ -153,6 +154,7 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                     <div className="flex-1">
                       <h3 className="text-sm font-semibold text-[#292D2B]">{productName}</h3>
                       <MakerAttribution maker={item.product.maker} />
+                      {item.product.catalog_scope === 'store_only' && <p className="text-xs font-medium text-[#55766F]">JOKO Store · Preview order only</p>}
                       <p className="mt-1 font-bold text-[#C76624]">฿{item.product.price}</p>
 
                       <div className="flex items-center justify-between mt-2">
@@ -234,13 +236,14 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
               {keepShoppingLabel}
             </button>
 
+            {hasStoreItems && <p role="status" className="rounded-lg bg-[#FCEEDA] p-3 text-sm text-[#814A25]">{language === 'th' ? 'มีสินค้าจาก JOKO Store ในตะกร้า ระบบสั่งซื้อและชำระเงินจะเปิดเมื่อการตรวจสอบสต็อกพร้อมแล้ว' : language === 'zh' ? '购物篮包含 JOKO Store 商品，库存和付款系统验证前暂不可结账' : 'Your cart contains JOKO Store products. Store ordering and payment are not yet active; Bakery products remain in your cart.'}</p>}
             {user ? (
               <button
                 onClick={() => {
                   setIsCartOpen(false);
                   onCheckout();
                 }}
-                disabled={checkoutBlockedByFinder}
+                disabled={checkoutBlockedByFinder || hasStoreItems}
                 className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition-colors hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {pickupFinderState.loading

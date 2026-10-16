@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PackageSearch, Store, ShoppingBasket } from 'lucide-react';
+import { PackageSearch, Store } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { getProducts, type CMSProduct } from '../lib/cmsService';
 import { getPublicStoreCatalog, type StoreCategory } from '../lib/storeCatalogService';
 import { supabase } from '../lib/supabase';
+import { useCart } from '../context/CartContext';
 
 /**
  * Phase B preview only. Store assignments are explicit, never inferred from
@@ -19,10 +20,8 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [category, setCategory] = useState('all');
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [fulfillment, setFulfillment] = useState<'pickup_today' | 'pickup_preorder' | 'delivery_today'>('pickup_today');
+  const { items, addToCart, updateQuantity, setIsCartOpen } = useCart();
   const [availability, setAvailability] = useState<Record<string, { stock_on_hand: number; stock_reserved: number; pickup_today: boolean; pickup_preorder: boolean; delivery_today: boolean }>>({});
-  const [cartVisible, setCartVisible] = useState(false);
   const copy = {
     en: { title: 'JOKO Store', intro: 'Selected ingredients, useful tools, and good things worth sharing.', preview: 'A first look at our Store. Ordering will open after stock and delivery checks are ready.', empty: 'Our first Store selection is being prepared.', category: 'All products', error: 'The Store catalog is not yet available.' },
     th: { title: 'JOKO Store', intro: 'วัตถุดิบ อุปกรณ์ และของดีที่เราคัดสรร', preview: 'ตัวอย่างร้านค้า การสั่งซื้อจะเปิดเมื่อระบบสต็อกและการจัดส่งพร้อมแล้ว', empty: 'เรากำลังเตรียมสินค้าชุดแรก', category: 'สินค้าทั้งหมด', error: 'ยังไม่สามารถแสดงสินค้าของร้านได้' },
@@ -54,9 +53,13 @@ export default function StorePage() {
   }, [copy.error]);
   const categories = useMemo(() => storeCategories.filter((c) => c.is_active && products.some((p) => assignments[p.id] === c.id)), [storeCategories, products, assignments]);
   const shown = category === 'all' ? products : products.filter((p) => assignments[p.id] === category);
-  const selected = products.filter((p) => (quantities[p.id] || 0) > 0);
-  const subtotal = selected.reduce((total, p) => total + p.price * quantities[p.id], 0);
-  const fulfillmentLabels = language === 'th' ? ['รับวันนี้', 'สั่งล่วงหน้า', 'จัดส่งวันนี้'] : language === 'zh' ? ['今日自取', '预订自取', '今日配送'] : ['Pickup today', 'Pre-order pickup', 'Same-day delivery'];
+  const cartQty = (productId: string) => items.find((item) => item.product.id === productId)?.quantity || 0;
+  const cartCount = items.reduce((total, item) => total + item.quantity, 0);
+  const addStoreProduct = (product: CMSProduct) => {
+    const max = Math.max(0, (availability[product.id]?.stock_on_hand ?? 0) - (availability[product.id]?.stock_reserved ?? 0));
+    if (cartQty(product.id) >= max) return;
+    addToCart({ ...product, catalog_scope: 'store_only' }, 1);
+  };
   return (
     <main className="joko-mineral-field min-h-[70vh] px-4 py-12">
       <div className="mx-auto max-w-7xl">
@@ -66,8 +69,12 @@ export default function StorePage() {
         </div>
         <p className="mb-4 max-w-2xl text-lg text-[#303532]">{copy.intro}</p>
         <p className="mb-8 rounded-2xl bg-[#FFF9EE] p-4 text-sm text-[#303532]/80" role="status">{copy.preview}</p>
-        <div className="mb-6 flex flex-wrap items-center gap-3"><button type="button" onClick={() => setCartVisible((open) => !open)} className="inline-flex items-center gap-2 rounded-xl bg-[#55766F] px-4 py-2 text-white"><ShoppingBasket size={19} /> {language === 'th' ? 'ตะกร้าร้านค้า' : language === 'zh' ? '商店购物篮' : 'Store basket'} ({selected.reduce((n, p) => n + quantities[p.id], 0)})</button><span className="text-xs text-[#303532]/70">{language === 'th' ? 'ทดสอบเท่านั้น — ยังไม่เปิดชำระเงิน' : language === 'zh' ? '仅供测试 — 暂不支持付款' : 'Staging only — checkout and payment not active'}</span></div>
-        {cartVisible && <section className="mb-8 max-w-xl rounded-2xl bg-[#FFF9EE] p-5"><h2 className="mb-3 font-semibold">{language === 'th' ? 'รายการสินค้า' : language === 'zh' ? '购物篮' : 'Store basket'}</h2>{selected.length === 0 ? <p className="text-sm">{language === 'en' ? 'Choose Store products below.' : language === 'th' ? 'เลือกสินค้าด้านล่าง' : '请在下方选择商品'}</p> : <>{selected.map((p) => <div key={p.id} className="flex items-center justify-between gap-3 border-b py-2 text-sm"><span>{p.name_en} × {quantities[p.id]}</span><span>฿{(p.price * quantities[p.id]).toFixed(2)}</span></div>)}<p className="mt-3 font-semibold">Subtotal ฿{subtotal.toFixed(2)}</p><label className="mt-3 block text-sm">Fulfillment preference <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value as typeof fulfillment)} className="mt-1 block w-full rounded-lg border p-2"><option value="pickup_today">{fulfillmentLabels[0]}</option><option value="pickup_preorder">{fulfillmentLabels[1]}</option><option value="delivery_today">{fulfillmentLabels[2]}</option></select></label><p className="mt-3 text-sm text-[#8A4A24]" role="status">Order submission and payment remain disabled while stock reservation and delivery fees are connected.</p><button type="button" disabled className="mt-3 rounded-lg bg-gray-300 px-4 py-2 text-gray-600">Checkout — coming soon</button></>}</section>}
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <button type="button" onClick={() => setIsCartOpen(true)} className="rounded-xl bg-[#55766F] px-4 py-2 text-white">
+            {language === 'th' ? 'ดูตะกร้าของฉัน' : language === 'zh' ? '查看我的购物篮' : 'View My Cart'} ({cartCount})
+          </button>
+          <span className="text-xs text-[#303532]/70">{language === 'th' ? 'สินค้า Store อยู่ในตะกร้าเดียวกัน ยังไม่เปิดรับชำระเงิน' : language === 'zh' ? '商店商品与其他商品共用购物篮，暂不支持付款' : 'One cart for JOKO. Store checkout is not yet active.'}</span>
+        </div>
         {categories.length > 1 && (
           <div className="mb-6 flex flex-wrap gap-2">
             <button type="button" onClick={() => setCategory('all')} aria-pressed={category === 'all'} className="rounded-full border border-[#55766F] px-4 py-2">{copy.category}</button>
@@ -84,7 +91,20 @@ export default function StorePage() {
           : shown.length === 0 ? <div className="flex flex-col items-center gap-4 rounded-3xl bg-[#FFF9EE] p-12 text-center text-[#303532]"><PackageSearch className="h-12 w-12 text-[#55766F]" /><p>{copy.empty}</p></div>
           : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shown.map((product) => (
-                <div key={product.id}><ProductCard product={product} preview /><div className="mt-2 rounded-xl bg-[#FFF9EE] p-3"><div className="flex items-center justify-between gap-2"><span className="text-xs">{availability[product.id] ? `${Math.max(0, availability[product.id].stock_on_hand - availability[product.id].stock_reserved)} in stock` : 'Stock not configured'}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Remove one ${product.name_en}`} disabled={!quantities[product.id]} onClick={() => setQuantities((current) => ({ ...current, [product.id]: Math.max(0, (current[product.id] || 0) - 1) }))} className="rounded-lg border px-2 py-1 disabled:opacity-30">−</button><span>{quantities[product.id] || 0}</span><button type="button" aria-label={`Add one ${product.name_en}`} disabled={!availability[product.id] || (quantities[product.id] || 0) >= Math.max(0, availability[product.id].stock_on_hand - availability[product.id].stock_reserved)} onClick={() => { setQuantities((current) => ({ ...current, [product.id]: (current[product.id] || 0) + 1 })); setCartVisible(true); }} className="rounded-lg border px-2 py-1 disabled:opacity-30">+</button></div></div><p className="mt-1 text-xs text-[#8A4A24]">Basket planning only · No order is placed</p></div></div>
+                <div key={product.id}>
+                  <ProductCard product={product} preview />
+                  <div className="mt-2 rounded-xl bg-[#FFF9EE] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs">{availability[product.id] ? `${Math.max(0, availability[product.id].stock_on_hand - availability[product.id].stock_reserved)} in stock` : 'Stock not configured'}</span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" aria-label={`Remove one ${product.name_en}`} disabled={!cartQty(product.id)} onClick={() => updateQuantity(product.id, cartQty(product.id) - 1)} className="rounded-lg border px-2 py-1 disabled:opacity-30">−</button>
+                        <span>{cartQty(product.id)}</span>
+                        <button type="button" aria-label={`Add one ${product.name_en}`} disabled={!availability[product.id] || cartQty(product.id) >= Math.max(0, availability[product.id].stock_on_hand - availability[product.id].stock_reserved)} onClick={() => addStoreProduct(product)} className="rounded-lg border px-2 py-1 disabled:opacity-30">+</button>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-[#8A4A24]">{language === 'th' ? 'เพิ่มลงตะกร้าหลัก · ยังไม่รับคำสั่งซื้อ' : language === 'zh' ? '添加到统一购物篮 · 尚未开放下单' : 'Adds to My Cart · Ordering not yet enabled'}</p>
+                  </div>
+                </div>
               ))}
             </div>}
       </div>

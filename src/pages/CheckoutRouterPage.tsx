@@ -16,6 +16,7 @@ interface CheckoutRouterPageProps {
 export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPageProps) {
   const { language } = useLanguage();
   const { items } = useCart();
+  const hasStoreItems = items.some((item) => item.product.catalog_scope === 'store_only');
   const hasMakers = items.some((item) => item.product.product_origin === 'maker');
   const { user, profileLoading } = useAuth();
   const [pickupV2Enabled, setPickupV2Enabled] = useState<boolean | null>(null);
@@ -35,6 +36,8 @@ export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPagePro
   if (pickupV2Enabled === null || (user && profileLoading)) {
     return <div className="min-h-[40vh]" aria-busy="true" />;
   }
+
+  if (hasStoreItems) return <div className="joko-mineral-field min-h-[60vh] px-4 py-12"><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-[#FFF9EE] p-6"><h2 className="mb-3 text-xl font-semibold">JOKO Store ordering is coming soon</h2><p>Store items can be added to My Cart for preview, but they cannot be ordered or paid for until stock reservations and delivery fees have been verified. Remove Store items to continue with an eligible Bakery order.</p><button type="button" className="mt-4 rounded-lg bg-[#55766F] px-4 py-2 text-white" onClick={() => onNavigate('store')}>Return to JOKO Store</button></div></div>;
 
   // Protect BOTH checkout versions. This is an onboarding UX gate;
   // the order submission paths recheck Supabase Auth separately.
