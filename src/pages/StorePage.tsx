@@ -3,6 +3,7 @@ import { PackageSearch, Store } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { getProducts, type CMSProduct } from '../lib/cmsService';
+import { getPublicStoreCatalog, type StoreCategory } from '../lib/storeCatalogService';
 import { supabase } from '../lib/supabase';
 
 /**
@@ -13,6 +14,8 @@ import { supabase } from '../lib/supabase';
 export default function StorePage() {
   const { language } = useLanguage();
   const [products, setProducts] = useState<CMSProduct[]>([]);
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [category, setCategory] = useState('all');
@@ -26,19 +29,13 @@ export default function StorePage() {
     (async () => {
       try {
         // The join table must be explicitly populated by an approved Admin workflow.
-        const { data, error: assignmentError } = await supabase
-          .from('store_product_assignments')
-          .select('product_id')
-          .eq('is_published', true);
-        if (assignmentError) {
-          // A not-yet-applied migration is a safe empty preview, not a fallback
-          // to origin=beyond (which would silently misclassify maker goods).
-          if (active) { setProducts([]); setError(''); }
-          return;
-        }
-        const ids = new Set((data || []).map((row) => row.product_id));
-        if (ids.size === 0) { if (active) setProducts([]); return; }
+        const entries = await getPublicStoreCatalog();
+        if (!active) return;
+        setStoreCategories(entries.categories);
+        setAssignments(Object.fromEntries(entries.assignments.map((entry) => [entry.product_id, entry.store_category_id])));
+        if (entries.assignments.length === 0) { setProducts([]); return; }
         const all = await getProducts();
+        const ids = new Set(entries.assignments.map((entry) => entry.product_id));
         if (active) setProducts(all.filter((product) => ids.has(product.id)));
       } catch {
         if (active) setError(copy.error);
@@ -48,11 +45,8 @@ export default function StorePage() {
     })();
     return () => { active = false; };
   }, [copy.error]);
-  const categories = useMemo(() => {
-    const unique = new Set(products.map((product) => product.category_id).filter((value): value is string => !!value));
-    return Array.from(unique);
-  }, [products]);
-  const shown = category === 'all' ? products : products.filter((p) => p.category_id === category);
+  const categories = useMemo(() => storeCategories.filter((c) => c.is_active && products.some((p) => assignments[p.id] === c.id)), [storeCategories, products, assignments]);
+  const shown = category === 'all' ? products : products.filter((p) => assignments[p.id] === category);
   return (
     <main className="joko-mineral-field min-h-[70vh] px-4 py-12">
       <div className="mx-auto max-w-7xl">
@@ -65,9 +59,12 @@ export default function StorePage() {
         {categories.length > 1 && (
           <div className="mb-6 flex flex-wrap gap-2">
             <button type="button" onClick={() => setCategory('all')} aria-pressed={category === 'all'} className="rounded-full border border-[#55766F] px-4 py-2">{copy.category}</button>
-            {categories.map((id) => (
-              <button key={id} type="button" onClick={() => setCategory(id)} aria-pressed={category === id} className="rounded-full border border-[#55766F] px-4 py-2">{id}</button>
-            ))}
+            {categories.map((entry) => {
+              const id = entry.id;
+              return (
+              <button key={id} type="button" onClick={() => setCategory(id)} aria-pressed={category === id} className="rounded-full border border-[#55766F] px-4 py-2">{language === 'th' ? storeCategories.find((c) => c.id === id)?.name_th : language === 'zh' ? storeCategories.find((c) => c.id === id)?.name_zh : storeCategories.find((c) => c.id === id)?.name_en}</button>
+              );
+            })}
           </div>
         )}
         {loading ? <div className="py-16 text-center" aria-busy="true">…</div>
