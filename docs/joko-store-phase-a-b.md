@@ -74,3 +74,11 @@ This branch is **an incomplete Phase B foundation**. A draft PR is appropriate, 
 - Final checks repeated after `npm ci` restored locked dependencies: TypeScript, Vite production build and ESLint all passed. Temporary playwright dependency installation had initially produced an unrelated Creative Lab TypeScript mismatch, resolved by restoring the project lockfile modules.
 - Not proven: authenticated browser Admin editor save/edit/unpublish with real accounts, full Bakery/Makers/Specials checkout/payment/pickup journeys, negative RLS against an actual migrated test project, mobile layout screenshot review for all locales, and future published navigation design. These require isolated authenticated test sessions and/or a Supabase staging schema application.
 - Production remains unchanged. No merge, deployment, or production migration.
+
+## Isolated Supabase staging migration (2026-10-16)
+- Existing project `JOKO Specials Test` (`szijiljpasxddzgzckra`) inspected before migration; CMS Products, Makers and user profiles exist. The Store tables did not.
+- Applied `joko_store_catalog_foundation_v1` to **test only**. Eight RLS policies and both tables verified; no seed categories or assignments.
+- Real staging `anon` read exposed a missing `user_profiles` privilege in the initial role-check policy. Fixed by an explicit `public.is_store_admin()` SECURITY DEFINER helper with empty search path, role constrained to `user_profiles.role = admin`. Updated initial migration and added corrective `joko_store_catalog_rls_admin_helper_v1` for environments where the initial migration has already run.
+- Applied corrective migration in test; verified anonymous Store category/assignment reads and authenticated Store category read now succeed; unauthenticated `is_store_admin()` returns false. Test table counts stay zero.
+- Checked current PR branch `npm run typecheck` and `npm run build`: PASS following the change.
+- **Still required before merge:** real authenticated Admin UI CRUD and role boundary checks, paired Store product/publishing checks with test data, and protected checkout regression through Bakery/Makers/Specials. No production migration or release.
