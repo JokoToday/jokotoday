@@ -54,3 +54,13 @@ Introduce physical stock by SKU and dispatch location with ledger and transactio
 7. Test Makers/Specials/Bakery regressions and verify /store refresh/deep links.
 
 This branch is **an incomplete Phase B foundation**. A draft PR is appropriate, not a merge/deploy instruction.
+
+## Phase A/B implementation and validation update (2026-10-16)
+- Store categories and assignments migration committed; production migration **not applied**.
+- Existing Admin ProductEditor can assign a Store category, publish a preview listing and add EN/TH/ZH Store categories. Product Staff does not receive these controls. Database RLS restricts writes to `user_profiles.role = admin`.
+- Public Store listings are independent of product origin, reuse ProductCard as non-orderable preview and suppress misleading legacy stock badges. Maker attribution is retained.
+- Shared desktop/mobile published menu resolver accepts opt-in `store` key. New menu entry defaults hidden for existing branding so the separate menu redesign remains authoritative; Admin can expose it in the finalized menu.
+- Checks on isolated nerd-server working directory `/tmp/joko-store-pr295-check`: `npm run typecheck` passed; `npm run build` passed; `npm run lint` exited 0 (36 existing/repository warnings, no errors). Headless Chromium loaded `/products`, `/makers`, `/specials`, and `/store`; Store title and preview were rendered.
+- Migration SQL executed on a disposable Docker Supabase Postgres 17 test instance with minimal cms_products and user_profiles fixtures. A simulated Admin write succeeded and anonymous published catalog read returned one fixture row. This is **not** proof of full production RLS behavior.
+- No bakery checkout, Makers ordering, Specials, payment logic, pickup scheduling, or production schema was modified. Basic route smoke tests passed, but full authenticated browser regression tests have not been run.
+- Remaining before deployment: production migration review/approval, Admin auth browser testing, three-language/mobile visual QA, negative RLS tests, controlled product CRUD/publish/unpublish tests, and approved menu design coordination.
