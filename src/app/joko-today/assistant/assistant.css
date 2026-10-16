@@ -1,0 +1,28 @@
+.joko-assistant { position: fixed; right: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 45; color: #263c3a; font-family: var(--joko-font-body, inherit); }
+.joko-assistant button, .joko-assistant select, .joko-assistant textarea { font: inherit; }
+.joko-assistant button { cursor: pointer; }
+.joko-assistant button:disabled { opacity: .55; cursor: default; }
+.joko-assistant button:focus-visible, .joko-assistant a:focus-visible, .joko-assistant textarea:focus-visible, .joko-assistant select:focus-visible { outline: 3px solid #236d67; outline-offset: 3px; }
+.joko-assistant-launcher { background: #276f69; color: white; padding: .8rem 1.2rem; border-radius: 1.5rem; box-shadow: 0 3px 16px #16342e33; }
+.joko-assistant-panel { background: #fffcf5; border: 1px solid #a4bdb5; border-radius: 1rem; width: min(390px, calc(100vw - 2rem)); height: min(680px, calc(100dvh - 2rem)); box-shadow: 0 8px 40px #16342e33; display: flex; flex-direction: column; overflow: hidden; }
+.joko-assistant-panel header { display: flex; align-items: center; justify-content: space-between; background: #276f69; color: white; padding: .75rem 1rem; }
+.joko-assistant-panel h2 { font-family: var(--joko-font-display, inherit); font-size: 1.3rem; }
+.joko-assistant-panel header button { font-size: 1.8rem; line-height: 1; padding: .25rem; }
+.joko-assistant-controls { display: flex; align-items: center; justify-content: space-between; padding: .5rem 1rem; font-size: .85rem; }
+.joko-assistant-controls select { padding: .25rem; background: white; border: 1px solid #a4bdb5; border-radius: .3rem; }
+.joko-assistant-disclosure { font-size: .75rem; margin: .25rem 1rem .5rem; }
+.joko-assistant-log { flex: 1; overflow-y: auto; padding: .75rem; min-height: 0; overscroll-behavior: contain; font-size: .9rem; }
+.joko-assistant-message { padding: .6rem .75rem; margin: .7rem 0; border-radius: .75rem; background: #f0eee6; overflow-wrap: anywhere; }
+.joko-assistant-message p { white-space: pre-wrap; }
+.joko-assistant-message.user { background: #e2efeb; margin-left: 2rem; }
+.joko-assistant-message small { display: block; margin-top: .5rem; font-size: .7rem; }
+.joko-assistant-product { background: white; border: 1px solid #cad7cf; padding: .65rem; margin-top: .65rem; border-radius: .5rem; }
+.joko-assistant-product strong, .joko-assistant-product span { display: block; }
+.joko-assistant-product p { margin-top: .3rem; font-size: .8rem; }
+.joko-assistant-product a { display: inline-block; margin-top: .4rem; text-decoration: underline; color: #245f59; }
+.joko-assistant-panel form { display: flex; gap: .5rem; padding: .7rem; border-top: 1px solid #d8dfd6; }
+.joko-assistant-panel textarea { flex: 1; min-width: 0; resize: none; border: 1px solid #a4bdb5; border-radius: .5rem; padding: .5rem; background: white; font-size: .9rem; }
+.joko-assistant-panel form button { align-self: center; background: #276f69; color: white; border-radius: .5rem; padding: .6rem; }
+.joko-assistant-panel footer { display: flex; justify-content: space-between; padding: .5rem 1rem .8rem; font-size: .8rem; text-decoration: underline; }
+.joko-assistant-sample { margin-top: .75rem; padding: .5rem; border: 1px solid #a4bdb5; border-radius: .5rem; text-align: left; }
+@media (max-width: 480px) { .joko-assistant { right: .5rem; bottom: max(.5rem, env(safe-area-inset-bottom)); } .joko-assistant-panel { width: calc(100vw - 1rem); height: min(680px, calc(100dvh - 1rem)); } }
