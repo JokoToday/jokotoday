@@ -82,3 +82,8 @@ This branch is **an incomplete Phase B foundation**. A draft PR is appropriate, 
 - Applied corrective migration in test; verified anonymous Store category/assignment reads and authenticated Store category read now succeed; unauthenticated `is_store_admin()` returns false. Test table counts stay zero.
 - Checked current PR branch `npm run typecheck` and `npm run build`: PASS following the change.
 - **Still required before merge:** real authenticated Admin UI CRUD and role boundary checks, paired Store product/publishing checks with test data, and protected checkout regression through Bakery/Makers/Specials. No production migration or release.
+
+## Real staging RLS tests (follow-up)
+- On JOKO Specials Test, using transactional role identities, Admin category creation succeeded. Customer and staff attempts at category creation returned SQLSTATE 42501 RLS denial. Admin category creation and product assignment publication succeeded in a rolled-back transaction. Store tables were confirmed empty afterwards.
+- An attempted anonymous read in the same transaction retained the Admin JWT subject despite switching the SQL role to anon, making that read inconclusive as an anonymous access assertion. Separate earlier uncredentialed anonymous queries to empty tables succeeded after the RLS helper fix. A full authenticated/anonymous HTTP client test with real sessions is still required.
+- Neither production DB nor existing Specials inventory was written to.
