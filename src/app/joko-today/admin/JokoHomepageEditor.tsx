@@ -854,6 +854,22 @@ export function JokoHomepageEditor({
                     event.target.value = '';
                   }
                 }} />
+              <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={hero.props.heroBackgroundMode === 'full-bleed'} onChange={e => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroBackgroundMode: e.target.checked ? 'full-bleed' : 'classic' } } : section)}/> Full-width background mode (JOKO Classic)</label>
+              {hero.props.heroBackgroundMode === 'full-bleed' && <div className="mt-4 space-y-3">
+                <p className="text-xs text-[#303532]/65">Background fills the header and hero. Future uploads reuse these settings. Keep the focal subject on the right and space for text on the left.</p>
+                <label className="block text-sm">Optional mobile illustration
+                  <input className="mt-1 block w-full text-xs" type="file" accept="image/png,image/jpeg,image/webp" disabled={heroImageUploading} onChange={async event => {
+                    const file = event.currentTarget.files?.[0]; if (!file) return;
+                    setHeroImageUploading(true); reportUploadState('hero-image',true); setHeroImageError('');
+                    try { const uploaded = await uploadGalleryImage({file,gallerySlot:'homepage-hero'}); updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroMobileImageUrl: uploaded.publicUrl } } : section); }
+                    catch(error) { setHeroImageError(error instanceof Error ? error.message : 'Mobile upload failed'); }
+                    finally { setHeroImageUploading(false); reportUploadState('hero-image',false); event.target.value=''; }
+                  }}/>
+                </label>
+                {hero.props.heroMobileImageUrl && <button type="button" className="text-xs underline" onClick={() => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroMobileImageUrl: undefined } } : section)}>Use desktop image on mobile</button>}
+                {(['heroFocusX','heroFocusY','heroMobileFocusX','heroMobileFocusY','heroTextOverlay','heroHeaderOpacity'] as const).map((key) => <RangeField key={key} label={{heroFocusX:'Desktop focal point X',heroFocusY:'Desktop focal point Y',heroMobileFocusX:'Mobile focal point X',heroMobileFocusY:'Mobile focal point Y',heroTextOverlay:'Left text gradient',heroHeaderOpacity:'Header tint opacity'}[key]} value={hero.props[key] ?? ({heroFocusX:65,heroFocusY:40,heroMobileFocusX:50,heroMobileFocusY:45,heroTextOverlay:65,heroHeaderOpacity:85}[key])} min={0} max={100} unit="%" onChange={number => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, [key]: number } } : section)} />)}
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={hero.props.heroBehindHeader !== false} onChange={e => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroBehindHeader:e.target.checked } } : section)}/> Extend artwork behind header</label>
+              </div>}
               {heroImageUploading && <p className="mt-2 text-xs">Uploading hero image…</p>}
               {heroImageError && <p role="alert" className="mt-2 text-xs text-red-700">{heroImageError}</p>}
             </div>

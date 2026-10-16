@@ -156,6 +156,16 @@ export interface HomeHeroProps {
   logoUrl?: string;
   /** Published bakery illustration shared by desktop and mobile layouts. */
   heroImageUrl?: string;
+  /** Opt-in to the reusable full-width background composition. */
+  heroBackgroundMode?: 'classic' | 'full-bleed';
+  heroMobileImageUrl?: string;
+  heroFocusX?: number;
+  heroFocusY?: number;
+  heroMobileFocusX?: number;
+  heroMobileFocusY?: number;
+  heroTextOverlay?: number;
+  heroHeaderOpacity?: number;
+  heroBehindHeader?: boolean;
   title: LocalizedText;
   /** Controlled rich text for the Hero title. Plain title remains the fallback/source for legacy revisions. */
   titleRichText?: LocalizedRichText;

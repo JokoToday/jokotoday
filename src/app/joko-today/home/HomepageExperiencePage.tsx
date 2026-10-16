@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   ArrowRight,
   PlayCircle,
@@ -206,6 +207,8 @@ export function HomepageExperiencePage({
   const heroImage = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroImageUrl?.trim()
     ? publishedHero.props.heroImageUrl : BAKERY_HERO;
 
+  const fullBleedHero = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroBackgroundMode === 'full-bleed';
+
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
     maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -213,7 +216,16 @@ export function HomepageExperiencePage({
 
   return (
     <>
-      <section className="joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8">
+      <section className={`joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8 ${heroOnly && fullBleedHero ? 'joko-hero-draft-full-bleed' : ''}`}
+        style={heroOnly && fullBleedHero ? ({
+          '--joko-hero-desktop': `url("${heroImage.replaceAll('"', '%22')}")`,
+          '--joko-hero-mobile': `url("${(publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileImageUrl : undefined) || heroImage}")`,
+          '--joko-hero-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusX ?? 65 : 65}%`,
+          '--joko-hero-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusY ?? 40 : 40}%`,
+          '--joko-hero-mobile-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusX ?? 50 : 50}%`,
+          '--joko-hero-mobile-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusY ?? 45 : 45}%`,
+          '--joko-hero-text-opacity': (publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroTextOverlay ?? 85 : 85) / 100,
+        } as CSSProperties) : undefined}>
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             {showHeroNotebookNote && (
@@ -234,7 +246,7 @@ export function HomepageExperiencePage({
             )}
 
             <div
-              className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
+              className={`joko-bakery-scene-layer pointer-events-none absolute hidden ${fullBleedHero ? '!hidden' : 'xl:block'}`}
               style={{ left: '34%' }}
             >
               <img
@@ -346,7 +358,7 @@ export function HomepageExperiencePage({
               </div>
 
               <div className="relative min-w-0 xl:min-h-[40rem] 2xl:min-h-[44rem]">
-                <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
+                <div className={`relative mx-auto mt-1 max-w-[52rem] xl:hidden ${fullBleedHero ? '!hidden' : ''}`}>
                   <img
                     src={heroImage}
                     alt={heroMediaAlt}
