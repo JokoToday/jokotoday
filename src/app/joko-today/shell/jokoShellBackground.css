@@ -537,3 +537,23 @@
     transition: none;
   }
 }
+
+/* Homepage hero composition v2: one uninterrupted background behind header and hero. */
+.joko-home-shell.joko-hero-full-bleed > div { position: relative; isolation: isolate; }
+.joko-home-shell.joko-hero-full-bleed > div::before {
+  content: ''; position: absolute; z-index: 0; pointer-events: none;
+  top: 0; left: 0; right: 0; height: clamp(690px, 65vw, 920px);
+  background-image: linear-gradient(90deg, rgba(249,246,237,var(--joko-hero-text-opacity)) 0%, rgba(249,246,237,.35) 35%, transparent 70%), var(--joko-hero-desktop);
+  background-size: cover; background-position: var(--joko-hero-x) var(--joko-hero-y);
+}
+.joko-home-shell.joko-hero-full-bleed > div > header,
+.joko-home-shell.joko-hero-full-bleed > div > main { z-index: 1; position: relative; }
+.joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field { background: transparent !important; }
+.joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field::before,
+.joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field::after { display: none; }
+.joko-home-shell.joko-hero-full-bleed .joko-shell-header-organic { background-color: rgba(218,235,232,var(--joko-hero-header-opacity)); }
+.joko-home-shell.joko-hero-full-bleed .joko-shell-header-organic::before { opacity: .08; }
+.joko-home-shell.joko-hero-full-bleed.joko-hero-below-header > div::before { top: 90px; }
+@media (max-width: 767px) {
+ .joko-home-shell.joko-hero-full-bleed > div::before { height: 1060px; background-image: linear-gradient(180deg, rgba(249,246,237,.72), rgba(249,246,237,.5) 55%,rgba(249,246,237,.18)), var(--joko-hero-mobile); background-position: var(--joko-hero-mobile-x) var(--joko-hero-mobile-y); }
+}

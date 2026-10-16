@@ -428,6 +428,13 @@ function validateSection(
       )) {
         pushIssue(issues, `${path}.props.heroImageUrl`, 'Hero image must be a bundled path or HTTPS URL.');
       }
+      if (value.props.heroBackgroundMode !== undefined && (typeof value.props.heroBackgroundMode !== 'string' || !['classic', 'full-bleed'].includes(value.props.heroBackgroundMode))) pushIssue(issues, `${path}.props.heroBackgroundMode`, 'Invalid hero background mode.');
+      if (value.props.heroMobileImageUrl !== undefined && (!isNonEmptyString(value.props.heroMobileImageUrl) || (!value.props.heroMobileImageUrl.startsWith('/') && !/^https:\/\//i.test(value.props.heroMobileImageUrl)))) pushIssue(issues, `${path}.props.heroMobileImageUrl`, 'Invalid mobile hero image URL.');
+      for (const key of ['heroFocusX','heroFocusY','heroMobileFocusX','heroMobileFocusY','heroTextOverlay','heroHeaderOpacity'] as const) {
+        const number = value.props[key];
+        if (number !== undefined && (typeof number !== 'number' || !Number.isFinite(number) || number < 0 || number > 100)) pushIssue(issues, `${path}.props.${key}`, 'Must be between 0 and 100.');
+      }
+      if (value.props.heroBehindHeader !== undefined && typeof value.props.heroBehindHeader !== 'boolean') pushIssue(issues, `${path}.props.heroBehindHeader`, 'Must be boolean.');
       if (value.props.notebookNote !== undefined) {
         if (!isRecord(value.props.notebookNote)) {
           pushIssue(issues, `${path}.props.notebookNote`, 'Hero notebook note must be an object.');
