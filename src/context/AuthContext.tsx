@@ -7,6 +7,7 @@ import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, L
 import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
+import type { CustomerDeliveryAddress } from '../lib/deliveryAddress';
 
 export interface UserProfile {
   id: string;
@@ -26,6 +27,7 @@ export interface UserProfile {
   preferred_language?: Language | null;
   notification_email_enabled: boolean;
   notification_line_enabled: boolean;
+  default_delivery_address?: CustomerDeliveryAddress | null;
 }
 
 type ProfileDetails = {
@@ -34,6 +36,7 @@ type ProfileDetails = {
   line_id?: string;
   notification_email_enabled: boolean;
   notification_line_enabled: boolean;
+  default_delivery_address?: CustomerDeliveryAddress | null;
 };
 
 function isSupportedLanguage(value: unknown): value is Language {
@@ -325,6 +328,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
         notification_line_enabled: data.notification_line_enabled,
+        ...(data.default_delivery_address !== undefined
+          ? { default_delivery_address: data.default_delivery_address }
+          : {}),
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
@@ -351,6 +357,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
         notification_line_enabled: data.notification_line_enabled,
+        ...(data.default_delivery_address !== undefined
+          ? { default_delivery_address: data.default_delivery_address }
+          : {}),
         profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })
