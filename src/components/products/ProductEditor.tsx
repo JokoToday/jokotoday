@@ -124,6 +124,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const [storePublished, setStorePublished] = useState(false);
   const [newStoreCategory, setNewStoreCategory] = useState({ en: '', th: '', zh: '' });
   const [creatingStoreCategory, setCreatingStoreCategory] = useState(false);
+  const [storeCategoryConfirmation, setStoreCategoryConfirmation] = useState('');
   const [storeLoaded, setStoreLoaded] = useState(false);
   const [makers, setMakers] = useState<Maker[]>([]);
   useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
@@ -165,6 +166,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
     }
     const slug = newStoreCategory.en.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     if (!slug) { setErrors((old) => ({ ...old, store: 'Use an English category name containing letters or numbers.' })); return; }
+    setStoreCategoryConfirmation('');
     setCreatingStoreCategory(true);
     try {
       const { data, error } = await supabase.from('store_categories')
@@ -173,9 +175,11 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       if (error) throw error;
       setStoreCategories((old) => [...old, data]);
       setStoreCategoryId(data.id);
+      setStoreCategoryConfirmation(`Category “${data.name_en}” created successfully and selected.`);
       setNewStoreCategory({ en: '', th: '', zh: '' });
       setErrors((old) => { const next = { ...old }; delete next.store; return next; });
     } catch {
+      setStoreCategoryConfirmation('');
       setErrors((old) => ({ ...old, store: 'Unable to create category. Check uniqueness and Admin permissions.' }));
     } finally {
       setCreatingStoreCategory(false);
@@ -419,7 +423,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
                 <input aria-label="Thai Store category" placeholder="Thai *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.th} onChange={(e) => setNewStoreCategory((old) => ({ ...old, th: e.target.value }))} />
                 <input aria-label="Chinese Store category" placeholder="中文" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.zh} onChange={(e) => setNewStoreCategory((old) => ({ ...old, zh: e.target.value }))} />
               </div>
-              <button type="button" disabled={creatingStoreCategory || !storeLoaded} onClick={() => void createStoreCategory()} className="mt-2 rounded-lg border border-[#55766F] px-3 py-2 text-sm disabled:opacity-50">Create category</button>
+              <button type="button" disabled={creatingStoreCategory || !storeLoaded} onClick={() => void createStoreCategory()} className="mt-2 rounded-lg border border-[#55766F] px-3 py-2 text-sm disabled:opacity-50">{creatingStoreCategory ? 'Creating…' : 'Create category'}</button>
+              {storeCategoryConfirmation && <p role="status" aria-live="polite" className="mt-2 text-sm font-medium text-[#2F6858]">✓ {storeCategoryConfirmation}</p>}
             </details>
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={storePublished} disabled={!storeCategoryId || !storeLoaded} onChange={(e) => setStorePublished(e.target.checked)} />
