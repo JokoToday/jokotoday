@@ -8,6 +8,7 @@ import { getPickupDays, PickupDay } from '../../lib/availabilityService';
 import { ProductMediaUploader } from '../ProductMediaUploader';
 import { updateProductStaffProduct } from '../../lib/productStaffService';
 import { getAdminStoreAssignment, saveAdminStoreAssignment, type StoreCategory } from '../../lib/storeCatalogService';
+import { getStoreFulfillmentSettings, saveStoreFulfillmentSettings, DEFAULT_STORE_FULFILLMENT, type StoreFulfillmentSettings } from '../../lib/storeFulfillmentService';
 
 export type ProductEditorMode = 'admin' | 'product-staff';
 
@@ -128,6 +129,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const [creatingStoreCategory, setCreatingStoreCategory] = useState(false);
   const [storeCategoryConfirmation, setStoreCategoryConfirmation] = useState('');
   const [storeLoaded, setStoreLoaded] = useState(false);
+  const [storeFulfillment, setStoreFulfillment] = useState<Omit<StoreFulfillmentSettings, 'product_id'>>({ ...DEFAULT_STORE_FULFILLMENT });
+  const [storeFulfillmentLoaded, setStoreFulfillmentLoaded] = useState(false);
   const [makers, setMakers] = useState<Maker[]>([]);
   useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
   const [errors, setErrors] = useState<Errors>({});
@@ -142,10 +145,13 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         const { data, error } = await supabase.from('store_categories').select('id,slug,name_en,name_th,name_zh,is_active,sort_order').order('sort_order');
         if (error) throw error;
         const assignment = product?.id ? await getAdminStoreAssignment(product.id) : null;
+        const fulfillment = product?.id ? await getStoreFulfillmentSettings(product.id) : null;
         if (!active) return;
         setStoreCategories(data || []);
         setStoreCategoryId(assignment?.store_category_id || '');
         setStorePublished(assignment?.is_published === true);
+        if (fulfillment) setStoreFulfillment({ ...DEFAULT_STORE_FULFILLMENT, ...fulfillment });
+        setStoreFulfillmentLoaded(true);
         setStoreLoaded(true);
       } catch {
         if (active) setErrors((old) => ({ ...old, store: 'Store settings could not load. Check migration and permissions.' }));
@@ -361,6 +367,14 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       }
 
       if (!isProductStaff && savedProductId) {
+        if (storeCategoryId || formData.catalog_scope === 'store_only') {
+          await saveStoreFulfillmentSettings(savedProductId, {
+            stock_on_hand: storeFulfillment.stock_on_hand,
+            pickup_today: storeFulfillment.pickup_today, pickup_preorder: storeFulfillment.pickup_preorder,
+            delivery_today: storeFulfillment.delivery_today, delivery_preorder: storeFulfillment.delivery_preorder,
+            delivery_provider: storeFulfillment.delivery_provider, delivery_fee_thb: storeFulfillment.delivery_fee_thb,
+          });
+        }
         const existing = product?.id ? await getAdminStoreAssignment(savedProductId) : null;
         if (storeCategoryId || storePublished || existing) {
           await saveAdminStoreAssignment(savedProductId, storeCategoryId || null, storePublished);
@@ -439,6 +453,16 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
               <input type="checkbox" checked={storePublished} disabled={!storeCategoryId || !storeLoaded} onChange={(e) => setStorePublished(e.target.checked)} />
               Publish in JOKO Store preview
             </label>
+            {storeFulfillmentLoaded && (storeCategoryId || formData.catalog_scope === 'store_only') && <div className="mt-4 border-t border-[#55766F]/20 pt-3">
+              <p className="font-semibold text-sm">Store fulfillment planning (ordering disabled)</p>
+              <p className="mt-1 text-xs text-[#303532]/70">Separate physical stock. These options are configuration only; no Store checkout, delivery booking, or payment is active.</p>
+              <label className="mt-2 block text-sm">Stock on hand <input type="number" min="0" step="1" className="ml-2 w-24 rounded-lg border p-2" value={storeFulfillment.stock_on_hand} onChange={(e) => setStoreFulfillment((v) => ({ ...v, stock_on_hand: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} /></label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">{([
+                ['pickup_today', 'Same-day pickup'], ['pickup_preorder', 'Pre-order pickup'],
+                ['delivery_today', 'Same-day delivery'], ['delivery_preorder', 'Future delivery'],
+              ] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={storeFulfillment[key]} onChange={(e) => setStoreFulfillment((v) => ({ ...v, [key]: e.target.checked }))} />{label}</label>)}</div>
+              <label className="mt-2 block text-sm">Delivery planning provider <select className="ml-2 rounded-lg border p-2" value={storeFulfillment.delivery_provider} onChange={(e) => setStoreFulfillment((v) => ({ ...v, delivery_provider: e.target.value as 'manual' | 'grab_express' }))}><option value="manual">Manual (default)</option><option value="grab_express">GrabExpress (future; no booking integration)</option></select></label>
+            </div>}
             {errors.store && <p role="alert" className="mt-2 text-sm text-red-700">{errors.store}</p>}
           </section>}
           <div className="border-b border-gray-200 pb-4">
