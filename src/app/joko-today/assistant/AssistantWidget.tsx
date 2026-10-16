@@ -46,7 +46,7 @@ export default function AssistantWidget({ onNavigate }: { onNavigate: (page: str
   useEffect(() => { const openChat = () => setOpen(true); window.addEventListener('joko-ask-open', openChat); return () => window.removeEventListener('joko-ask-open', openChat); }, []);
   useEffect(() => { if (open && !busy) input.current?.focus(); }, [open, busy]);
   useEffect(() => { if (log.current) log.current.scrollTop = log.current.scrollHeight; }, [messages, busy, open]);
-  const close = () => { setOpen(false); requestAnimationFrame(() => launcher.current?.focus()); };
+  const close = () => { setOpen(false); requestAnimationFrame(() => (document.querySelector('[data-joko-ask-launcher]') as HTMLButtonElement | null)?.focus()); };
   async function send(value = draft) {
     const message = value.trim();
     if (!message || message.length > 1000 || busyRef.current) return;
@@ -81,7 +81,7 @@ export default function AssistantWidget({ onNavigate }: { onNavigate: (page: str
     session.current = undefined; setMessages([]); setDraft(''); input.current?.focus();
   }
   return <div className="joko-assistant" style={jokoBrandingCssVariables(branding, language)}>
-    <button hidden={open} ref={launcher} type="button" className="joko-assistant-launcher sr-only" aria-haspopup="dialog" onClick={() => setOpen(true)}>{text.title}</button>
+    <button hidden={open} ref={launcher} type="button" className="joko-assistant-launcher" style={{ display: 'none' }} aria-haspopup="dialog" onClick={() => setOpen(true)}>{text.title}</button>
     {open && <section role="dialog" aria-labelledby="joko-assistant-title" className="joko-assistant-panel" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } }}>
       <header><h2 id="joko-assistant-title">{text.title}</h2><button type="button" onClick={close} aria-label={text.close}>×</button></header>
       <div className="joko-assistant-controls"><select aria-label="Language / ภาษา" value={language} onChange={event => setLanguage(event.target.value as Language)}><option value="en">English</option><option value="th">ไทย</option></select><button type="button" onClick={() => void clear()} disabled={busy}>{text.clear}</button></div>

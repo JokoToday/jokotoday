@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { proxy: { "/api/assistant": { target: "http://127.0.0.1:3101" } } },
+  server: { proxy: { "/api/assistant": { target: process.env.JOKO_ASSISTANT_DEV_PROXY_TARGET || "http://127.0.0.1:3101" } } },
   optimizeDeps: {
     exclude: ['lucide-react'],
     include: ['html5-qrcode'],
