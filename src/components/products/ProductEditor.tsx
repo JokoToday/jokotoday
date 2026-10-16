@@ -22,6 +22,7 @@ interface ProductFormProps {
 
 interface FormData {
   product_origin: ProductOrigin;
+  catalog_scope: 'bakery' | 'store_only';
   maker_id: string;
   name_en: string;
   name_th: string;
@@ -76,6 +77,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const isProductStaff = mode === 'product-staff';
   const [formData, setFormData] = useState<FormData>({
     product_origin: product ? productOrigin(product) : 'joko',
+    catalog_scope: product?.catalog_scope || 'bakery',
     maker_id: product?.maker_id || '',
     name_en: product?.name_en || '',
     name_th: product?.name_th || '',
@@ -191,7 +193,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
     if (!isProductStaff && formData.product_origin === 'maker' && !formData.maker_id) newErrors.maker_id = 'Choose a maker for Makers products.';
     if (!formData.name_en.trim()) newErrors.name_en = 'Product name (English) is required';
     if (!formData.name_th.trim()) newErrors.name_th = 'Product name (Thai) is required';
-    if (!formData.category_id) newErrors.category_id = 'Category is required';
+    if (formData.catalog_scope === 'bakery' && !formData.category_id) newErrors.category_id = 'Bakery category is required for Bakery products';
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
     if (!isProductStaff && !formData.slug.trim()) newErrors.slug = 'Slug is required';
@@ -261,7 +263,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       });
 
       const baseData = {
-        ...(!isProductStaff ? { product_origin: formData.product_origin, maker_id: formData.maker_id || null } : {}),
+        ...(!isProductStaff ? { product_origin: formData.product_origin, maker_id: formData.maker_id || null, catalog_scope: formData.catalog_scope } : {}),
         name_en: formData.name_en.trim(),
         name_th: formData.name_th.trim(),
         name_zh: formData.name_zh.trim() || null,
@@ -269,7 +271,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         desc_th,
         desc_zh: formData.desc_zh.trim() || null,
         price: parseFloat(formData.price),
-        category_id: formData.category_id,
+        category_id: formData.catalog_scope === 'store_only' ? null : (formData.category_id || null),
         image: formData.image.trim() || null,
         public_code: formData.public_code.trim() || null,
         short_desc_en: formData.short_desc_en.trim() || null,
@@ -403,6 +405,13 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
           {!isProductStaff && <div className="rounded-xl border border-[#55766F]/20 bg-[#FFF9EE] p-4">
             <h3 className="mb-3 font-semibold">JOKO selection</h3>
+            <label className="block text-sm">Catalog placement
+              <select className="ml-3 rounded-lg border p-2" value={formData.catalog_scope} onChange={(event) => setFormData((current) => ({ ...current, catalog_scope: event.target.value as 'bakery' | 'store_only', category_id: event.target.value === 'store_only' ? '' : current.category_id }))}>
+                <option value="bakery">Bakery catalog (existing)</option>
+                <option value="store_only">JOKO Store only (not in Bakery)</option>
+              </select>
+            </label>
+            {formData.catalog_scope === 'store_only' && <p className="mt-2 text-xs text-[#55766F]" role="status">Store-only products do not need a Bakery category and are excluded from Bakery browsing. Store publication is controlled separately below.</p>}
             <label className="block text-sm">Product world<select className="ml-3 rounded-lg border p-2" value={formData.product_origin} onChange={(event) => setFormData({ ...formData, product_origin: event.target.value as ProductOrigin })}><option value="joko">BAKED — made by JOKO</option><option value="beyond">BEYOND — selected products</option><option value="maker">MAKERS — selected producers</option></select></label>
             <label className="mt-3 block text-sm">Maker<select className="ml-3 max-w-full rounded-lg border p-2" value={formData.maker_id} onChange={(event) => setFormData({ ...formData, maker_id: event.target.value })}><option value="">No maker</option>{makers.map((maker) => <option key={maker.id} value={maker.id}>{maker.name_en}{maker.is_published ? '' : ' (draft)'}</option>)}</select></label>
             {(errors.maker_id || errors.makers) && <p role="alert" className="mt-2 text-sm text-red-700">{errors.maker_id || errors.makers}</p>}
@@ -453,8 +462,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${errors.category_id ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent' : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'}`}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bakery category {formData.catalog_scope === 'bakery' ? '*' : '(not required for Store-only)'}</label>
+                <select disabled={!isProductStaff && formData.catalog_scope === 'store_only'} value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${errors.category_id ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent' : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'}`}>
                   <option value="">Select a category</option>
                   {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.title_en} / {cat.title_th}</option>)}
                 </select>

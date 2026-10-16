@@ -108,7 +108,7 @@ export function AdminPage({ onNavigate }: AdminPageProps) {
       setLoading(true);
       const [cats, prods, pageData, lbls, stgs, locs, rules, overrides, socials, cancelRules] = await Promise.all([
         getCategories(),
-        getProducts(),
+        getProducts(undefined, { includeStoreOnly: true }),
         getAllPages(),
         getAllLabels(),
         getAllSettings(),
@@ -383,7 +383,7 @@ function ProductsTab({ products, categories, locations, onRefresh, onDelete }: P
                     </span>
                   </button>
                 </td>
-                <td className="px-4 py-3 text-xs text-gray-600">{getCategoryName(product.category_id)}</td>
+                <td className="px-4 py-3 text-xs text-gray-600">{product.category_id ? getCategoryName(product.category_id) : 'Store only'}</td>
                 <td className="px-4 py-3 text-sm font-semibold text-primary-600">฿{Number(product.price).toFixed(2)}</td>
                 <td className="px-4 py-3 text-center">
                   <div className="text-xs">

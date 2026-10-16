@@ -33,7 +33,7 @@ export default function StorePage() {
         setStoreCategories(entries.categories);
         setAssignments(Object.fromEntries(entries.assignments.map((entry) => [entry.product_id, entry.store_category_id])));
         if (entries.assignments.length === 0) { setProducts([]); return; }
-        const all = await getProducts();
+        const all = await getProducts(undefined, { includeStoreOnly: true });
         const ids = new Set(entries.assignments.map((entry) => entry.product_id));
         if (active) setProducts(all.filter((product) => ids.has(product.id)));
       } catch {
