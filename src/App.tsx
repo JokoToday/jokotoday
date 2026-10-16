@@ -15,6 +15,7 @@ import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './
 
 const MakersPage = lazy(() => import('./pages/MakersPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const StorePage = lazy(() => import('./pages/StorePage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutRouterPage'));
@@ -50,6 +51,7 @@ const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
   home: '/',
   products: '/products',
+  store: '/store',
   makers: '/makers',
   checkout: '/checkout',
   specials: '/specials',
@@ -458,6 +460,7 @@ function AppContent() {
       case 'maker-detail': return <MakersPage slug={makerSlug} />;
       case 'products':
         return <ProductsPage onNavigate={handleNavigate} />;
+      case 'store': return <StorePage />;
       case 'product-detail':
         return (
           <ProductDetailPage
@@ -524,7 +527,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'store' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
