@@ -19,7 +19,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'other-products' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about';
+  key: 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about';
   label: string;
   page?: string;
   targetId?: string;
@@ -102,6 +102,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     products: { page: 'products-bakery', activeKey: 'bakery' },
     makers: { page: 'makers', activeKey: 'makers' },
     'other-products': { page: 'products-non-bakery', activeKey: 'bakery' },
+    store: { page: 'store' },
     specials: { page: 'specials' },
     'how-it-works': { targetId: 'how-it-works' },
     pickup: { targetId: 'pickup' },
@@ -163,6 +164,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     if (item.key === 'makers') return path === '/makers' || path.startsWith('/makers/');
     // The two product menus share /products but differ by query-controlled filter.
     if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
+    if (item.key === 'store') return path === '/store';
     if (item.key === 'specials') return path === '/specials';
     if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';
     if (path === '/' && item.targetId) return activeHash === `#${item.targetId}`;

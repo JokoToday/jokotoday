@@ -7,6 +7,7 @@ import { CMSProduct, CMSCategory, CMSPickupLocation } from '../../lib/cmsService
 import { getPickupDays, PickupDay } from '../../lib/availabilityService';
 import { ProductMediaUploader } from '../ProductMediaUploader';
 import { updateProductStaffProduct } from '../../lib/productStaffService';
+import { getAdminStoreAssignment, saveAdminStoreAssignment, type StoreCategory } from '../../lib/storeCatalogService';
 
 export type ProductEditorMode = 'admin' | 'product-staff';
 
@@ -118,12 +119,37 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       : {},
   });
 
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
+  const [storeCategoryId, setStoreCategoryId] = useState('');
+  const [storePublished, setStorePublished] = useState(false);
+  const [newStoreCategory, setNewStoreCategory] = useState({ en: '', th: '', zh: '' });
+  const [creatingStoreCategory, setCreatingStoreCategory] = useState(false);
+  const [storeLoaded, setStoreLoaded] = useState(false);
   const [makers, setMakers] = useState<Maker[]>([]);
   useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  useEffect(() => {
+    if (isProductStaff) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('store_categories').select('id,slug,name_en,name_th,name_zh,is_active,sort_order').order('sort_order');
+        if (error) throw error;
+        const assignment = product?.id ? await getAdminStoreAssignment(product.id) : null;
+        if (!active) return;
+        setStoreCategories(data || []);
+        setStoreCategoryId(assignment?.store_category_id || '');
+        setStorePublished(assignment?.is_published === true);
+        setStoreLoaded(true);
+      } catch {
+        if (active) setErrors((old) => ({ ...old, store: 'Store settings could not load. Check migration and permissions.' }));
+      }
+    })();
+    return () => { active = false; };
+  }, [isProductStaff, product?.id]);
 
   useEffect(() => {
     getPickupDays().then(setPickupDays).catch((error) => {
@@ -131,6 +157,30 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       setErrors((current) => ({ ...current, pickup_days: 'Could not load pickup schedule.' }));
     });
   }, []);
+
+  const createStoreCategory = async () => {
+    if (!newStoreCategory.en.trim() || !newStoreCategory.th.trim()) {
+      setErrors((old) => ({ ...old, store: 'English and Thai Store category names are required.' }));
+      return;
+    }
+    const slug = newStoreCategory.en.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) { setErrors((old) => ({ ...old, store: 'Use an English category name containing letters or numbers.' })); return; }
+    setCreatingStoreCategory(true);
+    try {
+      const { data, error } = await supabase.from('store_categories')
+        .insert({ slug, name_en: newStoreCategory.en.trim(), name_th: newStoreCategory.th.trim(), name_zh: newStoreCategory.zh.trim() || null })
+        .select('id,slug,name_en,name_th,name_zh,is_active,sort_order').single();
+      if (error) throw error;
+      setStoreCategories((old) => [...old, data]);
+      setStoreCategoryId(data.id);
+      setNewStoreCategory({ en: '', th: '', zh: '' });
+      setErrors((old) => { const next = { ...old }; delete next.store; return next; });
+    } catch {
+      setErrors((old) => ({ ...old, store: 'Unable to create category. Check uniqueness and Admin permissions.' }));
+    } finally {
+      setCreatingStoreCategory(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
@@ -191,6 +241,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (!isProductStaff && !storeLoaded) { setErrors({ store: 'Store settings are not yet loaded.' }); return; }
 
     setLoading(true);
     try {
@@ -245,6 +296,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         stock_by_day: stockByDay,
       };
 
+      let savedProductId = product?.id || '';
       if (product?.id) {
         if (isProductStaff) {
           const staffData = {
@@ -297,10 +349,17 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         }
       } else {
         if (isProductStaff) throw new Error('Product Staff cannot create products.');
-        const { error } = await supabase.from('cms_products').insert([{ ...baseData, stock_total: parseInt(formData.stock_total) }]);
+        const { data: inserted, error } = await supabase.from('cms_products').insert([{ ...baseData, stock_total: parseInt(formData.stock_total) }]).select('id').single();
         if (error) throw error;
+        savedProductId = inserted.id;
       }
 
+      if (!isProductStaff && savedProductId) {
+        const existing = product?.id ? await getAdminStoreAssignment(savedProductId) : null;
+        if (storeCategoryId || storePublished || existing) {
+          await saveAdminStoreAssignment(savedProductId, storeCategoryId || null, storePublished);
+        }
+      }
       onSave();
     } catch (error) {
       console.error('Error saving:', error);
@@ -344,6 +403,30 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             <label className="mt-3 block text-sm">Maker<select className="ml-3 max-w-full rounded-lg border p-2" value={formData.maker_id} onChange={(event) => setFormData({ ...formData, maker_id: event.target.value })}><option value="">No maker</option>{makers.map((maker) => <option key={maker.id} value={maker.id}>{maker.name_en}{maker.is_published ? '' : ' (draft)'}</option>)}</select></label>
             {(errors.maker_id || errors.makers) && <p role="alert" className="mt-2 text-sm text-red-700">{errors.maker_id || errors.makers}</p>}
           </div>}
+          {!isProductStaff && <section className="rounded-xl border border-[#55766F]/20 bg-[#FFF9EE] p-4">
+            <h3 className="mb-2 font-semibold">JOKO Store placement</h3>
+            <p className="mb-3 text-xs text-[#303532]/70">Independent of maker identity. Store ordering remains disabled until physical stock is ready.</p>
+            <label className="block text-sm">Store category
+              <select value={storeCategoryId} onChange={(e) => { setStoreCategoryId(e.target.value); if (!e.target.value) setStorePublished(false); }} className="ml-3 rounded-lg border p-2">
+                <option value="">Not assigned to Store</option>
+                {storeCategories.map((category) => <option key={category.id} value={category.id}>{category.name_en}</option>)}
+              </select>
+            </label>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-[#55766F]">Add a Store category</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <input aria-label="English Store category" placeholder="English *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.en} onChange={(e) => setNewStoreCategory((old) => ({ ...old, en: e.target.value }))} />
+                <input aria-label="Thai Store category" placeholder="Thai *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.th} onChange={(e) => setNewStoreCategory((old) => ({ ...old, th: e.target.value }))} />
+                <input aria-label="Chinese Store category" placeholder="中文" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.zh} onChange={(e) => setNewStoreCategory((old) => ({ ...old, zh: e.target.value }))} />
+              </div>
+              <button type="button" disabled={creatingStoreCategory || !storeLoaded} onClick={() => void createStoreCategory()} className="mt-2 rounded-lg border border-[#55766F] px-3 py-2 text-sm disabled:opacity-50">Create category</button>
+            </details>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={storePublished} disabled={!storeCategoryId || !storeLoaded} onChange={(e) => setStorePublished(e.target.checked)} />
+              Publish in JOKO Store preview
+            </label>
+            {errors.store && <p role="alert" className="mt-2 text-sm text-red-700">{errors.store}</p>}
+          </section>}
           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
             <div className="grid grid-cols-3 gap-4 mb-4">
