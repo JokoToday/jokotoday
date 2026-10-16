@@ -176,7 +176,7 @@ export default function ProductCard({
 
       <div className="joko-product-card-body p-4">
         <h3 className="joko-product-card-title mb-2 text-lg font-semibold text-primary-900">{productHref && !preview ? <a href={productHref}>{productName}</a> : productName}</h3>
-        {!preview && 'maker' in product && <MakerAttribution maker={product.maker} />}
+        {'maker' in product && <MakerAttribution maker={product.maker} />}
         {!preview && user && userRole === 'admin' && (
           <a
             href={`/admin/specials?product=${encodeURIComponent(product.id)}`}
@@ -227,7 +227,7 @@ export default function ProductCard({
           )}
         </div>
 
-        {stockRemaining !== null && stockRemaining > 0 && (
+        {!preview && stockRemaining !== null && stockRemaining > 0 && (
           <div className="mb-3">
             <span className={`text-xs font-medium px-2 py-1 rounded ${
               stockRemaining <= 5
