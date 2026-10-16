@@ -142,7 +142,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         setStoreCategoryId(assignment?.store_category_id || '');
         setStorePublished(assignment?.is_published === true);
         setStoreLoaded(true);
-      } catch (error) {
+      } catch {
         if (active) setErrors((old) => ({ ...old, store: 'Store settings could not load. Check migration and permissions.' }));
       }
     })();
