@@ -407,7 +407,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             <h3 className="mb-2 font-semibold">JOKO Store placement</h3>
             <p className="mb-3 text-xs text-[#303532]/70">Independent of maker identity. Store ordering remains disabled until physical stock is ready.</p>
             <label className="block text-sm">Store category
-              <select value={storeCategoryId} onChange={(e) => setStoreCategoryId(e.target.value)} className="ml-3 rounded-lg border p-2">
+              <select value={storeCategoryId} onChange={(e) => { setStoreCategoryId(e.target.value); if (!e.target.value) setStorePublished(false); }} className="ml-3 rounded-lg border p-2">
                 <option value="">Not assigned to Store</option>
                 {storeCategories.map((category) => <option key={category.id} value={category.id}>{category.name_en}</option>)}
               </select>
