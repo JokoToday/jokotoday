@@ -4,7 +4,6 @@ import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { getProducts, type CMSProduct } from '../lib/cmsService';
 import { getPublicStoreCatalog, type StoreCategory } from '../lib/storeCatalogService';
-import { supabase } from '../lib/supabase';
 
 /**
  * Phase B preview only. Store assignments are explicit, never inferred from
