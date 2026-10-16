@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PackageSearch, Store } from 'lucide-react';
+import ProductCard from '../components/ProductCard';
 import { useLanguage } from '../context/LanguageContext';
 import { getProducts, type CMSProduct } from '../lib/cmsService';
 import { supabase } from '../lib/supabase';
@@ -52,7 +53,6 @@ export default function StorePage() {
     return Array.from(unique);
   }, [products]);
   const shown = category === 'all' ? products : products.filter((p) => p.category_id === category);
-  const name = (p: CMSProduct) => (language === 'th' ? p.name_th : language === 'zh' ? p.name_zh : p.name_en) || p.name_en;
   return (
     <main className="joko-mineral-field min-h-[70vh] px-4 py-12">
       <div className="mx-auto max-w-7xl">
@@ -75,14 +75,7 @@ export default function StorePage() {
           : shown.length === 0 ? <div className="flex flex-col items-center gap-4 rounded-3xl bg-[#FFF9EE] p-12 text-center text-[#303532]"><PackageSearch className="h-12 w-12 text-[#55766F]" /><p>{copy.empty}</p></div>
           : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shown.map((product) => (
-                <article key={product.id} className="overflow-hidden rounded-3xl bg-[#FFF9EE] shadow-sm">
-                  {product.image && <img src={product.image} alt={name(product)} className="aspect-square w-full object-cover" loading="lazy" />}
-                  <div className="p-5">
-                    <h2 className="text-lg font-semibold text-[#303532]">{name(product)}</h2>
-                    <p className="mt-2 text-[#55766F]">฿{Number(product.price).toLocaleString()}</p>
-                    <p className="mt-3 text-sm text-[#303532]/70">{copy.preview}</p>
-                  </div>
-                </article>
+                <ProductCard key={product.id} product={product} preview />
               ))}
             </div>}
       </div>
