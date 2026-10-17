@@ -81,7 +81,31 @@ export interface TopMenuItem {
   href?: string;
 }
 
+export type HomeServiceKey = 'bakery' | 'store' | 'makers' | 'specials';
+export interface HomeServiceCardConfig {
+  key: HomeServiceKey;
+  visible: boolean;
+  name?: LocalizedText;
+  description?: LocalizedText;
+  exploreLabel?: LocalizedText;
+  guideLabel?: LocalizedText;
+  guideSteps?: Readonly<Record<LocaleCode, readonly string[]>>;
+  imageUrl?: string;
+  imageAlt?: LocalizedText;
+  /** Internal route only; use supported catalog route identifiers. */
+  destination?: 'products-bakery' | 'products-non-bakery' | 'makers' | 'specials';
+  /** Optional future short guide video; currently shown as an external link in the guide. */
+  videoUrl?: string;
+}
+export interface HomeServicesConfig {
+  visible?: boolean;
+  title?: LocalizedText;
+  subtitle?: LocalizedText;
+  cards?: readonly HomeServiceCardConfig[];
+}
+
 export interface BuilderHomepageBranding {
+  services?: HomeServicesConfig;
   /** Desktop and mobile use one menu model; destinations are fixed and safe. */
   topMenu?: readonly TopMenuItem[];
   /** Images are published with the Homepage Builder, not independent Admin state. */

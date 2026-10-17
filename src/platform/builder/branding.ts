@@ -154,6 +154,7 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
 
   return {
     aboutCards,
+    services: input.services && typeof input.services === 'object' && !Array.isArray(input.services) ? input.services as JokoHomepageBranding['services'] : undefined,
     topMenu: resolveTopMenu(input.topMenu),
     logoScale: numberInRange(input.logoScale, DEFAULT_JOKO_HOMEPAGE_BRANDING.logoScale, 70, 150),
     typography: {

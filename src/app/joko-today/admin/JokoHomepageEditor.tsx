@@ -43,6 +43,7 @@ import {
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
+import { HomepageServiceAdmin } from './HomepageServiceAdmin';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
 import { HeroLineStyleControls, HeroStyleControls, HeroWordStyleEditor } from './HeroTypographyControls';
 import { uploadGalleryImage } from '../../../lib/mediaService';
@@ -1033,6 +1034,10 @@ export function JokoHomepageEditor({
               ))}
             </div>
           </details>
+
+          <HomepageServiceAdmin value={branding.services} locale={locale as 'en' | 'th' | 'zh'}
+            onChange={next => updateBranding({ ...branding, services: next })}
+            onUploadingChange={busy => reportUploadState('service-images', busy)} />
 
           <div className="border-t border-[#55766F]/14 pt-4">
             <div className="mb-3 flex items-center gap-2">

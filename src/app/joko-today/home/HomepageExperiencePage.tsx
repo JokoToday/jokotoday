@@ -148,7 +148,8 @@ export function HomepageExperiencePage({
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
-  const heroSecondaryLabel = lang === 'en' ? 'Explore JOKO' : labels.howItWorks;
+  const savedSecondary = publishedHero?.type === 'home.hero.v1' ? localize(publishedHero.props.secondaryActionLabel, lang, 'en') : '';
+  const heroSecondaryLabel = savedSecondary && !['How It Works', 'How it works', 'วิธีการสั่งซื้อ', '订购指南'].includes(savedSecondary) ? savedSecondary : labels.howItWorks;
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
