@@ -43,7 +43,7 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 const copy = {
   en: {
     kicker: 'Love for good things. Shared with everyone.',
-    headline1: 'Selected Goods.',
+    headline1: 'Selected Goods',
     headline2: 'for a',
     headlineAccent: 'Brighter',
     headline3: 'Today',
@@ -115,7 +115,8 @@ export function HomepageExperiencePage({
   const headlineFallback: BuilderRichText = lang === 'en'
     ? [
         { text: labels.headline1 + '\n' + labels.headline2 + '\n' },
-        { text: labels.headlineAccent + ' ' + labels.headline3, marks: { color: 'accent', italic: true } },
+        { text: labels.headlineAccent, marks: { color: 'accent', italic: true } },
+        { text: ' ' + labels.headline3 },
       ]
     : [
         { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
@@ -123,9 +124,10 @@ export function HomepageExperiencePage({
         ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
       ];
   // Upgrade only the previously published English default; retain later Admin edits.
-  const legacyEnglishTitle = lang === 'en' && publishedTitleRichText?.map((run) => run.text).join('').startsWith('Selected Goodness');
-  const titleRuns = legacyEnglishTitle ? headlineFallback : publishedTitleRichText ?? headlineFallback;
-  const headlineLineStyles = legacyEnglishTitle ? [{ size: 54 }, { align: 'center' as const, size: 30 }, { size: 55 }] : publishedHero?.type === 'home.hero.v1'
+  const legacyEnglishTitle = lang === 'en' && /^(Selected Goodness|Selected Goods[.]?)/.test(publishedTitleRichText?.map((run) => run.text).join('') ?? '');
+  const previousEnglishTitle = lang === 'en' && publishedTitleRichText?.map((run) => run.text).join('') === 'Selected Goods.\nfor a\nBrighter Today';
+  const titleRuns = legacyEnglishTitle || previousEnglishTitle ? headlineFallback : publishedTitleRichText ?? headlineFallback;
+  const headlineLineStyles = (legacyEnglishTitle || previousEnglishTitle) ? [{ size: 54 }, { align: 'center' as const, size: 30 }, { size: 55 }] : publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.titleLineStyles?.[lang]
     : lang === 'en'
       ? [{}, { align: 'center' as const, size: 30 }, {}]
@@ -286,7 +288,10 @@ export function HomepageExperiencePage({
                   style={publishedHero?.type === 'home.hero.v1'
                     ? resolveHeroLocaleStyle(publishedHero.props.subtitleStyle, publishedHero.props.subtitleLocaleStyles, lang)
                     : undefined}
-                  className="mt-5 max-w-[29rem] leading-7"
+                  fontFamilyOverride={lang === 'en' ? 'var(--joko-font-body)' : undefined}
+                  fontWeightOverride={lang === 'en' ? 700 : undefined}
+                  fontSizeOverride={lang === 'en' ? '16px' : undefined}
+                  className={lang === 'en' ? 'mt-5 max-w-[29rem] tracking-[0.15em] leading-6' : 'mt-5 max-w-[29rem] leading-7'}
                 />
 
                 <div className="mt-7 xl:mt-8">
