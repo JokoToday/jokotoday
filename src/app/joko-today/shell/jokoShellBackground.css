@@ -552,8 +552,16 @@
   background-repeat: no-repeat;
   background-position: center, center, var(--joko-hero-x) var(--joko-hero-y);
 }
-.joko-home-shell.joko-hero-full-bleed > div > header,
+/* Keep account, Shopping and Explore popovers above the hero notebook. */
+.joko-home-shell.joko-hero-full-bleed > div > header { position: relative; z-index: 50; }
 .joko-home-shell.joko-hero-full-bleed > div > main { position: relative; z-index: 1; }
+/* Show the foliage/roof softly through the mint navigation without sacrificing readability. */
+.joko-home-shell.joko-hero-full-bleed > div > header {
+  background-color: rgba(207, 227, 223, .76) !important;
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+.joko-home-shell.joko-hero-full-bleed > div > header::after { opacity: .35; }
 .joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field { background: transparent !important; }
 .joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field::before,
 .joko-home-shell.joko-hero-full-bleed .joko-bakery-hero-field::after { display: none; }
