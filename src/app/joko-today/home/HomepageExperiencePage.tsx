@@ -43,11 +43,11 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 const copy = {
   en: {
     kicker: 'Love for good things. Shared with everyone.',
-    headline1: 'Selected Goodness',
+    headline1: 'Selected Goods.',
     headline2: 'for a',
     headlineAccent: 'Brighter',
     headline3: 'Today',
-    intro: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
+    intro: 'From our bakery, beyond it, and from makers we believe in.',
     products: 'Explore the Bakery',
     howItWorks: 'How it works',
     select: 'Select',
@@ -115,16 +115,17 @@ export function HomepageExperiencePage({
   const headlineFallback: BuilderRichText = lang === 'en'
     ? [
         { text: labels.headline1 + '\n' + labels.headline2 + '\n' },
-        { text: labels.headlineAccent, marks: { color: 'accent', italic: true } },
-        { text: ' ' + labels.headline3 },
+        { text: labels.headlineAccent + ' ' + labels.headline3, marks: { color: 'accent', italic: true } },
       ]
     : [
         { text: labels.headline1 + '\n' + labels.headline2 + ' ' },
         { text: labels.headlineAccent, marks: { color: 'accent' } },
         ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
       ];
-  const titleRuns = publishedTitleRichText ?? headlineFallback;
-  const headlineLineStyles = publishedHero?.type === 'home.hero.v1'
+  // Upgrade only the previously published English default; retain later Admin edits.
+  const legacyEnglishTitle = lang === 'en' && publishedTitleRichText?.map((run) => run.text).join('').startsWith('Selected Goodness');
+  const titleRuns = legacyEnglishTitle ? headlineFallback : publishedTitleRichText ?? headlineFallback;
+  const headlineLineStyles = legacyEnglishTitle ? [{ size: 54 }, { align: 'center' as const, size: 30 }, { size: 55 }] : publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.titleLineStyles?.[lang]
     : lang === 'en'
       ? [{}, { align: 'center' as const, size: 30 }, {}]
@@ -135,9 +136,11 @@ export function HomepageExperiencePage({
   const selectUrl = heroJourneyLinks?.selectUrl || '/products';
   const preorderUrl = heroJourneyLinks?.preorderUrl || '/how-it-works';
   const pickupUrl = heroJourneyLinks?.pickupUrl || '/how-it-works';
-  const subtitleRuns = publishedHero?.type === 'home.hero.v1'
+  const publishedSubtitleRuns = publishedHero?.type === 'home.hero.v1'
     ? localizeRichText(publishedHero.props.subtitleRichText, lang, 'en', heroIntro)
     : [{ text: heroIntro }];
+  const subtitleRuns = lang === 'en' && ['We make it - We find it - We find the people who make it', 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.'].includes(publishedSubtitleRuns.map((run) => run.text).join('').trim())
+    ? [{ text: labels.intro }] : publishedSubtitleRuns;
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
@@ -273,6 +276,8 @@ export function HomepageExperiencePage({
                     ? resolveHeroLocaleStyle(publishedHero.props.titleStyle, publishedHero.props.titleLocaleStyles, lang)
                     : undefined}
                   lineStyles={headlineLineStyles}
+                  fontFamilyOverride={lang === 'en' ? 'Fredoka, var(--joko-font-display)' : undefined}
+                  fontWeightOverride={lang === 'en' ? 600 : undefined}
                   className="mt-4 leading-[.92] tracking-[-0.042em]"
                 />
                 <span className="joko-hero-pencil-underline mt-2" aria-hidden="true" />

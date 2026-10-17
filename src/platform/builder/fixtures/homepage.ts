@@ -45,15 +45,14 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
       props: {
         logoUrl: '/assets/brand/joko-today-logo-v0.4.webp',
         title: {
-          en: 'Selected Goodness\nfor a\nBrighter Today',
+          en: 'Selected Goods.\nfor a\nBrighter Today',
           th: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\nที่สดใสกว่า',
           zh: '好面包\n为了一个更明亮的\n明天。',
         },
         titleRichText: {
           en: [
-            { text: 'Selected Goodness\nfor a\n' },
-            { text: 'Brighter', marks: { color: 'accent', italic: true } },
-            { text: ' Today' },
+            { text: 'Selected Goods.\nfor a\n' },
+            { text: 'Brighter Today', marks: { color: 'accent', italic: true } },
           ],
           th: [
             { text: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\n' },
@@ -76,7 +75,7 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
           ],
         },
         subtitle: {
-          en: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
+          en: 'From our bakery, beyond it, and from makers we believe in.',
           th: 'อบอย่างตั้งใจเป็นล็อตเล็ก ๆ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของ JOKO',
           zh: '小批量用心烘焙。线上预订，到 JOKO 取货点领取新鲜出炉的面包。',
         },
