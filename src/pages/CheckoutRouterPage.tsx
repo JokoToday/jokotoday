@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import { StoreFulfillmentPreview } from '../components/StoreFulfillmentPreview';
 
 interface CheckoutRouterPageProps {
   onNavigate: (page: string) => void;
@@ -37,7 +38,7 @@ export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPagePro
     return <div className="min-h-[40vh]" aria-busy="true" />;
   }
 
-  if (hasStoreItems) return <div className="joko-mineral-field min-h-[60vh] px-4 py-12"><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-[#FFF9EE] p-6"><h2 className="mb-3 text-xl font-semibold">JOKO Store ordering is coming soon</h2><p>Store items can be added to My Cart for preview, but they cannot be ordered or paid for until stock reservations and delivery fees have been verified. Remove Store items to continue with an eligible Bakery order.</p><button type="button" className="mt-4 rounded-lg bg-[#55766F] px-4 py-2 text-white" onClick={() => onNavigate('store')}>Return to JOKO Store</button></div></div>;
+  if (hasStoreItems) return <StoreFulfillmentPreview onReturn={() => onNavigate('store')} />;
 
   // Protect BOTH checkout versions. This is an onboarding UX gate;
   // the order submission paths recheck Supabase Auth separately.

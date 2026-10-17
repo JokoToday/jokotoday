@@ -243,12 +243,12 @@ export default function CartSidebar({ onCheckout, onStartShopping }: CartSidebar
                   setIsCartOpen(false);
                   onCheckout();
                 }}
-                disabled={checkoutBlockedByFinder || hasStoreItems}
+                disabled={checkoutBlockedByFinder && !hasStoreItems}
                 className="w-full rounded-xl bg-[#C76624] py-3 font-semibold text-white transition-colors hover:bg-[#A95120] disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 {pickupFinderState.loading
                   ? (language === 'th' ? 'กำลังตรวจสอบวันรับสินค้า…' : language === 'zh' ? '正在检查取货日期…' : 'Checking pickup dates…')
-                  : t.cart.checkout}
+                  : hasStoreItems ? (language === 'th' ? 'ดูตัวเลือกการรับสินค้า' : language === 'zh' ? '预览收货方式' : 'Preview fulfillment options') : t.cart.checkout}
               </button>
             ) : (
               <button
