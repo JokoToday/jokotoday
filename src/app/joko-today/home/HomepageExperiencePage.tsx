@@ -293,7 +293,7 @@ export function HomepageExperiencePage({
                     />
 
                     <div className="relative z-20 mt-10 min-w-0 flex-1 2xl:mt-11">
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex w-full max-w-[18rem] flex-col gap-3">
                         <button
                           type="button"
                           onClick={() => onNavigate('products-bakery')}
