@@ -143,6 +143,7 @@ export function HomepageExperiencePage({
     : [{ text: heroIntro }];
   const subtitleRuns = lang === 'en' && ['We make it - We find it - We find the people who make it', 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.'].includes(publishedSubtitleRuns.map((run) => run.text).join('').trim())
     ? [{ text: labels.intro }] : publishedSubtitleRuns;
+  const useSplitEnglishSubtitle = lang === 'en' && subtitleRuns.map((run) => run.text).join('').trim() === 'From our bakery, beyond it, and from makers we believe in.';
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
@@ -278,12 +279,18 @@ export function HomepageExperiencePage({
                     ? resolveHeroLocaleStyle(publishedHero.props.titleStyle, publishedHero.props.titleLocaleStyles, lang)
                     : undefined}
                   lineStyles={headlineLineStyles}
-                  fontFamilyOverride={lang === 'en' ? 'Fredoka, var(--joko-font-display)' : undefined}
+                  fontFamilyOverride={lang === 'en' ? 'Nunito Sans, var(--joko-font-display)' : undefined}
                   fontWeightOverride={lang === 'en' ? 600 : undefined}
-                  className="mt-4 leading-[.92] tracking-[-0.042em]"
+                  className={lang === 'en' ? 'mt-4 w-full leading-[.96] tracking-[-0.025em] joko-hero-nunito-headline' : 'mt-4 leading-[.92] tracking-[-0.042em]'}
                 />
                 <span className="joko-hero-pencil-underline mt-2" aria-hidden="true" />
 
+                {useSplitEnglishSubtitle ? (
+                  <p className="mt-5 text-[16px] font-bold tracking-[0.15em] leading-6 text-[#303532]/80 max-w-none" style={{ fontFamily: 'var(--joko-font-body)' }}>
+                    <span className="sm:block sm:whitespace-nowrap">From our bakery, beyond it,</span>{' '}
+                    <span className="sm:block sm:whitespace-nowrap">and from makers we believe in.</span>
+                  </p>
+                ) : (
                 <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
                   style={publishedHero?.type === 'home.hero.v1'
                     ? resolveHeroLocaleStyle(publishedHero.props.subtitleStyle, publishedHero.props.subtitleLocaleStyles, lang)
@@ -293,6 +300,7 @@ export function HomepageExperiencePage({
                   fontSizeOverride={lang === 'en' ? '16px' : undefined}
                   className={lang === 'en' ? 'mt-5 max-w-[29rem] tracking-[0.15em] leading-6' : 'mt-5 max-w-[29rem] leading-7'}
                 />
+                )}
 
                 <div className="mt-7 xl:mt-8">
                   <div className="flex items-start gap-0">
