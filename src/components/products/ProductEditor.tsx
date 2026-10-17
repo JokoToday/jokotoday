@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { AdminModalPortal } from '../AdminModalPortal';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../../lib/cmsService';
 import { getPickupDays, PickupDay } from '../../lib/availabilityService';
+import { getPickupV2CustomerEnabled } from '../../lib/pickupV2Rollout';
 import { ProductMediaUploader } from '../ProductMediaUploader';
 import { updateProductStaffProduct } from '../../lib/productStaffService';
 import { getAdminStoreAssignment, saveAdminStoreAssignment, type StoreCategory } from '../../lib/storeCatalogService';
@@ -137,6 +138,61 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const [loading, setLoading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  const [pickupV2, setPickupV2] = useState<boolean | null>(null);
+  const [v2Schedules, setV2Schedules] = useState<{ id: string; label_en: string; is_active: boolean }[]>([]);
+  const [v2Capacities, setV2Capacities] = useState<Record<string, { capacity: number; is_active: boolean }>>({});
+  const [v2Drafts, setV2Drafts] = useState<Record<string, string>>({});
+  const [v2Saving, setV2Saving] = useState<string | null>(null);
+  const [v2Notice, setV2Notice] = useState('');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const enabled = await getPickupV2CustomerEnabled();
+        if (!active) return;
+        setPickupV2(enabled);
+        if (!enabled) return;
+        const [scheduleResult, capacityResult] = await Promise.all([
+          supabase.from('pickup_schedules').select('id,label_en,is_active').eq('is_active', true).order('sort_order'),
+          product?.id
+            ? supabase.from('product_schedule_capacity').select('schedule_id,capacity,is_active').eq('product_id', product.id)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if (scheduleResult.error) throw scheduleResult.error;
+        if (capacityResult.error) throw capacityResult.error;
+        if (!active) return;
+        setV2Schedules(scheduleResult.data || []);
+        setV2Capacities(Object.fromEntries((capacityResult.data || []).map((row) => [row.schedule_id, { capacity: row.capacity, is_active: row.is_active }])));
+        setV2Drafts(Object.fromEntries((capacityResult.data || []).map((row) => [row.schedule_id, String(row.capacity)])));
+      } catch (error) {
+        if (active) setErrors((current) => ({ ...current, pickup_v2: error instanceof Error ? error.message : 'Could not load Pickup v2 configuration.' }));
+      }
+    })();
+    return () => { active = false; };
+  }, [product?.id]);
+  const saveV2Capacity = async (scheduleId: string) => {
+    if (!product?.id) return;
+    const capacity = Number(v2Drafts[scheduleId]);
+    if (!Number.isInteger(capacity) || capacity < 0 || v2Drafts[scheduleId]?.trim() === '') {
+      setErrors((current) => ({ ...current, pickup_v2: 'Enter a nonnegative whole-number capacity.' }));
+      return;
+    }
+    setV2Saving(scheduleId);
+    setV2Notice('');
+    try {
+      const { error } = await supabase.rpc('admin_set_product_schedule_capacity_v2', {
+        p_schedule_id: scheduleId, p_product_id: product.id,
+        p_capacity: capacity, p_apply_to_future_dates: true,
+      });
+      if (error) throw error;
+      setV2Capacities((current) => ({ ...current, [scheduleId]: { capacity, is_active: true } }));
+      setV2Notice('Recurring capacity saved. Future dates updated; existing date overrides preserved.');
+      setErrors((current) => { const next = { ...current }; delete next.pickup_v2; return next; });
+    } catch (error) {
+      setErrors((current) => ({ ...current, pickup_v2: error instanceof Error ? error.message : 'Could not save Pickup v2 capacity.' }));
+    } finally { setV2Saving(null); }
+  };
+
   useEffect(() => {
     if (isProductStaff) return;
     let active = true;
@@ -639,7 +695,26 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             )}
           </div>}
 
-          <div className="border-b border-gray-200 pb-4">
+          {pickupV2 && <div className="border-b border-gray-200 pb-4">
+            <h3 className="mb-3 text-lg font-semibold text-gray-900">Pickup v2 — Recurring Schedule Capacity</h3>
+            <p className="mb-3 text-sm text-gray-600">This site uses Pickup v2. Availability is controlled by recurring schedule capacity and concrete pickup dates, not the legacy pickup-slot checkboxes.</p>
+            {errors.pickup_v2 && <p role="alert" className="mb-2 text-sm text-red-700">{errors.pickup_v2}</p>}
+            {v2Notice && <p role="status" className="mb-2 text-sm text-green-700">{v2Notice}</p>}
+            {!product?.id && <p className="mb-3 text-sm text-amber-800">Save the new product first, then edit it again to set Pickup v2 capacity.</p>}
+            {v2Schedules.length === 0 && <p className="text-sm text-amber-800">No active Pickup v2 schedules were found. Check Admin → Pickup Schedule.</p>}
+            <div className="space-y-3">{v2Schedules.map((schedule) => (
+              <div key={schedule.id} className="rounded-lg border border-[#55766F]/20 bg-[#FFF9EE] p-3">
+                <p className="font-medium text-sm">{schedule.label_en}</p>
+                <p className="text-xs text-gray-600">{v2Capacities[schedule.id] ? (v2Capacities[schedule.id].is_active ? 'Offered' : 'Inactive') : 'Not yet offered'} · Recurring capacity {v2Capacities[schedule.id]?.capacity ?? 'not set'}</p>
+                {!isProductStaff && product?.id && <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="text-sm">Capacity <input type="number" min="0" step="1" className="ml-2 w-24 rounded-lg border p-2" value={v2Drafts[schedule.id] ?? ''} onChange={(event) => setV2Drafts((current) => ({ ...current, [schedule.id]: event.target.value }))} /></label>
+                  <button type="button" disabled={v2Saving !== null} onClick={() => void saveV2Capacity(schedule.id)} className="rounded-lg bg-[#55766F] px-3 py-2 text-sm text-white disabled:opacity-50">{v2Saving === schedule.id ? 'Saving…' : 'Save capacity'}</button>
+                </div>}
+              </div>
+            ))}</div>
+            <p className="mt-3 text-xs text-gray-600">To disable an offer or set date-specific exceptions, use Admin → Pickup Capacity. Saving capacity activates the recurring schedule.</p>
+          </div>}
+          {!pickupV2 &&           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Pickup Rules</h3>
             {errors.pickup_days && <p className="text-sm text-red-600 mb-3">{errors.pickup_days}</p>}
 
@@ -691,6 +766,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
               <p className="text-xs text-gray-600 mt-2">Leave empty to use default stock limit</p>
             </div>}
           </div>
+
+          }
 
           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Availability</h3>
