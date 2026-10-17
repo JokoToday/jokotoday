@@ -9,15 +9,17 @@ interface HeroTypographyProps {
   style?: HeroTextStyle;
   lineStyles?: readonly HeroTitleLineStyle[];
   className?: string;
+  fontFamilyOverride?: string;
+  fontWeightOverride?: number;
 }
 
-export function HeroTypography({ as, value, kind, style, lineStyles, className = '' }: HeroTypographyProps) {
+export function HeroTypography({ as, value, kind, style, lineStyles, className = '', fontFamilyOverride, fontWeightOverride }: HeroTypographyProps) {
   const Element: ElementType = as;
   const headline = kind === 'headline';
   const eyebrow = kind === 'eyebrow';
   const defaults: CSSProperties = {
-    fontFamily: heroFontFamily(style?.font, headline ? 'var(--joko-font-display)' : 'var(--joko-font-body)'),
-    fontWeight: style?.bold !== undefined ? (style.bold ? 700 : 400) : (headline || eyebrow ? 700 : 400),
+    fontFamily: fontFamilyOverride ?? heroFontFamily(style?.font, headline ? 'var(--joko-font-display)' : 'var(--joko-font-body)'),
+    fontWeight: fontWeightOverride ?? (style?.bold !== undefined ? (style.bold ? 700 : 400) : (headline || eyebrow ? 700 : 400)),
     fontStyle: style?.italic ? 'italic' : 'normal',
     // Inline value wins over Tailwind leading classes in both public and draft.
     ...(style?.lineHeight !== undefined ? { lineHeight: style.lineHeight } : {}),
