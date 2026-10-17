@@ -11,9 +11,10 @@ interface HeroTypographyProps {
   className?: string;
   fontFamilyOverride?: string;
   fontWeightOverride?: number;
+  fontSizeOverride?: string;
 }
 
-export function HeroTypography({ as, value, kind, style, lineStyles, className = '', fontFamilyOverride, fontWeightOverride }: HeroTypographyProps) {
+export function HeroTypography({ as, value, kind, style, lineStyles, className = '', fontFamilyOverride, fontWeightOverride, fontSizeOverride }: HeroTypographyProps) {
   const Element: ElementType = as;
   const headline = kind === 'headline';
   const eyebrow = kind === 'eyebrow';
@@ -26,10 +27,10 @@ export function HeroTypography({ as, value, kind, style, lineStyles, className =
     textAlign: style?.align || 'left',
     color: eyebrow ? '#3F665E' : 'var(--joko-brand-text,#303532)',
     ...(kind === 'subtitle' ? { opacity: 0.8 } : {}),
-    fontSize: style?.size !== undefined
+    fontSize: fontSizeOverride ?? (style?.size !== undefined
       ? `clamp(${eyebrow ? 9 : 12}px, ${eyebrow ? 6 : 12}vw, ${style.size}px)`
       : headline ? 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))'
-        : eyebrow ? 'var(--joko-size-label,11px)' : 'var(--joko-size-body,16px)',
+        : eyebrow ? 'var(--joko-size-label,11px)' : 'var(--joko-size-body,16px)'),
   };
   const lines = splitHeroLines(value);
   return <Element className={className} style={defaults}>

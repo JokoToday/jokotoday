@@ -45,14 +45,15 @@ export const jokoTodayHomepageFixture: BuilderDocument = {
       props: {
         logoUrl: '/assets/brand/joko-today-logo-v0.4.webp',
         title: {
-          en: 'Selected Goods.\nfor a\nBrighter Today',
+          en: 'Selected Goods\nfor a\nBrighter Today',
           th: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\nที่สดใสกว่า',
           zh: '好面包\n为了一个更明亮的\n明天。',
         },
         titleRichText: {
           en: [
-            { text: 'Selected Goods.\nfor a\n' },
-            { text: 'Brighter Today', marks: { color: 'accent', italic: true } },
+            { text: 'Selected Goods\nfor a\n' },
+            { text: 'Brighter', marks: { color: 'accent', italic: true } },
+            { text: ' Today' },
           ],
           th: [
             { text: 'ขนมปังดี ๆ\nเพื่อวันพรุ่งนี้\n' },
