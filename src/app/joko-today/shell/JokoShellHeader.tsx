@@ -259,8 +259,10 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             <div className="flex items-center gap-2 sm:gap-3">
               {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && !/^\/(checkout|admin|my-|staff|pickup|walk-in)/.test(window.location.pathname) && (
                 <button type="button" data-joko-ask-launcher onClick={() => window.dispatchEvent(new Event('joko-ask-open'))}
-                  className="rounded-full border border-[#A44F1D]/30 bg-[#F4EFE5] px-3 py-2 text-xs font-bold text-[#8B471F] shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-[#55766F]">
-                  ASK JOKO
+                  aria-label="Ask JOKO" title="Ask JOKO"
+                  className="group inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-[#A44F1D]/30 bg-[#F4EFE5]/90 p-1.5 text-[#8B471F] shadow-sm transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#55766F] sm:pr-3">
+                  <img src="/assets/assistant/ask-joko-avatar-v1.webp" alt="" width="36" height="36" decoding="async" className="h-9 w-9 shrink-0 rounded-full border border-[#55766F]/20 object-cover" />
+                  <span aria-hidden="true" className="hidden whitespace-nowrap text-sm font-semibold sm:inline">Ask JOKO</span>
                 </button>
               )}
               <div className="hidden items-center gap-1 md:flex" aria-label="Language">
