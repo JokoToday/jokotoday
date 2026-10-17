@@ -557,7 +557,7 @@
 .joko-home-shell.joko-hero-full-bleed > div > main { position: relative; z-index: 1; }
 /* Show the foliage/roof softly through the mint navigation without sacrificing readability. */
 .joko-home-shell.joko-hero-full-bleed > div > header {
-  background-color: rgba(207, 227, 223, .76) !important;
+  background-color: rgba(207, 227, 223, .62) !important;
   -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
 }
