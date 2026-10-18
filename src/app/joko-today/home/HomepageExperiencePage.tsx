@@ -18,6 +18,7 @@ import { resolveHeroLocaleStyle } from '../../../platform/builder/heroTypography
 import type { BuilderRichText, HomeHeroSection, HomeTopLikedSection } from '../../../platform/builder/contracts';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
+import { HomepageServices } from './HomepageServices';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 import { JokoIllustrationSlot } from '../../../components/JokoIllustrationSlot';
 import '../shell/jokoNavPencil.css';
@@ -49,7 +50,7 @@ const copy = {
     headline3: 'Today',
     intro: 'From our bakery, beyond it, and from makers we believe in.',
     products: 'Explore the Bakery',
-    howItWorks: 'How it works',
+    howItWorks: 'Explore JOKO',
     select: 'Select',
     preorder: 'Pre-Order',
     pickup: 'Pickup',
@@ -63,7 +64,7 @@ const copy = {
     headline3: '',
     intro: 'อบอย่างตั้งใจเป็นล็อตเล็ก ๆ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของ JOKO',
     products: 'สำรวจเบเกอรี่',
-    howItWorks: 'วิธีสั่งซื้อ',
+    howItWorks: 'สำรวจ JOKO',
     select: 'เลือก',
     preorder: 'สั่งล่วงหน้า',
     pickup: 'รับสินค้า',
@@ -77,7 +78,7 @@ const copy = {
     headline3: '明天。',
     intro: '小批量用心烘焙。线上预订，到 JOKO 取货点领取新鲜出炉的面包。',
     products: '探索烘焙坊',
-    howItWorks: '如何订购',
+    howItWorks: '探索 JOKO',
     select: '选择',
     preorder: '预订',
     pickup: '取货',
@@ -147,9 +148,8 @@ export function HomepageExperiencePage({
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
-  const heroSecondaryLabel = publishedHero?.type === 'home.hero.v1'
-    ? localize(publishedHero.props.secondaryActionLabel, lang, 'en')
-    : labels.howItWorks;
+  const savedSecondary = publishedHero?.type === 'home.hero.v1' ? localize(publishedHero.props.secondaryActionLabel, lang, 'en') : '';
+  const heroSecondaryLabel = savedSecondary && !['How It Works', 'How it works', 'วิธีการสั่งซื้อ', '订购指南'].includes(savedSecondary) ? savedSecondary : labels.howItWorks;
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
@@ -196,18 +196,12 @@ export function HomepageExperiencePage({
   const publishedTopLiked = publishedHomepage?.sections.find(
     (section): section is HomeTopLikedSection => section.type === 'home.top-liked.v1',
   );
-  const showHowItWorks = () => {
-    const section = window.document.getElementById('how-it-works');
+  const showServices = () => {
+    const section = window.document.getElementById('what-you-can-do');
     if (section) {
-      const targetPath = '/#how-it-works';
-      const currentPath = `${window.location.pathname}${window.location.hash}`;
-      if (window.location.pathname === '/' && currentPath !== targetPath) {
-        window.history.pushState({ jokoHomepageSection: 'how-it-works' }, '', targetPath);
-      }
+      if (window.location.pathname === '/') window.history.replaceState({ jokoHomepageSection: 'what-you-can-do' }, '', '/#what-you-can-do');
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
     }
-    onNavigate('how-it-works');
   };
 
   const heroImage = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroImageUrl?.trim()
@@ -323,7 +317,7 @@ export function HomepageExperiencePage({
                         </button>
                         <button
                           type="button"
-                          onClick={showHowItWorks}
+                          onClick={showServices}
                           className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                         >
                           <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
@@ -391,6 +385,7 @@ export function HomepageExperiencePage({
           </div>
         </Container>
       </section>
+      {!heroOnly && <HomepageServices locale={lang} onNavigate={onNavigate} />}
       {!heroOnly && <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}

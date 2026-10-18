@@ -243,6 +243,42 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.services !== undefined) {
+    const config = value.services;
+    if (!isRecord(config)) pushIssue(issues, 'branding.services', 'Service section must be an object.');
+    else {
+      if (config.visible !== undefined && typeof config.visible !== 'boolean') pushIssue(issues, 'branding.services.visible', 'Visibility must be boolean.');
+      for (const field of ['title', 'subtitle'] as const) {
+        if (config[field] !== undefined) validateOptionalLocalizedText(config[field], `branding.services.${field}`, issues, ['en','th','zh']);
+      }
+      if (config.cards !== undefined) {
+        if (!Array.isArray(config.cards) || config.cards.length !== 4) pushIssue(issues, 'branding.services.cards', 'Exactly four service identities required.');
+        else {
+          const expected = ['bakery','store','makers','specials'];
+          const keys = new Set<string>();
+          for (const [index, candidate] of config.cards.entries()) {
+            const base = `branding.services.cards[${index}]`;
+            if (!isRecord(candidate) || !expected.includes(String(candidate.key)) || keys.has(String(candidate.key))) { pushIssue(issues, base, 'Unknown or duplicate service identity.'); continue; }
+            keys.add(String(candidate.key));
+            if (typeof candidate.visible !== 'boolean') pushIssue(issues, `${base}.visible`, 'Visibility must be boolean.');
+            for (const field of ['name','description','exploreLabel','guideLabel','imageAlt'] as const) {
+              if (candidate[field] !== undefined) validateOptionalLocalizedText(candidate[field], `${base}.${field}`, issues, ['en','th','zh']);
+            }
+            if (candidate.imageUrl !== undefined && (typeof candidate.imageUrl !== 'string' || !(candidate.imageUrl.startsWith('/') && !candidate.imageUrl.startsWith('//') || /^https:\/\//i.test(candidate.imageUrl)))) pushIssue(issues, `${base}.imageUrl`, 'Image must be an internal path or HTTPS URL.');
+            if (candidate.videoUrl !== undefined && (typeof candidate.videoUrl !== 'string' || !(candidate.videoUrl.startsWith('/') && !candidate.videoUrl.startsWith('//') || /^https:\/\//i.test(candidate.videoUrl)))) pushIssue(issues, `${base}.videoUrl`, 'Video must be an internal path or HTTPS URL.');
+            if (candidate.destination !== undefined && !['products-bakery','products-non-bakery','makers','specials'].includes(String(candidate.destination))) pushIssue(issues, `${base}.destination`, 'Unknown catalog destination.');
+            if (candidate.guideSteps !== undefined) {
+              if (!isRecord(candidate.guideSteps)) pushIssue(issues, `${base}.guideSteps`, 'Guide steps must be localized.');
+              else for (const [locale, steps] of Object.entries(candidate.guideSteps)) {
+                if (!['en','th','zh'].includes(locale) || !Array.isArray(steps) || steps.length !== 3 || !steps.every(step => typeof step === 'string' && step.length <= 250)) pushIssue(issues, `${base}.guideSteps.${locale}`, 'Expected three short guide steps.');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   if (value.topMenu !== undefined) {
     if (!Array.isArray(value.topMenu) || ![6, 7, 8, 9].includes(value.topMenu.length)) {
       pushIssue(issues, 'branding.topMenu', 'Top menu must preserve the original destinations and may include Specials, Makers and DIY.');
