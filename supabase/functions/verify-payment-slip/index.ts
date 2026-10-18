@@ -242,6 +242,35 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", payment.id);
 
+    // Store orders have a separate physical-stock hold. Reconcile only AFTER
+    // the canonical EasySlip payment finalizer accepts receiver/amount/reference.
+    // This does not create a Store order or bypass the existing payment checks.
+    const { data: storeReconcile, error: storeReconcileError } = await service.rpc(
+      "service_reconcile_store_verified_v1",
+      { p_payment: payment.id },
+    );
+    if (storeReconcileError) {
+      // Payment may already be verified: do not mark it pending or ask the
+      // customer to repay. The scheduled reconciler retries safely.
+      console.error("Store payment confirmed; stock reconciliation pending", {
+        paymentTransactionId: payment.id,
+        message: storeReconcileError.message,
+      });
+      return jsonResponse({
+        state: "verified",
+        payment_status: "paid",
+        order_status: finalized?.order?.status || "confirmed",
+        paymentTransactionId: payment.id,
+        stock_reconciliation: "pending",
+        message: "Payment verified. Store fulfillment confirmation is being completed.",
+      }, 202);
+    }
+    if (storeReconcile === "confirmed") {
+      console.info("Store stock confirmed after verified EasySlip payment", {
+        paymentTransactionId: payment.id,
+      });
+    }
+
     if (handoffId) {
       await service.from("payment_handoff_sessions")
         .update({ status: "verifying", used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
