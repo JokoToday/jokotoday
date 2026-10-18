@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
+import { getStorePaymentPolicy, type StorePaymentPolicy } from '../lib/storePaymentPolicy';
 
 type Plan = 'separate' | 'together';
 type StoreMethod = 'pickup_today' | 'pickup_future' | 'delivery_today';
@@ -16,6 +17,7 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
   const [capabilities, setCapabilities] = useState<Record<string, Capability>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paymentPolicy, setPaymentPolicy] = useState<StorePaymentPolicy | null>(null);
   const [plan, setPlan] = useState<Plan>('separate');
   const [storeMethod, setStoreMethod] = useState<StoreMethod>('pickup_today');
 
@@ -34,6 +36,16 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
       });
     return () => { alive = false; };
   }, [storeItems]);
+
+  useEffect(() => {
+    let active = true;
+    void getStorePaymentPolicy().then((policy) => {
+      if (active) setPaymentPolicy(policy);
+    }).catch(() => {
+      if (active) setPaymentPolicy(null);
+    });
+    return () => { active = false; };
+  }, []);
 
   const subtotal = (rows: typeof items) => rows.reduce((sum, row) => sum + row.product.price * row.quantity, 0);
   const allAllow = (key: 'pickup_today' | 'pickup_preorder' | 'delivery_today') => storeItems.every(({ product, quantity }) => {
@@ -58,6 +70,12 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
     </section>
     {bakeryItems.length > 0 && <section className="mt-4 rounded-xl border p-4"><h2 className="font-semibold">{copy.bakery}</h2>{bakeryItems.map(({ product, quantity }) => <div key={product.id} className="mt-2 flex justify-between gap-3 text-sm"><span>{product.name_en} × {quantity}</span><span>฿{(product.price * quantity).toFixed(2)}</span></div>)}<p className="mt-3 text-xs text-gray-600">{copy.date}</p></section>}
     <div className="mt-5 flex justify-between font-semibold"><span>{copy.total}</span><span>฿{subtotal(items).toFixed(2)}</span></div>
+    <section className="mt-4 rounded-xl border border-[#55766F]/20 p-3">
+      <h2 className="font-semibold">{language === 'th' ? 'วิธีชำระเงิน (ยังไม่เปิดใช้)' : language === 'zh' ? '付款方式（尚未启用）' : 'Payment methods (not yet active)'}</h2>
+      <p className="mt-2 text-sm">{language === 'th' ? 'หลัก: K SHOP + EasySlip (อัปโหลดสลิปเพื่อตรวจสอบ)' : language === 'zh' ? '首选：K SHOP + EasySlip（上传转账凭证验证）' : 'Default: K SHOP + EasySlip (verified bank-transfer slip)'}</p>
+      <p className="mt-1 text-sm text-[#303532]/65">{language === 'th' ? 'สำรอง: Stripe PromptPay เมื่อเปิดใช้และพร้อมใช้งาน' : language === 'zh' ? '备用：Stripe PromptPay（经批准启用后）' : 'Fallback: Stripe PromptPay, when explicitly enabled and available'}</p>
+      {paymentPolicy?.fallback_enabled && <p className="mt-1 text-xs">Stripe fallback configured for Store.</p>}
+    </section>
     <p role="status" className="mt-4 rounded-lg bg-[#FCEEDA] p-3 text-sm text-[#814A25]">{copy.notice}</p>
     <button type="button" disabled className="mt-4 w-full rounded-xl bg-gray-300 px-4 py-3 font-semibold text-gray-600">Checkout — coming soon</button>
     <button type="button" onClick={onReturn} className="mt-3 w-full rounded-xl border px-4 py-3">{copy.back}</button>
