@@ -23,7 +23,7 @@ export function HomepageServices({ locale, onNavigate }: { locale: Language; onN
   const [expanded, setExpanded] = useState<ServiceKey | null>(null);
   const { branding } = usePublishedJokoBranding();
   const config = branding.services;
-  if (config?.visible === false) return null;
+  if (config?.visible !== true) return null;
   const orderedCards: readonly HomeServiceCardConfig[] = config?.cards?.length ? config.cards : services.map((item): HomeServiceCardConfig => ({ key: item.key, visible: true }));
   return <section id="what-you-can-do" className="scroll-mt-24 border-y border-[#55766F]/12 bg-[#FCF8F1] py-14 sm:py-20" aria-labelledby="joko-services-title">
     <Container width="wide">

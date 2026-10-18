@@ -17,7 +17,7 @@ export function HomepageServiceAdmin({value,locale,onChange,onUploadingChange}: 
  return <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3">
  <summary className="cursor-pointer text-sm font-semibold">What You Can Do Here — Services</summary>
  <p className="mt-2 text-xs">Edit {locale.toUpperCase()} content. Save draft and publish to update the homepage. Service identities remain fixed.</p>
- <label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={value?.visible!==false} onChange={e=>onChange({...value,visible:e.target.checked})}/>Show section</label>
+ <label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={value?.visible===true} onChange={e=>onChange({...value,visible:e.target.checked})}/>Show section</label>
  {(['title','subtitle'] as const).map(field=><label key={field} className="mt-2 block text-xs">{field} ({locale})<input className={style} value={value?.[field]?.[locale]??''} placeholder={field==='title'?'What You Can Do Here':'Four ways to discover something good.'} onChange={e=>localized(field,e.target.value)}/></label>)}
  <div className="mt-3 space-y-3">{cards.map((card,index)=>{
  const localPatch=(field:'name'|'description'|'exploreLabel'|'guideLabel'|'imageAlt',text:string)=>patchCard(card.key,{[field]:{...card[field],[locale]:text}});
