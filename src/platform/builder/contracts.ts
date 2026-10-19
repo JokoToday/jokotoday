@@ -104,7 +104,7 @@ export interface HomeServicesConfig {
   cards?: readonly HomeServiceCardConfig[];
 }
 
-export type HomepageSectionKey = 'services' | 'makers' | 'baking' | 'how' | 'pickup' | 'new' | 'beyond' | 'about';
+export type HomepageSectionKey = 'services' | 'makers' | 'baking' | 'how' | 'pickup' | 'new' | 'beyond' | 'about' | 'gallery' | 'reviews';
 export interface HomepageSectionLayoutItem { key: HomepageSectionKey; visible: boolean; }
 export interface BuilderHomepageBranding {
   sectionLayout?: readonly HomepageSectionLayoutItem[];

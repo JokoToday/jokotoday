@@ -262,6 +262,7 @@ function SectionTitle({
           {backToTopLabel}
         </button>
       </div>
+
     </div>
   );
 }
@@ -317,7 +318,7 @@ export function HomepageLowerSections({
   const layouts = branding.sectionLayout;
   const enabled = (key: HomepageSectionKey) => layouts?.find(entry => entry.key === key)?.visible !== false;
   const order = (key: HomepageSectionKey) => layouts?.findIndex(entry => entry.key === key) ?? -1;
-  const position = (key: HomepageSectionKey) => ({ order: order(key) < 0 ? ['services','makers','baking','how','pickup','new','beyond','about'].indexOf(key) : order(key) });
+  const position = (key: HomepageSectionKey) => ({ order: order(key) < 0 ? ['services','makers','baking','how','pickup','new','beyond','about','gallery','reviews'].indexOf(key) : order(key) });
 
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
@@ -675,8 +676,11 @@ export function HomepageLowerSections({
             </article>
           </div>
 
-          <div className="mt-7 grid items-stretch gap-4 lg:grid-cols-2">
-            <article id="gallery-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
+
+        </Container>
+      </section>}
+
+      {enabled('gallery') && <section style={position('gallery')} className="joko-paper-band py-10 scroll-mt-24"><Container width="wide"><article id="gallery-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.galleryTitle}</h3>
@@ -714,9 +718,8 @@ export function HomepageLowerSections({
               ) : (
                 <p className="rounded-2xl border border-dashed border-[#55766F]/20 bg-white/40 p-6 text-sm text-[#303532]/65">{labels.galleryEmpty}</p>
               )}
-            </article>
-
-            <article id="what-people-say-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
+            </article></Container></section>}
+      {enabled('reviews') && <section style={position('reviews')} className="joko-mineral-field py-10 scroll-mt-24"><Container width="wide"><article id="what-people-say-preview" className="joko-about-curation-card min-w-0 rounded-3xl border border-[#55766F]/15 p-5 scroll-mt-24 sm:p-6">
               <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-semibold text-[#303532]" style={{ fontFamily: 'var(--joko-font-display)' }}>{labels.peopleSayTitle}</h3>
@@ -751,10 +754,7 @@ export function HomepageLowerSections({
               ) : (
                 <p className="rounded-2xl border border-dashed border-[#55766F]/20 bg-white/40 p-6 text-sm text-[#303532]/65">{labels.peopleSayEmpty}</p>
               )}
-            </article>
-          </div>
-        </Container>
-      </section>}
+            </article></Container></section>}
 
     </div>
   );

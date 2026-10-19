@@ -1079,7 +1079,9 @@ export function JokoHomepageEditor({
         className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
       >
         {sectionManagerOpen && <HomepageSectionManager
-          layout={branding.sectionLayout?.length === 8 ? branding.sectionLayout : DEFAULT_HOMEPAGE_SECTION_LAYOUT}
+          layout={branding.sectionLayout?.length === 10 ? branding.sectionLayout : branding.sectionLayout?.length === 8
+            ? [...branding.sectionLayout, ...DEFAULT_HOMEPAGE_SECTION_LAYOUT.filter(item => item.key === 'gallery' || item.key === 'reviews')]
+            : DEFAULT_HOMEPAGE_SECTION_LAYOUT}
           onChange={next => updateBranding({ ...branding, sectionLayout: next })}
           onClose={() => setSectionManagerOpen(false)}
           servicesEnabled={branding.services?.visible === true}
