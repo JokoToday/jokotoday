@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { HomepageSectionKey, HomepageSectionLayoutItem } from '../../../platform/builder/contracts';
 export const DEFAULT_HOMEPAGE_SECTION_LAYOUT: HomepageSectionLayoutItem[] = [
  {key:'services',visible:true},{key:'makers',visible:true},{key:'baking',visible:true},
@@ -13,6 +14,12 @@ export function HomepageSectionManager({layout,onChange,onClose,servicesEnabled,
  layout: readonly HomepageSectionLayoutItem[];onChange:(next:HomepageSectionLayoutItem[])=>void;
  onClose:()=>void;servicesEnabled:boolean;onServicesToggle:(visible:boolean)=>void;
 }) {
+ const [draggedIndex,setDraggedIndex]=useState<number|null>(null);
+ const drop=(target:number)=>{
+  if(draggedIndex===null || draggedIndex===target) {setDraggedIndex(null);return;}
+  const next=[...layout];const [moved]=next.splice(draggedIndex,1);next.splice(target,0,moved);
+  setDraggedIndex(null);onChange(next);
+ };
  const move=(i:number,delta:number)=>{
   const target=i+delta;if(target<0||target>=layout.length)return;
   const next=[...layout];[next[i],next[target]]=[next[target],next[i]];onChange(next);
@@ -20,15 +27,15 @@ export function HomepageSectionManager({layout,onChange,onClose,servicesEnabled,
  return <section className="w-full rounded-2xl border border-[#55766F]/20 bg-[#FFFDF7] p-4 shadow-lg sm:p-6" aria-label="Homepage section order">
   <div className="mb-4 flex items-start justify-between gap-3">
    <div><h2 className="text-xl font-semibold text-[#303532]">Homepage Sections</h2>
-   <p className="mt-1 text-sm text-[#303532]/70">Rearrange with arrows and show or hide sections. The Hero remains first. Changes are draft-only until published.</p></div>
+   <p className="mt-1 text-sm text-[#303532]/70">Drag a row or use the arrows to rearrange. Show or hide sections. The Hero remains first. Changes are draft-only until published.</p></div>
    <button type="button" onClick={onClose} className="rounded-lg border px-3 py-2 text-xs font-semibold">Close</button>
   </div>
   <div className="space-y-2">
    <div className="flex items-center gap-3 rounded-xl bg-[#E8E8E8] px-4 py-3 text-sm"><span aria-hidden="true">🔒</span><b className="flex-1">Hero — Selected Goods</b><span className="text-xs text-[#303532]/60">Fixed first</span></div>
    {layout.map((item,index)=>{
     const visible=item.key==='services'?servicesEnabled:item.visible;
-    return <div key={item.key} className="flex items-center gap-2 rounded-xl border border-[#55766F]/10 bg-[#ECECEC] px-3 py-2.5">
-      <span className="text-[#303532]/45" aria-hidden="true">⠿</span>
+    return <div key={item.key} draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';setDraggedIndex(index);}} onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move';}} onDrop={e=>{e.preventDefault();drop(index);}} onDragEnd={()=>setDraggedIndex(null)} className={`flex items-center gap-2 rounded-xl border border-[#55766F]/10 bg-[#ECECEC] px-3 py-2.5 ${draggedIndex===index?'opacity-55 ring-2 ring-[#C76624]/40':''}`}>
+      <span className="cursor-grab text-[#303532]/45" aria-hidden="true">⠿</span>
       <span className="min-w-0 flex-1 text-sm font-semibold text-[#303532]">{SECTION_LABELS[item.key]}</span>
       <button type="button" aria-label={(visible?'Hide ':'Show ')+SECTION_LABELS[item.key]} title={visible?'Hide section':'Show section'}
        className="rounded-lg p-2 hover:bg-white" onClick={()=>item.key==='services'?onServicesToggle(!visible):onChange(layout.map((entry,i)=>i===index?{...entry,visible:!entry.visible}:entry))}>{visible?'◉':'◌'}</button>
