@@ -244,11 +244,13 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   }
 
   if (value.sectionLayout !== undefined) {
-    const expected = ['services','makers','baking','how','pickup','new','beyond','about'];
-    if (!Array.isArray(value.sectionLayout) || value.sectionLayout.length !== expected.length
-      || new Set(value.sectionLayout.map((item: unknown) => isRecord(item) ? item.key : '')).size !== expected.length
-      || value.sectionLayout.some((item: unknown) => !isRecord(item) || !expected.includes(String(item.key)) || typeof item.visible !== 'boolean')) {
-      pushIssue(issues, 'branding.sectionLayout', 'Section layout must contain all eight unique sections with boolean visibility.');
+    const expected = ['services','makers','baking','how','pickup','new','beyond','about','gallery','reviews'];
+    const legacy = expected.slice(0, 8);
+    const count = Array.isArray(value.sectionLayout) ? value.sectionLayout.length : -1;
+    if (!Array.isArray(value.sectionLayout) || ![legacy.length, expected.length].includes(value.sectionLayout.length)
+      || new Set(value.sectionLayout.map((item: unknown) => isRecord(item) ? item.key : '')).size !== count
+      || value.sectionLayout.some((item: unknown) => !isRecord(item) || !(count === legacy.length ? legacy : expected).includes(String(item.key)) || typeof item.visible !== 'boolean')) {
+      pushIssue(issues, 'branding.sectionLayout', 'Section layout must contain all ten unique sections with boolean visibility.');
     }
   }
 
