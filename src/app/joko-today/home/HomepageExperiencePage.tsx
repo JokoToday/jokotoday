@@ -18,7 +18,6 @@ import { resolveHeroLocaleStyle } from '../../../platform/builder/heroTypography
 import type { BuilderRichText, HomeHeroSection, HomeTopLikedSection } from '../../../platform/builder/contracts';
 import { usePublishedJokoBranding } from '../builder/usePublishedJokoLogo';
 import HomepageLowerSections from './HomepageLowerSections';
-import { HomepageServices } from './HomepageServices';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 import { JokoIllustrationSlot } from '../../../components/JokoIllustrationSlot';
 import '../shell/jokoNavPencil.css';
@@ -385,7 +384,6 @@ export function HomepageExperiencePage({
           </div>
         </Container>
       </section>
-      {!heroOnly && <HomepageServices locale={lang} onNavigate={onNavigate} />}
       {!heroOnly && <HomepageLowerSections
         locale={lang}
         onNavigate={onNavigate}

@@ -8,10 +8,10 @@ import { heading, introduction, howLabel, services, type Language, type ServiceK
 
 const icons = { bakery: Croissant, store: Store, makers: Users, specials: Tag };
 
-export function HomepageServices({ locale, onNavigate }: { locale: Language; onNavigate: (page: string) => void }) {
+export function HomepageServices({ locale, onNavigate, draftBranding }: { locale: Language; onNavigate: (page: string) => void; draftBranding?: ReturnType<typeof usePublishedJokoBranding>['branding'] }) {
   const [expanded, setExpanded] = useState<ServiceKey | null>(null);
   const { branding } = usePublishedJokoBranding();
-  const config = branding.services;
+  const config = (draftBranding ?? branding).services;
   if (config?.visible !== true) return null;
   const orderedCards: readonly HomeServiceCardConfig[] = config?.cards?.length ? config.cards : services.map((item): HomeServiceCardConfig => ({ key: item.key, visible: true }));
   return <section id="what-you-can-do" className="scroll-mt-24 border-y border-[#55766F]/12 bg-[#FCF8F1] py-14 sm:py-20" aria-labelledby="joko-services-title">

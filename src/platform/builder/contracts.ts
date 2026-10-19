@@ -104,7 +104,10 @@ export interface HomeServicesConfig {
   cards?: readonly HomeServiceCardConfig[];
 }
 
+export type HomepageSectionKey = 'services' | 'makers' | 'baking' | 'how' | 'pickup' | 'new' | 'beyond' | 'about';
+export interface HomepageSectionLayoutItem { key: HomepageSectionKey; visible: boolean; }
 export interface BuilderHomepageBranding {
+  sectionLayout?: readonly HomepageSectionLayoutItem[];
   services?: HomeServicesConfig;
   /** Desktop and mobile use one menu model; destinations are fixed and safe. */
   topMenu?: readonly TopMenuItem[];
