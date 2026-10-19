@@ -1,4 +1,6 @@
 import { MakersSection } from '../../../components/MakersSection';
+import { HomepageServices } from './HomepageServices';
+import type { BuilderHomepageBranding, HomepageSectionKey } from '../../../platform/builder/contracts';
 import { productOrigin } from '../../../lib/makersService';
 import {
   ArrowRight,
@@ -44,6 +46,7 @@ interface HomepageLowerSectionsProps {
   locale: string;
   onNavigate: (page: string) => void;
   publishedTopLiked?: HomeTopLikedSection | null;
+  draftBranding?: BuilderHomepageBranding;
 }
 
 type LanguageCode = 'en' | 'th' | 'zh';
@@ -267,10 +270,13 @@ export function HomepageLowerSections({
   locale,
   onNavigate,
   publishedTopLiked,
+  draftBranding,
 }: HomepageLowerSectionsProps) {
   const language: LanguageCode = locale === 'th' || locale === 'zh' ? locale : 'en';
   const labels = copy[language];
-  const { branding, document: publishedHomepage } = usePublishedJokoBranding();
+  const published = usePublishedJokoBranding();
+  const branding = draftBranding ?? published.branding;
+  const publishedHomepage = published.document;
   const hero = publishedHomepage?.sections.find((section) => section.type === 'home.hero.v1');
   const legacyFounderPortrait = hero?.type === 'home.hero.v1'
     ? hero.props.notebookNote?.imageUrl?.trim() || null
@@ -308,6 +314,11 @@ export function HomepageLowerSections({
     ? localize(publishedTopLiked.props.browseLabel, language, 'en')
     : labels.seeAll;
   const showBaking = publishedTopLiked?.visible ?? true;
+  const layouts = branding.sectionLayout;
+  const enabled = (key: HomepageSectionKey) => layouts?.find(entry => entry.key === key)?.visible !== false;
+  const order = (key: HomepageSectionKey) => layouts?.findIndex(entry => entry.key === key) ?? -1;
+  const position = (key: HomepageSectionKey) => ({ order: order(key) < 0 ? ['services','makers','baking','how','pickup','new','beyond','about'].indexOf(key) : order(key) });
+
   const [products, setProducts] = useState<CMSProduct[]>([]);
   const [locations, setLocations] = useState<CMSPickupLocation[]>([]);
   const [pickupDataLoading, setPickupDataLoading] = useState(true);
@@ -388,9 +399,10 @@ export function HomepageLowerSections({
 
 
   return (
-    <div>
-      <MakersSection />
-      {showBaking && <section id="whats-baking" className="joko-paper-band py-12 sm:py-16">
+    <div className="flex flex-col">
+      {enabled('services') && <div style={position('services')}><HomepageServices locale={language} onNavigate={onNavigate} draftBranding={branding} /></div>}
+      {enabled('makers') && <div style={position('makers')}><MakersSection /></div>}
+      {enabled('baking') && showBaking && <section style={position('baking')} id="whats-baking" className="joko-paper-band py-12 sm:py-16">
         <Container width="wide">
           <SectionTitle
             title={bakingTitle ? <BuilderRichTextContent value={bakingTitle} /> : labels.bakingTitle}
@@ -437,7 +449,7 @@ export function HomepageLowerSections({
         </Container>
       </section>}
 
-      <section id="how-it-works" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
+      {enabled('how') && <section style={position('how')} id="how-it-works" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle title={labels.howTitle} intro={labels.howIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -456,9 +468,9 @@ export function HomepageLowerSections({
             })}
           </div>
         </Container>
-      </section>
+      </section>}
 
-      <section id="pickup" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
+      {enabled('pickup') && <section style={position('pickup')} id="pickup" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle title={labels.pickupTitle} intro={labels.pickupIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           {locations.length ? (
@@ -506,9 +518,9 @@ export function HomepageLowerSections({
             </p>
           )}
         </Container>
-      </section>
+      </section>}
 
-      <section id="bakers-table" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
+      {enabled('new') && <section style={position('new')} id="bakers-table" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle title={labels.newTitle} intro={labels.newIntro} backToTopLabel={labels.backToTop} onBackToTop={backToTop} />
           {genuinelyNew ? (
@@ -518,9 +530,9 @@ export function HomepageLowerSections({
             </article>
           ) : <div className="rounded-3xl border border-dashed border-[#8B765E]/22 bg-white/15 p-8 text-center"><Sparkles className="mx-auto h-7 w-7 text-[#C76624]/65" /><p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[#303532]/62">{labels.newEmpty}</p><button type="button" onClick={() => onNavigate('products')} className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-[#A44F1D]">{labels.seeBakery}<ArrowRight className="h-4 w-4" /></button></div>}
         </Container>
-      </section>
+      </section>}
 
-      <section id="not-bread" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
+      {enabled('beyond') && <section style={position('beyond')} id="not-bread" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle
             title={labels.beyondTitle}
@@ -577,10 +589,10 @@ export function HomepageLowerSections({
             </div>
           )}
         </Container>
-      </section>
+      </section>}
 
 
-      <section id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
+      {enabled('about') && <section style={position('about')} id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
           <SectionTitle
             title={labels.aboutTitle}
@@ -742,7 +754,7 @@ export function HomepageLowerSections({
             </article>
           </div>
         </Container>
-      </section>
+      </section>}
 
     </div>
   );

@@ -44,6 +44,8 @@ import {
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
 import { HomepageServiceAdmin } from './HomepageServiceAdmin';
+import { HomepageSectionManager, DEFAULT_HOMEPAGE_SECTION_LAYOUT } from './HomepageSectionManager';
+import HomepageLowerSections from '../home/HomepageLowerSections';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
 import { HeroLineStyleControls, HeroStyleControls, HeroWordStyleEditor } from './HeroTypographyControls';
 import { uploadGalleryImage } from '../../../lib/mediaService';
@@ -527,6 +529,7 @@ export function JokoHomepageEditor({
   const [previewZoom, setPreviewZoom] = useState<PreviewZoom>('fit');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [sectionManagerOpen, setSectionManagerOpen] = useState(false);
   const [previewHostWidth, setPreviewHostWidth] = useState(0);
   const [previewContentHeight, setPreviewContentHeight] = useState(900);
   const [previewFrameDocument, setPreviewFrameDocument] = useState<Document | null>(null);
@@ -769,6 +772,10 @@ export function JokoHomepageEditor({
               ‹
             </button>
           </div>
+
+          <button type="button" onClick={() => setSectionManagerOpen(true)} className="w-full rounded-xl border border-[#55766F]/30 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] shadow-sm hover:bg-[#DAE5DE]">
+            Homepage Sections <span className="float-right">↗ Expand</span>
+          </button>
 
           <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
             <summary className="cursor-pointer text-sm font-semibold text-[#303532]">Top Menu — desktop & mobile</summary>
@@ -1071,6 +1078,14 @@ export function JokoHomepageEditor({
         data-builder-pane="preview"
         className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
       >
+        {sectionManagerOpen && <HomepageSectionManager
+          layout={branding.sectionLayout?.length === 8 ? branding.sectionLayout : DEFAULT_HOMEPAGE_SECTION_LAYOUT}
+          onChange={next => updateBranding({ ...branding, sectionLayout: next })}
+          onClose={() => setSectionManagerOpen(false)}
+          servicesEnabled={branding.services?.visible === true}
+          onServicesToggle={visible => updateBranding({ ...branding, services: { ...branding.services, visible } })}
+        />}
+        {!sectionManagerOpen && <>
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#55766F]">Live draft</p>
@@ -1155,9 +1170,10 @@ export function JokoHomepageEditor({
               }}
             />
             {previewFrameDocument?.getElementById('joko-builder-preview-root') && createPortal(
+              <>
               <BuilderPageRenderer
                 experienceHeroPreview
-                document={document}
+                document={{ ...document, sections: document.sections.filter(section => section.type === 'home.hero.v1') }}
                 locale={locale}
                 site={site}
                 providers={providers}
@@ -1165,11 +1181,19 @@ export function JokoHomepageEditor({
                 selectedSectionId={selectedSection?.id}
                 onSectionSelect={setSelectedSectionId}
                 onValidationError={(validationIssues) => onValidationError?.(validationIssues.map((issue) => `${issue.path}: ${issue.message}`))}
-              />,
+              />
+              <HomepageLowerSections
+                locale={locale}
+                onNavigate={() => undefined}
+                draftBranding={branding}
+                publishedTopLiked={document.sections.find((section) => section.type === 'home.top-liked.v1') as Extract<BuilderSection, { type: 'home.top-liked.v1' }> | undefined}
+              />
+              </>,
               previewFrameDocument.getElementById('joko-builder-preview-root')!,
             )}
           </div>
         </div>
+        </>}
       </main>
 
       <aside

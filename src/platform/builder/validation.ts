@@ -243,6 +243,15 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.sectionLayout !== undefined) {
+    const expected = ['services','makers','baking','how','pickup','new','beyond','about'];
+    if (!Array.isArray(value.sectionLayout) || value.sectionLayout.length !== expected.length
+      || new Set(value.sectionLayout.map((item: unknown) => isRecord(item) ? item.key : '')).size !== expected.length
+      || value.sectionLayout.some((item: unknown) => !isRecord(item) || !expected.includes(String(item.key)) || typeof item.visible !== 'boolean')) {
+      pushIssue(issues, 'branding.sectionLayout', 'Section layout must contain all eight unique sections with boolean visibility.');
+    }
+  }
+
   if (value.services !== undefined) {
     const config = value.services;
     if (!isRecord(config)) pushIssue(issues, 'branding.services', 'Service section must be an object.');
