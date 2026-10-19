@@ -6,6 +6,7 @@ import { getProducts, type CMSProduct } from '../lib/cmsService';
 import { getPublicStoreCatalog, type StoreCategory } from '../lib/storeCatalogService';
 import { supabase } from '../lib/supabase';
 import { useCart } from '../context/CartContext';
+import { StoreStagingPaymentHandoff } from '../components/StoreStagingPaymentHandoff';
 
 /**
  * Phase B preview only. Store assignments are explicit, never inferred from
@@ -63,6 +64,7 @@ export default function StorePage() {
   return (
     <main className="joko-mineral-field min-h-[70vh] px-4 py-12">
       <div className="mx-auto max-w-7xl">
+        <StoreStagingPaymentHandoff />
         <div className="mb-8 flex items-center gap-3 text-[#303532]">
           <Store className="h-8 w-8 text-[#55766F]" aria-hidden="true" />
           <h1 className="text-4xl font-semibold">{copy.title}</h1>
