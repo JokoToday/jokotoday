@@ -3,6 +3,9 @@ import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { getStorePaymentPolicy, type StorePaymentPolicy } from '../lib/storePaymentPolicy';
+import { createStoreCustomerOrder, type StoreCheckoutResult } from '../lib/storeCheckoutService';
+import { OnlineQrPaymentPanel } from './OnlinePromptPayPanel';
+import { useAuth } from '../context/AuthContext';
 
 type Plan = 'separate' | 'together';
 type StorePaymentChoice = 'kshop_master' | 'stripe_promptpay';
@@ -13,6 +16,11 @@ type Capability = { product_id: string; pickup_today: boolean; pickup_preorder: 
 export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) {
   const { items } = useCart();
   const { language } = useLanguage();
+  const { user } = useAuth();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [createdOrder, setCreatedOrder] = useState<StoreCheckoutResult | null>(null);
+  const [requestKey] = useState(() => crypto.randomUUID());
   const storeItems = useMemo(() => items.filter((row) => row.product.catalog_scope === 'store_only'), [items]);
   const bakeryItems = items.filter((row) => row.product.catalog_scope !== 'store_only');
   const [capabilities, setCapabilities] = useState<Record<string, Capability>>({});
@@ -49,6 +57,21 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
     return () => { active = false; };
   }, []);
 
+  const submitStoreOrder = async () => {
+    if (!user || !paymentPolicy?.checkout_enabled || checkoutLoading || createdOrder ||
+      bakeryItems.length > 0 || storeMethod !== 'pickup_today') return;
+    setCheckoutLoading(true);
+    setCheckoutError('');
+    try {
+      const result = await createStoreCustomerOrder(requestKey,
+        storeItems.map(({ product, quantity }) => ({ product_id: product.id, quantity })), paymentChoice);
+      setCreatedOrder(result);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Unable to create Store order.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
   const subtotal = (rows: typeof items) => rows.reduce((sum, row) => sum + row.product.price * row.quantity, 0);
   const allAllow = (key: 'pickup_today' | 'pickup_preorder' | 'delivery_today') => storeItems.every(({ product, quantity }) => {
     const cap = capabilities[product.id];
@@ -90,7 +113,19 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
       </p>
     </fieldset>
     <p role="status" className="mt-4 rounded-lg bg-[#FCEEDA] p-3 text-sm text-[#814A25]">{copy.notice}</p>
-    <button type="button" disabled className="mt-4 w-full rounded-xl bg-gray-300 px-4 py-3 font-semibold text-gray-600">Checkout — coming soon</button>
+    {checkoutError && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p>}
+    {createdOrder ? <section className="mt-5 rounded-xl border border-[#55766F]/30 p-4">
+      <p className="mb-3 text-sm font-semibold">{createdOrder.order_number || 'Store order created'} · ฿{Number(createdOrder.amount_due || 0).toFixed(2)}</p>
+      <OnlineQrPaymentPanel orderId={createdOrder.order_id} existingStorePaymentId={createdOrder.payment_transaction_id} language={language}
+        onExpired={() => setCheckoutError('The payment window expired. Please start a new Store order.')} />
+    </section> : <button type="button" onClick={() => void submitStoreOrder()}
+      disabled={!paymentPolicy?.checkout_enabled || !user || checkoutLoading || loading || Boolean(error) || !methodAvailable ||
+        bakeryItems.length > 0 || storeMethod !== 'pickup_today' ||
+        (paymentChoice === 'stripe_promptpay' && !paymentPolicy.fallback_enabled)}
+      className="mt-4 w-full rounded-xl bg-[#55766F] px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600">
+      {checkoutLoading ? 'Preparing order…' : paymentPolicy?.checkout_enabled ? 'Place Store order' : 'Checkout — coming soon'}
+    </button>}
+    {!user && <p className="mt-2 text-sm">{language === 'th' ? 'กรุณาเข้าสู่ระบบก่อนชำระเงิน' : language === 'zh' ? '请先登录后结账' : 'Please sign in to check out.'}</p>}
     <button type="button" onClick={onReturn} className="mt-3 w-full rounded-xl border px-4 py-3">{copy.back}</button>
   </div></main>;
 }

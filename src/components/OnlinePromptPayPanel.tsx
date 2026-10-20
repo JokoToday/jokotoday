@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Clock, FileImage, Loader2, Qr
 import { QRCodeSVG } from 'qrcode.react';
 import {
   createOrGetPaymentTransaction,
+  getExistingStorePaymentTransaction,
   createPaymentHandoff,
   expireOwnPaymentTransaction,
   getPaymentSettings,
@@ -134,8 +135,10 @@ export function OnlineQrPaymentPanel({
   language,
   onPaid,
   onExpired,
+  existingStorePaymentId,
 }: {
   orderId: string;
+  existingStorePaymentId?: string;
   language: Language;
   onPaid?: () => void;
   onExpired?: () => void;
@@ -167,12 +170,14 @@ export function OnlineQrPaymentPanel({
         setError('');
         const settings = await getPaymentSettings();
         if (cancelled) return;
-        setEnabled(settings.online_promptpay_enabled);
-        setPaymentWindowMinutes(settings.payment_window_minutes);
+        setEnabled(existingStorePaymentId ? true : settings.online_promptpay_enabled);
+        setPaymentWindowMinutes(existingStorePaymentId ? 15 : settings.payment_window_minutes);
 
-        if (!settings.online_promptpay_enabled) return;
+        if (!settings.online_promptpay_enabled && !existingStorePaymentId) return;
 
-        const nextTransaction = await createOrGetPaymentTransaction(orderId);
+        const nextTransaction = existingStorePaymentId
+          ? await getExistingStorePaymentTransaction(orderId, existingStorePaymentId)
+          : await createOrGetPaymentTransaction(orderId);
         if (cancelled) return;
         setTransaction(nextTransaction);
 
@@ -207,7 +212,7 @@ export function OnlineQrPaymentPanel({
 
     void load();
     return () => { cancelled = true; };
-  }, [orderId, language]);
+  }, [orderId, language, existingStorePaymentId]);
 
   useEffect(() => {
     if (!intent?.expiresAt || paid) return;

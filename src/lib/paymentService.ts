@@ -124,6 +124,24 @@ export async function createOrGetPaymentTransaction(orderId: string): Promise<Pa
   } as PaymentTransaction;
 }
 
+/** Fetch an existing Store payment owned by the signed-in customer.
+ * Never create a second transaction for Store checkout. */
+export async function getExistingStorePaymentTransaction(
+  orderId: string,
+  paymentTransactionId: string,
+): Promise<PaymentTransaction> {
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  if (authError || !userData.user) throw new Error('Please sign in to continue payment.');
+  const { data, error } = await supabase.from('payment_transactions')
+    .select('id,order_id,customer_id,provider,payment_mode,rail,currency,amount_due,status,provider_transaction_ref,expires_at,verified_at,last_error_code,last_error_message')
+    .eq('id', paymentTransactionId)
+    .eq('order_id', orderId)
+    .eq('customer_id', userData.user.id)
+    .single();
+  if (error || !data) throw new Error('The Store payment is not available for this account.');
+  return { ...data, amount_due: Number(data.amount_due) } as PaymentTransaction;
+}
+
 export async function getPromptPayIntent(paymentTransactionId: string): Promise<PromptPayIntent> {
   const { data, error } = await supabase.functions.invoke('promptpay-payment-intent', {
     body: { paymentTransactionId },
