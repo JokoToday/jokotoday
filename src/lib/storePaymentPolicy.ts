@@ -5,7 +5,7 @@ export interface StorePaymentPolicy {
   primary_provider: 'kshop_master';
   fallback_provider: 'stripe_promptpay';
   fallback_enabled: boolean;
-  checkout_enabled: false;
+  checkout_enabled: boolean;
 }
 
 /** Read-only Store policy. Does not create payment intents or authorize checkout. */
