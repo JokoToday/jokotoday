@@ -530,6 +530,7 @@ export function JokoHomepageEditor({
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [sectionManagerOpen, setSectionManagerOpen] = useState(false);
+  const [crewEditorOpen, setCrewEditorOpen] = useState(false);
   const [previewHostWidth, setPreviewHostWidth] = useState(0);
   const [previewContentHeight, setPreviewContentHeight] = useState(900);
   const [previewFrameDocument, setPreviewFrameDocument] = useState<Document | null>(null);
@@ -567,7 +568,7 @@ export function JokoHomepageEditor({
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [sectionManagerOpen, crewEditorOpen]);
 
   useEffect(() => {
     if (!previewFrameDocument) return undefined;
@@ -576,6 +577,13 @@ export function JokoHomepageEditor({
     previewFrameDocument.body.style.margin = '0';
     previewFrameDocument.body.style.background = '#ffffff';
     previewFrameDocument.body.style.minWidth = '0';
+    const handleWheel = (event: WheelEvent) => {
+      if (!previewHostRef.current) return;
+      previewHostRef.current.scrollTop += event.deltaY;
+      previewHostRef.current.scrollLeft += event.deltaX;
+      event.preventDefault();
+    };
+    previewFrameDocument.addEventListener('wheel', handleWheel, { passive: false });
 
     const measure = () => {
       const root = previewFrameDocument.getElementById('joko-builder-preview-root');
@@ -592,9 +600,11 @@ export function JokoHomepageEditor({
     const root = previewFrameDocument.getElementById('joko-builder-preview-root');
     if (root) observer.observe(root);
     observer.observe(previewFrameDocument.body);
+    const mutations = new MutationObserver(measure);
+    if (root) mutations.observe(root, { childList: true, subtree: true });
     measure();
 
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); mutations.disconnect(); previewFrameDocument.removeEventListener('wheel', handleWheel); };
   }, [previewFrameDocument, locale, document]);
 
   const selectedSection = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
@@ -773,7 +783,7 @@ export function JokoHomepageEditor({
             </button>
           </div>
 
-          <button type="button" onClick={() => setSectionManagerOpen(true)} className="w-full rounded-xl border border-[#55766F]/30 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] shadow-sm hover:bg-[#DAE5DE]">
+          <button type="button" onClick={() => {setSectionManagerOpen(true);setCrewEditorOpen(false);}} className="w-full rounded-xl border border-[#55766F]/30 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] shadow-sm hover:bg-[#DAE5DE]">
             Homepage Sections <span className="float-right">↗ Expand</span>
           </button>
 
@@ -1042,39 +1052,9 @@ export function JokoHomepageEditor({
             </div>
           </details>
 
-          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">About JOKO — Unofficial illustrated support team</summary>
-            <p className="mt-2 text-xs text-[#303532]/65">Use only approved character-master portraits. The section stays hidden until enabled and at least one portrait URL is supplied. Save Draft, preview, then publish.</p>
-            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={branding.illustratedCrew?.visible === true} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,visible:e.target.checked}})}/> Show illustrated support team</label>
-            <button type="button" className="mt-3 rounded-lg border px-3 py-2 text-sm" disabled={(branding.illustratedCrew?.members?.length || 0)>=8} onClick={()=>{
-              const members=branding.illustratedCrew?.members || [];
-              updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:[...members,{id:`character-${Math.max(0,...members.map(m=>Number(m.id.match(/^character-(\d+)$/)?.[1])||0))+1}`,name:'',imageUrl:'',role:{en:'',th:'',zh:''},bio:{en:'',th:'',zh:''}}]}});
-            }}>Add illustrated character</button>
-            <div className="mt-4 space-y-4">{branding.illustratedCrew?.members?.map((member,index)=>(
-              <div key={member.id} className="rounded-xl border p-3 space-y-2">
-                <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
-                {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs">
-                  <ImagePlus className="h-4 w-4" /> Upload approved character portrait
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async e=>{
-                    const file=e.target.files?.[0];e.target.value='';if(!file)return;
-                    reportUploadState(`crew-${member.id}`,true);
-                    try {
-                      const result=await uploadGalleryImage({file,gallerySlot:`about-crew-${member.id}`});
-                      const current=latestDocumentRef.current;
-                      const currentBranding=resolveJokoHomepageBranding(current.branding);
-                      const next={...current,branding:{...currentBranding,illustratedCrew:{...currentBranding.illustratedCrew,members:currentBranding.illustratedCrew?.members?.map(m=>m.id===member.id?{...m,imageUrl:result.publicUrl}:m)}}};
-                      latestDocumentRef.current=next;onDocumentChange(next);
-                    }catch(err){window.alert(err instanceof Error?err.message:'Image upload failed.');}
-                    finally{reportUploadState(`crew-${member.id}`,false);}
-                  }}/>
-                </label>
-                {(['en','th','zh'] as const).map(lang=><div key={lang} className="grid gap-2 sm:grid-cols-2">
-                  {(['role','bio'] as const).map(field=><label key={field} className="block text-xs">{field==='role'?'Fictional job title':'Fun description'} ({lang.toUpperCase()})<textarea className="mt-1 w-full rounded-lg border p-2 text-sm" rows={field==='role'?2:3} value={member[field][lang]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:{...m[field],[lang]:e.target.value}}:m)}})}/></label>)}
-                </div>)}
-              </div>
-            ))}</div>
-          </details>
+          <button type="button" className="w-full rounded-2xl border border-[#55766F]/25 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] hover:bg-[#DAE5DE]" onClick={()=>{setCrewEditorOpen(true);setSectionManagerOpen(false);}}>
+            About JOKO — Illustrated Support Team · Open editor →
+          </button>
 
           <HomepageServiceAdmin value={branding.services} locale={locale as 'en' | 'th' | 'zh'}
             onChange={next => updateBranding({ ...branding, services: next })}
@@ -1112,6 +1092,46 @@ export function JokoHomepageEditor({
         data-builder-pane="preview"
         className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
       >
+        {crewEditorOpen && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-[#55766F]/20 bg-[#FFFDF7] p-4 sm:p-6">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b pb-4">
+            <div><h2 className="text-xl font-semibold">About JOKO — Illustrated Support Team</h2><p className="mt-1 text-sm text-[#303532]/65">Edit each character's portrait, role and short biography in all three languages. Save Draft before publishing.</p></div>
+            <button type="button" onClick={()=>setCrewEditorOpen(false)} className="rounded-lg border bg-white px-3 py-2 text-sm font-semibold">Close editor</button>
+          </div>
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">About JOKO — Unofficial illustrated support team</summary>
+            <p className="mt-2 text-xs text-[#303532]/65">Use only approved character-master portraits. The section stays hidden until enabled and at least one portrait URL is supplied. Save Draft, preview, then publish.</p>
+            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={branding.illustratedCrew?.visible === true} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,visible:e.target.checked}})}/> Show illustrated support team</label>
+            <button type="button" className="mt-3 rounded-lg border px-3 py-2 text-sm" disabled={(branding.illustratedCrew?.members?.length || 0)>=8} onClick={()=>{
+              const members=branding.illustratedCrew?.members || [];
+              updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:[...members,{id:`character-${Math.max(0,...members.map(m=>Number(m.id.match(/^character-(\d+)$/)?.[1])||0))+1}`,name:'',imageUrl:'',role:{en:'',th:'',zh:''},bio:{en:'',th:'',zh:''}}]}});
+            }}>Add illustrated character</button>
+            <div className="mt-4 space-y-4">{branding.illustratedCrew?.members?.map((member,index)=>(
+              <div key={member.id} className="rounded-xl border p-3 space-y-2">
+                <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
+                {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs">
+                  <ImagePlus className="h-4 w-4" /> Upload approved character portrait
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async e=>{
+                    const file=e.target.files?.[0];e.target.value='';if(!file)return;
+                    reportUploadState(`crew-${member.id}`,true);
+                    try {
+                      const result=await uploadGalleryImage({file,gallerySlot:`about-crew-${member.id}`});
+                      const current=latestDocumentRef.current;
+                      const currentBranding=resolveJokoHomepageBranding(current.branding);
+                      const next={...current,branding:{...currentBranding,illustratedCrew:{...currentBranding.illustratedCrew,members:currentBranding.illustratedCrew?.members?.map(m=>m.id===member.id?{...m,imageUrl:result.publicUrl}:m)}}};
+                      latestDocumentRef.current=next;onDocumentChange(next);
+                    }catch(err){window.alert(err instanceof Error?err.message:'Image upload failed.');}
+                    finally{reportUploadState(`crew-${member.id}`,false);}
+                  }}/>
+                </label>
+                {(['en','th','zh'] as const).map(lang=><div key={lang} className="grid gap-3 lg:grid-cols-2">
+                  {(['role','bio'] as const).map(field=><label key={field} className="block text-xs">{field==='role'?'Fictional job title':'Fun description'} ({lang.toUpperCase()})<textarea className="mt-1 w-full min-h-20 rounded-lg border p-3 text-sm" rows={field==='role'?2:3} value={member[field][lang]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:{...m[field],[lang]:e.target.value}}:m)}})}/></label>)}
+                </div>)}
+              </div>
+            ))}</div>
+          </details>
+
+        </div>}
         {sectionManagerOpen && <HomepageSectionManager
           layout={branding.sectionLayout?.length === 10 ? branding.sectionLayout : branding.sectionLayout?.length === 8
             ? [...branding.sectionLayout, ...DEFAULT_HOMEPAGE_SECTION_LAYOUT.filter(item => item.key === 'gallery' || item.key === 'reviews')]
@@ -1121,7 +1141,7 @@ export function JokoHomepageEditor({
           servicesEnabled={branding.services?.visible === true}
           onServicesToggle={visible => updateBranding({ ...branding, services: { ...branding.services, visible } })}
         />}
-        {!sectionManagerOpen && <>
+        {!sectionManagerOpen && !crewEditorOpen && <>
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#55766F]">Live draft</p>
