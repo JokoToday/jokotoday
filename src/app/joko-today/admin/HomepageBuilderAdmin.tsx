@@ -18,6 +18,8 @@ import {
   type BuilderDocument,
 } from '../../../platform/builder';
 import { JokoHomepageEditor } from './JokoHomepageEditor';
+import HomepageLowerSections from '../home/HomepageLowerSections';
+import type { BuilderSection } from '../../../platform/builder/contracts';
 import './jokoAdmin.css';
 import {
   BuilderPersistenceConflictError,
@@ -516,7 +518,7 @@ export function HomepageBuilderAdmin() {
           <div className="border-y border-[#55766F]/16 bg-[#FFF9EE]/86">
             <BuilderPageRenderer
               experienceHeroPreview
-              document={draftDocument}
+              document={{ ...draftDocument, sections: draftDocument.sections.filter(section => section.type === 'home.hero.v1') }}
               locale={language}
               site={jokoTodayBuilderSite}
               providers={providers}
@@ -527,6 +529,12 @@ export function HomepageBuilderAdmin() {
               onSectionError={(sectionId, error) => {
                 setIssues((current) => [...current, `${sectionId}: ${error.message}`]);
               }}
+            />
+            <HomepageLowerSections
+              locale={language}
+              onNavigate={() => undefined}
+              draftBranding={resolveJokoHomepageBranding(draftDocument.branding)}
+              publishedTopLiked={draftDocument.sections.find(section => section.type === 'home.top-liked.v1') as Extract<BuilderSection, { type: 'home.top-liked.v1' }> | undefined}
             />
           </div>
         </div>
