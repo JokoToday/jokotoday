@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getStorePaymentPolicy, type StorePaymentPolicy } from '../lib/storePaymentPolicy';
 
 type Plan = 'separate' | 'together';
+type StorePaymentChoice = 'kshop_master' | 'stripe_promptpay';
 type StoreMethod = 'pickup_today' | 'pickup_future' | 'delivery_today';
 type Capability = { product_id: string; pickup_today: boolean; pickup_preorder: boolean; delivery_today: boolean; stock_on_hand: number; stock_reserved: number };
 
@@ -20,6 +21,7 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
   const [paymentPolicy, setPaymentPolicy] = useState<StorePaymentPolicy | null>(null);
   const [plan, setPlan] = useState<Plan>('separate');
   const [storeMethod, setStoreMethod] = useState<StoreMethod>('pickup_today');
+  const [paymentChoice, setPaymentChoice] = useState<StorePaymentChoice>('kshop_master');
 
   useEffect(() => {
     let alive = true;
@@ -70,12 +72,23 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
     </section>
     {bakeryItems.length > 0 && <section className="mt-4 rounded-xl border p-4"><h2 className="font-semibold">{copy.bakery}</h2>{bakeryItems.map(({ product, quantity }) => <div key={product.id} className="mt-2 flex justify-between gap-3 text-sm"><span>{product.name_en} × {quantity}</span><span>฿{(product.price * quantity).toFixed(2)}</span></div>)}<p className="mt-3 text-xs text-gray-600">{copy.date}</p></section>}
     <div className="mt-5 flex justify-between font-semibold"><span>{copy.total}</span><span>฿{subtotal(items).toFixed(2)}</span></div>
-    <section className="mt-4 rounded-xl border border-[#55766F]/20 p-3">
-      <h2 className="font-semibold">{language === 'th' ? 'วิธีชำระเงิน (ยังไม่เปิดใช้)' : language === 'zh' ? '付款方式（尚未启用）' : 'Payment methods (not yet active)'}</h2>
-      <p className="mt-2 text-sm">{language === 'th' ? 'หลัก: K SHOP + EasySlip (อัปโหลดสลิปเพื่อตรวจสอบ)' : language === 'zh' ? '首选：K SHOP + EasySlip（上传转账凭证验证）' : 'Default: K SHOP + EasySlip (verified bank-transfer slip)'}</p>
-      <p className="mt-1 text-sm text-[#303532]/65">{language === 'th' ? 'สำรอง: Stripe PromptPay เมื่อเปิดใช้และพร้อมใช้งาน' : language === 'zh' ? '备用：Stripe PromptPay（经批准启用后）' : 'Fallback: Stripe PromptPay, when explicitly enabled and available'}</p>
-      {paymentPolicy?.fallback_enabled && <p className="mt-1 text-xs">Stripe fallback configured for Store.</p>}
-    </section>
+    <fieldset className="mt-4 rounded-xl border border-[#55766F]/20 p-3">
+      <legend className="px-1 font-semibold">{language === 'th' ? 'เลือกวิธีชำระเงิน' : language === 'zh' ? '选择付款方式' : 'Choose a payment method'}</legend>
+      <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-xl border border-[#55766F]/20 bg-white/50 p-3">
+        <input type="radio" name="store-payment-choice" checked={paymentChoice === 'kshop_master'} onChange={() => setPaymentChoice('kshop_master')} className="mt-1" />
+        <span><strong className="block">{language === 'th' ? 'โอนเงินผ่านธนาคาร · EasySlip' : language === 'zh' ? '银行转账 · EasySlip' : 'Bank transfer · EasySlip'}</strong>
+        <span className="mt-1 block text-sm text-[#303532]/75">{language === 'th' ? 'ชำระเงินแล้วอัปโหลดสลิปจากคอมพิวเตอร์หรือโทรศัพท์เพื่อยืนยัน' : language === 'zh' ? '转账后从电脑或手机上传凭证进行验证' : 'After paying, upload your bank slip from this computer or your phone.'}</span></span>
+      </label>
+      <label className="mt-2 flex cursor-pointer items-start gap-3 rounded-xl border border-[#55766F]/20 bg-white/50 p-3">
+        <input type="radio" name="store-payment-choice" checked={paymentChoice === 'stripe_promptpay'} onChange={() => setPaymentChoice('stripe_promptpay')} className="mt-1" />
+        <span><strong className="block">Stripe PromptPay</strong>
+        <span className="mt-1 block text-sm text-[#303532]/75">{language === 'th' ? 'สแกน QR PromptPay ด้วยแอปธนาคาร ยืนยันการชำระเงินอัตโนมัติ ไม่ต้องอัปโหลดสลิป' : language === 'zh' ? '使用银行 App 扫描 PromptPay 二维码，自动确认付款，无需上传凭证' : 'Scan the PromptPay payment QR with your banking app. Confirmation is automatic; no slip upload.'}</span></span>
+      </label>
+      <p className="mt-3 text-xs text-[#303532]/70" role="status">
+        {language === 'th' ? 'ระบบกำลังเตรียมตัวเลือกนี้ ยังไม่สามารถชำระเงินได้' : language === 'zh' ? '正在准备此付款方式，暂不能付款' : 'Selected method is a preview. No payment will be initiated yet.'}
+        {paymentChoice === 'stripe_promptpay' && paymentPolicy?.fallback_enabled !== true && (language === 'en' ? ' Stripe is not enabled for Store transactions in staging.' : language === 'th' ? ' ยังไม่ได้เปิดใช้ Stripe สำหรับ Store ใน staging' : '测试环境尚未启用商店 Stripe 支付')}
+      </p>
+    </fieldset>
     <p role="status" className="mt-4 rounded-lg bg-[#FCEEDA] p-3 text-sm text-[#814A25]">{copy.notice}</p>
     <button type="button" disabled className="mt-4 w-full rounded-xl bg-gray-300 px-4 py-3 font-semibold text-gray-600">Checkout — coming soon</button>
     <button type="button" onClick={onReturn} className="mt-3 w-full rounded-xl border px-4 py-3">{copy.back}</button>
