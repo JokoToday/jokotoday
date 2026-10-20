@@ -1100,7 +1100,7 @@ export function JokoHomepageEditor({
       >
         {crewEditorOpen && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-[#55766F]/20 bg-[#FFFDF7] p-4 sm:p-6">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b pb-4">
-            <div><h2 className="text-xl font-semibold">About JOKO — Illustrated Support Team</h2><p className="mt-1 text-sm text-[#303532]/65">Edit each character's portrait, role and short biography in all three languages. Save Draft before publishing.</p></div>
+            <div><h2 className="text-xl font-semibold">About JOKO — Illustrated Support Team</h2><p className="mt-1 text-sm text-[#303532]/65">Edit each character's portrait, role and short biography in all three languages. Changes are unsaved until you click Save Draft in the main toolbar; publishing is separate.</p></div>
             <button type="button" onClick={()=>setCrewEditorOpen(false)} className="rounded-lg border bg-white px-3 py-2 text-sm font-semibold">Close editor</button>
           </div>
           <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-4">
@@ -1115,8 +1115,8 @@ export function JokoHomepageEditor({
               <div key={member.id} className="rounded-xl border p-3 space-y-2">
                 <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
                 {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs">
-                  <ImagePlus className="h-4 w-4" /> Upload approved character portrait
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#A44F1D] bg-[#C76624] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#A44F1D] focus-within:ring-2 focus-within:ring-[#55766F]">
+                  <ImagePlus className="h-4 w-4" /> Upload character portrait
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async e=>{
                     const file=e.target.files?.[0];e.target.value='';if(!file)return;
                     reportUploadState(`crew-${member.id}`,true);
@@ -1125,7 +1125,7 @@ export function JokoHomepageEditor({
                       const current=latestDocumentRef.current;
                       const currentBranding=resolveJokoHomepageBranding(current.branding);
                       const next={...current,branding:{...currentBranding,illustratedCrew:{...currentBranding.illustratedCrew,members:currentBranding.illustratedCrew?.members?.map(m=>m.id===member.id?{...m,imageUrl:result.publicUrl}:m)}}};
-                      latestDocumentRef.current=next;onDocumentChange(next);
+                      latestDocumentRef.current=next;onDocumentChange(next);window.alert(`Image uploaded for ${member.name || 'character'}. Click Save Draft in the main toolbar to keep it.`);
                     }catch(err){window.alert(err instanceof Error?err.message:'Image upload failed.');}
                     finally{reportUploadState(`crew-${member.id}`,false);}
                   }}/>
