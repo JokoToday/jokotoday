@@ -15,8 +15,22 @@ import { resolveTopMenu } from './topMenu';
 
 export type JokoHomepageBranding = BuilderHomepageBranding;
 
+export const DEFAULT_ILLUSTRATED_CREW: NonNullable<JokoHomepageBranding['illustratedCrew']> = {
+  visible: false,
+  members: [{
+    id: 'nina', name: 'Nina', imageUrl: '',
+    role: { en: 'Head of Shopping Adventures', th: 'หัวหน้าฝ่ายผจญภัยช้อปปิ้ง', zh: '购物探险主管' },
+    bio: {
+      en: 'Nina joined JOKO to buy one croissant. Somehow, she ended up with a full shopping basket and a job teaching everyone how to browse, order, and collect their goodies. Her biggest challenge? Getting through a shopping tutorial without buying something herself.',
+      th: 'นีน่าแวะมาที่ JOKO ตั้งใจจะซื้อครัวซองต์แค่ชิ้นเดียว แต่ไป ๆ มา ๆ ตะกร้ากลับเต็ม แถมได้งานสอนทุกคนเลือกสินค้า สั่งซื้อ และรับของอีกต่างหาก ความท้าทายที่สุดของเธอน่ะเหรอ? สอนช้อปให้จบโดยไม่เผลอกดซื้ออะไรเพิ่มเอง!',
+      zh: 'Nina 原本只想来 JOKO 买一个可颂，结果不知不觉装满了购物篮，还成了教大家浏览商品、下单和取货的购物向导。她最大的挑战？讲完一整套购物教程，却忍住不再给自己加购！',
+    },
+  }],
+};
+
 export const DEFAULT_JOKO_HOMEPAGE_BRANDING: JokoHomepageBranding = {
   aboutCards: {},
+  illustratedCrew: DEFAULT_ILLUSTRATED_CREW,
   topMenu: resolveTopMenu(undefined),
   logoScale: 120,
   typography: {
@@ -154,6 +168,8 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
 
   return {
     aboutCards,
+    illustratedCrew: input.illustratedCrew && typeof input.illustratedCrew === 'object' && !Array.isArray(input.illustratedCrew)
+      ? input.illustratedCrew as JokoHomepageBranding['illustratedCrew'] : DEFAULT_ILLUSTRATED_CREW,
     sectionLayout: Array.isArray(input.sectionLayout) ? input.sectionLayout as JokoHomepageBranding['sectionLayout'] : undefined,
     services: input.services && typeof input.services === 'object' && !Array.isArray(input.services) ? input.services as JokoHomepageBranding['services'] : undefined,
     topMenu: resolveTopMenu(input.topMenu),

@@ -243,6 +243,30 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.illustratedCrew !== undefined) {
+    const crew = value.illustratedCrew;
+    if (!isRecord(crew) || (crew.visible !== undefined && typeof crew.visible !== 'boolean') ||
+      (crew.members !== undefined && (!Array.isArray(crew.members) || crew.members.length > 8))) {
+      pushIssue(issues, 'branding.illustratedCrew', 'Illustrated team must have a visibility flag and at most eight members.');
+    } else if (Array.isArray(crew.members)) {
+      const seen = new Set<string>();
+      crew.members.forEach((member: unknown, i: number) => {
+        const path = `branding.illustratedCrew.members.${i}`;
+        if (!isRecord(member) || !isNonEmptyString(member.id) || !isNonEmptyString(member.name) ||
+          member.id.length > 60 || member.name.length > 100 || seen.has(member.id)) {
+          pushIssue(issues, path, 'Each illustrated character needs a unique ID and name.');return;
+        }
+        seen.add(member.id);
+        if (member.imageUrl !== undefined && (typeof member.imageUrl !== 'string' ||
+          (member.imageUrl !== '' && !(member.imageUrl.startsWith('/') && !member.imageUrl.startsWith('//') || /^https:\/\//i.test(member.imageUrl))))) {
+          pushIssue(issues, `${path}.imageUrl`, 'Artwork must use a bundled path or HTTPS URL.');
+        }
+        validateOptionalLocalizedText(member.role, `${path}.role`, issues, ['en','th','zh']);
+        validateOptionalLocalizedText(member.bio, `${path}.bio`, issues, ['en','th','zh']);
+      });
+    }
+  }
+
   if (value.sectionLayout !== undefined) {
     const expected = ['services','makers','baking','how','pickup','new','beyond','about','gallery','reviews'];
     const legacy = expected.slice(0, 8);
