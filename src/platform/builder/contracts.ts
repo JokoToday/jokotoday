@@ -70,6 +70,18 @@ export interface HomeAboutCardImage {
   imageAlt?: LocalizedText;
 }
 
+export interface IllustratedCrewMember {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  role: LocalizedText;
+  bio: LocalizedText;
+}
+export interface IllustratedCrewConfig {
+  visible?: boolean;
+  members?: IllustratedCrewMember[];
+}
+
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
 export type TopMenuKey = 'home' | 'products' | 'other-products' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy';
@@ -113,6 +125,7 @@ export interface BuilderHomepageBranding {
   topMenu?: readonly TopMenuItem[];
   /** Images are published with the Homepage Builder, not independent Admin state. */
   aboutCards?: Partial<Record<HomeAboutCardKey, HomeAboutCardImage>>;
+  illustratedCrew?: IllustratedCrewConfig;
   logoScale: number;
   typography: {
     displayFont: BuilderDisplayFont;

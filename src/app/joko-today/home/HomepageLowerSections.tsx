@@ -676,6 +676,28 @@ export function HomepageLowerSections({
             </article>
           </div>
 
+          {branding.illustratedCrew?.visible === true && Boolean(branding.illustratedCrew.members?.some(member => member.imageUrl?.trim())) && (
+            <div className="mt-12 border-t border-[#8B765E]/20 pt-10">
+              <h3 className="text-center text-3xl font-semibold text-[#303532]" style={{fontFamily:'var(--joko-font-display)'}}>
+                {language === 'th' ? 'ทีมผู้ช่วย JOKO (ในจินตนาการ)' : language === 'zh' ? 'JOKO 的插画支援团队' : 'Our Unofficial Support Team'}
+              </h3>
+              <p className="mx-auto mt-2 max-w-xl text-center text-sm text-[#303532]/65">
+                {language === 'th' ? 'ไม่ได้รับเงินเดือน แต่ดูเหมือนยุ่งอยู่เสมอ — เหล่าตัวละครที่ช่วยเล่าเรื่องของเรา' : language === 'zh' ? '不领薪水，却总是一副很忙的样子。认识我们故事里的插画角色。' : 'Not technically on the payroll. Very serious about their imaginary jobs.'}
+              </p>
+              <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {branding.illustratedCrew.members?.filter(member=>member.imageUrl?.trim()).map(member => (
+                  <article key={member.id} className="rounded-3xl border border-[#8B765E]/14 bg-[#FFFDF7]/80 p-5">
+                    <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-[#F7F1E7]">
+                      <img src={member.imageUrl} alt={member.name} loading="lazy" className="h-full w-full object-contain" />
+                    </div>
+                    <h4 className="mt-4 text-2xl font-semibold text-[#303532]" style={{fontFamily:'var(--joko-font-display)'}}>{member.name}</h4>
+                    <p className="mt-1 text-sm font-medium text-[#55766F]">{member.role[language] || member.role.en}</p>
+                    <p className="mt-3 text-sm leading-6 text-[#303532]/70">{member.bio[language] || member.bio.en}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
 
         </Container>
       </section>}

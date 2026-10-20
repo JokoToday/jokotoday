@@ -1042,6 +1042,25 @@ export function JokoHomepageEditor({
             </div>
           </details>
 
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">About JOKO — Unofficial illustrated support team</summary>
+            <p className="mt-2 text-xs text-[#303532]/65">Use only approved character-master portraits. The section stays hidden until enabled and at least one portrait URL is supplied. Save Draft, preview, then publish.</p>
+            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={branding.illustratedCrew?.visible === true} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,visible:e.target.checked}})}/> Show illustrated support team</label>
+            <button type="button" className="mt-3 rounded-lg border px-3 py-2 text-sm" disabled={(branding.illustratedCrew?.members?.length || 0)>=8} onClick={()=>{
+              const members=branding.illustratedCrew?.members || [];
+              updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:[...members,{id:`character-${Math.max(0,...members.map(m=>Number(m.id.match(/^character-(\d+)$/)?.[1])||0))+1}`,name:'',imageUrl:'',role:{en:'',th:'',zh:''},bio:{en:'',th:'',zh:''}}]}});
+            }}>Add illustrated character</button>
+            <div className="mt-4 space-y-4">{branding.illustratedCrew?.members?.map((member,index)=>(
+              <div key={member.id} className="rounded-xl border p-3 space-y-2">
+                <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
+                {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
+                {(['en','th','zh'] as const).map(lang=><div key={lang} className="grid gap-2 sm:grid-cols-2">
+                  {(['role','bio'] as const).map(field=><label key={field} className="block text-xs">{field==='role'?'Fictional job title':'Fun description'} ({lang.toUpperCase()})<textarea className="mt-1 w-full rounded-lg border p-2 text-sm" rows={field==='role'?2:3} value={member[field][lang]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:{...m[field],[lang]:e.target.value}}:m)}})}/></label>)}
+                </div>)}
+              </div>
+            ))}</div>
+          </details>
+
           <HomepageServiceAdmin value={branding.services} locale={locale as 'en' | 'th' | 'zh'}
             onChange={next => updateBranding({ ...branding, services: next })}
             onUploadingChange={busy => reportUploadState('service-images', busy)} />

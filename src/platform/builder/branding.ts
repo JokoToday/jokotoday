@@ -154,6 +154,8 @@ export function resolveJokoHomepageBranding(value: unknown): JokoHomepageBrandin
 
   return {
     aboutCards,
+    illustratedCrew: input.illustratedCrew && typeof input.illustratedCrew === 'object' && !Array.isArray(input.illustratedCrew)
+      ? input.illustratedCrew as JokoHomepageBranding['illustratedCrew'] : undefined,
     sectionLayout: Array.isArray(input.sectionLayout) ? input.sectionLayout as JokoHomepageBranding['sectionLayout'] : undefined,
     services: input.services && typeof input.services === 'object' && !Array.isArray(input.services) ? input.services as JokoHomepageBranding['services'] : undefined,
     topMenu: resolveTopMenu(input.topMenu),
