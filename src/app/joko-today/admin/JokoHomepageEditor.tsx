@@ -1054,6 +1054,21 @@ export function JokoHomepageEditor({
               <div key={member.id} className="rounded-xl border p-3 space-y-2">
                 <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
                 {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs">
+                  <ImagePlus className="h-4 w-4" /> Upload approved character portrait
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async e=>{
+                    const file=e.target.files?.[0];e.target.value='';if(!file)return;
+                    reportUploadState(`crew-${member.id}`,true);
+                    try {
+                      const result=await uploadGalleryImage({file,gallerySlot:`about-crew-${member.id}`});
+                      const current=latestDocumentRef.current;
+                      const currentBranding=resolveJokoHomepageBranding(current.branding);
+                      const next={...current,branding:{...currentBranding,illustratedCrew:{...currentBranding.illustratedCrew,members:currentBranding.illustratedCrew?.members?.map(m=>m.id===member.id?{...m,imageUrl:result.publicUrl}:m)}}};
+                      latestDocumentRef.current=next;onDocumentChange(next);
+                    }catch(err){window.alert(err instanceof Error?err.message:'Image upload failed.');}
+                    finally{reportUploadState(`crew-${member.id}`,false);}
+                  }}/>
+                </label>
                 {(['en','th','zh'] as const).map(lang=><div key={lang} className="grid gap-2 sm:grid-cols-2">
                   {(['role','bio'] as const).map(field=><label key={field} className="block text-xs">{field==='role'?'Fictional job title':'Fun description'} ({lang.toUpperCase()})<textarea className="mt-1 w-full rounded-lg border p-2 text-sm" rows={field==='role'?2:3} value={member[field][lang]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:{...m[field],[lang]:e.target.value}}:m)}})}/></label>)}
                 </div>)}
