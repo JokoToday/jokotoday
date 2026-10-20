@@ -712,6 +712,12 @@ export function JokoHomepageEditor({
       .querySelectorAll('link[rel="stylesheet"], style')
       .forEach((node) => head.appendChild(node.cloneNode(true)));
 
+    // BuilderPageRenderer uses min-h-screen for standalone pages. In an iframe whose
+    // height follows its content, 100vh becomes a feedback loop and pushes all
+    // lower homepage sections infinitely far below the Hero.
+    const previewScope = frameDocument.createElement('style');
+    previewScope.textContent = '#joko-builder-preview-root > .min-h-screen { min-height: 0 !important; }';
+    head.appendChild(previewScope);
     setPreviewFrameDocument(frameDocument);
   };
 
