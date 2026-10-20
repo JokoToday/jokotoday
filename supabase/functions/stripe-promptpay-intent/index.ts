@@ -99,7 +99,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Stripe PromptPay requires a customer email address" }, 409);
     }
 
-    const stripe = new Stripe(requiredEnv("STRIPE_SECRET_KEY"));
+    const stripeSecret = requiredEnv("STRIPE_SECRET_KEY");
+    // Fail closed on JOKO's isolated staging project. Never produce a live QR there.
+    if (requiredEnv("SUPABASE_URL").includes("szijiljpasxddzgzckra") && !stripeSecret.startsWith("sk_test_")) {
+      return jsonResponse({ error: "Staging Stripe must use a test-mode secret key" }, 503);
+    }
+    const stripe = new Stripe(stripeSecret);
     let intent: Stripe.PaymentIntent;
 
     if (payment.provider_transaction_ref?.startsWith("pi_")) {
