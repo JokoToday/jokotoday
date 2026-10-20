@@ -41,7 +41,7 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
       missing: "This maker is not currently published.",
       picked: "What we picked",
       note: "Why JOKO picked them",
-      back: "All makers",
+      back: "JOKO Circle",
       products: "Selected products are coming soon.",
     },
     th: {
@@ -52,7 +52,7 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
       missing: "ยังไม่มีหน้าเผยแพร่สำหรับผู้ผลิตนี้",
       picked: "สิ่งที่เราเลือก",
       note: "เหตุผลที่ JOKO เลือก",
-      back: "ผู้ผลิตทั้งหมด",
+      back: "JOKO Circle",
       products: "สินค้าที่คัดเลือกกำลังจะมา",
     },
     zh: {
@@ -63,7 +63,7 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
       missing: "该制作人尚未发布。",
       picked: "我们的精选",
       note: "JOKO 为什么选择他们",
-      back: "所有制作人",
+      back: "JOKO Circle",
       products: "精选商品即将上线。",
     },
   }[language];
@@ -87,7 +87,7 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
               className="text-4xl font-semibold sm:text-5xl"
               style={{ fontFamily: "var(--joko-font-display)" }}
             >
-              JOKO Makers
+              JOKO Circle
             </h1>
             <p className="mb-8 mt-4 text-lg text-[#303532]/70">
               {labels.intro}
