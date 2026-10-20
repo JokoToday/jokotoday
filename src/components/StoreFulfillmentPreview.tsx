@@ -30,6 +30,7 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
   const [plan, setPlan] = useState<Plan>('separate');
   const [storeMethod, setStoreMethod] = useState<StoreMethod>('pickup_today');
   const [paymentChoice, setPaymentChoice] = useState<StorePaymentChoice>('kshop_master');
+  const [testAccess, setTestAccess] = useState<Record<StorePaymentChoice, boolean>>({ kshop_master: false, stripe_promptpay: false });
 
   useEffect(() => {
     let alive = true;
@@ -57,8 +58,20 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (!user) { setTestAccess({ kshop_master: false, stripe_promptpay: false }); return; }
+    void Promise.all((['kshop_master', 'stripe_promptpay'] as const).map(async (mode) => {
+      const { data, error } = await supabase.rpc('store_checkout_test_allowed_v1', { p_payment_mode: mode });
+      return [mode, !error && data === true] as const;
+    })).then((results) => {
+      if (active) setTestAccess(Object.fromEntries(results) as Record<StorePaymentChoice, boolean>);
+    }).catch(() => { if (active) setTestAccess({ kshop_master: false, stripe_promptpay: false }); });
+    return () => { active = false; };
+  }, [user]);
+
   const submitStoreOrder = async () => {
-    if (!user || !paymentPolicy?.checkout_enabled || checkoutLoading || createdOrder ||
+    if (!user || !(paymentPolicy?.checkout_enabled || testAccess[paymentChoice]) || checkoutLoading || createdOrder ||
       bakeryItems.length > 0 || storeMethod !== 'pickup_today') return;
     setCheckoutLoading(true);
     setCheckoutError('');
@@ -119,11 +132,11 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
       <OnlineQrPaymentPanel orderId={createdOrder.order_id} existingStorePaymentId={createdOrder.payment_transaction_id} language={language}
         onExpired={() => setCheckoutError('The payment window expired. Please start a new Store order.')} />
     </section> : <button type="button" onClick={() => void submitStoreOrder()}
-      disabled={!paymentPolicy?.checkout_enabled || !user || checkoutLoading || loading || Boolean(error) || !methodAvailable ||
+      disabled={!(paymentPolicy?.checkout_enabled || testAccess[paymentChoice]) || !user || checkoutLoading || loading || Boolean(error) || !methodAvailable ||
         bakeryItems.length > 0 || storeMethod !== 'pickup_today' ||
-        (paymentChoice === 'stripe_promptpay' && !paymentPolicy.fallback_enabled)}
+        (paymentChoice === 'stripe_promptpay' && !paymentPolicy?.fallback_enabled)}
       className="mt-4 w-full rounded-xl bg-[#55766F] px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600">
-      {checkoutLoading ? 'Preparing order…' : paymentPolicy?.checkout_enabled ? 'Place Store order' : 'Checkout — coming soon'}
+      {checkoutLoading ? 'Preparing order…' : (paymentPolicy?.checkout_enabled || testAccess[paymentChoice]) ? 'Place Store test order' : 'Checkout — coming soon'}
     </button>}
     {!user && <p className="mt-2 text-sm">{language === 'th' ? 'กรุณาเข้าสู่ระบบก่อนชำระเงิน' : language === 'zh' ? '请先登录后结账' : 'Please sign in to check out.'}</p>}
     <button type="button" onClick={onReturn} className="mt-3 w-full rounded-xl border px-4 py-3">{copy.back}</button>
