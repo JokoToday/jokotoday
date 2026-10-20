@@ -278,6 +278,22 @@ Deno.serve(async (req: Request) => {
       throw finalizeError;
     }
 
+    // Store stock is separate from Bakery inventory. Reconcile only after
+    // canonical Stripe verification succeeds; never acknowledge the event
+    // as complete while Store stock remains reserved.
+    const { data: storeLink, error: storeLinkError } = await service
+      .from("store_payment_links")
+      .select("payment_transaction_id")
+      .eq("payment_transaction_id", payment.id)
+      .maybeSingle();
+    if (storeLinkError) throw storeLinkError;
+    if (storeLink) {
+      const { error: reconcileError } = await service.rpc("service_reconcile_store_verified_v1", {
+        p_payment: payment.id,
+      });
+      if (reconcileError) throw reconcileError;
+    }
+
     await releasePaymentNotifications(payment.order_id);
 
     await service.from("stripe_webhook_events").update({
