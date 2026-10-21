@@ -33,7 +33,7 @@ export function MakerCard({ maker }: { maker: Maker }) {
             ? "รู้จักผู้ผลิต →"
             : language === "zh"
               ? "了解制作人 →"
-              : "Meet the maker →"}
+              : "Meet the creator →"}
         </span>
       </div>
     </a>

@@ -14,7 +14,7 @@ import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const MakersPage = lazy(() => import('./pages/MakersPage'));
-const DiyPage = lazy(() => import('./app/joko-today/diy/DiyPage'));
+const DiyPage = lazy(() => import('./app/joko-today/diy/DiyPageWithContent'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));

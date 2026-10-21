@@ -38,3 +38,17 @@ Approve the DIY discovery page, provide the approved logo and select the first p
 ![Desktop implementation](preview-desktop.webp)
 
 ![Mobile implementation](preview-mobile.webp)
+
+## Admin page content
+
+`/admin/diy` adds a dedicated editor under the existing authenticated Admin workspace. Twelve editable text fields cover the hero heading/intro, community statement, discovery note, notebook heading/video action, catalog heading/search placeholder and Store invitation/button. English, Thai and Simplified Chinese use wide fields with language tabs and an unsaved text preview. Header/menu branding remains in Website / Homepage; creator names and the featured recipe title remain source content, separate from editorial copy.
+
+Save writes all language rows in one `cms_labels` upsert using fixed `diy_page_*` keys and the existing admin-only INSERT/UPDATE RLS. Missing translations fall back to bundled language defaults. No migration, seed, policy, privileged credential or production write was performed. Public `/diy` reads these keys on mount and refreshes after focus or an in-app content-save event.
+
+Saving updates the public copy directly; there is no separate Publish step. The editor explicitly says so. It disables edits if initial loading fails, preserves drafts on save errors, validates all languages, verifies the returned save rows, confirms success, warns before browser unload and before changing Admin tabs. The existing labels editor could still edit the same keys; simultaneous saves follow the existing last-write-wins CMS behavior.
+
+Validation: TypeScript/build/scoped lint plus mocked browser tests verified three-language save/reload, no autosave, blank validation, failed-save draft retention, rejection of an unverified save response, mobile editor overflow, public-page readback, Chinese content and failed-load protection. The real Admin route denied an unauthenticated test session. Actual authenticated persistence and live RLS remain staging acceptance checks; only mocked backend responses were used.
+
+Private preview `?edit=diy` offers a browser-local demo of this editor. Its saves affect only that preview on the same device, not the CMS or live website.
+
+![Admin editor](admin-editor-desktop.webp)

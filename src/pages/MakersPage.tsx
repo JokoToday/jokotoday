@@ -35,13 +35,13 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
   const labels = {
     en: {
       intro: "People making good things. Selected by JOKO.",
-      loading: "Loading makers…",
-      error: "Makers could not be loaded. Please try again.",
-      empty: "Our first maker stories are coming soon.",
-      missing: "This maker is not currently published.",
+      loading: "Loading creators…",
+      error: "Creators could not be loaded. Please try again.",
+      empty: "Our first creator stories are coming soon.",
+      missing: "This creator is not currently published.",
       picked: "What we picked",
       note: "Why JOKO picked them",
-      back: "All makers",
+      back: "Creator Circle",
       products: "Selected products are coming soon.",
     },
     th: {
@@ -87,7 +87,7 @@ export default function MakersPage({ slug }: { slug?: string | null }) {
               className="text-4xl font-semibold sm:text-5xl"
               style={{ fontFamily: "var(--joko-font-display)" }}
             >
-              JOKO Makers
+              JOKO Creator Circle
             </h1>
             <p className="mb-8 mt-4 text-lg text-[#303532]/70">
               {labels.intro}

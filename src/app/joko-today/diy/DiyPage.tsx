@@ -4,6 +4,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 import { diyCopy } from './copy';
 import { diyRecipes, filterDiyRecipes, type DiyRecipe } from './recipes';
+import type { DiyText } from './content';
 import './diy.css';
 
 const SAVE_KEY = 'joko-diy-saved-v1';
@@ -47,9 +48,9 @@ function CreatorVideo({ recipe, onClose }: { recipe: DiyRecipe; onClose: () => v
   </dialog>;
 }
 
-export default function DiyPage({ onNavigate }: { onNavigate: (page: string) => void }) {
+export default function DiyPage({ onNavigate, content }: { onNavigate: (page: string) => void; content?: DiyText }) {
   const { language } = useLanguage();
-  const text = diyCopy[language];
+  const text = content ?? diyCopy[language];
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('all');
   const [savedOnly, setSavedOnly] = useState(false);

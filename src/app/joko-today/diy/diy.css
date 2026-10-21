@@ -89,3 +89,5 @@
 .diy-card-photo:disabled:hover img { transform: none; }
 .diy-card-meta a { display: inline-flex; align-items: center; gap: 4px; color: #075f68; text-decoration: underline; }
 .diy-pending { font-size: 12px; color: #696d66; }
+.diy-intro { min-width: 0; overflow-wrap: anywhere; }
+.diy-intro h1, .diy-intro-line p { white-space: pre-line; }

@@ -7,7 +7,7 @@ export const DEFAULT_HOMEPAGE_SECTION_LAYOUT: HomepageSectionLayoutItem[] = [
  {key:'gallery',visible:true},{key:'reviews',visible:true},
 ];
 export const SECTION_LABELS: Record<HomepageSectionKey,string> = {
- services:'What You Can Do Here',makers:'JOKO Makers',baking:"What's Baking This Week",
+ services:'What You Can Do Here',makers:'JOKO Creator Circle',baking:"What's Baking This Week",
  how:'How It Works',pickup:'Pickup Information',new:"New from the Baker's Table",
  beyond:'Not Bread. Still Good.',about:'About JOKO',gallery:'Around JOKO',reviews:'What Others Say',
 };

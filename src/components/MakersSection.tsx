@@ -36,7 +36,7 @@ export function MakersSection() {
               className="mt-2 text-4xl font-semibold text-[#303532]"
               style={{ fontFamily: "var(--joko-font-display)" }}
             >
-              JOKO Makers
+              JOKO Creator Circle
             </h2>
             <p className="mt-3 text-[#303532]/70">
               {language === "th"
@@ -54,7 +54,7 @@ export function MakersSection() {
               ? "ดูผู้ผลิตทั้งหมด"
               : language === "zh"
                 ? "查看所有制作人"
-                : "Explore all makers"}
+                : "Meet our creators"}
           </a>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
