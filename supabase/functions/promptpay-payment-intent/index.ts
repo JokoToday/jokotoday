@@ -226,6 +226,9 @@ Deno.serve(async (req: Request) => {
     });
   } catch (error) {
     console.error("promptpay-payment-intent failed", error);
+    if (error instanceof Error && error.message.includes("KSHOP_MASTER_QR_PAYLOAD")) {
+      return jsonResponse({ error: "K SHOP merchant QR is not configured in this staging environment. No payment has been initiated." }, 503);
+    }
     return jsonResponse({ error: "Could not prepare payment QR" }, 500);
   }
 });

@@ -147,7 +147,7 @@ export async function getPromptPayIntent(paymentTransactionId: string): Promise<
     body: { paymentTransactionId },
   });
 
-  if (error) throw error;
+  if (error) throw new Error(await getFunctionInvokeErrorMessage(error, 'Could not prepare PromptPay QR.'));
   if (!data?.paymentTransactionId) throw new Error(data?.error || 'Could not prepare PromptPay QR.');
 
   return data as PromptPayIntent;
