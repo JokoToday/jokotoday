@@ -219,7 +219,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                 const descriptions: Record<string, Record<string, string>> = {
                   products: { en: 'Pre-order our bakery favourites', th: 'สั่งขนมอบล่วงหน้า', zh: '预订我们的烘焙精选' },
                   'other-products': { en: 'Ingredients and special finds', th: 'วัตถุดิบและของดี', zh: '食材与精选好物' },
-                  makers: { en: 'Products from other makers', th: 'สินค้าจากผู้ผลิตอื่น', zh: '其他创作者的产品' },
+                  makers: { en: 'Discover independent creators', th: 'พบผู้สร้างสรรค์อิสระ', zh: '发现独立创作者' },
                   specials: { en: 'Limited-time offers', th: 'ข้อเสนอพิเศษจำกัดเวลา', zh: '限时优惠' },
                   diy: { en: 'Recipes, videos and baking ideas', th: 'สูตรอาหาร วิดีโอ และไอเดีย', zh: '食谱、视频与烘焙创意' },
                   'how-it-works': { en: 'Ordering, pickup and more', th: 'การสั่งซื้อและรับสินค้า', zh: '订购、取货与更多' },
