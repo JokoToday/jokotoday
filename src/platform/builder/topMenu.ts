@@ -9,7 +9,7 @@ export const TOP_MENU_DEFAULT_LABELS: Readonly<Record<TopMenuKey, LocalizedText>
   products: { en: 'JOKO Bakery', th: 'JOKO เบเกอรี่', zh: 'JOKO 烘焙' },
   'other-products': { en: 'JOKO Store', th: 'JOKO สโตร์', zh: 'JOKO 商店' },
   specials: { en: 'Specials', th: 'ราคาพิเศษ', zh: '今日特惠' },
-  makers: { en: 'Fellow Makers', th: 'เพื่อนผู้ผลิต', zh: '合作创作者' },
+  makers: { en: 'Creator Circle', th: 'Creator Circle', zh: '创作者圈' },
   'how-it-works': { en: 'How It Works', th: 'วิธีสั่งซื้อ', zh: '如何订购' },
   pickup: { en: 'Pick Up', th: 'จุดรับสินค้า', zh: '取货' },
   about: { en: 'About JOKO', th: 'เกี่ยวกับ JOKO', zh: '关于 JOKO' },
@@ -39,7 +39,7 @@ export function resolveTopMenu(value: unknown): TopMenuItem[] {
       about: { en: 'About', th: 'เกี่ยวกับเรา', zh: '关于' },
     };
     const adjusted = Object.fromEntries(['en', 'th', 'zh'].map((locale) => [
-      locale, custom[locale] === previousDefaults[key]?.[locale] ? labels[locale] : custom[locale],
+      locale, (custom[locale] === previousDefaults[key]?.[locale] || (key === 'makers' && ({en: ['Fellow Makers', 'JOKO Circle'], th: ['เพื่อนผู้ผลิต', 'JOKO Circle'], zh: ['合作创作者', 'JOKO 创作者', 'JOKO Circle']}[locale] as string[]).includes(String(custom[locale])))) ? labels[locale] : custom[locale],
     ]));
     result.push({
       key,

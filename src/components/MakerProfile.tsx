@@ -24,7 +24,7 @@ export function MakerProfile({
   const language = previewLanguage || currentLanguage;
   const labels = {
     en: {
-      back: "All makers",
+      back: "Creator Circle",
       picked: "What we picked",
       note: "Why JOKO picked them",
       products: "Selected products are coming soon.",
@@ -111,7 +111,7 @@ export function MakerProfile({
                 ? "เว็บไซต์ผู้ผลิต"
                 : language === "zh"
                   ? "制作人网站"
-                  : "Maker website"}{" "}
+                  : "Creator website"}{" "}
               ↗
             </a>
           )}
