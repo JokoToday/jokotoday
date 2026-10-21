@@ -5,7 +5,6 @@ import { productOrigin } from '../../../lib/makersService';
 import {
   ArrowRight,
   ArrowUp,
-  Check,
   Clock3,
   Croissant,
   MapPin,
@@ -388,13 +387,6 @@ export function HomepageLowerSections({
   const weeklyProducts = products
     .filter((product) => productOrigin(product) === 'joko' && Boolean(productImage(product)))
     .slice(0, 6);
-  const nonBakeryFeatured = products
-    .filter((product) => productOrigin(product) === 'beyond' && product.non_bakery_feature_order != null)
-    .sort((a, b) =>
-      (a.non_bakery_feature_order ?? 999) - (b.non_bakery_feature_order ?? 999)
-      || a.sort_order - b.sort_order
-    ).slice(0, 6);
-
   const genuinelyNew = getEditorialNewProduct();
 
 
@@ -532,66 +524,6 @@ export function HomepageLowerSections({
           ) : <div className="rounded-3xl border border-dashed border-[#8B765E]/22 bg-white/15 p-8 text-center"><Sparkles className="mx-auto h-7 w-7 text-[#C76624]/65" /><p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[#303532]/62">{labels.newEmpty}</p><button type="button" onClick={() => onNavigate('products')} className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-[#A44F1D]">{labels.seeBakery}<ArrowRight className="h-4 w-4" /></button></div>}
         </Container>
       </section>}
-
-      {enabled('beyond') && <section style={position('beyond')} id="not-bread" className="joko-mineral-field border-y border-[#55766F]/10 py-12 sm:py-16 scroll-mt-24">
-        <Container width="wide">
-          <SectionTitle
-            title={labels.beyondTitle}
-            intro={labels.beyondIntro}
-            action={(
-              <button
-                type="button"
-                onClick={() => onNavigate('products-non-bakery')}
-                className="inline-flex items-center gap-2 border-b border-[#C76624]/45 pb-1 text-sm font-medium text-[#A44F1D] hover:border-[#C76624]"
-              >
-                {labels.beyondAction}<ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-            backToTopLabel={labels.backToTop}
-            onBackToTop={backToTop}
-          />
-          {nonBakeryFeatured.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-              {nonBakeryFeatured.map((product) => {
-                const name = language === 'th' ? product.name_th : language === 'zh'
-                  ? product.name_zh || product.name_en : product.name_en;
-                const image = productImage(product);
-                return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    onClick={() => onNavigate(`product/${product.slug}`)}
-                    className="group overflow-hidden rounded-2xl border border-[#55766F]/16 bg-[#FFF9EE]/80 text-left shadow-[0_8px_22px_rgba(67,54,39,.05)] transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55766F]"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[#E9E0D0]">
-                      {image ? (
-                        <img src={image} alt={name} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center"><ShoppingBasket className="h-9 w-9 text-[#55766F]/35" /></div>
-                      )}
-                      {(product.is_sold_out || product.stock_remaining <= 0) && (
-                        <span className="absolute right-2 top-2 rounded-full bg-[#303532]/85 px-2.5 py-1 text-[10px] font-semibold uppercase text-white">
-                          {labels.soldOut}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="line-clamp-2 text-sm font-semibold text-[#303532]">{name}</p>
-                      <p className="mt-1 text-sm font-semibold text-[#A44F1D]">฿{product.price}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-[#55766F]/20 bg-[#F7F1E7]/55 p-8 text-center">
-              <Check className="mx-auto h-7 w-7 text-[#668B86]" />
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[#303532]/62">{labels.beyondEmpty}</p>
-            </div>
-          )}
-        </Container>
-      </section>}
-
 
       {enabled('about') && <section style={position('about')} id="about" className="joko-paper-band py-12 sm:py-16 scroll-mt-24">
         <Container width="wide">
