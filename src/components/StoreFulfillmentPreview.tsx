@@ -19,6 +19,22 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
   const { user } = useAuth();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [historicalCheckLoading, setHistoricalCheckLoading] = useState(false);
+  const [historicalCheckResult, setHistoricalCheckResult] = useState('');
+  const runHistoricalCheck = async () => {
+    setHistoricalCheckLoading(true);
+    setHistoricalCheckResult('');
+    try {
+      const { data, error } = await supabase.functions.invoke('store-historical-slip-check', { body: {} });
+      if (error) throw error;
+      setHistoricalCheckResult(JSON.stringify(data, null, 2));
+    } catch (cause) {
+      setHistoricalCheckResult(cause instanceof Error ? cause.message : 'Verification check unavailable.');
+    } finally {
+      setHistoricalCheckLoading(false);
+    }
+  };
+
   const [createdOrder, setCreatedOrder] = useState<StoreCheckoutResult | null>(null);
   const [requestKey] = useState(() => crypto.randomUUID());
   const storeItems = useMemo(() => items.filter((row) => row.product.catalog_scope === 'store_only'), [items]);
@@ -139,6 +155,12 @@ export function StoreFulfillmentPreview({ onReturn }: { onReturn: () => void }) 
       {checkoutLoading ? 'Preparing order…' : (paymentPolicy?.checkout_enabled || testAccess[paymentChoice]) ? 'Place Store test order' : 'Checkout — coming soon'}
     </button>}
     {!user && <p className="mt-2 text-sm">{language === 'th' ? 'กรุณาเข้าสู่ระบบก่อนชำระเงิน' : language === 'zh' ? '请先登录后结账' : 'Please sign in to check out.'}</p>}
+    {import.meta.env.VITE_SUPABASE_URL?.includes('szijiljpasxddzgzckra') && user?.email?.toLowerCase() === 'jokotoday@gmail.com' && <section className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-3">
+      <p className="text-sm font-semibold">Staging only: recheck previous ฿10 slip</p>
+      <p className="mt-1 text-xs">Checks EasySlip receiver registration using the original uploaded slip. Does not update the expired order or stock. No bank transfer needed.</p>
+      <button type="button" disabled={historicalCheckLoading} onClick={() => void runHistoricalCheck()} className="mt-3 rounded-lg bg-[#55766F] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{historicalCheckLoading ? 'Checking EasySlip…' : 'Recheck original slip (no payment)'}</button>
+      {historicalCheckResult && <pre role="status" className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs">{historicalCheckResult}</pre>}
+    </section>}
     <button type="button" onClick={onReturn} className="mt-3 w-full rounded-xl border px-4 py-3">{copy.back}</button>
   </div></main>;
 }
