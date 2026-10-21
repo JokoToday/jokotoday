@@ -14,6 +14,7 @@ import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const MakersPage = lazy(() => import('./pages/MakersPage'));
+const DiyPage = lazy(() => import('./app/joko-today/diy/DiyPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const SpecialsPage = lazy(() => import('./pages/SpecialsPage'));
@@ -285,6 +286,8 @@ function AppContent() {
   useEffect(() => {
     const pageTitle = currentPage === 'home'
       ? 'JOKO TODAY - Baked & Beyond'
+      : currentPage === 'diy'
+        ? 'JOKO DIY — Recipes & baking inspiration'
       : currentPage === 'creative'
       ? 'JOKO Creative Lab'
       : `${currentPage.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} - JOKO TODAY`;
@@ -487,13 +490,7 @@ function AppContent() {
       case 'how-it-works':
         return <HowItWorksPage onNavigate={handleNavigate} />;
       case 'diy':
-        return <div className="mx-auto min-h-[65vh] max-w-4xl px-6 py-20 text-[#303532]">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-[#55766F]">Explore · JOKO TODAY</p>
-          <h1 className="text-5xl font-semibold">JOKO DIY</h1>
-          <p className="mt-6 max-w-xl text-lg">Recipes, original videos and curious baking know-how are coming here soon.</p>
-          <button type="button" onClick={() => handleNavigate('home')}
-            className="mt-8 rounded-xl bg-[#C76624] px-6 py-3 font-semibold text-white">Back to JOKO TODAY</button>
-        </div>;
+        return <DiyPage onNavigate={handleNavigate} />;
       case 'terms':
         return <LegalPage kind="terms" onNavigate={handleNavigate} />;
       case 'privacy':
@@ -535,10 +532,10 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'diy' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
-  const jokoShellSection: JokoShellSection | null = curiosityNotebookRoute
+  const jokoShellSection: JokoShellSection | null = currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
     ? 'curiosities'
     : currentPage === 'makers' || currentPage === 'maker-detail' ? 'makers'
     : currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout'
