@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ChefHat, CookingPot, ExternalLink, Heart, Play, Search, X } from 'lucide-react';
+import { ArrowRight, CookingPot, ExternalLink, Heart, Play, Search, X } from 'lucide-react';
 import { useLanguage } from '../../../context/LanguageContext';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 import { diyCopy } from './copy';
@@ -15,10 +15,10 @@ function readSaved(): string[] {
   } catch { return []; }
 }
 function selectedFromUrl() {
-  return diyRecipes.find(recipe => recipe.id === new URLSearchParams(window.location.search).get('recipe')) ?? null;
+  return diyRecipes.find(recipe => recipe.source && recipe.id === new URLSearchParams(window.location.search).get('recipe')) ?? null;
 }
 
-function RecipeDetail({ recipe, onClose }: { recipe: DiyRecipe; onClose: () => void }) {
+function CreatorVideo({ recipe, onClose }: { recipe: DiyRecipe; onClose: () => void }) {
   const { language } = useLanguage();
   const text = diyCopy[language];
   const dialog = useRef<HTMLDialogElement>(null);
@@ -34,9 +34,8 @@ function RecipeDetail({ recipe, onClose }: { recipe: DiyRecipe; onClose: () => v
     onCancel={event => { event.preventDefault(); onClose(); }}>
     <div className="diy-detail__inner">
       <button type="button" className="diy-back" onClick={onClose}><X size={18} />{text.close}</button>
-      <p className="diy-eyebrow">JOKO DIY · {text.draft}</p>
+      <p className="diy-eyebrow">JOKO DIY · {text.source}</p>
       <h2 id="diy-detail-title" lang="en">{recipe.title}</h2>
-      <p className="diy-review">{text.review}</p>
       {recipe.source ? <>
         <p className="diy-source">{text.source} · <a href={recipe.source.url} target="_blank" rel="noopener noreferrer">{recipe.source.creator} <ExternalLink size={14} /></a></p>
         <div className="diy-player">{videoLoaded
@@ -44,14 +43,6 @@ function RecipeDetail({ recipe, onClose }: { recipe: DiyRecipe; onClose: () => v
           : <button type="button" onClick={() => setVideoLoaded(true)} aria-label={text.load}><img src={recipe.image} alt="" /><span className="diy-play"><Play fill="currentColor" /></span><span className="diy-player-label">{text.load}</span></button>}</div>
         <p className="diy-fine">{text.privacy} <a href={recipe.source.url} target="_blank" rel="noopener noreferrer">{text.creator} ↗</a></p>
       </> : <img className="diy-detail-photo" src={recipe.image} alt={recipe.title} />}
-      {language !== 'en' && <p className="diy-fine">{text.english}</p>}
-      <section className="diy-recipe-content">
-        <h3>{text.ingredients}</h3>
-        {recipe.ingredients ? <ul lang="en">{recipe.ingredients.map(ingredient => <li key={ingredient}><label><input type="checkbox" />{ingredient}</label></li>)}</ul> : <p>{text.waiting}</p>}
-        {recipe.sourceNote && <p className="diy-fine" lang="en">{recipe.sourceNote}</p>}
-        <dl><div><dt>{text.time}</dt><dd>{text.missing}</dd></div><div><dt>{text.yield}</dt><dd>{text.missing}</dd></div></dl>
-        <h3>{text.method}</h3><p>{text.waiting}</p>
-      </section>
     </div>
   </dialog>;
 }
@@ -73,6 +64,7 @@ export default function DiyPage({ onNavigate }: { onNavigate: (page: string) => 
     return () => { window.removeEventListener('popstate', sync); window.removeEventListener('storage', syncSaved); };
   }, []);
   function openRecipe(recipe: DiyRecipe) {
+    if (!recipe.source) return;
     const url = new URL(window.location.href);
     url.searchParams.set('recipe', recipe.id);
     window.history.pushState({ diyRecipe: true }, '', `${url.pathname}${url.search}${url.hash}`);
@@ -102,14 +94,14 @@ export default function DiyPage({ onNavigate }: { onNavigate: (page: string) => 
         <div className="diy-intro">
           <p className="diy-eyebrow">{text.eyebrow}</p>
           <div className="diy-intro-line"><div className="diy-wordmark" aria-label="JOKO DIY"><span>JŌKO</span><span><CookingPot aria-hidden="true" /> DIY</span></div>
-          <div><h1 id="diy-title">{text.headline}<br /><em>{text.homemade}</em></h1><p>{text.intro}</p></div></div>
-          <div className="diy-hero-flourish" aria-hidden="true"><CookingPot strokeWidth={0.7} /><span>watch · discover · bake</span></div>
+          <div><h1 id="diy-title">{text.headline}<br /><em>{text.homemade}</em></h1><p className="diy-community-tagline">{text.community}</p><p>{text.intro}</p></div></div>
+          <div className="diy-hero-flourish" aria-hidden="true"><CookingPot strokeWidth={0.7} /><span>{text.curated}</span></div>
         </div>
         <aside className="diy-feature" aria-label={text.featured}>
           <JokoHeroNotebookNote title={text.featured} body={featured.title} rotation={2}>
             <button className="diy-feature-photo" type="button" onClick={() => openRecipe(featured)} aria-label={`${text.view}: ${featured.title}`}><img src={featured.image} alt={featured.title} fetchPriority="high" /><span className="diy-play"><Play fill="currentColor" /></span><span className="diy-photo-label">{text.photo}</span></button>
-            <div className="diy-feature-credit"><span>YouTube · {featured.source?.creator}</span><button type="button" className="diy-feature-save" aria-pressed={saved.includes(featured.id)} aria-label={`${saved.includes(featured.id) ? text.unsave : text.save}: ${featured.title}`} onClick={() => toggleSaved(featured.id)}><Heart size={18} fill={saved.includes(featured.id) ? 'currentColor' : 'none'} /></button></div>
-            <button className="diy-button" type="button" onClick={() => openRecipe(featured)}>{text.view}<ArrowRight size={17} /></button>
+            <div className="diy-feature-credit"><span>{featured.source?.platform} · {featured.source?.creator}</span><button type="button" className="diy-feature-save" aria-pressed={saved.includes(featured.id)} aria-label={`${saved.includes(featured.id) ? text.unsave : text.save}: ${featured.title}`} onClick={() => toggleSaved(featured.id)}><Heart size={18} fill={saved.includes(featured.id) ? 'currentColor' : 'none'} /></button></div>
+            <button className="diy-button" type="button" onClick={() => openRecipe(featured)}>{text.original}<ArrowRight size={17} /></button>
           </JokoHeroNotebookNote>
         </aside>
       </section>
@@ -119,13 +111,13 @@ export default function DiyPage({ onNavigate }: { onNavigate: (page: string) => 
         <p className="diy-preview">{text.preview} {language !== 'en' && text.english}</p>
         <p className="diy-fine" role="status">{visible.length} {text.count} · {storageError ? text.storageError : text.local}</p>
         <div className="diy-grid">{visible.map(recipe => <article key={recipe.id} className="diy-card">
-          <button type="button" className="diy-card-photo" onClick={() => openRecipe(recipe)} aria-label={`${text.view}: ${recipe.title}`}><img src={recipe.image} alt={recipe.title} loading="lazy" width="800" height="600" /><span className="diy-photo-label">{text.photo}</span>{recipe.source && <><span className="diy-play"><Play fill="currentColor" /></span><span className="diy-platform">YouTube</span></>}</button>
-          <div className="diy-card-body"><h3 lang="en"><button type="button" onClick={() => openRecipe(recipe)}>{recipe.title}</button></h3><p lang="en">{recipe.description}</p><div className="diy-card-meta"><ChefHat size={16} />{text.pending}</div><div className="diy-card-actions"><button type="button" onClick={() => openRecipe(recipe)}>{text.view}<ArrowRight size={16} /></button><button type="button" className="diy-heart" aria-pressed={saved.includes(recipe.id)} aria-label={`${saved.includes(recipe.id) ? text.unsave : text.save}: ${recipe.title}`} onClick={() => toggleSaved(recipe.id)}><Heart size={21} fill={saved.includes(recipe.id) ? 'currentColor' : 'none'} /></button></div></div>
+          <button type="button" className="diy-card-photo" disabled={!recipe.source} onClick={() => openRecipe(recipe)} aria-label={`${text.view}: ${recipe.title}`}><img src={recipe.image} alt={recipe.title} loading="lazy" width="800" height="600" /><span className="diy-photo-label">{text.photo}</span>{recipe.source && <><span className="diy-play"><Play fill="currentColor" /></span><span className="diy-platform">{recipe.source.platform}</span></>}</button>
+          <div className="diy-card-body"><h3 lang="en"><button type="button" disabled={!recipe.source} onClick={() => openRecipe(recipe)}>{recipe.title}</button></h3><p lang="en">{recipe.description}</p><div className="diy-card-meta">{recipe.source ? <a href={recipe.source.url} target="_blank" rel="noopener noreferrer">{text.by} {recipe.source.creator} <ExternalLink size={12} /></a> : text.pending}</div><div className="diy-card-actions">{recipe.source ? <button type="button" onClick={() => openRecipe(recipe)}>{text.original}<ArrowRight size={16} /></button> : <span className="diy-pending">{text.sourcePending}</span>}<button type="button" className="diy-heart" aria-pressed={saved.includes(recipe.id)} aria-label={`${saved.includes(recipe.id) ? text.unsave : text.save}: ${recipe.title}`} onClick={() => toggleSaved(recipe.id)}><Heart size={21} fill={saved.includes(recipe.id) ? 'currentColor' : 'none'} /></button></div></div>
         </article>)}</div>
         {!visible.length && <div className="diy-empty"><p>{text.empty}</p><button className="diy-button" type="button" onClick={() => { setQuery(''); setCategory('all'); setSavedOnly(false); }}>{text.reset}</button></div>}
       </section>
       <aside className="diy-store"><CookingPot size={36} strokeWidth={1} aria-hidden="true" /><p>{text.store}</p><button className="diy-button" type="button" onClick={() => onNavigate('products-non-bakery')}>{text.storeLink}<ArrowRight size={17} /></button></aside>
     </div>
-    {selected && <RecipeDetail key={selected.id} recipe={selected} onClose={closeRecipe} />}
+    {selected && <CreatorVideo key={selected.id} recipe={selected} onClose={closeRecipe} />}
   </div>;
 }
