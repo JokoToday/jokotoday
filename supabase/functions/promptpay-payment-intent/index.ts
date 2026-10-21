@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: payment, error: paymentError } = await service
       .from("payment_transactions")
-      .select("id, order_id, customer_id, amount_due, currency, status, expires_at")
+      .select("id, order_id, customer_id, amount_due, currency, status, expires_at, payment_mode, provider")
       .eq("id", paymentTransactionId)
       .maybeSingle();
 
@@ -189,7 +189,19 @@ Deno.serve(async (req: Request) => {
 
     if (settingError) throw settingError;
 
-    const qrMode = setting?.payment_qr_mode === "kshop_master"
+    // Store mode is snapshotted on the payment itself; never substitute the
+    // global Bakery payment setting for a Store-linked transaction.
+    const { data: storeLink, error: linkError } = await service
+      .from("store_payment_links")
+      .select("payment_transaction_id")
+      .eq("payment_transaction_id", payment.id)
+      .maybeSingle();
+    if (linkError) throw linkError;
+    if (storeLink && (payment.payment_mode !== "kshop_master" || payment.provider !== "easyslip")) {
+      return jsonResponse({ error: "This Store payment does not use K SHOP/EasySlip" }, 409);
+    }
+
+    const qrMode = storeLink ? "kshop_master" : setting?.payment_qr_mode === "kshop_master"
       ? "kshop_master"
       : setting?.payment_qr_mode === "kshop_easyslip"
         ? "kshop_easyslip"
@@ -214,6 +226,9 @@ Deno.serve(async (req: Request) => {
     });
   } catch (error) {
     console.error("promptpay-payment-intent failed", error);
+    if (error instanceof Error && error.message.includes("KSHOP_MASTER_QR_PAYLOAD")) {
+      return jsonResponse({ error: "K SHOP merchant QR is not configured in this staging environment. No payment has been initiated." }, 503);
+    }
     return jsonResponse({ error: "Could not prepare payment QR" }, 500);
   }
 });
