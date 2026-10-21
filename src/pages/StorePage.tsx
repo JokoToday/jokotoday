@@ -20,6 +20,7 @@ export default function StorePage() {
   const [assignments, setAssignments] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
   const [category, setCategory] = useState('all');
   const { items, addToCart, updateQuantity, setIsCartOpen } = useCart();
   const [availability, setAvailability] = useState<Record<string, { stock_on_hand: number; stock_reserved: number; pickup_today: boolean; pickup_preorder: boolean; delivery_today: boolean }>>({});
@@ -31,6 +32,8 @@ export default function StorePage() {
   useEffect(() => {
     let active = true;
     (async () => {
+      setLoading(true);
+      setError('');
       try {
         // The join table must be explicitly populated by an approved Admin workflow.
         const entries = await getPublicStoreCatalog();
@@ -44,14 +47,15 @@ export default function StorePage() {
         if (stockError) throw stockError;
         if (active) setAvailability(Object.fromEntries((configs || []).map((row) => [row.product_id, row])));
         if (active) setProducts(all.filter((product) => ids.has(product.id)));
-      } catch {
-        if (active) setError(copy.error);
+      } catch (cause) {
+        console.error('Store catalog load failed', cause);
+        if (active) setError(copy.error + ' ' + (cause instanceof Error ? cause.message : 'Request failed'));
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, [copy.error]);
+  }, [copy.error, retry]);
   const categories = useMemo(() => storeCategories.filter((c) => c.is_active && products.some((p) => assignments[p.id] === c.id)), [storeCategories, products, assignments]);
   const shown = category === 'all' ? products : products.filter((p) => assignments[p.id] === category);
   const cartQty = (productId: string) => items.find((item) => item.product.id === productId)?.quantity || 0;
@@ -89,7 +93,7 @@ export default function StorePage() {
           </div>
         )}
         {loading ? <div className="py-16 text-center" aria-busy="true">…</div>
-          : error ? <p role="alert">{error}</p>
+          : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(n => n + 1)} className="mt-3 rounded-lg border px-4 py-2">Retry catalog</button></div>
           : shown.length === 0 ? <div className="flex flex-col items-center gap-4 rounded-3xl bg-[#FFF9EE] p-12 text-center text-[#303532]"><PackageSearch className="h-12 w-12 text-[#55766F]" /><p>{copy.empty}</p></div>
           : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shown.map((product) => (
