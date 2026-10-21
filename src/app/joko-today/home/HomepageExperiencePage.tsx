@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   ArrowRight,
   PlayCircle,
@@ -42,13 +43,13 @@ const BAKERY_HERO = JOKO_BAKERY_HERO_ASSET;
 const copy = {
   en: {
     kicker: 'Love for good things. Shared with everyone.',
-    headline1: 'Selected Goodness',
+    headline1: 'Selected Goods',
     headline2: 'for a',
     headlineAccent: 'Brighter',
     headline3: 'Today',
-    intro: 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.',
+    intro: 'From our bakery, beyond it, and from makers we believe in.',
     products: 'Explore the Bakery',
-    howItWorks: 'How it works',
+    howItWorks: 'Explore JOKO',
     select: 'Select',
     preorder: 'Pre-Order',
     pickup: 'Pickup',
@@ -62,7 +63,7 @@ const copy = {
     headline3: '',
     intro: 'อบอย่างตั้งใจเป็นล็อตเล็ก ๆ สั่งล่วงหน้าออนไลน์ แล้วมารับของสดใหม่ได้ที่จุดรับของ JOKO',
     products: 'สำรวจเบเกอรี่',
-    howItWorks: 'วิธีสั่งซื้อ',
+    howItWorks: 'สำรวจ JOKO',
     select: 'เลือก',
     preorder: 'สั่งล่วงหน้า',
     pickup: 'รับสินค้า',
@@ -76,7 +77,7 @@ const copy = {
     headline3: '明天。',
     intro: '小批量用心烘焙。线上预订，到 JOKO 取货点领取新鲜出炉的面包。',
     products: '探索烘焙坊',
-    howItWorks: '如何订购',
+    howItWorks: '探索 JOKO',
     select: '选择',
     preorder: '预订',
     pickup: '取货',
@@ -122,8 +123,11 @@ export function HomepageExperiencePage({
         { text: labels.headlineAccent, marks: { color: 'accent' } },
         ...(labels.headline3 ? [{ text: '\n' + labels.headline3 }] : []),
       ];
-  const titleRuns = publishedTitleRichText ?? headlineFallback;
-  const headlineLineStyles = publishedHero?.type === 'home.hero.v1'
+  // Upgrade only the previously published English default; retain later Admin edits.
+  const legacyEnglishTitle = lang === 'en' && /^(Selected Goodness|Selected Goods[.]?)/.test(publishedTitleRichText?.map((run) => run.text).join('') ?? '');
+  const previousEnglishTitle = lang === 'en' && publishedTitleRichText?.map((run) => run.text).join('') === 'Selected Goods.\nfor a\nBrighter Today';
+  const titleRuns = legacyEnglishTitle || previousEnglishTitle ? headlineFallback : publishedTitleRichText ?? headlineFallback;
+  const headlineLineStyles = (legacyEnglishTitle || previousEnglishTitle) ? [{ size: 54 }, { align: 'center' as const, size: 30 }, { size: 55 }] : publishedHero?.type === 'home.hero.v1'
     ? publishedHero.props.titleLineStyles?.[lang]
     : lang === 'en'
       ? [{}, { align: 'center' as const, size: 30 }, {}]
@@ -134,15 +138,17 @@ export function HomepageExperiencePage({
   const selectUrl = heroJourneyLinks?.selectUrl || '/products';
   const preorderUrl = heroJourneyLinks?.preorderUrl || '/how-it-works';
   const pickupUrl = heroJourneyLinks?.pickupUrl || '/how-it-works';
-  const subtitleRuns = publishedHero?.type === 'home.hero.v1'
+  const publishedSubtitleRuns = publishedHero?.type === 'home.hero.v1'
     ? localizeRichText(publishedHero.props.subtitleRichText, lang, 'en', heroIntro)
     : [{ text: heroIntro }];
+  const subtitleRuns = lang === 'en' && ['We make it - We find it - We find the people who make it', 'Curated by JOKO — bakery favourites, special finds, and products from fellow makers worth knowing. Made for pre-order and easy pickup.'].includes(publishedSubtitleRuns.map((run) => run.text).join('').trim())
+    ? [{ text: labels.intro }] : publishedSubtitleRuns;
+  const useSplitEnglishSubtitle = lang === 'en' && subtitleRuns.map((run) => run.text).join('').trim() === 'From our bakery, beyond it, and from makers we believe in.';
   const heroPrimaryLabel = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.primaryActionLabel, lang, 'en')
     : labels.products;
-  const heroSecondaryLabel = publishedHero?.type === 'home.hero.v1'
-    ? localize(publishedHero.props.secondaryActionLabel, lang, 'en')
-    : labels.howItWorks;
+  const savedSecondary = publishedHero?.type === 'home.hero.v1' ? localize(publishedHero.props.secondaryActionLabel, lang, 'en') : '';
+  const heroSecondaryLabel = savedSecondary && !['How It Works', 'How it works', 'วิธีการสั่งซื้อ', '订购指南'].includes(savedSecondary) ? savedSecondary : labels.howItWorks;
   const heroMediaAlt = publishedHero?.type === 'home.hero.v1'
     ? localize(publishedHero.props.mediaAlt, lang, 'en')
     : labels.bakeryAlt;
@@ -189,19 +195,18 @@ export function HomepageExperiencePage({
   const publishedTopLiked = publishedHomepage?.sections.find(
     (section): section is HomeTopLikedSection => section.type === 'home.top-liked.v1',
   );
-  const showHowItWorks = () => {
-    const section = window.document.getElementById('how-it-works');
+  const showServices = () => {
+    const section = window.document.getElementById('what-you-can-do');
     if (section) {
-      const targetPath = '/#how-it-works';
-      const currentPath = `${window.location.pathname}${window.location.hash}`;
-      if (window.location.pathname === '/' && currentPath !== targetPath) {
-        window.history.pushState({ jokoHomepageSection: 'how-it-works' }, '', targetPath);
-      }
+      if (window.location.pathname === '/') window.history.replaceState({ jokoHomepageSection: 'what-you-can-do' }, '', '/#what-you-can-do');
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
     }
-    onNavigate('how-it-works');
   };
+
+  const heroImage = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroImageUrl?.trim()
+    ? publishedHero.props.heroImageUrl : BAKERY_HERO;
+
+  const fullBleedHero = publishedHero?.type === 'home.hero.v1' && publishedHero.props.heroBackgroundMode === 'full-bleed';
 
   const desktopHeroMask = {
     WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,.08) 4%, rgba(0,0,0,.38) 10%, rgba(0,0,0,.78) 17%, #000 26%, #000 94%, rgba(0,0,0,.84) 97%, transparent 100%)',
@@ -210,7 +215,16 @@ export function HomepageExperiencePage({
 
   return (
     <>
-      <section className="joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8">
+      <section className={`joko-mineral-field joko-bakery-hero-field pb-8 sm:pb-10 xl:pb-8 ${heroOnly && fullBleedHero ? 'joko-hero-draft-full-bleed' : ''}`}
+        style={heroOnly && fullBleedHero ? ({
+          '--joko-hero-desktop': `url("${heroImage.replaceAll('"', '%22')}")`,
+          '--joko-hero-mobile': `url("${(publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileImageUrl : undefined) || heroImage}")`,
+          '--joko-hero-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusX ?? 65 : 65}%`,
+          '--joko-hero-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroFocusY ?? 40 : 40}%`,
+          '--joko-hero-mobile-x': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusX ?? 50 : 50}%`,
+          '--joko-hero-mobile-y': `${publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroMobileFocusY ?? 45 : 45}%`,
+          '--joko-hero-text-opacity': (publishedHero?.type === 'home.hero.v1' ? publishedHero.props.heroTextOverlay ?? 85 : 85) / 100,
+        } as CSSProperties) : undefined}>
         <Container width="wide">
           <div className="joko-bakery-hero-stage relative xl:min-h-[39rem] 2xl:min-h-[43rem]">
             {showHeroNotebookNote && (
@@ -231,11 +245,11 @@ export function HomepageExperiencePage({
             )}
 
             <div
-              className="joko-bakery-scene-layer pointer-events-none absolute hidden xl:block"
+              className={`joko-bakery-scene-layer pointer-events-none absolute hidden ${fullBleedHero ? '!hidden' : 'xl:block'}`}
               style={{ left: '34%' }}
             >
               <img
-                src={BAKERY_HERO}
+                src={heroImage}
                 alt={heroMediaAlt}
                 className="joko-bakery-hero-image h-full w-full object-cover"
                 style={desktopHeroMask}
@@ -258,16 +272,28 @@ export function HomepageExperiencePage({
                     ? resolveHeroLocaleStyle(publishedHero.props.titleStyle, publishedHero.props.titleLocaleStyles, lang)
                     : undefined}
                   lineStyles={headlineLineStyles}
-                  className="mt-4 leading-[.92] tracking-[-0.042em]"
+                  fontFamilyOverride={lang === 'en' ? 'Nunito Sans, var(--joko-font-display)' : undefined}
+                  fontWeightOverride={lang === 'en' ? 600 : undefined}
+                  className={lang === 'en' ? 'mt-4 w-full leading-[.96] tracking-[-0.025em] joko-hero-nunito-headline' : 'mt-4 leading-[.92] tracking-[-0.042em]'}
                 />
                 <span className="joko-hero-pencil-underline mt-2" aria-hidden="true" />
 
+                {useSplitEnglishSubtitle ? (
+                  <p className="mt-5 text-[16px] font-bold tracking-[0.15em] leading-6 text-[#303532]/80 max-w-none" style={{ fontFamily: 'var(--joko-font-body)' }}>
+                    <span className="sm:block sm:whitespace-nowrap">From our bakery, beyond it,</span>{' '}
+                    <span className="sm:block sm:whitespace-nowrap">and from makers we believe in.</span>
+                  </p>
+                ) : (
                 <HeroTypography as="p" kind="subtitle" value={subtitleRuns}
                   style={publishedHero?.type === 'home.hero.v1'
                     ? resolveHeroLocaleStyle(publishedHero.props.subtitleStyle, publishedHero.props.subtitleLocaleStyles, lang)
                     : undefined}
-                  className="mt-5 max-w-[29rem] leading-7"
+                  fontFamilyOverride={lang === 'en' ? 'var(--joko-font-body)' : undefined}
+                  fontWeightOverride={lang === 'en' ? 700 : undefined}
+                  fontSizeOverride={lang === 'en' ? '16px' : undefined}
+                  className={lang === 'en' ? 'mt-5 max-w-[29rem] tracking-[0.15em] leading-6' : 'mt-5 max-w-[29rem] leading-7'}
                 />
+                )}
 
                 <div className="mt-7 xl:mt-8">
                   <div className="flex items-start gap-0">
@@ -278,7 +304,7 @@ export function HomepageExperiencePage({
                     />
 
                     <div className="relative z-20 mt-10 min-w-0 flex-1 2xl:mt-11">
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex w-full max-w-[18rem] flex-col gap-3">
                         <button
                           type="button"
                           onClick={() => onNavigate('products-bakery')}
@@ -290,7 +316,7 @@ export function HomepageExperiencePage({
                         </button>
                         <button
                           type="button"
-                          onClick={showHowItWorks}
+                          onClick={showServices}
                           className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[#303532]/70 bg-[#F4EFE5]/72 px-6 py-3 font-semibold text-[#303532] transition hover:bg-[#F4EFE5] focus:outline-none focus:ring-2 focus:ring-[#55766F]" style={{ fontSize: 'var(--joko-size-button, 16px)' }}
                         >
                           <PlayCircle className="mr-3 h-5 w-5" strokeWidth={1.6} aria-hidden="true" />
@@ -343,9 +369,9 @@ export function HomepageExperiencePage({
               </div>
 
               <div className="relative min-w-0 xl:min-h-[40rem] 2xl:min-h-[44rem]">
-                <div className="relative mx-auto mt-1 max-w-[52rem] xl:hidden">
+                <div className={`relative mx-auto mt-1 max-w-[52rem] xl:hidden ${fullBleedHero ? '!hidden' : ''}`}>
                   <img
-                    src={BAKERY_HERO}
+                    src={heroImage}
                     alt={heroMediaAlt}
                     className="joko-bakery-hero-image-mobile mx-auto w-full object-contain"
                     decoding="async"

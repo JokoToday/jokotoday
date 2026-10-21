@@ -43,6 +43,9 @@ import {
   type LocalizedText,
 } from '../../../platform/builder';
 import { HomepageLogoUploader } from './HomepageLogoUploader';
+import { HomepageServiceAdmin } from './HomepageServiceAdmin';
+import { HomepageSectionManager, DEFAULT_HOMEPAGE_SECTION_LAYOUT } from './HomepageSectionManager';
+import HomepageLowerSections from '../home/HomepageLowerSections';
 import { ControlledRichTextEditor } from './ControlledRichTextEditor';
 import { HeroLineStyleControls, HeroStyleControls, HeroWordStyleEditor } from './HeroTypographyControls';
 import { uploadGalleryImage } from '../../../lib/mediaService';
@@ -526,6 +529,8 @@ export function JokoHomepageEditor({
   const [previewZoom, setPreviewZoom] = useState<PreviewZoom>('fit');
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [sectionManagerOpen, setSectionManagerOpen] = useState(false);
+  const [crewEditorOpen, setCrewEditorOpen] = useState(false);
   const [previewHostWidth, setPreviewHostWidth] = useState(0);
   const [previewContentHeight, setPreviewContentHeight] = useState(900);
   const [previewFrameDocument, setPreviewFrameDocument] = useState<Document | null>(null);
@@ -563,7 +568,7 @@ export function JokoHomepageEditor({
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [sectionManagerOpen, crewEditorOpen]);
 
   useEffect(() => {
     if (!previewFrameDocument) return undefined;
@@ -572,6 +577,13 @@ export function JokoHomepageEditor({
     previewFrameDocument.body.style.margin = '0';
     previewFrameDocument.body.style.background = '#ffffff';
     previewFrameDocument.body.style.minWidth = '0';
+    const handleWheel = (event: WheelEvent) => {
+      if (!previewHostRef.current) return;
+      previewHostRef.current.scrollTop += event.deltaY;
+      previewHostRef.current.scrollLeft += event.deltaX;
+      event.preventDefault();
+    };
+    previewFrameDocument.addEventListener('wheel', handleWheel, { passive: false });
 
     const measure = () => {
       const root = previewFrameDocument.getElementById('joko-builder-preview-root');
@@ -588,13 +600,18 @@ export function JokoHomepageEditor({
     const root = previewFrameDocument.getElementById('joko-builder-preview-root');
     if (root) observer.observe(root);
     observer.observe(previewFrameDocument.body);
+    const mutations = new MutationObserver(measure);
+    if (root) mutations.observe(root, { childList: true, subtree: true });
     measure();
 
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); mutations.disconnect(); previewFrameDocument.removeEventListener('wheel', handleWheel); };
   }, [previewFrameDocument, locale, document]);
 
   const selectedSection = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const hero = document.sections.find((section) => section.type === 'home.hero.v1');
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const [heroImageError, setHeroImageError] = useState('');
+
 
   const updateBranding = (next: BuilderHomepageBranding) => {
     onDocumentChange({ ...document, branding: next });
@@ -695,6 +712,12 @@ export function JokoHomepageEditor({
       .querySelectorAll('link[rel="stylesheet"], style')
       .forEach((node) => head.appendChild(node.cloneNode(true)));
 
+    // BuilderPageRenderer uses min-h-screen for standalone pages. In an iframe whose
+    // height follows its content, 100vh becomes a feedback loop and pushes all
+    // lower homepage sections infinitely far below the Hero.
+    const previewScope = frameDocument.createElement('style');
+    previewScope.textContent = '#joko-builder-preview-root > .min-h-screen { min-height: 0 !important; }';
+    head.appendChild(previewScope);
     setPreviewFrameDocument(frameDocument);
   };
 
@@ -766,6 +789,10 @@ export function JokoHomepageEditor({
             </button>
           </div>
 
+          <button type="button" onClick={() => {setSectionManagerOpen(true);setCrewEditorOpen(false);}} className="w-full rounded-xl border border-[#55766F]/30 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] shadow-sm hover:bg-[#DAE5DE]">
+            Homepage Sections <span className="float-right">↗ Expand</span>
+          </button>
+
           <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-3" open>
             <summary className="cursor-pointer text-sm font-semibold text-[#303532]">Top Menu — desktop & mobile</summary>
             <p className="mt-2 text-[11px] leading-4 text-[#303532]/60">Labels use the active editing language. Reorder or hide items; the destinations stay safely fixed. Save draft, preview and publish to make changes public.</p>
@@ -788,6 +815,20 @@ export function JokoHomepageEditor({
                         const next = [...menu]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; changeMenu(next);
                       }}>↓</button>
                   </div>
+                  <label className="mt-2 block text-[11px] text-[#303532]/70">Description ({locale})</label>
+                  <input aria-label={`${item.key} ${locale} menu description`}
+                    className="mt-1 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    maxLength={120} value={item.descriptions?.[locale] ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, descriptions: { ...entry.descriptions, [locale]: event.target.value },
+                    } : entry))} />
+                  <label className="mt-2 block text-[11px] text-[#303532]/70">Optional internal destination (e.g. /about)</label>
+                  <input aria-label={`${item.key} destination URL`} type="text"
+                    className="mt-1 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
+                    placeholder="Use existing destination" value={item.href ?? ''}
+                    onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
+                      ...entry, href: event.target.value,
+                    } : entry))} />
                   <input aria-label={`${item.key} ${locale} menu label`} className="mt-2 w-full rounded-lg border border-[#55766F]/20 bg-white px-3 py-2 text-xs"
                     maxLength={50} value={item.labels?.[locale] ?? ''}
                     onChange={(event) => changeMenu(menu.map((entry, current) => current === index ? {
@@ -811,6 +852,52 @@ export function JokoHomepageEditor({
             />
           )}
 
+          {hero?.type === 'home.hero.v1' && (
+            <div className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-4">
+              <p className="text-sm font-semibold text-[#303532]">Homepage bakery hero image</p>
+              <p className="mt-1 text-xs text-[#303532]/60">Upload the approved illustration, save the draft, preview on desktop/mobile, then publish. Existing live image remains until publication.</p>
+              <img src={hero.props.heroImageUrl || '/assets/home-experience/joko-bakery-full-v2.webp'}
+                alt="Current bakery hero" className="mt-3 w-full max-h-40 rounded-xl object-contain bg-[#F4EFE5]" />
+              <input aria-label="Upload bakery hero image" type="file" accept="image/png,image/jpeg,image/webp"
+                className="mt-3 block w-full text-xs" disabled={heroImageUploading}
+                onChange={async (event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (!file) return;
+                  setHeroImageUploading(true);
+                  reportUploadState('hero-image', true);
+                  setHeroImageError('');
+                  try {
+                    const result = await uploadGalleryImage({ file, gallerySlot: 'homepage-hero' });
+                    updateSection(hero.id, (section) => section.type === 'home.hero.v1'
+                      ? { ...section, props: { ...section.props, heroImageUrl: result.publicUrl } } : section);
+                  } catch (error) {
+                    setHeroImageError(error instanceof Error ? error.message : 'Image upload failed');
+                  } finally {
+                    setHeroImageUploading(false);
+                    reportUploadState('hero-image', false);
+                    event.target.value = '';
+                  }
+                }} />
+              <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={hero.props.heroBackgroundMode === 'full-bleed'} onChange={e => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroBackgroundMode: e.target.checked ? 'full-bleed' : 'classic' } } : section)}/> Full-width background mode (JOKO Classic)</label>
+              {hero.props.heroBackgroundMode === 'full-bleed' && <div className="mt-4 space-y-3">
+                <p className="text-xs text-[#303532]/65">Background fills the header and hero. Future uploads reuse these settings. Keep the focal subject on the right and space for text on the left.</p>
+                <label className="block text-sm">Optional mobile illustration
+                  <input className="mt-1 block w-full text-xs" type="file" accept="image/png,image/jpeg,image/webp" disabled={heroImageUploading} onChange={async event => {
+                    const file = event.currentTarget.files?.[0]; if (!file) return;
+                    setHeroImageUploading(true); reportUploadState('hero-image',true); setHeroImageError('');
+                    try { const uploaded = await uploadGalleryImage({file,gallerySlot:'homepage-hero'}); updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroMobileImageUrl: uploaded.publicUrl } } : section); }
+                    catch(error) { setHeroImageError(error instanceof Error ? error.message : 'Mobile upload failed'); }
+                    finally { setHeroImageUploading(false); reportUploadState('hero-image',false); event.target.value=''; }
+                  }}/>
+                </label>
+                {hero.props.heroMobileImageUrl && <button type="button" className="text-xs underline" onClick={() => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroMobileImageUrl: undefined } } : section)}>Use desktop image on mobile</button>}
+                {(['heroFocusX','heroFocusY','heroMobileFocusX','heroMobileFocusY','heroTextOverlay','heroHeaderOpacity'] as const).map((key) => <RangeField key={key} label={{heroFocusX:'Desktop focal point X',heroFocusY:'Desktop focal point Y',heroMobileFocusX:'Mobile focal point X',heroMobileFocusY:'Mobile focal point Y',heroTextOverlay:'Left text gradient',heroHeaderOpacity:'Header tint opacity'}[key]} value={hero.props[key] ?? ({heroFocusX:65,heroFocusY:40,heroMobileFocusX:50,heroMobileFocusY:45,heroTextOverlay:65,heroHeaderOpacity:85}[key])} min={0} max={100} unit="%" onChange={number => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, [key]: number } } : section)} />)}
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={hero.props.heroBehindHeader !== false} onChange={e => updateSection(hero.id, section => section.type === 'home.hero.v1' ? { ...section, props: { ...section.props, heroBehindHeader:e.target.checked } } : section)}/> Extend artwork behind header</label>
+              </div>}
+              {heroImageUploading && <p className="mt-2 text-xs">Uploading hero image…</p>}
+              {heroImageError && <p role="alert" className="mt-2 text-xs text-red-700">{heroImageError}</p>}
+            </div>
+          )}
           <RangeField
             label="Logo size"
             value={branding.logoScale}
@@ -971,6 +1058,14 @@ export function JokoHomepageEditor({
             </div>
           </details>
 
+          <button type="button" className="w-full rounded-2xl border border-[#55766F]/25 bg-[#E3EAE5] p-3 text-left text-sm font-semibold text-[#304B45] hover:bg-[#DAE5DE]" onClick={()=>{setCrewEditorOpen(true);setSectionManagerOpen(false);}}>
+            About JOKO — Illustrated Support Team · Open editor →
+          </button>
+
+          <HomepageServiceAdmin value={branding.services} locale={locale as 'en' | 'th' | 'zh'}
+            onChange={next => updateBranding({ ...branding, services: next })}
+            onUploadingChange={busy => reportUploadState('service-images', busy)} />
+
           <div className="border-t border-[#55766F]/14 pt-4">
             <div className="mb-3 flex items-center gap-2">
               <LayoutTemplate className="h-4 w-4 text-[#55766F]" />
@@ -1003,6 +1098,56 @@ export function JokoHomepageEditor({
         data-builder-pane="preview"
         className="min-w-0 bg-[#E7EEEB] p-4 sm:p-6 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
       >
+        {crewEditorOpen && <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-[#55766F]/20 bg-[#FFFDF7] p-4 sm:p-6">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b pb-4">
+            <div><h2 className="text-xl font-semibold">About JOKO — Illustrated Support Team</h2><p className="mt-1 text-sm text-[#303532]/65">Edit each character's portrait, role and short biography in all three languages. Changes are unsaved until you click Save Draft in the main toolbar; publishing is separate.</p></div>
+            <button type="button" onClick={()=>setCrewEditorOpen(false)} className="rounded-lg border bg-white px-3 py-2 text-sm font-semibold">Close editor</button>
+          </div>
+          <details className="rounded-2xl border border-[#55766F]/14 bg-white/70 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[#303532]">About JOKO — Unofficial illustrated support team</summary>
+            <p className="mt-2 text-xs text-[#303532]/65">Use only approved character-master portraits. The section stays hidden until enabled and at least one portrait URL is supplied. Save Draft, preview, then publish.</p>
+            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={branding.illustratedCrew?.visible === true} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,visible:e.target.checked}})}/> Show illustrated support team</label>
+            <button type="button" className="mt-3 rounded-lg border px-3 py-2 text-sm" disabled={(branding.illustratedCrew?.members?.length || 0)>=8} onClick={()=>{
+              const members=branding.illustratedCrew?.members || [];
+              updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:[...members,{id:`character-${Math.max(0,...members.map(m=>Number(m.id.match(/^character-(\d+)$/)?.[1])||0))+1}`,name:'',imageUrl:'',role:{en:'',th:'',zh:''},bio:{en:'',th:'',zh:''}}]}});
+            }}>Add illustrated character</button>
+            <div className="mt-4 space-y-4">{branding.illustratedCrew?.members?.map((member,index)=>(
+              <div key={member.id} className="rounded-xl border p-3 space-y-2">
+                <div className="flex items-center justify-between"><b className="text-sm">Character {index+1}</b><button type="button" className="text-xs underline" onClick={()=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.filter((_,i)=>i!==index)}})}>Remove</button></div>
+                {([['name','Name'],['imageUrl','Approved portrait URL (/assets/... or HTTPS)']] as const).map(([field,label])=><label key={field} className="block text-xs">{label}<input className="mt-1 w-full rounded-lg border p-2 text-sm" value={member[field]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:e.target.value}:m)}})}/></label>)}
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#A44F1D] bg-[#C76624] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#A44F1D] focus-within:ring-2 focus-within:ring-[#55766F]">
+                  <ImagePlus className="h-4 w-4" /> Upload character portrait
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={async e=>{
+                    const file=e.target.files?.[0];e.target.value='';if(!file)return;
+                    reportUploadState(`crew-${member.id}`,true);
+                    try {
+                      const result=await uploadGalleryImage({file,gallerySlot:`about-crew-${member.id}`});
+                      const current=latestDocumentRef.current;
+                      const currentBranding=resolveJokoHomepageBranding(current.branding);
+                      const next={...current,branding:{...currentBranding,illustratedCrew:{...currentBranding.illustratedCrew,members:currentBranding.illustratedCrew?.members?.map(m=>m.id===member.id?{...m,imageUrl:result.publicUrl}:m)}}};
+                      latestDocumentRef.current=next;onDocumentChange(next);window.alert(`Image uploaded for ${member.name || 'character'}. Click Save Draft in the main toolbar to keep it.`);
+                    }catch(err){window.alert(err instanceof Error?err.message:'Image upload failed.');}
+                    finally{reportUploadState(`crew-${member.id}`,false);}
+                  }}/>
+                </label>
+                {(['en','th','zh'] as const).map(lang=><div key={lang} className="grid gap-3 lg:grid-cols-2">
+                  {(['role','bio'] as const).map(field=><label key={field} className="block text-xs">{field==='role'?'Fictional job title':'Fun description'} ({lang.toUpperCase()})<textarea className="mt-1 w-full min-h-20 rounded-lg border p-3 text-sm" rows={field==='role'?2:3} value={member[field][lang]||''} onChange={e=>updateBranding({...branding,illustratedCrew:{...branding.illustratedCrew,members:branding.illustratedCrew?.members?.map((m,i)=>i===index?{...m,[field]:{...m[field],[lang]:e.target.value}}:m)}})}/></label>)}
+                </div>)}
+              </div>
+            ))}</div>
+          </details>
+
+        </div>}
+        {sectionManagerOpen && <HomepageSectionManager
+          layout={branding.sectionLayout?.length === 10 ? branding.sectionLayout : branding.sectionLayout?.length === 8
+            ? [...branding.sectionLayout, ...DEFAULT_HOMEPAGE_SECTION_LAYOUT.filter(item => item.key === 'gallery' || item.key === 'reviews')]
+            : DEFAULT_HOMEPAGE_SECTION_LAYOUT}
+          onChange={next => updateBranding({ ...branding, sectionLayout: next })}
+          onClose={() => setSectionManagerOpen(false)}
+          servicesEnabled={branding.services?.visible === true}
+          onServicesToggle={visible => updateBranding({ ...branding, services: { ...branding.services, visible } })}
+        />}
+        {!sectionManagerOpen && !crewEditorOpen && <>
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#55766F]">Live draft</p>
@@ -1087,9 +1232,10 @@ export function JokoHomepageEditor({
               }}
             />
             {previewFrameDocument?.getElementById('joko-builder-preview-root') && createPortal(
+              <>
               <BuilderPageRenderer
                 experienceHeroPreview
-                document={document}
+                document={{ ...document, sections: document.sections.filter(section => section.type === 'home.hero.v1') }}
                 locale={locale}
                 site={site}
                 providers={providers}
@@ -1097,11 +1243,19 @@ export function JokoHomepageEditor({
                 selectedSectionId={selectedSection?.id}
                 onSectionSelect={setSelectedSectionId}
                 onValidationError={(validationIssues) => onValidationError?.(validationIssues.map((issue) => `${issue.path}: ${issue.message}`))}
-              />,
+              />
+              <HomepageLowerSections
+                locale={locale}
+                onNavigate={() => undefined}
+                draftBranding={branding}
+                publishedTopLiked={document.sections.find((section) => section.type === 'home.top-liked.v1') as Extract<BuilderSection, { type: 'home.top-liked.v1' }> | undefined}
+              />
+              </>,
               previewFrameDocument.getElementById('joko-builder-preview-root')!,
             )}
           </div>
         </div>
+        </>}
       </main>
 
       <aside

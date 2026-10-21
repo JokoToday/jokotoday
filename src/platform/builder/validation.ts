@@ -243,12 +243,83 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
     }
   }
 
+  if (value.illustratedCrew !== undefined) {
+    const crew = value.illustratedCrew;
+    if (!isRecord(crew) || (crew.visible !== undefined && typeof crew.visible !== 'boolean') ||
+      (crew.members !== undefined && (!Array.isArray(crew.members) || crew.members.length > 8))) {
+      pushIssue(issues, 'branding.illustratedCrew', 'Illustrated team must have a visibility flag and at most eight members.');
+    } else if (Array.isArray(crew.members)) {
+      const seen = new Set<string>();
+      crew.members.forEach((member: unknown, i: number) => {
+        const path = `branding.illustratedCrew.members.${i}`;
+        if (!isRecord(member) || !isNonEmptyString(member.id) || !isNonEmptyString(member.name) ||
+          member.id.length > 60 || member.name.length > 100 || seen.has(member.id)) {
+          pushIssue(issues, path, 'Each illustrated character needs a unique ID and name.');return;
+        }
+        seen.add(member.id);
+        if (member.imageUrl !== undefined && (typeof member.imageUrl !== 'string' ||
+          (member.imageUrl !== '' && !(member.imageUrl.startsWith('/') && !member.imageUrl.startsWith('//') || /^https:\/\//i.test(member.imageUrl))))) {
+          pushIssue(issues, `${path}.imageUrl`, 'Artwork must use a bundled path or HTTPS URL.');
+        }
+        validateOptionalLocalizedText(member.role, `${path}.role`, issues, ['en','th','zh']);
+        validateOptionalLocalizedText(member.bio, `${path}.bio`, issues, ['en','th','zh']);
+      });
+    }
+  }
+
+  if (value.sectionLayout !== undefined) {
+    const expected = ['services','makers','baking','how','pickup','new','beyond','about','gallery','reviews'];
+    const legacy = expected.slice(0, 8);
+    const count = Array.isArray(value.sectionLayout) ? value.sectionLayout.length : -1;
+    if (!Array.isArray(value.sectionLayout) || ![legacy.length, expected.length].includes(value.sectionLayout.length)
+      || new Set(value.sectionLayout.map((item: unknown) => isRecord(item) ? item.key : '')).size !== count
+      || value.sectionLayout.some((item: unknown) => !isRecord(item) || !(count === legacy.length ? legacy : expected).includes(String(item.key)) || typeof item.visible !== 'boolean')) {
+      pushIssue(issues, 'branding.sectionLayout', 'Section layout must contain all ten unique sections with boolean visibility.');
+    }
+  }
+
+  if (value.services !== undefined) {
+    const config = value.services;
+    if (!isRecord(config)) pushIssue(issues, 'branding.services', 'Service section must be an object.');
+    else {
+      if (config.visible !== undefined && typeof config.visible !== 'boolean') pushIssue(issues, 'branding.services.visible', 'Visibility must be boolean.');
+      for (const field of ['title', 'subtitle'] as const) {
+        if (config[field] !== undefined) validateOptionalLocalizedText(config[field], `branding.services.${field}`, issues, ['en','th','zh']);
+      }
+      if (config.cards !== undefined) {
+        if (!Array.isArray(config.cards) || config.cards.length !== 4) pushIssue(issues, 'branding.services.cards', 'Exactly four service identities required.');
+        else {
+          const expected = ['bakery','store','makers','specials'];
+          const keys = new Set<string>();
+          for (const [index, candidate] of config.cards.entries()) {
+            const base = `branding.services.cards[${index}]`;
+            if (!isRecord(candidate) || !expected.includes(String(candidate.key)) || keys.has(String(candidate.key))) { pushIssue(issues, base, 'Unknown or duplicate service identity.'); continue; }
+            keys.add(String(candidate.key));
+            if (typeof candidate.visible !== 'boolean') pushIssue(issues, `${base}.visible`, 'Visibility must be boolean.');
+            for (const field of ['name','description','exploreLabel','guideLabel','imageAlt'] as const) {
+              if (candidate[field] !== undefined) validateOptionalLocalizedText(candidate[field], `${base}.${field}`, issues, ['en','th','zh']);
+            }
+            if (candidate.imageUrl !== undefined && (typeof candidate.imageUrl !== 'string' || !(candidate.imageUrl.startsWith('/') && !candidate.imageUrl.startsWith('//') || /^https:\/\//i.test(candidate.imageUrl)))) pushIssue(issues, `${base}.imageUrl`, 'Image must be an internal path or HTTPS URL.');
+            if (candidate.videoUrl !== undefined && (typeof candidate.videoUrl !== 'string' || !(candidate.videoUrl.startsWith('/') && !candidate.videoUrl.startsWith('//') || /^https:\/\//i.test(candidate.videoUrl)))) pushIssue(issues, `${base}.videoUrl`, 'Video must be an internal path or HTTPS URL.');
+            if (candidate.destination !== undefined && !['products-bakery','products-non-bakery','makers','specials'].includes(String(candidate.destination))) pushIssue(issues, `${base}.destination`, 'Unknown catalog destination.');
+            if (candidate.guideSteps !== undefined) {
+              if (!isRecord(candidate.guideSteps)) pushIssue(issues, `${base}.guideSteps`, 'Guide steps must be localized.');
+              else for (const [locale, steps] of Object.entries(candidate.guideSteps)) {
+                if (!['en','th','zh'].includes(locale) || !Array.isArray(steps) || steps.length !== 3 || !steps.every(step => typeof step === 'string' && step.length <= 250)) pushIssue(issues, `${base}.guideSteps.${locale}`, 'Expected three short guide steps.');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   if (value.topMenu !== undefined) {
-    if (!Array.isArray(value.topMenu) || ![6, 7, 8].includes(value.topMenu.length)) {
-      pushIssue(issues, 'branding.topMenu', 'Top menu must contain the six original destinations and may include Specials and Makers.');
+    if (!Array.isArray(value.topMenu) || ![6, 7, 8, 9].includes(value.topMenu.length)) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must preserve the original destinations and may include Specials, Makers and DIY.');
     } else {
       const required = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
-      const allowed = [...required, 'specials', 'makers'];
+      const allowed = [...required, 'specials', 'makers', 'diy'];
       const keys = new Set<string>();
       const menu = value.topMenu;
       if (required.some((key) => !menu.some((item: unknown) => isRecord(item) && item.key === key))) {
@@ -262,6 +333,15 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
         }
         keys.add(String(item.key));
         if (typeof item.visible !== 'boolean') pushIssue(issues, `${path}.visible`, 'Visibility must be a boolean.');
+        if (item.href !== undefined && (typeof item.href !== 'string' || !/^\/(?!\/)[a-zA-Z0-9/#?&=_-]*$/.test(item.href))) {
+          pushIssue(issues, `${path}.href`, 'Use a safe internal URL beginning with /.');
+        }
+        if (item.descriptions !== undefined) {
+          if (!isRecord(item.descriptions) || Object.values(item.descriptions).some((description) =>
+            typeof description !== 'string' || description.length > 120)) {
+            pushIssue(issues, `${path}.descriptions`, 'Descriptions must be at most 120 characters.');
+          }
+        }
         if (item.labels !== undefined) {
           validateOptionalLocalizedText(item.labels, `${path}.labels`, issues, ['en', 'th', 'zh']);
           if (isRecord(item.labels) && Object.values(item.labels).some((label) => typeof label !== 'string' || !label.trim() || label.length > 50)) {
@@ -413,6 +493,19 @@ function validateSection(
           pushIssue(issues, `${path}.props.logoUrl`, 'Logo must be a bundled path or HTTPS URL.');
         }
       }
+      if (value.props.heroImageUrl !== undefined && (
+        !isNonEmptyString(value.props.heroImageUrl)
+        || (!value.props.heroImageUrl.startsWith('/') && !/^https:\/\//i.test(value.props.heroImageUrl))
+      )) {
+        pushIssue(issues, `${path}.props.heroImageUrl`, 'Hero image must be a bundled path or HTTPS URL.');
+      }
+      if (value.props.heroBackgroundMode !== undefined && (typeof value.props.heroBackgroundMode !== 'string' || !['classic', 'full-bleed'].includes(value.props.heroBackgroundMode))) pushIssue(issues, `${path}.props.heroBackgroundMode`, 'Invalid hero background mode.');
+      if (value.props.heroMobileImageUrl !== undefined && (!isNonEmptyString(value.props.heroMobileImageUrl) || (!value.props.heroMobileImageUrl.startsWith('/') && !/^https:\/\//i.test(value.props.heroMobileImageUrl)))) pushIssue(issues, `${path}.props.heroMobileImageUrl`, 'Invalid mobile hero image URL.');
+      for (const key of ['heroFocusX','heroFocusY','heroMobileFocusX','heroMobileFocusY','heroTextOverlay','heroHeaderOpacity'] as const) {
+        const number = value.props[key];
+        if (number !== undefined && (typeof number !== 'number' || !Number.isFinite(number) || number < 0 || number > 100)) pushIssue(issues, `${path}.props.${key}`, 'Must be between 0 and 100.');
+      }
+      if (value.props.heroBehindHeader !== undefined && typeof value.props.heroBehindHeader !== 'boolean') pushIssue(issues, `${path}.props.heroBehindHeader`, 'Must be boolean.');
       if (value.props.notebookNote !== undefined) {
         if (!isRecord(value.props.notebookNote)) {
           pushIssue(issues, `${path}.props.notebookNote`, 'Hero notebook note must be an object.');

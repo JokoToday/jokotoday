@@ -46,6 +46,8 @@ const LegalPage = lazy(() => import('./app/joko-today/legal/LegalPage'));
 const PaymentHandoffPage = lazy(() => import('./pages/PaymentHandoffPage'));
 const PickupReceiptConfirmationPage = lazy(() => import('./pages/PickupReceiptConfirmationPage'));
 
+const AssistantWidget = lazy(() => import('./app/joko-today/assistant/AssistantWidget'));
+
 const HOMEPAGE_EXPERIENCE_PREVIEW_PATH = '/__homepage/experience';
 
 const PRIMARY_PAGE_PATHS: Record<string, string> = {
@@ -61,6 +63,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   gallery: '/gallery',
   'what-people-say': '/what-people-say',
   'how-it-works': '/how-it-works',
+  diy: '/diy',
   terms: '/terms',
   privacy: '/privacy',
 };
@@ -486,6 +489,14 @@ function AppContent() {
         return <WhatPeopleSayPage onNavigate={handleNavigate} />;
       case 'how-it-works':
         return <HowItWorksPage onNavigate={handleNavigate} />;
+      case 'diy':
+        return <div className="mx-auto min-h-[65vh] max-w-4xl px-6 py-20 text-[#303532]">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-[#55766F]">Explore · JOKO TODAY</p>
+          <h1 className="text-5xl font-semibold">JOKO DIY</h1>
+          <p className="mt-6 max-w-xl text-lg">Recipes, original videos and curious baking know-how are coming here soon.</p>
+          <button type="button" onClick={() => handleNavigate('home')}
+            className="mt-8 rounded-xl bg-[#C76624] px-6 py-3 font-semibold text-white">Back to JOKO TODAY</button>
+        </div>;
       case 'terms':
         return <LegalPage kind="terms" onNavigate={handleNavigate} />;
       case 'privacy':
@@ -585,6 +596,9 @@ function AppContent() {
           onCheckout={() => handleNavigate('checkout')}
           onStartShopping={() => handleNavigate('products')}
         />
+      )}
+      {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && ['home', 'products', 'product-detail', 'makers', 'maker-detail', 'our-story', 'how-it-works', 'diy', 'about'].includes(currentPage) && (
+        <Suspense fallback={null}><AssistantWidget onNavigate={handleNavigate} /></Suspense>
       )}
       <LINEFriendInvite />
     </div>

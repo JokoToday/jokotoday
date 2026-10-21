@@ -9,25 +9,28 @@ interface HeroTypographyProps {
   style?: HeroTextStyle;
   lineStyles?: readonly HeroTitleLineStyle[];
   className?: string;
+  fontFamilyOverride?: string;
+  fontWeightOverride?: number;
+  fontSizeOverride?: string;
 }
 
-export function HeroTypography({ as, value, kind, style, lineStyles, className = '' }: HeroTypographyProps) {
+export function HeroTypography({ as, value, kind, style, lineStyles, className = '', fontFamilyOverride, fontWeightOverride, fontSizeOverride }: HeroTypographyProps) {
   const Element: ElementType = as;
   const headline = kind === 'headline';
   const eyebrow = kind === 'eyebrow';
   const defaults: CSSProperties = {
-    fontFamily: heroFontFamily(style?.font, headline ? 'var(--joko-font-display)' : 'var(--joko-font-body)'),
-    fontWeight: style?.bold !== undefined ? (style.bold ? 700 : 400) : (headline || eyebrow ? 700 : 400),
+    fontFamily: fontFamilyOverride ?? heroFontFamily(style?.font, headline ? 'var(--joko-font-display)' : 'var(--joko-font-body)'),
+    fontWeight: fontWeightOverride ?? (style?.bold !== undefined ? (style.bold ? 700 : 400) : (headline || eyebrow ? 700 : 400)),
     fontStyle: style?.italic ? 'italic' : 'normal',
     // Inline value wins over Tailwind leading classes in both public and draft.
     ...(style?.lineHeight !== undefined ? { lineHeight: style.lineHeight } : {}),
     textAlign: style?.align || 'left',
     color: eyebrow ? '#3F665E' : 'var(--joko-brand-text,#303532)',
     ...(kind === 'subtitle' ? { opacity: 0.8 } : {}),
-    fontSize: style?.size !== undefined
+    fontSize: fontSizeOverride ?? (style?.size !== undefined
       ? `clamp(${eyebrow ? 9 : 12}px, ${eyebrow ? 6 : 12}vw, ${style.size}px)`
       : headline ? 'clamp(2.9rem, 5vw, var(--joko-size-hero, 65px))'
-        : eyebrow ? 'var(--joko-size-label,11px)' : 'var(--joko-size-body,16px)',
+        : eyebrow ? 'var(--joko-size-label,11px)' : 'var(--joko-size-body,16px)'),
   };
   const lines = splitHeroLines(value);
   return <Element className={className} style={defaults}>

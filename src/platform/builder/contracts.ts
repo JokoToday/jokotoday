@@ -70,20 +70,62 @@ export interface HomeAboutCardImage {
   imageAlt?: LocalizedText;
 }
 
+export interface IllustratedCrewMember {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  role: LocalizedText;
+  bio: LocalizedText;
+}
+export interface IllustratedCrewConfig {
+  visible?: boolean;
+  members?: IllustratedCrewMember[];
+}
+
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
-export type TopMenuKey = 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about';
+export type TopMenuKey = 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy';
 export interface TopMenuItem {
   key: TopMenuKey;
   visible: boolean;
   labels?: LocalizedText;
+  descriptions?: LocalizedText;
+  href?: string;
 }
 
+export type HomeServiceKey = 'bakery' | 'store' | 'makers' | 'specials';
+export interface HomeServiceCardConfig {
+  key: HomeServiceKey;
+  visible: boolean;
+  name?: LocalizedText;
+  description?: LocalizedText;
+  exploreLabel?: LocalizedText;
+  guideLabel?: LocalizedText;
+  guideSteps?: Readonly<Record<LocaleCode, readonly string[]>>;
+  imageUrl?: string;
+  imageAlt?: LocalizedText;
+  /** Internal route only; use supported catalog route identifiers. */
+  destination?: 'products-bakery' | 'products-non-bakery' | 'makers' | 'specials';
+  /** Optional future short guide video; currently shown as an external link in the guide. */
+  videoUrl?: string;
+}
+export interface HomeServicesConfig {
+  visible?: boolean;
+  title?: LocalizedText;
+  subtitle?: LocalizedText;
+  cards?: readonly HomeServiceCardConfig[];
+}
+
+export type HomepageSectionKey = 'services' | 'makers' | 'baking' | 'how' | 'pickup' | 'new' | 'beyond' | 'about' | 'gallery' | 'reviews';
+export interface HomepageSectionLayoutItem { key: HomepageSectionKey; visible: boolean; }
 export interface BuilderHomepageBranding {
+  sectionLayout?: readonly HomepageSectionLayoutItem[];
+  services?: HomeServicesConfig;
   /** Desktop and mobile use one menu model; destinations are fixed and safe. */
   topMenu?: readonly TopMenuItem[];
   /** Images are published with the Homepage Builder, not independent Admin state. */
   aboutCards?: Partial<Record<HomeAboutCardKey, HomeAboutCardImage>>;
+  illustratedCrew?: IllustratedCrewConfig;
   logoScale: number;
   typography: {
     displayFont: BuilderDisplayFont;
@@ -152,6 +194,18 @@ export interface HomeHeroJourneyLinks {
 export interface HomeHeroProps {
   /** Site-wide logo used by the JOKO shell when this Builder revision is published. */
   logoUrl?: string;
+  /** Published bakery illustration shared by desktop and mobile layouts. */
+  heroImageUrl?: string;
+  /** Opt-in to the reusable full-width background composition. */
+  heroBackgroundMode?: 'classic' | 'full-bleed';
+  heroMobileImageUrl?: string;
+  heroFocusX?: number;
+  heroFocusY?: number;
+  heroMobileFocusX?: number;
+  heroMobileFocusY?: number;
+  heroTextOverlay?: number;
+  heroHeaderOpacity?: number;
+  heroBehindHeader?: boolean;
   title: LocalizedText;
   /** Controlled rich text for the Hero title. Plain title remains the fallback/source for legacy revisions. */
   titleRichText?: LocalizedRichText;

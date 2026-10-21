@@ -59,7 +59,7 @@ function NotebookPaper({
         {title && (
           <p
             className="whitespace-pre-line font-semibold leading-[1.08] text-[#2F302E]"
-            style={{ fontFamily, fontSize: `${headingSize}px` }}
+            style={{ fontFamily: `Fredoka, ${fontFamily}`, fontWeight: 600, fontSize: `${headingSize}px` }}
           >
             {title}
           </p>
@@ -68,7 +68,7 @@ function NotebookPaper({
         {body && (
           <p
             className="mt-2 whitespace-pre-line leading-[1.4] text-[#3D403C]/80"
-            style={{ fontFamily, fontSize: `${bodySize}px` }}
+            style={{ fontFamily: "var(--joko-font-body, sans-serif)", fontStyle: "italic", fontSize: `${bodySize}px` }}
           >
             {body}
           </p>

@@ -116,5 +116,44 @@ where o.id='{order}';""")
     assert state==f"paid|verified|confirmed|4|0|1|{ref}",state
     print("PASS: two committed callbacks; one original + one replay; one inventory deduction.")
     print("FINAL",state)
+    # Exercise the actual release/expiry functions against additional disposable fixtures.
+    lifecycle=Path("supabase/migrations/20261018170000_store_order_lifecycle_v1.sql")
+    links=Path("supabase/migrations/20261018193000_store_payment_link_v1.sql")
+    sql(fn(lifecycle,"create or replace function public.store_release_locked_v1(","end $$;"))
+    sql(fn(links,"create or replace function public.service_expire_store_holds_v1(","end $$;"))
+    for kind in ("expired","cancelled"):
+        oid,pid,bid=(str(uuid4()) for _ in range(3))
+        due="now()-interval '1 minute'" if kind=="expired" else "now()+interval '10 minutes'"
+        sql(f"""
+insert into orders(id,customer_id,order_number,status,payment_status,total_amount)
+values('{oid}','{product}','REGRESSION-{kind}','pending','unpaid',10);
+insert into payment_transactions(id,order_id,customer_id,provider,status,amount_due,expires_at,payment_mode)
+values('{pid}','{oid}','{product}','easyslip','pending',10,{due},'kshop_master');
+insert into store_reservation_batches(id,state,expires_at,amount_due) values('{bid}','held',{due},10);
+insert into store_reservation_items(batch_id,product_id,quantity,unit_price) values('{bid}','{product}',1,10);
+insert into store_payment_links(batch_id,order_id,payment_transaction_id,provider)
+values('{bid}','{oid}','{pid}','easyslip');
+update store_fulfillment_settings set stock_reserved=stock_reserved+1 where product_id='{product}';
+""")
+        if kind=="expired":
+            assert sql("select public.service_expire_store_holds_v1(50)")=="1"
+            assert sql("select public.service_expire_store_holds_v1(50)")=="0"
+            expected="expired"
+        else:
+            sql(f"select public.store_release_locked_v1('{bid}','released')")
+            expected="released"
+        snapshot=sql(f"""select b.state,s.stock_on_hand,s.stock_reserved,o.payment_status
+from store_reservation_batches b cross join store_fulfillment_settings s
+join orders o on o.id='{oid}'
+where b.id='{bid}' and s.product_id='{product}'""")
+        assert snapshot==f"{expected}|4|0|unpaid",snapshot
+        try:
+            sql(f"""begin; select set_config('request.jwt.claim.role','service_role',true);
+select public.finalize_verified_payment_v1('{pid}','SYNTHETIC-{kind}',10,true,true,false); commit;""")
+        except RuntimeError as exc:
+            assert ("Store stock reservation expired or inactive" in str(exc) or "Payment request has expired or been cancelled" in str(exc)),str(exc)
+        else: raise AssertionError("Finalizer accepted an inactive reservation")
+        assert sql(f"select payment_status from orders where id='{oid}'")=="unpaid"
+        print(f"PASS: {kind} reservation releases stock exactly once and rejects late verification")
 finally:
     docker("dropdb","-U","postgres","--if-exists","--force",DB)
