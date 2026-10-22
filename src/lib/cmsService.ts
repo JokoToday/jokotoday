@@ -21,7 +21,8 @@ export interface CMSProduct {
   product_origin?: ProductOrigin | null;
   id: string;
   slug: string;
-  category_id: string;
+  category_id?: string;
+  catalog_scope?: 'bakery' | 'store_only';
   name_en: string;
   name_th: string;
   name_zh?: string | null;
@@ -134,12 +135,14 @@ export async function getCategoryBySlug(slug: string): Promise<CMSCategory | nul
 }
 
 // Products
-export async function getProducts(categoryId?: string): Promise<CMSProduct[]> {
+export async function getProducts(categoryId?: string, options: { includeStoreOnly?: boolean } = {}): Promise<CMSProduct[]> {
   let query = supabase
     .from('cms_products')
     .select('*, maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled)')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
+
+  if (!options.includeStoreOnly) query = query.neq('catalog_scope', 'store_only');
 
   if (categoryId) {
     query = query.eq('category_id', categoryId);
@@ -148,7 +151,7 @@ export async function getProducts(categoryId?: string): Promise<CMSProduct[]> {
   const { data, error } = await query;
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map((product) => ({ ...product, category_id: product.category_id ?? undefined }));
 }
 
 export async function getProductBySlug(
@@ -161,7 +164,7 @@ export async function getProductBySlug(
     .eq('slug', slug);
 
   if (!options.includeInactive) {
-    query = query.eq('is_active', true);
+    query = query.eq('is_active', true).neq('catalog_scope', 'store_only');
   }
 
   const { data, error } = await query.maybeSingle();

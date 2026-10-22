@@ -67,6 +67,10 @@ Deno.serve(async (req: Request) => {
   const secretKey = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")?.trim();
   if (!secretKey || !webhookSecret) return new Response("Stripe webhook is not configured", {status:503});
+  // Isolated staging must never process live Stripe payment events.
+  if ((Deno.env.get("SUPABASE_URL") || "").includes("szijiljpasxddzgzckra") && !secretKey.startsWith("sk_test_")) {
+    return new Response("Staging Stripe must use test-mode credentials", { status: 503 });
+  }
   const stripe = new Stripe(secretKey);
   const signature = req.headers.get("stripe-signature") || "";
   const rawBody = await req.text();
@@ -276,6 +280,22 @@ Deno.serve(async (req: Request) => {
       }
 
       throw finalizeError;
+    }
+
+    // Store stock is separate from Bakery inventory. Reconcile only after
+    // canonical Stripe verification succeeds; never acknowledge the event
+    // as complete while Store stock remains reserved.
+    const { data: storeLink, error: storeLinkError } = await service
+      .from("store_payment_links")
+      .select("payment_transaction_id")
+      .eq("payment_transaction_id", payment.id)
+      .maybeSingle();
+    if (storeLinkError) throw storeLinkError;
+    if (storeLink) {
+      const { error: reconcileError } = await service.rpc("service_reconcile_store_verified_v1", {
+        p_payment: payment.id,
+      });
+      if (reconcileError) throw reconcileError;
     }
 
     await releasePaymentNotifications(payment.order_id);

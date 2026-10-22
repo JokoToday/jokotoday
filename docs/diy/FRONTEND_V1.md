@@ -11,7 +11,7 @@ Route: `/diy`. Photo-led recipe discovery with a taped notebook feature. This br
 - Source creator and platform stay visible. Two sample entries have original YouTube links and a click-to-load video viewer with direct creator link. No iframe is loaded before user action.
 - Five illustrative sample tiles have no selected source yet, say so clearly and do not open a fabricated recipe/video.
 - EN/TH/ZH interface and positioning copy; placeholder titles/descriptions remain English with a disclosure.
-- Separate Store crosslink uses the existing non-bakery catalog navigation.
+- Separate Store crosslink opens the dedicated `/store` catalog.
 
 Detailed recipe cards, ingredients/method layouts, timings and yields are deferred for a later design phase. The video viewer contains only the original video and source attribution. TikTok/RedNote import and embedding are not implemented yet.
 
@@ -52,3 +52,11 @@ Validation: TypeScript/build/scoped lint plus mocked browser tests verified thre
 Private preview `?edit=diy` offers a browser-local demo of this editor. Its saves affect only that preview on the same device, not the CMS or live website.
 
 ![Admin editor](admin-editor-desktop.webp)
+
+## Store integration review — 2026-10-22
+
+Reconciled with `main` at `a2de8cc` (Store #295, homepage cleanup #317 and Store migration quoting fix #318). Resolved the App route conflict by preserving both Store and DIY in the shared shell. Updated the DIY Store invitation to navigate to `/store` instead of the old non-bakery filter. Store catalog, cart, checkout, payment, inventory and migrations are unchanged relative to main.
+
+Fresh validation on the combined tree: locked install; TypeScript; full ESLint (0 errors, 38 existing warnings); production build (existing large-chunk warning); design-system/static-asset, LINE auth/onboarding/friendship, auth-email and Tailwind audits; payment-email regression; Makers isolated PostgreSQL regression; 38 receipt compatibility assertions; Stripe SDK contract and 45 Edge assertions. Dependency audit reports 0 vulnerabilities. Final DIY diff passes whitespace checks.
+
+This review did not perform a new browser acceptance test or write production data. Earlier mocked editor/UI tests remain documented above. Real authenticated CMS save/readback and original video playback remain staging acceptance checks. Five catalog entries still have no selected video source; photos/logo remain editorial placeholders. Merge readiness and public content launch readiness are separate decisions. No merge or production deployment was performed by this review.

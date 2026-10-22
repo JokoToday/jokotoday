@@ -117,7 +117,7 @@ export default function DiyPage({ onNavigate, content }: { onNavigate: (page: st
         </article>)}</div>
         {!visible.length && <div className="diy-empty"><p>{text.empty}</p><button className="diy-button" type="button" onClick={() => { setQuery(''); setCategory('all'); setSavedOnly(false); }}>{text.reset}</button></div>}
       </section>
-      <aside className="diy-store"><CookingPot size={36} strokeWidth={1} aria-hidden="true" /><p>{text.store}</p><button className="diy-button" type="button" onClick={() => onNavigate('products-non-bakery')}>{text.storeLink}<ArrowRight size={17} /></button></aside>
+      <aside className="diy-store"><CookingPot size={36} strokeWidth={1} aria-hidden="true" /><p>{text.store}</p><button className="diy-button" type="button" onClick={() => onNavigate('store')}>{text.storeLink}<ArrowRight size={17} /></button></aside>
     </div>
     {selected && <CreatorVideo key={selected.id} recipe={selected} onClose={closeRecipe} />}
   </div>;

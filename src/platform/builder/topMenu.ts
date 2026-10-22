@@ -1,12 +1,13 @@
 import type { LocalizedText, TopMenuItem, TopMenuKey } from './contracts';
 
 export const TOP_MENU_KEYS: readonly TopMenuKey[] = [
-  'home', 'products', 'other-products', 'makers', 'specials', 'diy', 'how-it-works', 'about', 'pickup',
+  'home', 'products', 'other-products', 'store', 'makers', 'specials', 'diy', 'how-it-works', 'about', 'pickup',
 ];
 
 export const TOP_MENU_DEFAULT_LABELS: Readonly<Record<TopMenuKey, LocalizedText>> = {
   home: { en: 'Home', th: 'หน้าแรก', zh: '首页' },
   products: { en: 'JOKO Bakery', th: 'JOKO เบเกอรี่', zh: 'JOKO 烘焙' },
+  store: { en: 'JOKO Store', th: 'JOKO Store', zh: 'JOKO 商店' },
   'other-products': { en: 'JOKO Store', th: 'JOKO สโตร์', zh: 'JOKO 商店' },
   specials: { en: 'Specials', th: 'ราคาพิเศษ', zh: '今日特惠' },
   makers: { en: 'Creator Circle', th: 'Creator Circle', zh: '创作者圈' },
@@ -59,7 +60,9 @@ export function resolveTopMenu(value: unknown): TopMenuItem[] {
   for (const key of TOP_MENU_KEYS) {
     if (!used.has(key)) {
       const item = { key, visible: true, labels: { ...TOP_MENU_DEFAULT_LABELS[key] } };
-      if (key === 'specials') {
+      if (key === 'store') {
+        result.push({ ...item, visible: false }); // Opt-in until navigation redesign is approved.
+      } else if (key === 'specials') {
         const beyond = result.findIndex((entry) => entry.key === 'other-products');
         const how = result.findIndex((entry) => entry.key === 'how-it-works');
         result.splice(beyond >= 0 ? beyond + 1 : how >= 0 ? how : result.length, 0, item);

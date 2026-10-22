@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
 import { needsLINEEmailForCheckout } from '../lib/lineProfile';
 import { EmailVerificationPanel } from '../components/EmailVerificationPanel';
+import { StoreFulfillmentPreview } from '../components/StoreFulfillmentPreview';
 
 interface CheckoutRouterPageProps {
   onNavigate: (page: string) => void;
@@ -16,6 +17,7 @@ interface CheckoutRouterPageProps {
 export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPageProps) {
   const { language } = useLanguage();
   const { items } = useCart();
+  const hasStoreItems = items.some((item) => item.product.catalog_scope === 'store_only');
   const hasMakers = items.some((item) => item.product.product_origin === 'maker');
   const { user, profileLoading } = useAuth();
   const [pickupV2Enabled, setPickupV2Enabled] = useState<boolean | null>(null);
@@ -35,6 +37,8 @@ export default function CheckoutRouterPage({ onNavigate }: CheckoutRouterPagePro
   if (pickupV2Enabled === null || (user && profileLoading)) {
     return <div className="min-h-[40vh]" aria-busy="true" />;
   }
+
+  if (hasStoreItems) return <StoreFulfillmentPreview onReturn={() => onNavigate('store')} />;
 
   // Protect BOTH checkout versions. This is an onboarding UX gate;
   // the order submission paths recheck Supabase Auth separately.

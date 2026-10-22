@@ -5,8 +5,11 @@ import { supabase } from '../../lib/supabase';
 import { AdminModalPortal } from '../AdminModalPortal';
 import { CMSProduct, CMSCategory, CMSPickupLocation } from '../../lib/cmsService';
 import { getPickupDays, PickupDay } from '../../lib/availabilityService';
+import { getPickupV2CustomerEnabled } from '../../lib/pickupV2Rollout';
 import { ProductMediaUploader } from '../ProductMediaUploader';
 import { updateProductStaffProduct } from '../../lib/productStaffService';
+import { getAdminStoreAssignment, saveAdminStoreAssignment, type StoreCategory } from '../../lib/storeCatalogService';
+import { getStoreFulfillmentSettings, saveStoreFulfillmentSettings, DEFAULT_STORE_FULFILLMENT, type StoreFulfillmentSettings } from '../../lib/storeFulfillmentService';
 
 export type ProductEditorMode = 'admin' | 'product-staff';
 
@@ -21,6 +24,7 @@ interface ProductFormProps {
 
 interface FormData {
   product_origin: ProductOrigin;
+  catalog_scope: 'bakery' | 'store_only';
   maker_id: string;
   name_en: string;
   name_th: string;
@@ -75,6 +79,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const isProductStaff = mode === 'product-staff';
   const [formData, setFormData] = useState<FormData>({
     product_origin: product ? productOrigin(product) : 'joko',
+    catalog_scope: product?.catalog_scope || 'bakery',
     maker_id: product?.maker_id || '',
     name_en: product?.name_en || '',
     name_th: product?.name_th || '',
@@ -118,12 +123,98 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       : {},
   });
 
+  const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
+  const [storeCategoryId, setStoreCategoryId] = useState('');
+  const [storePublished, setStorePublished] = useState(false);
+  const [newStoreCategory, setNewStoreCategory] = useState({ en: '', th: '', zh: '' });
+  const [creatingStoreCategory, setCreatingStoreCategory] = useState(false);
+  const [storeCategoryConfirmation, setStoreCategoryConfirmation] = useState('');
+  const [storeLoaded, setStoreLoaded] = useState(false);
+  const [storeFulfillment, setStoreFulfillment] = useState<Omit<StoreFulfillmentSettings, 'product_id'>>({ ...DEFAULT_STORE_FULFILLMENT });
+  const [storeFulfillmentLoaded, setStoreFulfillmentLoaded] = useState(false);
   const [makers, setMakers] = useState<Maker[]>([]);
   useEffect(() => { if (!isProductStaff) getMakers(true).then(setMakers).catch(() => setErrors((current) => ({ ...current, makers: 'Could not load makers. Apply the Makers migration first.' }))); }, [isProductStaff]);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [pickupDays, setPickupDays] = useState<PickupDay[]>([]);
+  const [pickupV2, setPickupV2] = useState<boolean | null>(null);
+  const [v2Schedules, setV2Schedules] = useState<{ id: string; label_en: string; is_active: boolean }[]>([]);
+  const [v2Capacities, setV2Capacities] = useState<Record<string, { capacity: number; is_active: boolean }>>({});
+  const [v2Drafts, setV2Drafts] = useState<Record<string, string>>({});
+  const [v2Saving, setV2Saving] = useState<string | null>(null);
+  const [v2Notice, setV2Notice] = useState('');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const enabled = await getPickupV2CustomerEnabled();
+        if (!active) return;
+        setPickupV2(enabled);
+        if (!enabled) return;
+        const [scheduleResult, capacityResult] = await Promise.all([
+          supabase.from('pickup_schedules').select('id,label_en,is_active').eq('is_active', true).order('sort_order'),
+          product?.id
+            ? supabase.from('product_schedule_capacity').select('schedule_id,capacity,is_active').eq('product_id', product.id)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if (scheduleResult.error) throw scheduleResult.error;
+        if (capacityResult.error) throw capacityResult.error;
+        if (!active) return;
+        setV2Schedules(scheduleResult.data || []);
+        setV2Capacities(Object.fromEntries((capacityResult.data || []).map((row) => [row.schedule_id, { capacity: row.capacity, is_active: row.is_active }])));
+        setV2Drafts(Object.fromEntries((capacityResult.data || []).map((row) => [row.schedule_id, String(row.capacity)])));
+      } catch (error) {
+        if (active) setErrors((current) => ({ ...current, pickup_v2: error instanceof Error ? error.message : 'Could not load Pickup v2 configuration.' }));
+      }
+    })();
+    return () => { active = false; };
+  }, [product?.id]);
+  const saveV2Capacity = async (scheduleId: string) => {
+    if (!product?.id) return;
+    const capacity = Number(v2Drafts[scheduleId]);
+    if (!Number.isInteger(capacity) || capacity < 0 || v2Drafts[scheduleId]?.trim() === '') {
+      setErrors((current) => ({ ...current, pickup_v2: 'Enter a nonnegative whole-number capacity.' }));
+      return;
+    }
+    setV2Saving(scheduleId);
+    setV2Notice('');
+    try {
+      const { error } = await supabase.rpc('admin_set_product_schedule_capacity_v2', {
+        p_schedule_id: scheduleId, p_product_id: product.id,
+        p_capacity: capacity, p_apply_to_future_dates: true,
+      });
+      if (error) throw error;
+      setV2Capacities((current) => ({ ...current, [scheduleId]: { capacity, is_active: true } }));
+      setV2Notice('Recurring capacity saved. Future dates updated; existing date overrides preserved.');
+      setErrors((current) => { const next = { ...current }; delete next.pickup_v2; return next; });
+    } catch (error) {
+      setErrors((current) => ({ ...current, pickup_v2: error instanceof Error ? error.message : 'Could not save Pickup v2 capacity.' }));
+    } finally { setV2Saving(null); }
+  };
+
+  useEffect(() => {
+    if (isProductStaff) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('store_categories').select('id,slug,name_en,name_th,name_zh,is_active,sort_order').order('sort_order');
+        if (error) throw error;
+        const assignment = product?.id ? await getAdminStoreAssignment(product.id) : null;
+        const fulfillment = product?.id ? await getStoreFulfillmentSettings(product.id) : null;
+        if (!active) return;
+        setStoreCategories(data || []);
+        setStoreCategoryId(assignment?.store_category_id || '');
+        setStorePublished(assignment?.is_published === true);
+        if (fulfillment) setStoreFulfillment({ ...DEFAULT_STORE_FULFILLMENT, ...fulfillment });
+        setStoreFulfillmentLoaded(true);
+        setStoreLoaded(true);
+      } catch {
+        if (active) setErrors((old) => ({ ...old, store: 'Store settings could not load. Check migration and permissions.' }));
+      }
+    })();
+    return () => { active = false; };
+  }, [isProductStaff, product?.id]);
 
   useEffect(() => {
     getPickupDays().then(setPickupDays).catch((error) => {
@@ -132,12 +223,39 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
     });
   }, []);
 
+  const createStoreCategory = async () => {
+    if (!newStoreCategory.en.trim() || !newStoreCategory.th.trim()) {
+      setErrors((old) => ({ ...old, store: 'English and Thai Store category names are required.' }));
+      return;
+    }
+    const slug = newStoreCategory.en.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) { setErrors((old) => ({ ...old, store: 'Use an English category name containing letters or numbers.' })); return; }
+    setStoreCategoryConfirmation('');
+    setCreatingStoreCategory(true);
+    try {
+      const { data, error } = await supabase.from('store_categories')
+        .insert({ slug, name_en: newStoreCategory.en.trim(), name_th: newStoreCategory.th.trim(), name_zh: newStoreCategory.zh.trim() || null })
+        .select('id,slug,name_en,name_th,name_zh,is_active,sort_order').single();
+      if (error) throw error;
+      setStoreCategories((old) => [...old, data]);
+      setStoreCategoryId(data.id);
+      setStoreCategoryConfirmation(`Category “${data.name_en}” created successfully and selected.`);
+      setNewStoreCategory({ en: '', th: '', zh: '' });
+      setErrors((old) => { const next = { ...old }; delete next.store; return next; });
+    } catch {
+      setStoreCategoryConfirmation('');
+      setErrors((old) => ({ ...old, store: 'Unable to create category. Check uniqueness and Admin permissions.' }));
+    } finally {
+      setCreatingStoreCategory(false);
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
     if (!isProductStaff && formData.product_origin === 'maker' && !formData.maker_id) newErrors.maker_id = 'Choose a maker for Makers products.';
     if (!formData.name_en.trim()) newErrors.name_en = 'Product name (English) is required';
     if (!formData.name_th.trim()) newErrors.name_th = 'Product name (Thai) is required';
-    if (!formData.category_id) newErrors.category_id = 'Category is required';
+    if (formData.catalog_scope === 'bakery' && !formData.category_id) newErrors.category_id = 'Bakery category is required for Bakery products';
     if (!formData.price) newErrors.price = 'Price is required';
     else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors.price = 'Price must be a valid positive number';
     if (!isProductStaff && !formData.slug.trim()) newErrors.slug = 'Slug is required';
@@ -191,6 +309,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (!isProductStaff && !storeLoaded) { setErrors({ store: 'Store settings are not yet loaded.' }); return; }
 
     setLoading(true);
     try {
@@ -206,7 +325,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
       });
 
       const baseData = {
-        ...(!isProductStaff ? { product_origin: formData.product_origin, maker_id: formData.maker_id || null } : {}),
+        ...(!isProductStaff ? { product_origin: formData.product_origin, maker_id: formData.maker_id || null, catalog_scope: formData.catalog_scope } : {}),
         name_en: formData.name_en.trim(),
         name_th: formData.name_th.trim(),
         name_zh: formData.name_zh.trim() || null,
@@ -214,7 +333,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         desc_th,
         desc_zh: formData.desc_zh.trim() || null,
         price: parseFloat(formData.price),
-        category_id: formData.category_id,
+        category_id: formData.catalog_scope === 'store_only' ? null : (formData.category_id || null),
         image: formData.image.trim() || null,
         public_code: formData.public_code.trim() || null,
         short_desc_en: formData.short_desc_en.trim() || null,
@@ -245,6 +364,7 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         stock_by_day: stockByDay,
       };
 
+      let savedProductId = product?.id || '';
       if (product?.id) {
         if (isProductStaff) {
           const staffData = {
@@ -297,10 +417,25 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
         }
       } else {
         if (isProductStaff) throw new Error('Product Staff cannot create products.');
-        const { error } = await supabase.from('cms_products').insert([{ ...baseData, stock_total: parseInt(formData.stock_total) }]);
+        const { data: inserted, error } = await supabase.from('cms_products').insert([{ ...baseData, stock_total: parseInt(formData.stock_total) }]).select('id').single();
         if (error) throw error;
+        savedProductId = inserted.id;
       }
 
+      if (!isProductStaff && savedProductId) {
+        if (storeCategoryId || formData.catalog_scope === 'store_only') {
+          await saveStoreFulfillmentSettings(savedProductId, {
+            stock_on_hand: storeFulfillment.stock_on_hand,
+            pickup_today: storeFulfillment.pickup_today, pickup_preorder: storeFulfillment.pickup_preorder,
+            delivery_today: storeFulfillment.delivery_today, delivery_preorder: storeFulfillment.delivery_preorder,
+            delivery_provider: storeFulfillment.delivery_provider, delivery_fee_thb: storeFulfillment.delivery_fee_thb,
+          });
+        }
+        const existing = product?.id ? await getAdminStoreAssignment(savedProductId) : null;
+        if (storeCategoryId || storePublished || existing) {
+          await saveAdminStoreAssignment(savedProductId, storeCategoryId || null, storePublished);
+        }
+      }
       onSave();
     } catch (error) {
       console.error('Error saving:', error);
@@ -340,10 +475,52 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
           {!isProductStaff && <div className="rounded-xl border border-[#55766F]/20 bg-[#FFF9EE] p-4">
             <h3 className="mb-3 font-semibold">JOKO selection</h3>
+            <label className="block text-sm">Catalog placement
+              <select className="ml-3 rounded-lg border p-2" value={formData.catalog_scope} onChange={(event) => setFormData((current) => ({ ...current, catalog_scope: event.target.value as 'bakery' | 'store_only', category_id: event.target.value === 'store_only' ? '' : current.category_id }))}>
+                <option value="bakery">Bakery catalog (existing)</option>
+                <option value="store_only">JOKO Store only (not in Bakery)</option>
+              </select>
+            </label>
+            {formData.catalog_scope === 'store_only' && <p className="mt-2 text-xs text-[#55766F]" role="status">Store-only products do not need a Bakery category and are excluded from Bakery browsing. Store publication is controlled separately below.</p>}
             <label className="block text-sm">Product world<select className="ml-3 rounded-lg border p-2" value={formData.product_origin} onChange={(event) => setFormData({ ...formData, product_origin: event.target.value as ProductOrigin })}><option value="joko">BAKED — made by JOKO</option><option value="beyond">BEYOND — selected products</option><option value="maker">MAKERS — selected producers</option></select></label>
             <label className="mt-3 block text-sm">Maker<select className="ml-3 max-w-full rounded-lg border p-2" value={formData.maker_id} onChange={(event) => setFormData({ ...formData, maker_id: event.target.value })}><option value="">No maker</option>{makers.map((maker) => <option key={maker.id} value={maker.id}>{maker.name_en}{maker.is_published ? '' : ' (draft)'}</option>)}</select></label>
             {(errors.maker_id || errors.makers) && <p role="alert" className="mt-2 text-sm text-red-700">{errors.maker_id || errors.makers}</p>}
           </div>}
+          {!isProductStaff && <section className="rounded-xl border border-[#55766F]/20 bg-[#FFF9EE] p-4">
+            <h3 className="mb-2 font-semibold">JOKO Store placement</h3>
+            <p className="mb-3 text-xs text-[#303532]/70">Independent of maker identity. Store ordering remains disabled until physical stock is ready.</p>
+            <label className="block text-sm">Store category
+              <select value={storeCategoryId} onChange={(e) => { setStoreCategoryId(e.target.value); if (!e.target.value) setStorePublished(false); }} className="ml-3 rounded-lg border p-2">
+                <option value="">Not assigned to Store</option>
+                {storeCategories.map((category) => <option key={category.id} value={category.id}>{category.name_en}</option>)}
+              </select>
+            </label>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-[#55766F]">Add a Store category</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <input aria-label="English Store category" placeholder="English *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.en} onChange={(e) => setNewStoreCategory((old) => ({ ...old, en: e.target.value }))} />
+                <input aria-label="Thai Store category" placeholder="Thai *" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.th} onChange={(e) => setNewStoreCategory((old) => ({ ...old, th: e.target.value }))} />
+                <input aria-label="Chinese Store category" placeholder="中文" className="min-w-0 rounded-lg border p-2 text-sm" value={newStoreCategory.zh} onChange={(e) => setNewStoreCategory((old) => ({ ...old, zh: e.target.value }))} />
+              </div>
+              <button type="button" disabled={creatingStoreCategory || !storeLoaded} onClick={() => void createStoreCategory()} className="mt-2 rounded-lg border border-[#55766F] px-3 py-2 text-sm disabled:opacity-50">{creatingStoreCategory ? 'Creating…' : 'Create category'}</button>
+              {storeCategoryConfirmation && <p role="status" aria-live="polite" className="mt-2 text-sm font-medium text-[#2F6858]">✓ {storeCategoryConfirmation}</p>}
+            </details>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={storePublished} disabled={!storeCategoryId || !storeLoaded} onChange={(e) => setStorePublished(e.target.checked)} />
+              Publish in JOKO Store preview
+            </label>
+            {storeFulfillmentLoaded && (storeCategoryId || formData.catalog_scope === 'store_only') && <div className="mt-4 border-t border-[#55766F]/20 pt-3">
+              <p className="font-semibold text-sm">Store fulfillment planning (ordering disabled)</p>
+              <p className="mt-1 text-xs text-[#303532]/70">Separate physical stock. These options are configuration only; no Store checkout, delivery booking, or payment is active.</p>
+              <label className="mt-2 block text-sm">Stock on hand <input type="number" min="0" step="1" className="ml-2 w-24 rounded-lg border p-2" value={storeFulfillment.stock_on_hand} onChange={(e) => setStoreFulfillment((v) => ({ ...v, stock_on_hand: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))} /></label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">{([
+                ['pickup_today', 'Same-day pickup'], ['pickup_preorder', 'Pre-order pickup'],
+                ['delivery_today', 'Same-day delivery'], ['delivery_preorder', 'Future delivery'],
+              ] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={storeFulfillment[key]} onChange={(e) => setStoreFulfillment((v) => ({ ...v, [key]: e.target.checked }))} />{label}</label>)}</div>
+              <label className="mt-2 block text-sm">Delivery planning provider <select className="ml-2 rounded-lg border p-2" value={storeFulfillment.delivery_provider} onChange={(e) => setStoreFulfillment((v) => ({ ...v, delivery_provider: e.target.value as 'manual' | 'grab_express' }))}><option value="manual">Manual (default)</option><option value="grab_express">GrabExpress (future; no booking integration)</option></select></label>
+            </div>}
+            {errors.store && <p role="alert" className="mt-2 text-sm text-red-700">{errors.store}</p>}
+          </section>}
           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
             <div className="grid grid-cols-3 gap-4 mb-4">
@@ -365,8 +542,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${errors.category_id ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent' : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'}`}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bakery category {formData.catalog_scope === 'bakery' ? '*' : '(not required for Store-only)'}</label>
+                <select disabled={!isProductStaff && formData.catalog_scope === 'store_only'} value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${errors.category_id ? 'border-red-300 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-transparent' : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'}`}>
                   <option value="">Select a category</option>
                   {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.title_en} / {cat.title_th}</option>)}
                 </select>
@@ -518,7 +695,26 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
             )}
           </div>}
 
-          <div className="border-b border-gray-200 pb-4">
+          {pickupV2 && <div className="border-b border-gray-200 pb-4">
+            <h3 className="mb-3 text-lg font-semibold text-gray-900">Pickup v2 — Recurring Schedule Capacity</h3>
+            <p className="mb-3 text-sm text-gray-600">This site uses Pickup v2. Availability is controlled by recurring schedule capacity and concrete pickup dates, not the legacy pickup-slot checkboxes.</p>
+            {errors.pickup_v2 && <p role="alert" className="mb-2 text-sm text-red-700">{errors.pickup_v2}</p>}
+            {v2Notice && <p role="status" className="mb-2 text-sm text-green-700">{v2Notice}</p>}
+            {!product?.id && <p className="mb-3 text-sm text-amber-800">Save the new product first, then edit it again to set Pickup v2 capacity.</p>}
+            {v2Schedules.length === 0 && <p className="text-sm text-amber-800">No active Pickup v2 schedules were found. Check Admin → Pickup Schedule.</p>}
+            <div className="space-y-3">{v2Schedules.map((schedule) => (
+              <div key={schedule.id} className="rounded-lg border border-[#55766F]/20 bg-[#FFF9EE] p-3">
+                <p className="font-medium text-sm">{schedule.label_en}</p>
+                <p className="text-xs text-gray-600">{v2Capacities[schedule.id] ? (v2Capacities[schedule.id].is_active ? 'Offered' : 'Inactive') : 'Not yet offered'} · Recurring capacity {v2Capacities[schedule.id]?.capacity ?? 'not set'}</p>
+                {!isProductStaff && product?.id && <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="text-sm">Capacity <input type="number" min="0" step="1" className="ml-2 w-24 rounded-lg border p-2" value={v2Drafts[schedule.id] ?? ''} onChange={(event) => setV2Drafts((current) => ({ ...current, [schedule.id]: event.target.value }))} /></label>
+                  <button type="button" disabled={v2Saving !== null} onClick={() => void saveV2Capacity(schedule.id)} className="rounded-lg bg-[#55766F] px-3 py-2 text-sm text-white disabled:opacity-50">{v2Saving === schedule.id ? 'Saving…' : 'Save capacity'}</button>
+                </div>}
+              </div>
+            ))}</div>
+            <p className="mt-3 text-xs text-gray-600">To disable an offer or set date-specific exceptions, use Admin → Pickup Capacity. Saving capacity activates the recurring schedule.</p>
+          </div>}
+          {!pickupV2 &&           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Pickup Rules</h3>
             {errors.pickup_days && <p className="text-sm text-red-600 mb-3">{errors.pickup_days}</p>}
 
@@ -570,6 +766,8 @@ export function ProductEditor({ product, categories, onSave, onCancel, mode = 'a
               <p className="text-xs text-gray-600 mt-2">Leave empty to use default stock limit</p>
             </div>}
           </div>
+
+          }
 
           <div className="border-b border-gray-200 pb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Availability</h3>
