@@ -1,5 +1,6 @@
 import { uploadGalleryImage, PRODUCT_IMAGE_ACCEPTED_TYPES, PRODUCT_IMAGE_MAX_BYTES } from '../../lib/mediaService';
-import { useEffect, useState, type FormEvent } from 'react';
+import { CheckCircle2, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { defaultSpecialsPageContent, loadSpecialsPageContent, saveSpecialsPageContent, specialsContentFields, defaultSpecialsIllustration, validSpecialsIllustrationUrl } from './pageContent';
 
@@ -15,6 +16,8 @@ const illustrationLabels = {
 };
 export function SpecialsPageContentEditor() {
   const { language } = useLanguage();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const dismissLabel = language === 'th' ? 'ปิดข้อความยืนยัน' : language === 'zh' ? '关闭确认消息' : 'Dismiss confirmation';
   const copy = labels[language];
   const imageCopy = illustrationLabels[language];
   const [uploading, setUploading] = useState(false);
@@ -59,13 +62,22 @@ export function SpecialsPageContentEditor() {
     <summary className="joko-admin-title cursor-pointer text-xl">{copy.title}</summary>
     <p className="mt-3 text-sm">{copy.hint}</p>
     {error && <p role="alert" className="mt-3 text-sm text-red-800">{copy.failed} {!loaded && <button type="button" className="underline" onClick={() => void load()}>{copy.retry}</button>}</p>}
-    {saved && <p role="status" className="mt-3 text-sm text-[#55766F]">{copy.saved}</p>}
+    {saved && <div role="status" className="fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl border border-[#55766F]/30 bg-[#E6EEE9] p-4 text-[#303532] shadow-lg sm:right-6">
+      <CheckCircle2 className="h-5 w-5 shrink-0 text-[#55766F]" aria-hidden="true" />
+      <span>{copy.saved}</span>
+      <button type="button" aria-label={dismissLabel} className="rounded-lg p-2 text-[#A85225] focus-visible:outline focus-visible:outline-2" onClick={() => setSaved(false)}><X className="h-4 w-4" aria-hidden="true" /></button>
+    </div>}
     {!loaded ? <p className="mt-3 text-sm">{copy.loading}</p> : <form onSubmit={event => void save(event)} className="mt-4 space-y-4">
       <fieldset disabled={busy || uploading} className="space-y-3 rounded-xl border border-[#55766F]/25 p-4">
         <legend className="px-2 font-semibold">{imageCopy.title}</legend>
         <p className="text-sm">{imageCopy.hint}</p>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={content.illustration.visible} onChange={event => updateIllustration({ visible: event.target.checked })} />{imageCopy.show}</label>
-        <label className="block text-sm">{imageCopy.upload}<input type="file" accept={PRODUCT_IMAGE_ACCEPTED_TYPES.join(',')} className="mt-2 block max-w-full text-sm" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} /></label>
+        <div>
+          <input ref={imageInputRef} type="file" aria-label={imageCopy.upload} accept={PRODUCT_IMAGE_ACCEPTED_TYPES.join(',')} className="hidden" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void upload(file); }} />
+          <button type="button" onClick={() => imageInputRef.current?.click()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#A85225] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#85411D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A85225] disabled:opacity-50">
+            <Upload className="h-4 w-4" aria-hidden="true" />{uploading ? imageCopy.uploading : imageCopy.upload}
+          </button>
+        </div>
         <label className="block text-sm">{imageCopy.url}<input type="text" value={content.illustration.url} onChange={event => updateIllustration({ url: event.target.value })} aria-invalid={!validSpecialsIllustrationUrl(content.illustration.url.trim())} className="joko-admin-field mt-1 w-full max-w-xl" /></label>
         {!validSpecialsIllustrationUrl(content.illustration.url.trim()) && <p role="alert" className="text-sm text-red-800">{imageCopy.invalid}</p>}
         {content.illustration.url && validSpecialsIllustrationUrl(content.illustration.url.trim()) && <img key={content.illustration.url} src={content.illustration.url} alt="" onError={() => setPreviewFailed(true)} className="max-h-56 max-w-full rounded-xl bg-[#D9ECE9] object-contain p-3" />}
@@ -86,7 +98,11 @@ export function SpecialsPageContentEditor() {
           }} className="mt-1 w-full rounded-xl border border-[#55766F]/25 bg-[#FFF9EE] p-3" />
         </label>)}
       </fieldset>)}</div>
-      <button disabled={busy || uploading || !validSpecialsIllustrationUrl(content.illustration.url.trim())} className="joko-admin-primary-button px-4 py-3">{busy ? copy.saving : copy.save}</button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={busy || uploading || !validSpecialsIllustrationUrl(content.illustration.url.trim())} className="joko-admin-primary-button px-4 py-3">{busy ? copy.saving : copy.save}</button>
+        {saved && <p className="flex items-center gap-2 rounded-lg bg-[#E6EEE9] px-3 py-2 text-sm font-semibold text-[#36564D]"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{copy.saved}</p>}
+        {error && <p role="alert" className="text-sm text-red-800">{copy.failed}</p>}
+      </div>
     </form>}
   </details>;
 }
