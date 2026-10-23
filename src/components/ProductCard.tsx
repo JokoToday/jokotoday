@@ -17,6 +17,7 @@ import {
 type ProductCardProps = {
   product: Product | CMSProduct;
   preview?: boolean;
+  allowLikesInPreview?: boolean;
   previewLanguage?: "en" | "th" | "zh";
   productHref?: string;
   commerceUnavailableLabel?: string;
@@ -34,6 +35,7 @@ type ProductCardProps = {
 export default function ProductCard({
   product,
   preview = false,
+  allowLikesInPreview = false,
   previewLanguage,
   productHref,
   commerceUnavailableLabel,
@@ -144,7 +146,7 @@ export default function ProductCard({
         {productHref && !preview ? (
           <a href={productHref}>{productImage}</a>
         ) : productImage}
-        {!preview && <button
+        {(!preview || allowLikesInPreview) && <button
           onClick={handleLikeClick}
           className={`
             joko-product-card-like absolute right-3 top-3 rounded-full p-2 shadow-md
@@ -166,7 +168,7 @@ export default function ProductCard({
             `}
           />
         </button>}
-        {!preview && likeCount > 0 && (
+        {(!preview || allowLikesInPreview) && likeCount > 0 && (
           <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium text-gray-700 shadow-sm">
             <Heart className="h-3 w-3 fill-primary-500 stroke-primary-500" />
             {likeCount}
