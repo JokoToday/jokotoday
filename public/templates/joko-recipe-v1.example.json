@@ -1,0 +1,134 @@
+{
+  "schema_version": "joko.recipe.v1",
+  "slug": "design-sample-cookies",
+  "title": {
+    "en": "Design sample: chocolate chip cookies",
+    "th": "ตัวอย่างการออกแบบ: คุกกี้ช็อกโกแลตชิป",
+    "zh": "设计示例：巧克力曲奇"
+  },
+  "intro": {
+    "en": "Example data for the import format. Not a verified recipe.",
+    "th": "ข้อมูลตัวอย่างสำหรับทดสอบการนำเข้า ไม่ใช่สูตรที่ตรวจทานแล้ว",
+    "zh": "用于测试导入格式的示例数据，非已核实食谱。"
+  },
+  "category": "cookies",
+  "source": {
+    "creator": "Example creator — replace before publication",
+    "platform": "Other",
+    "url": "https://example.com/recipe-source",
+    "original_title": "Import format example",
+    "language": "en"
+  },
+  "hero": {
+    "url": "",
+    "alt": {
+      "en": "Sample cookies",
+      "th": "คุกกี้ตัวอย่าง",
+      "zh": "曲奇示例"
+    },
+    "credit": "",
+    "permission": "pending",
+    "kind": "photo"
+  },
+  "yield": {
+    "en": "12 cookies",
+    "th": "คุกกี้ 12 ชิ้น",
+    "zh": "12 块饼干"
+  },
+  "times": {
+    "prep_minutes": 15,
+    "cook_minutes": null,
+    "rest_minutes": null,
+    "total_minutes": null
+  },
+  "difficulty": null,
+  "ingredients": [
+    {
+      "id": "flour",
+      "name": {
+        "en": "Flour",
+        "th": "แป้ง",
+        "zh": "面粉"
+      },
+      "amount": "150",
+      "unit": "g",
+      "group": {
+        "en": "Dough",
+        "th": "แป้งโดว์",
+        "zh": "面团"
+      }
+    },
+    {
+      "id": "butter",
+      "name": {
+        "en": "Butter",
+        "th": "เนย",
+        "zh": "黄油"
+      },
+      "amount": null,
+      "unit": "g",
+      "group": {
+        "en": "Dough",
+        "th": "แป้งโดว์",
+        "zh": "面团"
+      }
+    }
+  ],
+  "equipment": [
+    {
+      "en": "Mixing bowl",
+      "th": "ชามผสม",
+      "zh": "搅拌碗"
+    }
+  ],
+  "method": [
+    {
+      "id": "prepare",
+      "title": {
+        "en": "Prepare your tray",
+        "th": "เตรียมถาด",
+        "zh": "准备烤盘"
+      },
+      "instruction": {
+        "en": "Line the tray with parchment paper.",
+        "th": "รองถาดด้วยกระดาษรองอบ",
+        "zh": "在烤盘上铺烘焙纸。"
+      }
+    },
+    {
+      "id": "review",
+      "title": {
+        "en": "Check the source",
+        "th": "ตรวจสอบต้นฉบับ",
+        "zh": "核对原作"
+      },
+      "instruction": {
+        "en": "This is example data. Complete the method from a reviewed source.",
+        "th": "นี่คือข้อมูลตัวอย่าง กรุณากรอกวิธีทำจากต้นฉบับที่ตรวจทานแล้ว",
+        "zh": "此为示例数据。请根据已审核原作补全步骤。"
+      }
+    }
+  ],
+  "notes": [],
+  "joko_notes": [],
+  "issues": [
+    {
+      "id": "missing-butter",
+      "message": {
+        "en": "Butter quantity and cooking time are not specified in this sample.",
+        "th": "ตัวอย่างนี้ไม่ระบุปริมาณเนยและเวลาปรุง",
+        "zh": "本示例未注明黄油用量和烹饪时间。"
+      },
+      "blocking": false,
+      "resolved": false
+    }
+  ],
+  "evidence": [
+    {
+      "field": "ingredients.flour.amount",
+      "source_text": "150 g flour (example only)",
+      "timecode": null,
+      "type": "editorial"
+    }
+  ]
+}

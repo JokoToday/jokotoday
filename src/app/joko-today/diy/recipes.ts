@@ -10,7 +10,9 @@ export interface DiyRecipe {
   category: RecipeCategory;
   image: string;
   reviewStatus: 'preview';
-  source?: { creator: string; platform: 'YouTube'; url: string; youtubeId: string };
+  publishedSlug?: string;
+  photoKind?: string;
+  source?: { creator: string; platform: 'YouTube' | 'TikTok' | 'RedNote' | 'Other'; url: string; youtubeId: string };
 }
 export const diyRecipes: DiyRecipe[] = [
   { id: 'chocolate-chip-cookies', title: 'Chocolate chip cookies', description: 'A little chocolate. A good afternoon baking project.', category: 'cookies', image: '/assets/diy/cookies.webp', reviewStatus: 'preview', source: { platform: 'YouTube', creator: 'King Arthur Baking Company', url: 'https://www.youtube.com/watch?v=Ka3n5qB2JrE', youtubeId: 'Ka3n5qB2JrE' } },
