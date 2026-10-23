@@ -254,7 +254,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {likedProducts.map((product) => {
+            {filteredProducts.map((product) => {
               const v2State = pickupV2Enabled ? getV2LikedProductState(product.id) : null;
               return (
                 <ProductCard
