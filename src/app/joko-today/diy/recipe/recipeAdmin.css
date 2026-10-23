@@ -132,3 +132,31 @@
     padding: 12px;
   }
 }
+
+.recipe-admin .ra-json-upload {
+  display: block;
+  padding: 18px;
+  margin: 16px 0;
+  background: #377f7e;
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.recipe-admin .ra-json-upload input[type="file"] { color: #fff; }
+.recipe-admin .ra-json-upload input::file-selector-button {
+  padding: 10px 16px;
+  margin-right: 12px;
+  background: #e4f3ef;
+  color: #244f4c;
+  border: 1px solid #fff;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.recipe-admin button:not(:disabled):hover,
+.recipe-admin .ra-toolbar a:hover,
+.recipe-admin .ra-json-upload input::file-selector-button:hover {
+  background: #286a67;
+  color: #fff;
+  border-color: #286a67;
+}
+.recipe-admin #recipe-original-video { scroll-margin-top: 110px; }

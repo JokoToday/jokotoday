@@ -469,3 +469,19 @@
     display: none !important;
   }
 }
+
+.recipe-unit-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.recipe-unit-controls .recipe-units { margin-top: 0; flex-wrap: wrap; }
+.recipe-unit-controls small { flex: 1 1 260px; }
+.joko-recipe button:not(:disabled), .joko-recipe a[class], .joko-recipe .recipe-section-links a { cursor: pointer; }
+.joko-recipe button:not(:disabled):hover,
+.joko-recipe .recipe-jumps a:hover,
+.joko-recipe .recipe-section-links a:hover,
+.joko-recipe .recipe-action:hover,
+.joko-recipe .recipe-primary:hover,
+.joko-recipe .recipe-share a:hover {
+  background: #286a67;
+  color: #fff;
+  border-color: #286a67;
+}
+@media print { .joko-recipe .recipe-unit-controls { display: none; } }

@@ -94,3 +94,9 @@ Remaining production release gates above still apply, including real authenticat
 The editor remembers only the saved recipe ID in account-scoped sessionStorage for the current tab. Selecting or saving a draft updates that ID; importing a new unsaved recipe clears it. On reload it fetches current authorized server records and reopens the matching saved record. Missing/deleted records are ignored, and blocked browser storage does not prevent normal save/edit. Unsaved changes are not persisted automatically.
 
 Staging build/typecheck and scoped ESLint passed. Browser tests with mocked backend/auth responses on the actual staging build verified selected draft restoration, latest saved text restoration without extra writes, and safe handling of an unavailable remembered ID. The user's real staging acceptance confirmed JSON import/save/reopen before this improvement.
+
+### Measurement display and importer clarity
+
+Metric / US controls appear near the top of the recipe, independently of language. Display-only conversions support g/kg/mg ↔ oz/lb, ml/l ↔ explicitly US fluid ounces, and explicit °C/°F temperatures in method instructions. Saved JSON, original units and evidence are unchanged. Rounded conversions have an ≈ marker; weights below 10 g retain grams, and tiny values that would round to zero remain in their original units. Numeric ranges and ingredient fractions are supported; unknown quantities, cups, spoons, counts and ambiguous bare “fl oz” remain unchanged. Source notes, evidence, and descriptive ingredient names retain source wording. No density-based mass/volume conversion. Focused conversion regression runs in CI.
+
+Upload JSON is a prominent dark turquoise panel with a styled native file picker. Recipe/admin CTAs darken turquoise on hover. The toolbar links to a clearly labelled Original video URL field. This release has URL entry, YouTube embedding and other-platform original-post links; no video-file upload has been added.

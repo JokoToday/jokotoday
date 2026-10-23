@@ -1,5 +1,9 @@
 export const recipeLabels = {
   en: {
+    measurements: "Measurement system",
+    metric: "Metric (g / ml)",
+    us: "US (oz / fl oz)",
+    conversionNote: "≈ Converted values are rounded. Small weights retain grams; cups and spoons stay as written.",
     back: "All recipes",
     notes: "Your baking notes",
     ingredients: "Ingredients",
@@ -66,6 +70,10 @@ export const recipeLabels = {
     saveError: "Please check the highlighted details.",
   },
   th: {
+    measurements: "ระบบหน่วยวัด",
+    metric: "เมตริก (g / ml)",
+    us: "สหรัฐฯ (oz / fl oz)",
+    conversionNote: "≈ ค่าที่แปลงมีการปัดเศษ น้ำหนักน้อยยังแสดงกรัม ถ้วยและช้อนคงตามต้นฉบับ",
     back: "สูตรทั้งหมด",
     notes: "บันทึกการทำของคุณ",
     ingredients: "ส่วนผสม",
@@ -131,6 +139,10 @@ export const recipeLabels = {
     saveError: "กรุณาตรวจสอบข้อมูล",
   },
   zh: {
+    measurements: "计量单位",
+    metric: "公制 (g / ml)",
+    us: "美制 (oz / fl oz)",
+    conversionNote: "≈ 换算值经四舍五入。少量重量保留克数；杯和匙保持原文。",
     back: "全部食谱",
     notes: "你的烘焙笔记",
     ingredients: "配料",

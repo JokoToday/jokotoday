@@ -13,6 +13,7 @@ import {
 import { recipeLabels } from "./labels";
 import RecipeComments from "./RecipeComments";
 import RecipeLike from "./RecipeLike";
+import { displayQuantity, displayInstructions, type UnitSystem } from "./units";
 import "./recipe.css";
 export function RecipeView({
   recipe,
@@ -29,6 +30,7 @@ export function RecipeView({
   const [loaded, setLoaded] = useState(false),
     [share, setShare] = useState(false),
     [notice, setNotice] = useState("");
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>("metric");
   const embed = youtubeEmbed(recipe.source.url);
   const minutes = (v: number | null) =>
     v === null
@@ -65,6 +67,13 @@ export function RecipeView({
           ))}
         </div>
       </header>
+      <div className="recipe-unit-controls">
+        <div role="group" aria-label={t.measurements} className="recipe-languages recipe-units">
+          <button type="button" aria-pressed={unitSystem === "metric"} onClick={() => setUnitSystem("metric")}>{t.metric}</button>
+          <button type="button" aria-pressed={unitSystem === "us"} onClick={() => setUnitSystem("us")}>{t.us}</button>
+        </div>
+        <small>{t.conversionNote}</small>
+      </div>
       <div className="recipe-actions">
         {!preview && id && <RecipeLike id={id} language={language} />}
         <button
@@ -222,7 +231,7 @@ export function RecipeView({
                 <input type="checkbox" />
                 {i.amount === null
                   ? t.unknown
-                  : `${i.amount} ${i.unit ?? ""}`}{" "}
+                  : displayQuantity(i.amount, i.unit, unitSystem)}{" "}
                 {i.name[language]}
               </label>
             </li>
@@ -252,7 +261,7 @@ export function RecipeView({
               </span>
               <div>
                 <h3>{s.title[language]}</h3>
-                <p>{s.instruction[language]}</p>
+                <p>{displayInstructions(s.instruction[language], unitSystem)}</p>
               </div>
             </li>
           ))}

@@ -47,7 +47,9 @@ jobs:
           JOKO_TEST_PGLITE_MODULE=/tmp/joko-makers-tests/node_modules/@electric-sql/pglite/dist/index.js node scripts/tests/makers-db.mjs
 
       - name: DIY recipe import and moderation regressions
-        run: PGLITE_MODULE=/tmp/joko-makers-tests/node_modules/@electric-sql/pglite/dist/index.js node scripts/test-diy-recipes.mjs
+        run: |
+          PGLITE_MODULE=/tmp/joko-makers-tests/node_modules/@electric-sql/pglite/dist/index.js node scripts/test-diy-recipes.mjs
+          node scripts/test-diy-recipe-units.mjs
 
       - name: Specials receipt and Stripe contract regressions
         run: |

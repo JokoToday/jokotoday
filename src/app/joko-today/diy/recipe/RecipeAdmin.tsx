@@ -276,7 +276,7 @@ export default function RecipeAdmin({
         <a href="/templates/joko-recipe-v1.example.json" download>
           Download example JSON
         </a>
-        <label>
+        <label className="ra-json-upload">
           Upload JSON
           <input
             type="file"
@@ -356,6 +356,7 @@ export default function RecipeAdmin({
             <button disabled={busy} onClick={exportJson}>
               Export JSON
             </button>
+            <a href="#recipe-original-video">Add original video URL ↓</a>
           </div>
           {preview && (
             <section id="recipe-editor-preview" className="ra-preview" aria-label="Recipe preview">
@@ -428,12 +429,15 @@ export default function RecipeAdmin({
                 </label>
               ))}
             </div>
-            <h2>Original creator and source</h2>
+            <h2 id="recipe-original-video">Original video and creator</h2>
+            <p>Paste the original video URL below. YouTube plays embedded; TikTok and RedNote currently open the original post. Video-file upload is not available yet.</p>
             {(["creator", "url", "original_title", "language"] as const).map(
               (key) => (
                 <label key={key}>
-                  {key}
+                  {{ creator: "Original creator", url: "Original video URL (YouTube, TikTok or RedNote)", original_title: "Original video title", language: "Original video language" }[key]}
                   <input
+                    type={key === "url" ? "url" : "text"}
+                    placeholder={key === "url" ? "https://…" : undefined}
                     value={recipe.source[key]}
                     onChange={(e) =>
                       set("source", { ...recipe.source, [key]: e.target.value })
