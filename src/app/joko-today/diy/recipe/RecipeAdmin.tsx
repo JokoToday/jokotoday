@@ -29,6 +29,17 @@ import { CommentPhotos } from "./RecipeComments";
 import { RecipeView } from "./RecipePage";
 import "./recipeAdmin.css";
 const blankText = (): Localized => ({ en: "", th: "", zh: "" });
+function rememberedDraft(userId: string, value?: string | null): string | null {
+  try {
+    const key = `joko-diy-editor:${userId}`;
+    if (value === null) sessionStorage.removeItem(key);
+    else if (value !== undefined) sessionStorage.setItem(key, value);
+    return sessionStorage.getItem(key);
+  } catch {
+    // Browser storage is optional; saving the actual draft still uses the server.
+    return null;
+  }
+}
 function MoveButtons({
   index,
   length,
@@ -119,15 +130,32 @@ export default function RecipeAdmin({
     ]);
     setRecords(recipes);
     setQueue(comments.filter((c) => c.status !== "uploading"));
+    return recipes;
   }, []);
   useEffect(() => {
-    if (userRole === "admin")
-      void refresh().catch(() =>
-        setError(
+    let cancelled = false;
+    setRecord(undefined);
+    setRecipe(null);
+    setBaseline("");
+    setRecords([]);
+    setQueue([]);
+    if (userRole === "admin" && user?.id)
+      void refresh().then((recipes) => {
+        if (cancelled) return;
+        const savedId = rememberedDraft(user.id);
+        const saved = recipes.find((r) => r.id === savedId);
+        if (saved) {
+          setRecord(saved);
+          setRecipe(saved.payload);
+          setBaseline(JSON.stringify(saved.payload));
+        } else if (savedId) rememberedDraft(user.id, null);
+      }).catch(() => {
+        if (!cancelled) setError(
           "Could not load recipes. Confirm the recipe migration is installed.",
-        ),
-      );
-  }, [userRole, refresh]);
+        );
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, userRole, refresh]);
   useEffect(() => {
     onDirtyChange?.(dirty);
     return () => onDirtyChange?.(false);
@@ -146,6 +174,7 @@ export default function RecipeAdmin({
   function select(r: StoredRecipe) {
     if (dirty && !window.confirm("Discard unsaved recipe changes?")) return;
     setRecord(r);
+    rememberedDraft(user!.id, r.id);
     setRecipe(r.payload);
     setBaseline(JSON.stringify(r.payload));
     setNotice("");
@@ -159,6 +188,7 @@ export default function RecipeAdmin({
       if (dirty && !window.confirm("Replace the unsaved recipe draft?")) return;
       setRecipe(parsed);
       setRecord(undefined);
+      rememberedDraft(user!.id, null);
       setBaseline("");
       setNotice(
         "Imported into a new unsaved draft. Nothing has been published.",
@@ -716,6 +746,7 @@ export default function RecipeAdmin({
                 action(async () => {
                   const saved = await saveRecipe(parseRecipe(recipe), record);
                   setRecord(saved);
+                  rememberedDraft(user.id, saved.id);
                   setRecipe(saved.payload);
                   setBaseline(JSON.stringify(saved.payload));
                   setNotice("Draft saved. The public recipe is unchanged.");
@@ -787,7 +818,7 @@ export default function RecipeAdmin({
           Approve or reject text and photos together. Revisions return to this
           queue.
         </p>
-        <button disabled={busy} onClick={() => action(refresh)}>
+        <button disabled={busy} onClick={() => action(async () => { await refresh(); })}>
           Refresh queue
         </button>
         {queue.length === 0 && <p>No submissions to review.</p>}

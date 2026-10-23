@@ -88,3 +88,9 @@ Test-fixture screenshots use illustrative photos and placeholder source data. Th
 5. Use a real reviewed recipe and approved image for the separate publish/unpublish check. All results here are isolated test data.
 
 Remaining production release gates above still apply, including real authenticated workflow, Storage/phone HEIC, original-video playback, Favorites UUID lookup and retention review. Staging availability is not production release approval.
+
+### Saved editor selection after reload
+
+The editor remembers only the saved recipe ID in account-scoped sessionStorage for the current tab. Selecting or saving a draft updates that ID; importing a new unsaved recipe clears it. On reload it fetches current authorized server records and reopens the matching saved record. Missing/deleted records are ignored, and blocked browser storage does not prevent normal save/edit. Unsaved changes are not persisted automatically.
+
+Staging build/typecheck and scoped ESLint passed. Browser tests with mocked backend/auth responses on the actual staging build verified selected draft restoration, latest saved text restoration without extra writes, and safe handling of an unavailable remembered ID. The user's real staging acceptance confirmed JSON import/save/reopen before this improvement.
