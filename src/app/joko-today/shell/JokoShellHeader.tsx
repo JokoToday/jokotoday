@@ -171,7 +171,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     const path = window.location.pathname;
     // Home is intentionally not permanently marked; a stroke appears on hover.
     if (item.key === 'home') return false;
-    if (item.key === 'diy') return path === '/diy';
+    if (item.key === 'diy') return path === '/diy' || path.startsWith('/diy/recipes/');
     if (item.key === 'makers') return path === '/makers' || path.startsWith('/makers/');
     // Both the original Store menu key and the new key open the Store page.
     if (item.key === 'other-products' || item.key === 'store') return path === '/store';

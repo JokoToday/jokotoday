@@ -43,6 +43,7 @@ import { InternalSignedInAccount } from './InternalSignedInAccount';
 
 const SpecialsManagement = lazy(() => import('../features/specials/SpecialsManagement').then(({ SpecialsManagement }) => ({ default: SpecialsManagement })));
 
+const RecipeAdmin = lazy(() => import('../app/joko-today/diy/recipe/RecipeAdmin'));
 const DiyContentManagement = lazy(() => import('../app/joko-today/diy/DiyContentManagement'));
 
 const HomepageBuilderAdmin = lazy(() => import('../app/joko-today/admin/HomepageBuilderAdmin'));
@@ -52,6 +53,7 @@ interface AdminWorkspaceProps {
 }
 
 type WorkspaceTab =
+  | 'recipes'
   | 'diy'
   | 'specials'
   | 'cms'
@@ -75,6 +77,7 @@ type WorkspaceTab =
 
 function workspaceTabFromLocation(): WorkspaceTab {
   const path = window.location.pathname;
+  if (path === '/admin/diy/recipes') return 'recipes';
   if (path === '/admin/diy') return 'diy';
   if (path.startsWith('/admin/specials')) return 'specials';
   if (path.startsWith('/admin/homepage')) return 'homepage';
@@ -99,6 +102,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
 
 function workspacePath(tab: WorkspaceTab): string {
   switch (tab) {
+    case 'recipes': return '/admin/diy/recipes';
     case 'diy': return '/admin/diy';
     case 'specials': return '/admin/specials';
     case 'homepage': return '/admin/homepage';
@@ -125,6 +129,7 @@ function workspacePath(tab: WorkspaceTab): string {
 }
 
 export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
+  const [recipesDirty, setRecipesDirty] = useState(false);
   const [diyDirty, setDiyDirty] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(workspaceTabFromLocation);
   const { logoUrl, brandingStyle } = useInternalJokoBranding();
@@ -136,6 +141,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
   }, []);
 
   const selectWorkspaceTab = (tab: WorkspaceTab) => {
+    if (activeTab === 'recipes' && tab !== 'recipes' && recipesDirty && !window.confirm('Discard unsaved recipe changes?')) return;
     if (activeTab === 'diy' && tab !== 'diy' && diyDirty && !window.confirm('Discard unsaved DIY page changes?')) return;
     setActiveTab(tab);
     const targetPath = workspacePath(tab);
@@ -194,6 +200,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <Monitor className="h-4 w-4" />
                   Website / Homepage
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('recipes')} className={tabClass('recipes')}><BookOpen className="h-4 w-4" />Recipes & Comments</button>
                 <button type="button" onClick={() => selectWorkspaceTab('diy')} className={tabClass('diy')}><BookOpen className="h-4 w-4" />JOKO DIY</button>
                 <button type="button" onClick={() => selectWorkspaceTab('joko-notes')} className={tabClass('joko-notes')}>
                   <StickyNote className="h-4 w-4" />
@@ -271,6 +278,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
 
       <main className="joko-admin-content pb-14">
         {activeTab === 'specials' && <Suspense fallback={<div className="p-6">Loading JOKO Specials…</div>}><SpecialsManagement /></Suspense>}
+        {activeTab === 'recipes' && <Suspense fallback={<p>Loading recipe editor…</p>}><RecipeAdmin onDirtyChange={setRecipesDirty} /></Suspense>}
         {activeTab === 'diy' && <Suspense fallback={<p className="p-6">Loading DIY editor…</p>}><DiyContentManagement onDirtyChange={setDiyDirty} /></Suspense>}
         {activeTab === 'cms' && <AdminCmsPage onNavigate={onNavigate} />}
         {activeTab === 'makers' && <MakersManagement />}

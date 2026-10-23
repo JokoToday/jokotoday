@@ -14,6 +14,7 @@ import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
 const MakersPage = lazy(() => import('./pages/MakersPage'));
+const RecipePage = lazy(() => import('./app/joko-today/diy/recipe/RecipePage'));
 const DiyPage = lazy(() => import('./app/joko-today/diy/DiyPageWithContent'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const StorePage = lazy(() => import('./pages/StorePage'));
@@ -109,6 +110,7 @@ function AppContent() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [paymentHandoffToken, setPaymentHandoffToken] = useState<string | null>(null);
   const [pickupReceiptToken, setPickupReceiptToken] = useState<string | null>(null);
+  const [recipeSlug, setRecipeSlug] = useState('');
   const [makerSlug, setMakerSlug] = useState<string | null>(null);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [productPublicCode, setProductPublicCode] = useState<string | null>(null);
@@ -122,6 +124,8 @@ function AppContent() {
       const path = window.location.pathname;
       const params = new URLSearchParams(window.location.search);
       const qrCustomerMatch = path.match(/^\/c\/([^/]+)$/);
+      const recipeMatch = path.match(/^\/diy\/recipes\/([a-z0-9-]+)$/);
+      if (recipeMatch) { setRecipeSlug(recipeMatch[1]); setCurrentPage('recipe'); return; }
       const qrResolverMatch = path.match(/^\/q\/([^/]+)$/);
       const scanMatch = path.match(/^\/scan\/([A-Za-z0-9]+)$/);
       const legacyProductMatch = path.match(/^\/product\/([^/]+)$/);
@@ -492,6 +496,7 @@ function AppContent() {
         return <WhatPeopleSayPage onNavigate={handleNavigate} />;
       case 'how-it-works':
         return <HowItWorksPage onNavigate={handleNavigate} />;
+      case 'recipe': return <RecipePage slug={recipeSlug} />;
       case 'diy':
         return <DiyPage onNavigate={handleNavigate} />;
       case 'terms':
@@ -535,10 +540,10 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'recipe' || currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
-  const jokoShellSection: JokoShellSection | null = currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
+  const jokoShellSection: JokoShellSection | null = (currentPage === 'recipe' || currentPage === 'diy') ? 'diy' : curiosityNotebookRoute
     ? 'curiosities'
     : currentPage === 'makers' || currentPage === 'maker-detail' ? 'makers'
     : currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout'

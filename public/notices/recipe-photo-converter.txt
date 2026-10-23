@@ -1,0 +1,4 @@
+JOKO DIY optional HEIC photo conversion uses heic-to 1.6.6 (Hopper Gee), distributed under LGPL-3.0-or-later with libheif components. This dependency is unmodified and dynamically imported only for HEIC photos.
+Source and replacement/build instructions: https://github.com/hoppergee/heic-to
+Installed package version and integrity are pinned in package-lock.json; replace/rebuild the module in the JOKO source build to modify it.
+See heic-to-LICENSE.txt and the upstream source for license and bundled third-party notices.

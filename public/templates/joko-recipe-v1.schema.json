@@ -1,0 +1,578 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JOKO recipe handoff v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "slug",
+    "title",
+    "intro",
+    "category",
+    "source",
+    "hero",
+    "yield",
+    "times",
+    "difficulty",
+    "ingredients",
+    "equipment",
+    "method",
+    "notes",
+    "joko_notes",
+    "issues",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "joko.recipe.v1"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 120
+    },
+    "title": {
+      "type": "object",
+      "required": [
+        "en",
+        "th",
+        "zh"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "th": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "zh": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      }
+    },
+    "intro": {
+      "type": "object",
+      "required": [
+        "en",
+        "th",
+        "zh"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "th": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "zh": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      }
+    },
+    "category": {
+      "enum": [
+        "bread",
+        "buns",
+        "cakes",
+        "cookies",
+        "pastries"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creator",
+        "platform",
+        "url",
+        "original_title",
+        "language"
+      ],
+      "properties": {
+        "creator": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "platform": {
+          "enum": [
+            "YouTube",
+            "TikTok",
+            "RedNote",
+            "Other"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "original_title": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      }
+    },
+    "hero": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "alt",
+        "credit",
+        "permission",
+        "kind"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^(https://|$)"
+        },
+        "alt": {
+          "type": "object",
+          "required": [
+            "en",
+            "th",
+            "zh"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "en": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "th": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "zh": {
+              "type": "string",
+              "maxLength": 4000
+            }
+          }
+        },
+        "credit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "permission": {
+          "enum": [
+            "pending",
+            "permitted"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "source-frame",
+            "photo",
+            "illustration"
+          ]
+        }
+      }
+    },
+    "yield": {
+      "type": "object",
+      "required": [
+        "en",
+        "th",
+        "zh"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "th": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "zh": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      }
+    },
+    "times": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prep_minutes",
+        "cook_minutes",
+        "rest_minutes",
+        "total_minutes"
+      ],
+      "properties": {
+        "prep_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "cook_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "rest_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "total_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000
+        }
+      }
+    },
+    "difficulty": {
+      "enum": [
+        "easy",
+        "intermediate",
+        "advanced",
+        null
+      ]
+    },
+    "ingredients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "amount",
+          "unit",
+          "group"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "name": {
+            "type": "object",
+            "required": [
+              "en",
+              "th",
+              "zh"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "en": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "th": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "zh": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            }
+          },
+          "amount": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          },
+          "group": {
+            "type": "object",
+            "required": [
+              "en",
+              "th",
+              "zh"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "en": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "th": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "zh": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            }
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "equipment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "en",
+          "th",
+          "zh"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "en": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "th": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "zh": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "method": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "instruction"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "object",
+            "required": [
+              "en",
+              "th",
+              "zh"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "en": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "th": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "zh": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            }
+          },
+          "instruction": {
+            "type": "object",
+            "required": [
+              "en",
+              "th",
+              "zh"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "en": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "th": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "zh": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            }
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "en",
+          "th",
+          "zh"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "en": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "th": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "zh": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "joko_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "en",
+          "th",
+          "zh"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "en": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "th": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "zh": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "message",
+          "blocking",
+          "resolved"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "message": {
+            "type": "object",
+            "required": [
+              "en",
+              "th",
+              "zh"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "en": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "th": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "zh": {
+                "type": "string",
+                "maxLength": 4000
+              }
+            }
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "resolved": {
+            "type": "boolean"
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "source_text",
+          "timecode",
+          "type"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "source_text": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "timecode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "type": {
+            "enum": [
+              "spoken",
+              "onscreen",
+              "visual",
+              "editorial"
+            ]
+          }
+        }
+      },
+      "maxItems": 500
+    }
+  }
+}
