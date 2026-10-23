@@ -122,6 +122,7 @@ export default function RecipeAdmin({
     [busy, setBusy] = useState(false),
     [preview, setPreview] = useState(false),
     [queue, setQueue] = useState<RecipeComment[]>([]);
+  const [heroProgress, setHeroProgress] = useState<number | null>(null);
   const dirty = !!recipe && JSON.stringify(recipe) !== baseline;
   const refresh = useCallback(async () => {
     const [recipes, comments] = await Promise.all([
@@ -294,7 +295,7 @@ export default function RecipeAdmin({
           />
         </label>
         <details>
-          <summary>Or paste JSON</summary>
+          <summary className="ra-paste-json">Or paste JSON</summary>
           <textarea
             rows={5}
             value={raw}
@@ -430,7 +431,7 @@ export default function RecipeAdmin({
               ))}
             </div>
             <h2 id="recipe-original-video">Original video and creator</h2>
-            <p>Paste the original video URL below. YouTube plays embedded; TikTok and RedNote currently open the original post. Video-file upload is not available yet.</p>
+            <p>Paste the original video URL below. YouTube plays embedded; TikTok and RedNote currently open the original post, which may require login. A source link does not upload or host the video on JOKO. Video-file upload is not available yet.</p>
             {(["creator", "url", "original_title", "language"] as const).map(
               (key) => (
                 <label key={key}>
@@ -464,20 +465,23 @@ export default function RecipeAdmin({
               </select>
             </label>
             <h2>Hero image</h2>
-            <label>
+            <label className="ra-hero-upload">
               Upload hero image
               <input
+                aria-label="Upload hero image"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   e.target.value = "";
-                  if (file)
+                  if (!file) return;
+                  setHeroProgress(0);
+                  try {
                     await action(async () => {
                       const result = await uploadGalleryImage({
                         file,
                         gallerySlot: "diy-recipes",
-                      });
+                      }, setHeroProgress);
                       set("hero", {
                         ...recipe.hero,
                         url: result.publicUrl,
@@ -487,9 +491,13 @@ export default function RecipeAdmin({
                         "Image uploaded. Check its credit and permission before publishing.",
                       );
                     });
+                  } finally {
+                    setHeroProgress(null);
+                  }
                 }}
               />
             </label>
+            {heroProgress !== null && <p role="status">{heroProgress === 0 ? "Preparing image…" : `Uploading image… ${heroProgress}%`}</p>}
             <label>
               Image URL
               <input

@@ -183,6 +183,7 @@ export function RecipeView({
           </a>
         )}
         {embed && <small>{t.privacy}</small>}
+        {!embed && recipe.source.platform === "RedNote" && <small>{t.externalVideoLogin}</small>}
       </section>
       <nav className="recipe-jumps">
         <a href="#recipe-ingredients">{t.ingredients} ↓</a>
