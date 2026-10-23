@@ -1,6 +1,6 @@
 # JOKO DIY recipe cards v1 — implementation review
 
-Status: feature branch only. No production database, Storage, CMS, migration, publishing or deployment changes were performed.
+Status: feature branch deployed to isolated staging for acceptance testing. No production database, Storage, CMS, migration, publishing or deployment changes were performed.
 
 ## Implemented
 
@@ -68,3 +68,23 @@ Test-fixture screenshots use illustrative photos and placeholder source data. Th
 ![Mobile recipe](recipe-mobile.webp)
 
 ![Admin importer](recipe-admin.webp)
+
+## Staging deployment — 2026-10-23
+
+- PR #323 is served at `https://staging.joko.today/admin/diy/recipes`, behind the existing Cloudflare Access gate. Use an existing staging administrator account; production sessions are separate.
+- Isolated Supabase project: `szijiljpasxddzgzckra` (JOKO Specials Test). Both recipe migrations applied here only. Production project and production release were not modified.
+- Replaced the previous preview build, which contained the production Supabase URL, with an explicit staging-only build. Compiled JS URL scan and an actual browser request trace both contained only the isolated project URL.
+- Server checkout `/home/nerd/joko-work/diy-pr323`; user service `joko-store-staging-preview.service` still listens on localhost:4188. A `diy-pr323.conf` service drop-in selects this checkout. The old Store checkout was preserved. Do not restore its old build: it contained a production database URL. Rebuild any replacement preview explicitly against the test project before switching.
+- JSON example download and unauthenticated Admin gate verified on the served build. Typecheck/build passed. Actual authenticated import/edit/save/reopen/publish remains a user acceptance test, not yet claimed as passed.
+- Live table RLS, private WebP photo bucket and RPC privileges inspected. Supabase default public-schema grants gave `anon` direct EXECUTE on public RPC wrappers despite the PUBLIC revoke. Private helpers already denied anonymous writes; the follow-up migration also removes the unnecessary wrapper grants explicitly. The isolated regression now simulates these defaults and passes 36 assertions.
+- No original recipe imported/published during deployment. Existing staging accounts, Favorites data and Store test records were preserved. Cloudflare Access and production routing were not changed.
+
+### Manual JSON acceptance
+
+1. Pass Cloudflare Access, then sign into the staging Admin with an authorized staging account.
+2. Open Recipes & Comments → Download example JSON → Upload JSON.
+3. Check editable EN/TH/ZH fields, ingredients and method; import must remain unsaved.
+4. Change a title, Save draft, reload and reopen it; confirm persistence. The example has deliberate issues and an unapproved image, so publication should remain blocked.
+5. Use a real reviewed recipe and approved image for the separate publish/unpublish check. All results here are isolated test data.
+
+Remaining production release gates above still apply, including real authenticated workflow, Storage/phone HEIC, original-video playback, Favorites UUID lookup and retention review. Staging availability is not production release approval.

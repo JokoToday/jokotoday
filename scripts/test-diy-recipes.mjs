@@ -66,12 +66,15 @@ const admin = "00000000-0000-4000-8000-000000000001",
 await db.exec(
   `create role anon nologin; create role authenticated nologin; create schema auth; create schema storage; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth,public,storage to anon,authenticated; grant execute on function auth.uid() to anon,authenticated; create table user_profiles(id uuid primary key,role text,name text); grant select on user_profiles to authenticated; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]); create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,primary key(bucket_id,name)); alter table storage.objects enable row level security; grant select,insert,update,delete on storage.objects to anon,authenticated; insert into auth.users values('${admin}'),('${alice}'),('${bob}'); insert into user_profiles values('${admin}','admin','JOKO'),('${alice}','customer','Alice'),('${bob}','customer','Bob');`,
 );
+await db.exec("alter default privileges in schema public grant execute on functions to anon,authenticated");
 await db.exec(
   await readFile(
     "supabase/migrations/20261023032148_joko_diy_recipes_comments_v1.sql",
     "utf8",
   ),
 );
+await db.exec(await readFile("supabase/migrations/20261023081302_joko_diy_recipe_rpc_privileges_v1.sql", "utf8"));
+ok((await sql("select has_function_privilege('anon','public.diy_start_comment(uuid,text)','execute') as allowed")).rows[0].allowed === false, "Supabase default anon RPC grant revoked");
 async function as(uid, role, fn) {
   await db.exec("reset role");
   await sql("select set_config('request.jwt.claim.sub',$1,false)", [uid ?? ""]);
