@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Heart, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +31,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const [savedItems,setSavedItems]=useState<SavedItem[]>([]);
   const [creators,setCreators]=useState<Maker[]>([]);
   const [favoritesError,setFavoritesError]=useState('');
+  const requestVersion=useRef(0);
   const [pickupV2Enabled, setPickupV2Enabled] = useState(false);
   const [v2AvailabilityRows, setV2AvailabilityRows] = useState<PickupAvailabilityRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,8 +76,10 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const t = labels[language] || labels.en;
 
   useEffect(() => {
+    const version=++requestVersion.current;
     if (user) {
-      void loadLikedProducts();
+      setLikedProducts([]);setSavedItems([]);setCreators([]);setFavoritesError('');
+      void loadLikedProducts(user.id,version);
     } else if (!authLoading) {
       setLoading(false);
       setLikedProducts([]);
@@ -86,13 +89,14 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     }
   }, [user, authLoading]);
 
-  const loadLikedProducts = async () => {
-    if (!user) return;
+  const loadLikedProducts = async (userId:string,version:number) => {
     setLoading(true);
     try {
-      const products = await fetchLikedProducts(user.id);
+      const products = await fetchLikedProducts(userId);
+      if (version!==requestVersion.current) return;
       setLikedProducts(products);
-      const [savedResult, makerResult] = await Promise.allSettled([getSavedItems(user.id),getMakers()]);
+      const [savedResult, makerResult] = await Promise.allSettled([getSavedItems(userId),getMakers()]);
+      if (version!==requestVersion.current) return;
       if (savedResult.status === 'fulfilled') { setSavedItems(savedResult.value); setFavoritesError(''); } else { setFavoritesError('Creator and recipe favorites are temporarily unavailable.'); }
       if (makerResult.status === 'fulfilled') setCreators(makerResult.value);
 
@@ -102,7 +106,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       if (v2Enabled && products.length > 0) {
         try {
           const rows = await getCustomerPickupAvailabilityV2(products.map((product) => product.id));
-          setV2AvailabilityRows(rows);
+          if(version===requestVersion.current)setV2AvailabilityRows(rows);
         } catch (availabilityError) {
           console.error('Error loading Pickup v2 availability for favorites:', availabilityError);
           setV2AvailabilityRows([]);
@@ -113,18 +117,18 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     } catch (error) {
       console.error('Error loading liked products:', error);
     } finally {
-      setLoading(false);
+      if(version===requestVersion.current)setLoading(false);
     }
   };
 
   const filteredProducts=likedProducts.filter(product => {
-    const isStore=product.catalog_scope === 'store_only' || product.product_origin === 'beyond' || product.is_non_bakery;
+    const isStore=product.catalog_scope === 'store_only' || product.product_origin === 'beyond' || product.product_origin === 'maker' || product.is_non_bakery;
     return tab==='all' || (tab==='store' && isStore) || (tab==='bakery' && !isStore);
   });
   const savedCreators=creators.filter(creator => savedItems.some(item=>item.item_type==='creator' && item.item_id===creator.id));
   const savedRecipes=diyRecipes.filter(recipe=>savedItems.some(item=>item.item_type==='recipe' && item.item_id===recipe.id));
   const visibleCount=filteredProducts.length+((tab==='all'||tab==='creators')?savedCreators.length:0)+((tab==='all'||tab==='recipes')?savedRecipes.length:0);
-  const removeItem=async (type: 'creator'|'recipe',id:string)=> { if(!user)return; try { await setSavedItem(user.id,type,id,false); setSavedItems(items=>items.filter(item=>!(item.item_type===type&&item.item_id===id))); } catch { setFavoritesError('Could not update favorites. Please try again.'); } };
+  const removeItem=async (type: 'creator'|'recipe',id:string)=> { if(!user)return; try { await setSavedItem(user.id,type,id,false); setSavedItems(items=>items.filter(item=>!(item.item_type===type&&item.item_id===id))); } catch { setFavoritesError(language==='th'?'อัปเดตรายการโปรดไม่สำเร็จ กรุณาลองใหม่':language==='zh'?'更新收藏失败，请重试':'Could not update favorites. Please try again.'); } };
 
   const v2RowsByProduct = useMemo(() => {
     const map = new Map<string, PickupAvailabilityRow[]>();
