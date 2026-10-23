@@ -98,6 +98,8 @@ export async function fetchLikedProducts(userId: string): Promise<CMSProduct[]> 
       created_at,
       cms_products (
         product_origin,
+        catalog_scope,
+        is_non_bakery,
         maker_id,
         maker:cms_makers(id,slug,name_en,name_th,name_zh,is_ordering_enabled),
         id,

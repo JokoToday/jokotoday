@@ -1,9 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Heart, ShoppingBag, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchLikedProducts } from '../lib/likesService';
 import { CMSProduct } from '../lib/cmsService';
+import { getMakers, makerText, type Maker } from '../lib/makersService';
+import { getSavedItems, setSavedItem, type SavedItem } from '../lib/accountFavoritesService';
+import { diyRecipes } from '../app/joko-today/diy/recipes';
 import ProductCard from '../components/ProductCard';
 import { AuthModal } from '../components/AuthModal';
 import { getPickupV2CustomerEnabled } from '../lib/pickupV2Rollout';
@@ -24,6 +27,11 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const [likedProducts, setLikedProducts] = useState<CMSProduct[]>([]);
+  const [tab,setTab]=useState<'all'|'bakery'|'store'|'creators'|'recipes'>('all');
+  const [savedItems,setSavedItems]=useState<SavedItem[]>([]);
+  const [creators,setCreators]=useState<Maker[]>([]);
+  const [favoritesError,setFavoritesError]=useState('');
+  const requestVersion=useRef(0);
   const [pickupV2Enabled, setPickupV2Enabled] = useState(false);
   const [v2AvailabilityRows, setV2AvailabilityRows] = useState<PickupAvailabilityRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +39,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   const labels = {
     en: {
+      tabs: ['All','JOKO Bakery','JOKO Store','Creators','Recipes'], emptyTab: 'Nothing saved here yet.', remove: 'Remove favorite', intro: 'Your collection of good things.',
       myLikes: 'My Favorites',
       empty: "You haven't liked any products yet",
       emptyHint: 'Browse our products and tap the heart to save your favorites!',
@@ -41,6 +50,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       signIn: 'Sign In',
     },
     th: {
+      tabs: ['ทั้งหมด','JOKO Bakery','JOKO Store','ครีเอเตอร์','สูตรอาหาร'], emptyTab: 'ยังไม่มีรายการโปรดในหมวดนี้', remove: 'นำออกจากรายการโปรด', intro: 'รวบรวมสิ่งดี ๆ ที่คุณชื่นชอบ',
       myLikes: 'รายการที่ถูกใจ',
       empty: 'คุณยังไม่ได้กดถูกใจสินค้าใดเลย',
       emptyHint: 'เลือกดูสินค้าของเราและกดรูปหัวใจเพื่อบันทึกรายการที่ชอบ',
@@ -51,6 +61,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       signIn: 'เข้าสู่ระบบ',
     },
     zh: {
+      tabs: ['全部','JOKO 烘焙','JOKO 商店','创作者','食谱'], emptyTab: '这里还没有收藏。', remove: '取消收藏', intro: '您喜爱的好东西，都在这里。',
       myLikes: '我的收藏',
       empty: '您还没有收藏任何商品',
       emptyHint: '浏览我们的商品，点击爱心收藏您喜欢的商品！',
@@ -65,21 +76,29 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const t = labels[language] || labels.en;
 
   useEffect(() => {
+    const version=++requestVersion.current;
     if (user) {
-      void loadLikedProducts();
+      setLikedProducts([]);setSavedItems([]);setCreators([]);setFavoritesError('');
+      void loadLikedProducts(user.id,version);
     } else if (!authLoading) {
       setLoading(false);
       setLikedProducts([]);
+      setSavedItems([]);
+      setCreators([]);
       setV2AvailabilityRows([]);
     }
   }, [user, authLoading]);
 
-  const loadLikedProducts = async () => {
-    if (!user) return;
+  const loadLikedProducts = async (userId:string,version:number) => {
     setLoading(true);
     try {
-      const products = await fetchLikedProducts(user.id);
+      const products = await fetchLikedProducts(userId);
+      if (version!==requestVersion.current) return;
       setLikedProducts(products);
+      const [savedResult, makerResult] = await Promise.allSettled([getSavedItems(userId),getMakers()]);
+      if (version!==requestVersion.current) return;
+      if (savedResult.status === 'fulfilled') { setSavedItems(savedResult.value); setFavoritesError(''); } else { setFavoritesError('Creator and recipe favorites are temporarily unavailable.'); }
+      if (makerResult.status === 'fulfilled') setCreators(makerResult.value);
 
       const v2Enabled = await getPickupV2CustomerEnabled();
       setPickupV2Enabled(v2Enabled);
@@ -87,7 +106,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       if (v2Enabled && products.length > 0) {
         try {
           const rows = await getCustomerPickupAvailabilityV2(products.map((product) => product.id));
-          setV2AvailabilityRows(rows);
+          if(version===requestVersion.current)setV2AvailabilityRows(rows);
         } catch (availabilityError) {
           console.error('Error loading Pickup v2 availability for favorites:', availabilityError);
           setV2AvailabilityRows([]);
@@ -98,9 +117,18 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     } catch (error) {
       console.error('Error loading liked products:', error);
     } finally {
-      setLoading(false);
+      if(version===requestVersion.current)setLoading(false);
     }
   };
+
+  const filteredProducts=likedProducts.filter(product => {
+    const isStore=product.catalog_scope === 'store_only' || product.product_origin === 'beyond' || product.product_origin === 'maker' || product.is_non_bakery;
+    return tab==='all' || (tab==='store' && isStore) || (tab==='bakery' && !isStore);
+  });
+  const savedCreators=creators.filter(creator => savedItems.some(item=>item.item_type==='creator' && item.item_id===creator.id));
+  const savedRecipes=diyRecipes.filter(recipe=>savedItems.some(item=>item.item_type==='recipe' && item.item_id===recipe.id));
+  const visibleCount=filteredProducts.length+((tab==='all'||tab==='creators')?savedCreators.length:0)+((tab==='all'||tab==='recipes')?savedRecipes.length:0);
+  const removeItem=async (type: 'creator'|'recipe',id:string)=> { if(!user)return; try { await setSavedItem(user.id,type,id,false); setSavedItems(items=>items.filter(item=>!(item.item_type===type&&item.item_id===id))); } catch { setFavoritesError(language==='th'?'อัปเดตรายการโปรดไม่สำเร็จ กรุณาลองใหม่':language==='zh'?'更新收藏失败，请重试':'Could not update favorites. Please try again.'); } };
 
   const v2RowsByProduct = useMemo(() => {
     const map = new Map<string, PickupAvailabilityRow[]>();
@@ -194,24 +222,27 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           <h1 className="mb-2 mt-2 text-4xl font-semibold tracking-[-0.03em] text-[#292D2B]" style={{ fontFamily: 'var(--joko-font-display)' }}>
             {t.myLikes}
           </h1>
-          {likedProducts.length > 0 && (
+          <p className="text-[#303532]/65">{t.intro}</p>
+          {likedProducts.length+savedItems.length > 0 && (
             <p className="text-[#303532]/65">
-              {likedProducts.length} {likedProducts.length === 1 ? 'product' : 'products'}
+              {likedProducts.length+savedItems.length} ❤
             </p>
           )}
         </div>
 
+        <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t.myLikes}>{(['all','bakery','store','creators','recipes'] as const).map((name,i)=><button type="button" key={name} aria-pressed={tab===name} onClick={()=>setTab(name)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${tab===name?'border-[#55766F] bg-[#55766F] text-white':'border-[#55766F]/25 bg-white/80 text-[#303532]'}`}>{t.tabs[i]}</button>)}</div>
+        {favoritesError && <p role="alert" className="mb-4 text-sm text-red-700">{favoritesError}</p>}
         {loading ? (
           <div className="text-center py-20">
             <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">{t.loading}</p>
           </div>
-        ) : likedProducts.length === 0 ? (
+        ) : visibleCount === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
               <Heart className="w-12 h-12 text-gray-400" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{t.empty}</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">{tab==='all'?t.empty:t.emptyTab}</h2>
             <p className="text-gray-600 text-center max-w-md mb-8">{t.emptyHint}</p>
             <button
               onClick={() => onNavigate('products')}
@@ -223,7 +254,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {likedProducts.map((product) => {
+            {filteredProducts.map((product) => {
               const v2State = pickupV2Enabled ? getV2LikedProductState(product.id) : null;
               return (
                 <ProductCard
@@ -236,6 +267,12 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
                 />
               );
             })}
+            {(tab==='all'||tab==='creators')&&savedCreators.map(creator=><article key={creator.id} className="overflow-hidden rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]">
+              {creator.hero_image&&<img src={creator.hero_image} alt="" className="aspect-[2/1] w-full object-cover"/>}
+              <div className="p-4"><p className="text-xs uppercase text-[#55766F]">JOKO Creator Circle</p><h2 className="mt-1 text-lg font-semibold">{makerText(creator,'name',language)}</h2>
+              <div className="mt-3 flex items-center justify-between"><a className="text-sm underline" href={`/makers/${encodeURIComponent(creator.slug)}`}>{t.tabs[3]} →</a><button type="button" title={t.remove} aria-label={`${t.remove}: ${makerText(creator,'name',language)}`} onClick={()=>void removeItem('creator',creator.id)}><Heart className="fill-[#C76624] text-[#C76624]"/></button></div></div></article>)}
+            {(tab==='all'||tab==='recipes')&&savedRecipes.map(recipe=><article key={recipe.id} className="overflow-hidden rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]">
+              <img src={recipe.image} alt="" className="aspect-[2/1] w-full object-cover"/><div className="p-4"><p className="text-xs uppercase text-[#55766F]">JOKO DIY</p><h2 className="mt-1 text-lg font-semibold">{recipe.title}</h2><div className="mt-3 flex items-center justify-between"><a className="text-sm underline" href={`/diy?recipe=${encodeURIComponent(recipe.id)}`}>{t.tabs[4]} →</a><button type="button" title={t.remove} aria-label={`${t.remove}: ${recipe.title}`} onClick={()=>void removeItem('recipe',recipe.id)}><Heart className="fill-[#C76624] text-[#C76624]"/></button></div></div></article>)}
           </div>
         )}
       </div>

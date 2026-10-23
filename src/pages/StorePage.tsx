@@ -98,7 +98,7 @@ export default function StorePage() {
           : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shown.map((product) => (
                 <div key={product.id}>
-                  <ProductCard product={product} preview />
+                  <ProductCard product={product} preview allowLikesInPreview />
                   <div className="mt-2 rounded-xl bg-[#FFF9EE] p-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs">{availability[product.id] ? `${Math.max(0, availability[product.id].stock_on_hand - availability[product.id].stock_reserved)} in stock` : 'Stock not configured'}</span>

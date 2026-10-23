@@ -7,6 +7,7 @@ import type { Maker } from "../lib/makersService";
 import { makerText } from "../lib/makersService";
 import type { CMSProduct } from "../lib/cmsService";
 import { useLanguage } from "../context/LanguageContext";
+import { AccountFavoriteHeart } from './AccountFavoriteHeart';
 import { SourcingDisclosure } from "./MakerAttribution";
 
 export function MakerProfile({
@@ -42,6 +43,7 @@ export function MakerProfile({
       products: "精选商品即将上线。",
     },
   }[language];
+  const favoriteControl = !preview ? <AccountFavoriteHeart type="creator" id={maker.id}/> : null;
   const selected = products.filter(
     (product) =>
       product.maker_id === maker.id && product.product_origin === "maker",
@@ -86,6 +88,7 @@ export function MakerProfile({
           >
             {makerText(maker, "name", language)}
           </h1>
+          <div className="mt-4">{favoriteControl}</div>
           <p className="mt-4 text-lg leading-8">
             {makerText(maker, "intro", language)}
           </p>

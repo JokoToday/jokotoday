@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CookingPot, ExternalLink, Heart, Play, Search, X } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { AuthModal } from '../../../components/AuthModal';
+import { getSavedItems, setSavedItem } from '../../../lib/accountFavoritesService';
 import { useLanguage } from '../../../context/LanguageContext';
 import { JokoHeroNotebookNote } from '../../../components/JokoHeroNotebookNote';
 import { diyCopy } from './copy';
@@ -7,14 +10,8 @@ import { diyRecipes, filterDiyRecipes, type DiyRecipe } from './recipes';
 import type { DiyText } from './content';
 import './diy.css';
 
-const SAVE_KEY = 'joko-diy-saved-v1';
+
 const categories = ['all', 'bread', 'buns', 'cakes', 'cookies', 'pastries'] as const;
-function readSaved(): string[] {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(SAVE_KEY) || '[]');
-    return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string' && diyRecipes.some(recipe => recipe.id === id)) : [];
-  } catch { return []; }
-}
 function selectedFromUrl() {
   return diyRecipes.find(recipe => recipe.source && recipe.id === new URLSearchParams(window.location.search).get('recipe')) ?? null;
 }
@@ -54,15 +51,18 @@ export default function DiyPage({ onNavigate, content }: { onNavigate: (page: st
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string>('all');
   const [savedOnly, setSavedOnly] = useState(false);
-  const [saved, setSaved] = useState(readSaved);
-  const [storageError, setStorageError] = useState(false);
+  const { user }=useAuth();
+  const [saved, setSaved] = useState<string[]>([]);
+  const [showAuth,setShowAuth]=useState(false);
+  const [savingError,setSavingError]=useState('');
+
   const [selected, setSelected] = useState<DiyRecipe | null>(selectedFromUrl);
   useEffect(() => {
     const sync = () => setSelected(selectedFromUrl());
-    const syncSaved = (event: StorageEvent) => { if (event.key === SAVE_KEY) setSaved(readSaved()); };
+
     window.addEventListener('popstate', sync);
-    window.addEventListener('storage', syncSaved);
-    return () => { window.removeEventListener('popstate', sync); window.removeEventListener('storage', syncSaved); };
+
+    return () => { window.removeEventListener('popstate', sync); };
   }, []);
   function openRecipe(recipe: DiyRecipe) {
     if (!recipe.source) return;
@@ -78,11 +78,13 @@ export default function DiyPage({ onNavigate, content }: { onNavigate: (page: st
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     setSelected(null);
   }
-  function toggleSaved(id: string) {
-    const next = saved.includes(id) ? saved.filter(value => value !== id) : [...saved, id];
-    setSaved(next);
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(next)); setStorageError(false); }
-    catch { setStorageError(true); }
+  useEffect(()=>{let active=true;setSaved([]);if(user)getSavedItems(user.id).then(rows=>{if(active)setSaved(rows.filter(item=>item.item_type==='recipe').map(item=>item.item_id));}).catch(()=>{if(active)setSavingError('Could not load your saved recipes.');});return()=>{active=false};},[user?.id]);
+  async function toggleSaved(id: string) {
+    if(!user){setShowAuth(true);return;}
+    const shouldSave=!saved.includes(id);
+    setSavingError('');
+    try{await setSavedItem(user.id,'recipe',id,shouldSave);setSaved(current=>shouldSave?[...current,id]:current.filter(value=>value!==id));}
+    catch{setSavingError('Could not save recipe. Please try again.');}
   }
   const featured = diyRecipes[0];
   const recipes = filterDiyRecipes(diyRecipes.slice(1), query, category, savedOnly, saved);
@@ -90,6 +92,7 @@ export default function DiyPage({ onNavigate, content }: { onNavigate: (page: st
   const visible = query.trim() || category !== 'all' || savedOnly
     ? filterDiyRecipes(diyRecipes, query, category, savedOnly, saved) : recipes;
   return <div className="joko-diy" lang={language}>
+    <AuthModal isOpen={showAuth} onClose={()=>setShowAuth(false)}/>
     <div className="diy-wrap">
       <section className="diy-hero" aria-labelledby="diy-title">
         <div className="diy-intro">
@@ -110,7 +113,7 @@ export default function DiyPage({ onNavigate, content }: { onNavigate: (page: st
         <div className="diy-catalog-heading"><h2 id="diy-catalog-title">{text.browse}</h2><label className="diy-search"><Search size={20} aria-hidden="true" /><span className="sr-only">{text.search}</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={text.search} /></label></div>
         <div className="diy-filters" role="group" aria-label={text.browse}>{categories.map(value => <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory(value)}>{text[value]}</button>)}<button type="button" aria-pressed={savedOnly} onClick={() => setSavedOnly(value => !value)}><Heart size={15} />{text.saved}</button></div>
         <p className="diy-preview">{text.preview} {language !== 'en' && text.english}</p>
-        <p className="diy-fine" role="status">{visible.length} {text.count} · {storageError ? text.storageError : text.local}</p>
+        <p className="diy-fine" role="status">{visible.length} {text.count} · {savingError || (user ? (language==='th'?'บันทึกกับบัญชีของคุณ':language==='zh'?'已保存到您的账户':'Saved to your account') : (language==='th'?'เข้าสู่ระบบเพื่อบันทึก':language==='zh'?'登录以收藏':'Sign in to save'))}</p>
         <div className="diy-grid">{visible.map(recipe => <article key={recipe.id} className="diy-card">
           <button type="button" className="diy-card-photo" disabled={!recipe.source} onClick={() => openRecipe(recipe)} aria-label={`${text.view}: ${recipe.title}`}><img src={recipe.image} alt={recipe.title} loading="lazy" width="800" height="600" /><span className="diy-photo-label">{text.photo}</span>{recipe.source && <><span className="diy-play"><Play fill="currentColor" /></span><span className="diy-platform">{recipe.source.platform}</span></>}</button>
           <div className="diy-card-body"><h3 lang="en"><button type="button" disabled={!recipe.source} onClick={() => openRecipe(recipe)}>{recipe.title}</button></h3><p lang="en">{recipe.description}</p><div className="diy-card-meta">{recipe.source ? <a href={recipe.source.url} target="_blank" rel="noopener noreferrer">{text.by} {recipe.source.creator} <ExternalLink size={12} /></a> : text.pending}</div><div className="diy-card-actions">{recipe.source ? <button type="button" onClick={() => openRecipe(recipe)}>{text.original}<ArrowRight size={16} /></button> : <span className="diy-pending">{text.sourcePending}</span>}<button type="button" className="diy-heart" aria-pressed={saved.includes(recipe.id)} aria-label={`${saved.includes(recipe.id) ? text.unsave : text.save}: ${recipe.title}`} onClick={() => toggleSaved(recipe.id)}><Heart size={21} fill={saved.includes(recipe.id) ? 'currentColor' : 'none'} /></button></div></div>
