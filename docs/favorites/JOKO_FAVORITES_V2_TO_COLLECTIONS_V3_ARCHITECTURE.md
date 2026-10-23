@@ -1,6 +1,6 @@
 # JOKO My Favorites v2 → Shareable Collections v3
 
-**Status:** Architecture decision for PR #319; v3 is *not implemented*.  
+**Status:** Architecture decision for PR #319; v3 is *not implemented*.
 **Decision:** Keep Favorites private by default. Expose other customers' collections only through an explicit publishing mechanism with independently enforced read permissions. A like never grants access to the liker’s identity or personal library.
 
 ## Product behavior
