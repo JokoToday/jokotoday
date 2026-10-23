@@ -104,7 +104,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     home: { targetId: 'top', activeKey: 'today' },
     products: { page: 'products-bakery', activeKey: 'bakery' },
     makers: { page: 'makers', activeKey: 'makers' },
-    'other-products': { page: 'products-non-bakery', activeKey: 'bakery' },
+    'other-products': { page: 'store' },
     store: { page: 'store' },
     specials: { page: 'specials' },
     'how-it-works': { targetId: 'how-it-works' },
@@ -114,7 +114,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
   };
   const navItems: NavItem[] = resolveTopMenu(branding.topMenu)
     .filter((item) => item.visible)
-    .map((item) => ({ key: item.key, label: getTopMenuLabel(item, language), description: item.descriptions?.[language], href: item.href, ...targets[item.key] }));
+    .map((item) => ({ key: item.key, label: getTopMenuLabel(item, language), description: item.descriptions?.[language], href: item.key === 'store' || item.key === 'other-products' ? '/store' : item.href, ...targets[item.key] }));
 
   const handleHomeSection = (targetId: string) => {
     const isTop = targetId === 'top';
@@ -173,9 +173,8 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     if (item.key === 'home') return false;
     if (item.key === 'diy') return path === '/diy';
     if (item.key === 'makers') return path === '/makers' || path.startsWith('/makers/');
-    // The two product menus share /products but differ by query-controlled filter.
-    if (item.key === 'other-products') return path === '/products' && selectedCategory === 'non-bakery';
-    if (item.key === 'store') return path === '/store';
+    // Both the original Store menu key and the new key open the Store page.
+    if (item.key === 'other-products' || item.key === 'store') return path === '/store';
     if (item.key === 'specials') return path === '/specials';
     if (item.key === 'products') return path === '/products' && selectedCategory === 'bakery';
     if (path === '/' && item.targetId) return activeHash === `#${item.targetId}`;
