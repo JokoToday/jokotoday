@@ -341,13 +341,24 @@ export default function RecipeAdmin({
               ))}
             </div>
             <strong>{dirty ? "Unsaved changes" : "Draft saved"}</strong>
-            <button disabled={busy} onClick={() => setPreview((p) => !p)}>
-              Toggle page preview
+            <button
+              type="button"
+              aria-expanded={preview}
+              aria-controls="recipe-editor-preview"
+              onClick={() => setPreview((p) => !p)}
+            >
+              {preview ? "Hide recipe preview" : "Show recipe preview"}
             </button>
             <button disabled={busy} onClick={exportJson}>
               Export JSON
             </button>
           </div>
+          {preview && (
+            <section id="recipe-editor-preview" className="ra-preview" aria-label="Recipe preview">
+              <p>Recipe preview · select the language within the page. Unsaved edits are included.</p>
+              <RecipeView recipe={recipe} preview />
+            </section>
+          )}
           <fieldset disabled={busy} className="ra-fields">
             <legend>Recipe details</legend>
             <label>
@@ -801,14 +812,6 @@ export default function RecipeAdmin({
                 ))}
               </ul>
             </details>
-          )}
-          {preview && (
-            <div className="ra-preview">
-              <p>
-                Unsaved recipe preview · select the language within the page
-              </p>
-              <RecipeView recipe={recipe} preview />
-            </div>
           )}
         </>
       )}
