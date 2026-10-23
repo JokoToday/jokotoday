@@ -343,12 +343,16 @@ export default function RecipeAdmin({
             <strong>{dirty ? "Unsaved changes" : "Draft saved"}</strong>
             <button
               type="button"
+              className="ra-preview-toggle"
               aria-expanded={preview}
               aria-controls="recipe-editor-preview"
               onClick={() => setPreview((p) => !p)}
             >
               {preview ? "Hide recipe preview" : "Show recipe preview"}
             </button>
+            <span className="ra-preview-status" role="status">
+              {preview ? "Preview is open below." : "Preview is hidden."}
+            </span>
             <button disabled={busy} onClick={exportJson}>
               Export JSON
             </button>
