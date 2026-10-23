@@ -125,7 +125,7 @@ export default function SpecialsPage({
     <main className="joko-mineral-field min-h-screen text-[#303532]">
       {authOpen && <Suspense fallback={null}><AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} initialAction="signup" /></Suspense>}
       <div className="relative z-10 mx-auto max-w-6xl px-4 py-9 sm:px-6 sm:py-12 lg:px-8">
-        <div className="mb-8 grid items-start gap-7 md:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="mb-8 grid items-start gap-7 md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[minmax(0,1fr)_420px]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#55766F]">{pageCopy.eyebrow}</p>
             <h1 className="mt-3 text-4xl leading-tight tracking-[-0.035em] sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--joko-font-display)' }}>
@@ -135,15 +135,21 @@ export default function SpecialsPage({
             <p className="mt-5 max-w-xl whitespace-pre-line text-base leading-7 text-[#303532]/75">{pageCopy.intro}</p>
           </div>
           {(pageContent.illustration.visible && pageContent.illustration.url || batch) && <div className="flex flex-col items-end gap-5">
-            {pageContent.illustration.visible && pageContent.illustration.url && <img
-              src={pageContent.illustration.url}
-              alt=""
-              aria-hidden="true"
-              width={800}
-              height={600}
-              decoding="async"
-              className="pointer-events-none h-auto w-52 max-w-full object-contain sm:w-64 md:w-full"
-            />}
+            {pageContent.illustration.visible && pageContent.illustration.url && <div
+              className="relative mt-3 flex aspect-[21/23] w-full max-w-[320px] items-center justify-center rounded-sm border border-[#D8CDB8]/60 bg-[#FFF9EE] p-5 shadow-[2px_5px_14px_rgba(72,57,35,0.10)] sm:max-w-[360px] sm:p-6 lg:max-w-[420px]"
+              style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(85,118,111,0.07) 31px, rgba(85,118,111,0.07) 32px)' }}
+            >
+              <span aria-hidden="true" className="pointer-events-none absolute -top-3 left-1/2 h-7 w-24 -translate-x-1/2 -rotate-3 border-x border-[#BBA87D]/20 bg-[#E5D6AC]/70 shadow-sm" />
+              <img
+                src={pageContent.illustration.url}
+                alt=""
+                aria-hidden="true"
+                width={800}
+                height={600}
+                decoding="async"
+                className="pointer-events-none h-full w-full object-contain"
+              />
+            </div>}
           {batch && <aside className="w-full rounded-2xl border border-[#55766F]/15 bg-[#CFE3DF]/65 p-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#55766F]">{copy.pickup}</p>
             <h2 className="mt-3 text-2xl" style={{ fontFamily: 'var(--joko-font-display)' }}>{location}</h2>
