@@ -42,5 +42,8 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^7.3.3"
+  },
+  "overrides": {
+    "happy-dom": "21.0.4"
   }
 }
