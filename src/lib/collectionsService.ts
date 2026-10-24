@@ -25,3 +25,12 @@ export async function addCollectionItem(id:string,type:CollectionItemType,itemId
 export async function removeCollectionItem(id:string):Promise<void>{
   const {error}=await supabase.from('joko_collection_items').delete().eq('id',id);if(error)throw error;
 }
+
+export async function reorderCollectionItems(collectionId:string,itemIds:string[]):Promise<void>{
+  // Updates remain owner-gated by RLS on both parent and child records.
+  for(let index=0;index<itemIds.length;index++){
+    const {data,error}=await supabase.from('joko_collection_items').update({position:index+1}).eq('collection_id',collectionId).eq('id',itemIds[index]).select('id');
+    if(error)throw error;
+    if(!data?.length)throw new Error('Collection item not found or access denied');
+  }
+}
