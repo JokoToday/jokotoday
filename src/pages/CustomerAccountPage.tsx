@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Heart, Loader2, LogOut, Package, QrCode, Star, UserCircle } from 'lucide-react';
+import { ArrowLeft, Bell, Heart, Loader2, LogOut, Package, QrCode, Star, UserCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -22,6 +22,7 @@ export function CustomerAccountPage({ qrToken, onNavigate }: CustomerAccountPage
         profile: 'โปรไฟล์ของฉัน',
         orders: 'คำสั่งซื้อของฉัน',
         favorites: 'รายการโปรด',
+        notifications: 'การแจ้งเตือน',
         qr: 'คิวอาร์สมาชิก',
         points: 'คะแนนสะสม',
         back: 'กลับหน้าหลัก',
@@ -36,6 +37,7 @@ export function CustomerAccountPage({ qrToken, onNavigate }: CustomerAccountPage
           profile: '我的资料',
           orders: '我的订单',
           favorites: '我的收藏',
+          notifications: '通知',
           qr: '会员二维码',
           points: '会员积分',
           back: '返回首页',
@@ -49,6 +51,7 @@ export function CustomerAccountPage({ qrToken, onNavigate }: CustomerAccountPage
           profile: 'My Profile',
           orders: 'My Orders',
           favorites: 'My Favorites',
+          notifications: 'Notifications',
           qr: 'Member QR',
           points: 'Loyalty Points',
           back: 'Back to Home',
@@ -139,6 +142,7 @@ export function CustomerAccountPage({ qrToken, onNavigate }: CustomerAccountPage
   const cards = [
     { key: 'profile', label: copy.profile, icon: UserCircle, page: 'profile' },
     { key: 'orders', label: copy.orders, icon: Package, page: 'orders' },
+    { key: 'notifications', label: copy.notifications, icon: Bell, page: 'notifications' },
     { key: 'favorites', label: copy.favorites, icon: Heart, page: 'favorites' },
     { key: 'qr', label: copy.qr, icon: QrCode, page: 'my-qr' },
   ];
