@@ -231,6 +231,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t.myLikes}>{(['all','bakery','store','creators','recipes'] as const).map((name,i)=><button type="button" key={name} aria-pressed={tab===name} onClick={()=>setTab(name)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${tab===name?'border-[#55766F] bg-[#55766F] text-white':'border-[#55766F]/25 bg-white/80 text-[#303532]'}`}>{t.tabs[i]}</button>)}</div>
+        <button type="button" onClick={()=>onNavigate('collections')} className="mb-5 rounded-xl bg-[#55766F] px-5 py-3 font-semibold text-white">{language==='th'?'คอลเลกชันของฉัน':language==='zh'?'我的合集':'My Collections'} →</button>
         {favoritesError && <p role="alert" className="mb-4 text-sm text-red-700">{favoritesError}</p>}
         {loading ? (
           <div className="text-center py-20">

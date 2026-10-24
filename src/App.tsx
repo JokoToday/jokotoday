@@ -39,6 +39,7 @@ const MyQRPage = lazy(() => import('./pages/MyQRPage').then(({ MyQRPage }) => ({
 const MyProfilePage = lazy(() => import('./pages/MyProfilePage').then(({ MyProfilePage }) => ({ default: MyProfilePage })));
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage').then(({ MyOrdersPage }) => ({ default: MyOrdersPage })));
 const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage }) => ({ default: MyLikesPage })));
+const MyCollectionsPage = lazy(() => import('./pages/MyCollectionsPage'));
 const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
@@ -78,6 +79,7 @@ const ACCOUNT_PAGE_PATHS: Record<string, string> = {
   orders: '/my-orders',
   'my-qr': '/my-qr',
   favorites: '/my-likes',
+  collections: '/my-collections',
 };
 
 const ACCOUNT_PATH_PAGES: Record<string, string> = Object.fromEntries(
@@ -521,6 +523,8 @@ function AppContent() {
         return <MyOrdersPage onNavigate={handleNavigate} />;
       case 'favorites':
         return <MyLikesPage onNavigate={handleNavigate} />;
+      case 'collections':
+        return <MyCollectionsPage onNavigate={handleNavigate} />;
       case 'scan':
         return <ScanPage />;
       default:
@@ -535,7 +539,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'collections' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
