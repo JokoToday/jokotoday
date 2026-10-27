@@ -13,6 +13,7 @@ export interface UserProfile {
   id: string;
   email?: string;
   name: string;
+  public_nickname?: string | null;
   phone: string;
   line_id?: string;
   whatsapp?: string;
@@ -32,6 +33,7 @@ export interface UserProfile {
 
 type ProfileDetails = {
   name: string;
+  public_nickname?: string | null;
   phone: string;
   line_id?: string;
   notification_email_enabled: boolean;
@@ -46,6 +48,7 @@ function isSupportedLanguage(value: unknown): value is Language {
 function hasRequiredProfileDetails(data: ProfileDetails, lineConnected: boolean, emailVerified: boolean): boolean {
   return Boolean(
     data.name.trim() &&
+    Boolean(data.public_nickname?.trim()) &&
     data.phone.trim() &&
     emailVerified &&
     (lineConnected || data.line_id?.trim())
@@ -324,6 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
+        public_nickname: data.public_nickname?.trim() || null,
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
@@ -353,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
+        public_nickname: data.public_nickname?.trim() || null,
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,

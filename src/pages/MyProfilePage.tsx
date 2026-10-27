@@ -42,6 +42,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const [notificationChannelError, setNotificationChannelError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
+    public_nickname: '',
     phone: '',
     line_id: '',
     notification_email_enabled: true,
@@ -58,6 +59,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     if (!userProfile) return;
     setFormData({
       name: userProfile.name || lineDisplayName(user) || '',
+      public_nickname: userProfile.public_nickname || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
       notification_email_enabled: userProfile.notification_email_enabled ?? true,
@@ -185,6 +187,10 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setError(getLabel('profile.name_required_error', language, 'Name is required'));
       return;
     }
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(formData.public_nickname.trim())) {
+      setError(language === 'th' ? 'ชื่อเล่นสาธารณะต้องมี 3–30 ตัวอักษร (A-Z, 0-9, _)' : language === 'zh' ? '公开昵称须为 3–30 位英文字母、数字或下划线' : 'Public nickname is required: 3–30 letters, numbers or underscores.');
+      return;
+    }
     if (!formData.phone.trim()) {
       setError(getLabel('profile.phone_required_error', language, 'Phone number is required'));
       return;
@@ -258,6 +264,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     try {
       await updateProfileDetails({
         name: formData.name.trim(),
+        public_nickname: formData.public_nickname.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
         notification_email_enabled: formData.notification_email_enabled,
@@ -495,8 +502,12 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             <section className="rounded-[1.5rem] bg-white/48 p-5 sm:p-6">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.personal_info', language, 'Personal Information')}</h3>
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.name_label', language, 'Name / Nickname')} <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.name_label', language, 'Real Name')} <span className="text-red-500">*</span>
                   <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อเล่นสาธารณะ' : language === 'zh' ? '公开昵称' : 'Public Nickname'} <span className="text-red-500">*</span>
+                  <input type="text" name="public_nickname" value={formData.public_nickname} onChange={handleChange} maxLength={30} pattern="[A-Za-z0-9_]{3,30}" autoComplete="nickname" className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
+                  <span className="mt-1 block text-xs font-normal text-gray-600">{language === 'th' ? 'ชื่อที่สมาชิกคนอื่นจะเห็นเมื่อคุณแชร์คอลเลกชันหรือเข้าร่วมชุมชน ต้องไม่ซ้ำใคร' : language === 'zh' ? '其他成员在分享合集和社区互动时看到的唯一名称；真实姓名不会公开。' : 'Your unique public name on JOKO. Other members will see it on shared collections and community posts. Your real name stays private.'}</span>
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.phone_label', language, 'Phone Number')} <span className="text-red-500">*</span>
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
