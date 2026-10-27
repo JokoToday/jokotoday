@@ -11,7 +11,7 @@ async function call(action:'create'|'revoke'|'read',details:Record<string,string
  const response=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify({action,...details}),cache:'no-store'});
  const result=await response.json();if(!response.ok)throw new Error(result.error||'Sharing unavailable');return result;
 }
-export async function createShareLink(collectionId:string):Promise<string>{const result=await call('create',{collectionId});return `${window.location.origin}/c/${result.token}`;}
+export async function createShareLink(collectionId:string):Promise<string>{const result=await call('create',{collectionId});return `${window.location.origin}/shared/${result.token}`;}
 export async function revokeShareLink(collectionId:string):Promise<void>{await call('revoke',{collectionId});}
 export interface SharedCollection {title:string;description:string;items:{type:'product'|'creator';name_en:string;name_th:string;name_zh:string|null;image:string|null;url:string}[]}
 export async function readShareLink(token:string):Promise<SharedCollection>{return call('read',{token});}

@@ -246,7 +246,7 @@ function AppContent() {
         return;
       }
 
-      const shareMatch = path.match(/^\/c\/([a-f0-9]{64})$/);
+      const shareMatch = path.match(/^\/shared\/([a-f0-9]{64})$/);
       if (shareMatch) { setShareToken(shareMatch[1]); setCurrentPage('shared-collection'); return; }
       const makerMatch = path.match(/^\/makers\/([^/]+)$/);
       if (makerMatch) {
