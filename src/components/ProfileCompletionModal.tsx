@@ -9,7 +9,7 @@ import { EmailVerificationPanel } from './EmailVerificationPanel';
 import { NotificationPreferencesFields } from './NotificationPreferencesFields';
 import { hasLinkedLINE } from '../lib/lineAuth';
 import { refreshLINEFriendshipStatusFromServer } from '../lib/lineOfficialAccount';
-import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { hasVerifiedEmail } from '../lib/lineProfile';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -45,6 +45,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
   const [lineFriendship, setLineFriendship] = useState<'friend' | 'not_friend' | 'unknown'>('unknown');
   const [formData, setFormData] = useState({
     name: '',
+    public_nickname: '',
     phone: '',
     line_id: '',
     notification_email_enabled: true,
@@ -54,8 +55,15 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
   useEffect(() => {
     if (!isOpen) return;
 
+    let draft: { email: string; name: string; public_nickname: string } | null = null;
+    try {
+      const raw = sessionStorage.getItem('joko_signup_identity_draft');
+      if (raw) draft = JSON.parse(raw);
+    } catch { /* Ignore stale signup draft. */ }
+    if (draft?.email?.toLowerCase() !== user?.email?.toLowerCase()) draft = null;
     setFormData({
-      name: userProfile?.name || lineDisplayName(user) || '',
+      name: userProfile?.name || draft?.name || '',
+      public_nickname: userProfile?.public_nickname || draft?.public_nickname || '',
       phone: userProfile?.phone || '',
       line_id: userProfile?.line_id || '',
       notification_email_enabled: userProfile?.notification_email_enabled ?? true,
@@ -85,6 +93,11 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
 
     if (!formData.name.trim()) {
       setError(getLabel('profile.name_required_error', language, t.profile.nameRequired));
+      return;
+    }
+
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(formData.public_nickname.trim())) {
+      setError(language === 'th' ? 'ชื่อเล่นต้องมี 3–30 ตัวอักษรภาษาอังกฤษ ตัวเลข หรือ _' : language === 'zh' ? '公开昵称须为 3–30 位英文字母、数字或下划线' : 'Public nickname must be 3–30 letters, numbers or underscores.');
       return;
     }
 
@@ -152,14 +165,19 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
     try {
       await completeProfile({
         name: formData.name.trim(),
+        public_nickname: formData.public_nickname.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
         notification_email_enabled: formData.notification_email_enabled,
         notification_line_enabled: formData.notification_line_enabled,
       });
+      sessionStorage.removeItem('joko_signup_identity_draft');
       setShowQRCode(true);
     } catch (err) {
-      setError(getErrorMessage(err, t.profile.profileUpdateFailed));
+      const message = getErrorMessage(err, t.profile.profileUpdateFailed);
+      setError(/23505|user_profiles_public_nickname_unique|duplicate key/i.test(message)
+        ? language === 'th' ? 'ชื่อเล่นนี้มีคนใช้แล้ว' : language === 'zh' ? '此公开昵称已被使用' : 'This public nickname is already taken.'
+        : message);
     } finally {
       setLoading(false);
     }
@@ -259,7 +277,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {getLabel('profile.name_label', language, t.profile.name)} <span className="text-red-500">*</span>
+              {language === 'th' ? 'ชื่อจริง' : language === 'zh' ? '真实姓名' : 'Real Name'} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -272,7 +290,19 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              {getLabel('profile.name_hint', language, 'First name or nickname is perfect!')}
+              {language === 'th' ? 'ใช้สำหรับคำสั่งซื้อ ไม่แสดงต่อสาธารณะ' : language === 'zh' ? '用于订单，不会公开显示' : 'Used for orders, never shown publicly.'}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {language === 'th' ? 'ชื่อเล่นสาธารณะ' : language === 'zh' ? '公开昵称' : 'Public Nickname'} <span className="text-red-500">*</span>
+            </label>
+            <input type="text" name="public_nickname" value={formData.public_nickname} onChange={handleChange}
+              minLength={3} maxLength={30} pattern="[A-Za-z0-9_]{3,30}" autoComplete="nickname"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500" disabled={loading} required />
+            <p className="text-xs text-gray-500 mt-1">
+              {language === 'th' ? 'ชื่อไม่ซ้ำที่สมาชิกคนอื่นจะเห็น' : language === 'zh' ? '其他成员将看到的唯一名称' : 'Unique public name visible to other JOKO members.'}
             </p>
           </div>
 

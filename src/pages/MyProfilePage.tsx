@@ -57,9 +57,12 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   useEffect(() => {
     if (!userProfile) return;
+    let signupDraft: {email:string;name:string;public_nickname:string}|null=null;
+    try { const raw=sessionStorage.getItem('joko_signup_identity_draft');if(raw)signupDraft=JSON.parse(raw); }catch { /* ignore malformed draft */ }
+    if(signupDraft?.email.toLowerCase()!==user?.email?.toLowerCase())signupDraft=null;
     setFormData({
-      name: userProfile.name || lineDisplayName(user) || '',
-      public_nickname: userProfile.public_nickname || '',
+      name: userProfile.name || signupDraft?.name || '',
+      public_nickname: userProfile.public_nickname || signupDraft?.public_nickname || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
       notification_email_enabled: userProfile.notification_email_enabled ?? true,
@@ -271,6 +274,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
         notification_line_enabled: formData.notification_line_enabled,
         default_delivery_address: normalizeDeliveryAddress(formData.default_delivery_address),
       });
+      sessionStorage.removeItem('joko_signup_identity_draft');
       setProfileSaved(true);
     } catch (err) {
       console.error('Error updating profile:', err);

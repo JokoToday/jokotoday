@@ -104,6 +104,8 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
   const { t, language, setLanguage } = useLanguage();
   const [action, setAction] = useState<AuthAction>(initialAction);
   const [email, setEmail] = useState('');
+  const [signupName,setSignupName]=useState('');
+  const [signupNickname,setSignupNickname]=useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -126,6 +128,8 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
 
   const handleClose = () => {
     setEmail('');
+    setSignupName('');
+    setSignupNickname('');
     setOtp('');
     setError('');
     setNotice('');
@@ -141,6 +145,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setError('');
     setNotice('');
     setQrProcessing(false);
+    if(action==='signup'&&(!signupName.trim()||!/^[A-Za-z0-9_]{3,30}$/.test(signupNickname.trim()))){setError(language==='th'?'กรุณากรอกชื่อจริงและชื่อเล่นที่ถูกต้อง':language==='zh'?'请输入真实姓名和有效的公开昵称':'Enter your real name and a public nickname of 3–30 letters, numbers or underscores.');return;}
     setLoading(true);
 
     try {
@@ -175,6 +180,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setLoading(true);
     try {
       await verifyEmailOtp(email.trim(), otp);
+      if(action==='signup')sessionStorage.setItem('joko_signup_identity_draft',JSON.stringify({email:email.trim().toLowerCase(),name:signupName.trim(),public_nickname:signupNickname.trim()}));
       handleClose();
     } catch (err) {
       console.error('OTP verification failed:', err);
@@ -451,6 +457,17 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
                     />
                   </div>
                 </div>
+
+                {action==='signup'&&<>
+                  <label className="block text-sm font-medium text-gray-700">{language==='th'?'ชื่อจริง':language==='zh'?'真实姓名':'Real Name'} *
+                    <input type="text" autoComplete="name" maxLength={120} required value={signupName} onChange={e=>setSignupName(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 focus:ring-2 focus:ring-amber-500" disabled={loading}/>
+                    <span className="mt-1 block text-xs font-normal text-gray-500">{language==='th'?'สำหรับการสั่งซื้อและรับสินค้า ไม่แสดงต่อสาธารณะ':language==='zh'?'用于订单及取货，不会公开显示':'For orders and pickup; never shown publicly.'}</span>
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">{language==='th'?'ชื่อเล่นสาธารณะ':language==='zh'?'公开昵称':'Public Nickname'} *
+                    <input type="text" autoComplete="nickname" maxLength={30} pattern="[A-Za-z0-9_]{3,30}" required value={signupNickname} onChange={e=>setSignupNickname(e.target.value)} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 focus:ring-2 focus:ring-amber-500" disabled={loading}/>
+                    <span className="mt-1 block text-xs font-normal text-gray-500">{language==='th'?'ชื่อไม่ซ้ำที่สมาชิก JOKO คนอื่นจะเห็น':language==='zh'?'其他 JOKO 成员将看到的唯一名称':'Your unique name visible to other JOKO members.'}</span>
+                  </label>
+                </>}
 
                 <button
                   type="submit"
