@@ -274,7 +274,11 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setProfileSaved(true);
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      const duplicateNickname = /23505|user_profiles_public_nickname_unique|duplicate key/i.test(message);
+      setError(duplicateNickname
+        ? language === 'th' ? 'ชื่อเล่นนี้มีคนใช้แล้ว กรุณาเลือกชื่อเล่นอื่น' : language === 'zh' ? '此公开昵称已被使用，请选择其他昵称。' : 'This public nickname is already taken. Please choose another.'
+        : message);
     } finally {
       setLoading(false);
     }
