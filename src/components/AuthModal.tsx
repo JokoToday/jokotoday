@@ -6,6 +6,7 @@ import { QRScanner } from './QRScanner';
 import jsQR from 'jsqr';
 import { normalizeQrLoginTarget } from '../lib/qrNavigation';
 import { LINE_LOGIN_ENABLED } from '../lib/lineAuth';
+import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ const lineText = {
 };
 
 export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthModalProps) {
-  const { sendEmailOtp, verifyEmailOtp, signInWithLINE } = useAuth();
+  const { sendEmailOtp, verifyEmailOtp, signInWithLINE, refreshProfile } = useAuth();
   const { t, language, setLanguage } = useLanguage();
   const [action, setAction] = useState<AuthAction>(initialAction);
   const [email, setEmail] = useState('');
@@ -112,6 +113,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
   const [loading, setLoading] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [identityPending, setIdentityPending] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -135,6 +137,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setNotice('');
     setAction('signin');
     setOtpSent(false);
+    setIdentityPending(false);
     setLoading(false);
     setQrProcessing(false);
     onClose();
@@ -167,6 +170,46 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     }
   };
 
+  const saveSignupIdentity = async () => {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user || authData.user.email?.toLowerCase() !== email.trim().toLowerCase()) {
+      throw new Error('Verified account is unavailable.');
+    }
+    const { data: profile, error: profileError } = await supabase.from('user_profiles')
+      .select('name,public_nickname').eq('id', authData.user.id).single();
+    if (profileError) throw profileError;
+    // Sign-up may have been requested with an existing email. Never replace
+    // names already chosen by that account holder.
+    const update: { name?: string; public_nickname?: string } = {};
+    if (!profile.name?.trim()) update.name = signupName.trim();
+    if (!profile.public_nickname?.trim()) update.public_nickname = signupNickname.trim();
+    if (Object.keys(update).length) {
+      let query = supabase.from('user_profiles').update(update).eq('id', authData.user.id);
+      if (update.public_nickname) query = query.is('public_nickname', null);
+      if (update.name) query = profile.name === null ? query.is('name', null) : query.eq('name', profile.name);
+      const { data: saved, error: saveError } = await query.select('id').maybeSingle();
+      if (saveError) throw saveError;
+      if (!saved) throw new Error('Profile changed; please try again.');
+    }
+    sessionStorage.removeItem('joko_signup_identity_draft');
+    await refreshProfile();
+  };
+
+  const handleSaveIdentity = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await saveSignupIdentity();
+      handleClose();
+    } catch (err) {
+      const duplicate = typeof err === 'object' && err !== null && 'code' in err && err.code === '23505';
+      setError(duplicate
+        ? language === 'th' ? 'ชื่อเล่นนี้มีคนใช้แล้ว กรุณาเลือกชื่ออื่น' : language === 'zh' ? '此昵称已被使用，请选择其他昵称。' : 'This nickname is already taken. Please choose another.'
+        : language === 'th' ? 'บันทึกชื่อไม่สำเร็จ กรุณาลองอีกครั้ง' : language === 'zh' ? '无法保存姓名，请重试。' : 'We could not save your names. Please try again.');
+    } finally { setLoading(false); }
+  };
+
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -181,7 +224,12 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     try {
       if(action==='signup')sessionStorage.setItem('joko_signup_identity_draft',JSON.stringify({email:email.trim().toLowerCase(),name:signupName.trim(),public_nickname:signupNickname.trim()}));
       await verifyEmailOtp(email.trim(), otp);
-      handleClose();
+      if (action === 'signup') {
+        setIdentityPending(true);
+        await handleSaveIdentity();
+      } else {
+        handleClose();
+      }
     } catch (err) {
       console.error('OTP verification failed:', err);
       setError(otpCopy.expiredCode);
@@ -321,7 +369,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
       >
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-2xl z-10">
           <h2 className="text-xl font-semibold text-gray-900">
-            {otpSent ? otpCopy.title : action === 'signup' ? t.auth.signUpTitle : t.auth.signInTitle}
+            {identityPending ? (language === 'th' ? 'บันทึกชื่อของคุณ' : language === 'zh' ? '保存您的姓名' : 'Save your names') : otpSent ? otpCopy.title : action === 'signup' ? t.auth.signUpTitle : t.auth.signInTitle}
           </h2>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
@@ -362,7 +410,18 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
             </div>
           )}
 
-          {otpSent ? (
+          {identityPending ? (
+            <form onSubmit={handleSaveIdentity} className="space-y-4">
+              <p className="text-sm text-gray-600">{language === 'th' ? 'ยืนยันอีเมลแล้ว กรุณาบันทึกชื่อของคุณ' : language === 'zh' ? '邮箱已验证，请保存您的姓名。' : 'Your email is verified. Please save your names.'}</p>
+              <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อจริง' : language === 'zh' ? '真实姓名' : 'Real Name'} *
+                <input value={signupName} onChange={e => setSignupName(e.target.value)} required maxLength={120} className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อเล่นสาธารณะ' : language === 'zh' ? '公开昵称' : 'Public Nickname'} *
+                <input value={signupNickname} onChange={e => setSignupNickname(e.target.value)} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_]{3,30}" className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3" />
+              </label>
+              <button type="submit" disabled={loading} className="w-full rounded-xl bg-amber-600 py-3.5 font-semibold text-white disabled:opacity-50">{language === 'th' ? 'บันทึก' : language === 'zh' ? '保存' : 'Save'}</button>
+            </form>
+          ) : otpSent ? (
             <form onSubmit={handleVerifyCode} className="space-y-5">
               <div className="text-center">
                 <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
