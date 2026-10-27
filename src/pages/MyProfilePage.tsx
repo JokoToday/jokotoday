@@ -59,7 +59,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     if (!userProfile) return;
     let signupDraft: {email:string;name:string;public_nickname:string}|null=null;
     try { const raw=sessionStorage.getItem('joko_signup_identity_draft');if(raw)signupDraft=JSON.parse(raw); }catch { /* ignore malformed draft */ }
-    if(signupDraft?.email.toLowerCase()!==user?.email?.toLowerCase())signupDraft=null;
+    if(signupDraft?.email?.toLowerCase()!==user?.email?.toLowerCase())signupDraft=null;
     setFormData({
       name: userProfile.name || signupDraft?.name || '',
       public_nickname: userProfile.public_nickname || signupDraft?.public_nickname || '',
@@ -278,8 +278,9 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       setProfileSaved(true);
     } catch (err) {
       console.error('Error updating profile:', err);
-      const message = err instanceof Error ? err.message : 'Failed to update profile';
-      const duplicateNickname = /23505|user_profiles_public_nickname_unique|duplicate key/i.test(message);
+      const message = typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string' ? err.message : 'Failed to update profile';
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : '';
+      const duplicateNickname = code === '23505' && /user_profiles_public_nickname_unique/i.test(message);
       setError(duplicateNickname
         ? language === 'th' ? 'ชื่อเล่นนี้มีคนใช้แล้ว กรุณาเลือกชื่อเล่นอื่น' : language === 'zh' ? '此公开昵称已被使用，请选择其他昵称。' : 'This public nickname is already taken. Please choose another.'
         : message);
@@ -510,7 +511,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             <section className="rounded-[1.5rem] bg-white/48 p-5 sm:p-6">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.personal_info', language, 'Personal Information')}</h3>
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.name_label', language, 'Real Name')} <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อจริง' : language === 'zh' ? '真实姓名' : 'Real Name'} <span className="text-red-500">*</span>
                   <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อเล่นสาธารณะ' : language === 'zh' ? '公开昵称' : 'Public Nickname'} <span className="text-red-500">*</span>

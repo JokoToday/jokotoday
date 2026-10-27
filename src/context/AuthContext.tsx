@@ -327,7 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
-        public_nickname: data.public_nickname?.trim() || null,
+        ...(data.public_nickname !== undefined ? { public_nickname: data.public_nickname?.trim() || null } : {}),
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
@@ -338,7 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
-        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
+        profile_completed: hasRequiredProfileDetails({ ...data, public_nickname: data.public_nickname === undefined ? userProfile?.public_nickname : data.public_nickname }, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -357,7 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
-        public_nickname: data.public_nickname?.trim() || null,
+        ...(data.public_nickname !== undefined ? { public_nickname: data.public_nickname?.trim() || null } : {}),
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
@@ -365,7 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...(data.default_delivery_address !== undefined
           ? { default_delivery_address: data.default_delivery_address }
           : {}),
-        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
+        profile_completed: hasRequiredProfileDetails({ ...data, public_nickname: data.public_nickname === undefined ? userProfile?.public_nickname : data.public_nickname }, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)

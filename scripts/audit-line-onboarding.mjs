@@ -66,7 +66,7 @@ assert.match(profile, /Email: Verified/);
 assert.match(email, /sentHeading/);
 assert.match(email, /MailCheck/);
 assert.match(modal, /LINE account connected/);
-assert.match(auth, /hasRequiredProfileDetails\(data, hasLinkedLINE\(user\), hasVerifiedEmail\(user\)\)/);
+assert.match(auth, /hasRequiredProfileDetails\(\{ \.\.\.data, public_nickname: data\.public_nickname === undefined \? userProfile\?\.public_nickname : data\.public_nickname \}, hasLinkedLINE\(user\), hasVerifiedEmail\(user\)\)/);
 assert.match(auth, /emailVerified\s*&&/);
 assert.doesNotMatch(profile, /formData\.(?:whatsapp|wechat_id)/);
 assert.doesNotMatch(modal, /formData\.(?:whatsapp|wechat_id)/);

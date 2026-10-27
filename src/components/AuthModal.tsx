@@ -149,7 +149,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setLoading(true);
 
     try {
-      await sendEmailOtp(email.trim());
+      await sendEmailOtp(email.trim(), undefined, action === 'signup');
       setOtp('');
       setOtpSent(true);
     } catch (err) {
@@ -179,8 +179,8 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
 
     setLoading(true);
     try {
-      await verifyEmailOtp(email.trim(), otp);
       if(action==='signup')sessionStorage.setItem('joko_signup_identity_draft',JSON.stringify({email:email.trim().toLowerCase(),name:signupName.trim(),public_nickname:signupNickname.trim()}));
+      await verifyEmailOtp(email.trim(), otp);
       handleClose();
     } catch (err) {
       console.error('OTP verification failed:', err);
@@ -196,7 +196,7 @@ export function AuthModal({ isOpen, onClose, initialAction = 'signin' }: AuthMod
     setLoading(true);
 
     try {
-      await sendEmailOtp(email.trim());
+      await sendEmailOtp(email.trim(), undefined, action === 'signup');
       setOtp('');
       setNotice(otpCopy.resent);
     } catch (err) {
