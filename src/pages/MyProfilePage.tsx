@@ -1,3 +1,6 @@
+import { LINEAccountManagement } from '../components/LINEAccountManagement';
+import { lineIdentityConflictMessage } from '../lib/authCallbackErrors';
+import { LINEIdHelp } from '../components/LINEIdHelp';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +32,7 @@ interface MyProfilePageProps {
 }
 
 export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
-  const { user, userProfile, updateProfileDetails, refreshProfile, linkLINE } = useAuth();
+  const { user, userProfile, updateProfileDetails, refreshProfile, refreshAuthUser, linkLINE } = useAuth();
   const { language, setLanguage } = useLanguage();
   const { getLabel } = useCMSLabels();
 
@@ -42,6 +45,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
   const [notificationChannelError, setNotificationChannelError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
+    public_nickname: '',
     phone: '',
     line_id: '',
     notification_email_enabled: true,
@@ -56,8 +60,12 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
   useEffect(() => {
     if (!userProfile) return;
+    let signupDraft: {email:string;name:string;public_nickname:string}|null=null;
+    try { const raw=sessionStorage.getItem('joko_signup_identity_draft');if(raw)signupDraft=JSON.parse(raw); }catch { /* ignore malformed draft */ }
+    if(signupDraft?.email?.toLowerCase()!==user?.email?.toLowerCase())signupDraft=null;
     setFormData({
-      name: userProfile.name || lineDisplayName(user) || '',
+      name: userProfile.name || signupDraft?.name || '',
+      public_nickname: userProfile.public_nickname || signupDraft?.public_nickname || '',
       phone: userProfile.phone || '',
       line_id: userProfile.line_id || '',
       notification_email_enabled: userProfile.notification_email_enabled ?? true,
@@ -68,7 +76,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       },
     });
     setProfilePicture(userProfile.profile_picture_url || null);
-  }, [userProfile, user]);
+  }, [userProfile, user?.id, user?.email]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +124,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     try {
       await linkLINE();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not link LINE');
+      const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : null;
+      setError(code === 'identity_already_exists' ? lineIdentityConflictMessage(language) : err instanceof Error ? err.message : 'Could not link LINE');
       setLoading(false);
     }
   };
@@ -183,6 +192,10 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
 
     if (!formData.name.trim()) {
       setError(getLabel('profile.name_required_error', language, 'Name is required'));
+      return;
+    }
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(formData.public_nickname.trim())) {
+      setError(language === 'th' ? 'ชื่อเล่นสาธารณะต้องมี 3–30 ตัวอักษร (A-Z, 0-9, _)' : language === 'zh' ? '公开昵称须为 3–30 位英文字母、数字或下划线' : 'Public nickname is required: 3–30 letters, numbers or underscores.');
       return;
     }
     if (!formData.phone.trim()) {
@@ -258,16 +271,23 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     try {
       await updateProfileDetails({
         name: formData.name.trim(),
+        public_nickname: formData.public_nickname.trim(),
         phone: formData.phone.trim(),
         line_id: formData.line_id.trim() || undefined,
         notification_email_enabled: formData.notification_email_enabled,
         notification_line_enabled: formData.notification_line_enabled,
         default_delivery_address: normalizeDeliveryAddress(formData.default_delivery_address),
       });
+      sessionStorage.removeItem('joko_signup_identity_draft');
       setProfileSaved(true);
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      const message = typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string' ? err.message : 'Failed to update profile';
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String(err.code) : '';
+      const duplicateNickname = code === '23505' && /user_profiles_public_nickname_unique/i.test(message);
+      setError(duplicateNickname
+        ? language === 'th' ? 'ชื่อเล่นนี้มีคนใช้แล้ว กรุณาเลือกชื่อเล่นอื่น' : language === 'zh' ? '此公开昵称已被使用，请选择其他昵称。' : 'This public nickname is already taken. Please choose another.'
+        : message);
     } finally {
       setLoading(false);
     }
@@ -495,8 +515,12 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
             <section className="rounded-[1.5rem] bg-white/48 p-5 sm:p-6">
               <h3 className="mb-4 text-lg font-semibold text-[#303532]">{getLabel('profile_page.personal_info', language, 'Personal Information')}</h3>
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.name_label', language, 'Name / Nickname')} <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อจริง' : language === 'zh' ? '真实姓名' : 'Real Name'} <span className="text-red-500">*</span>
                   <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">{language === 'th' ? 'ชื่อเล่นสาธารณะ' : language === 'zh' ? '公开昵称' : 'Public Nickname'} <span className="text-red-500">*</span>
+                  <input type="text" name="public_nickname" value={formData.public_nickname} onChange={handleChange} maxLength={30} pattern="[A-Za-z0-9_]{3,30}" autoComplete="nickname" className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
+                  <span className="mt-1 block text-xs font-normal text-gray-600">{language === 'th' ? 'ชื่อที่สมาชิกคนอื่นจะเห็นเมื่อคุณแชร์คอลเลกชันหรือเข้าร่วมชุมชน ต้องไม่ซ้ำใคร' : language === 'zh' ? '其他成员在分享合集和社区互动时看到的唯一名称；真实姓名不会公开。' : 'Your unique public name on JOKO. Other members will see it on shared collections and community posts. Your real name stays private.'}</span>
                 </label>
                 <label className="block text-sm font-medium text-gray-700">{getLabel('profile_page.phone_label', language, 'Phone Number')} <span className="text-red-500">*</span>
                   <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-2 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-3 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16" disabled={loading} required />
@@ -580,6 +604,9 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   <input
                     type="text"
                     name="line_id"
+                      aria-describedby="profile-line-id-help"
+                      autoCapitalize="none"
+                      spellCheck={false}
                     value={formData.line_id}
                     onChange={handleChange}
                     className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
@@ -587,6 +614,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     required={!isLINEConnected}
                   />
                 </label>
+                <LINEIdHelp language={language} id="profile-line-id-help" />
                 <p className="text-xs text-gray-500">
                   {isLINEConnected
                     ? (language === 'th'
@@ -610,9 +638,9 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     : language === 'zh' ? '已关联的账号' : 'Connected Accounts'}
                 </h3>
                 <p className="mb-4 text-sm text-gray-600">
-                  {language === 'th' ? 'ใช้บัญชีเหล่านี้เข้าสู่ระบบ JOKO โดยไม่สร้างบัญชีลูกค้าใหม่'
-                    : language === 'zh' ? '将登录方式关联到同一个 JOKO 客户账号'
-                      : 'Link sign-in methods to your existing JOKO customer account.'}
+                  {language === 'th' ? 'เชื่อมต่อ LINE เพื่อเข้าสู่ระบบบัญชี JOKO เดิม ชื่อจริงและชื่อเล่นสาธารณะที่บันทึกไว้จะไม่เปลี่ยน แม้ชื่อใน LINE จะแตกต่างกัน'
+                    : language === 'zh' ? '关联 LINE 后可登录同一个 JOKO 账号。即使 LINE 显示名称不同，已保存的真实姓名和公开昵称也不会改变。'
+                      : 'Connect LINE to sign in to this same JOKO account. Your saved real name and public nickname stay unchanged, even if your LINE display name is different.'}
                 </p>
                 {lineLinked === true ? (
                   <div className="rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">
@@ -700,6 +728,18 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                       : language === 'zh' ? '正在检查已关联的账号…' : 'Checking linked accounts…'}
                   </p>
                 )}
+                <LINEAccountManagement
+                  user={user} linked={lineLinked} language={language} disabled={loading}
+                  onBusyChange={setLoading}
+                  onDisconnected={async () => {
+                    setLineLinked(false); setLineFriendship('unknown');
+                    await refreshAuthUser();
+                  }}
+                  onNotificationsStopped={() => {
+                    setFormData(current => ({ ...current, notification_email_enabled: true, notification_line_enabled: false }));
+                    setNotificationChannelError(''); setProfileSaved(false);
+                  }}
+                />
               </section>
             )}
 
@@ -742,7 +782,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 {loading ? getLabel('profile_page.saving', language, 'Saving...') : getLabel('profile_page.save_changes', language, 'Save Changes')}
               </button>
               {profileSaved && (
-                <p role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#55766F]/25 bg-[#E2ECE6] px-4 py-3 text-sm font-semibold text-[#304B45]">
+                <p role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#A7D8AF] bg-[#E6F5E8] px-4 py-3 text-sm font-semibold text-[#245B32]">
                   <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
                   {language === 'th' ? 'บันทึกสำเร็จ' : language === 'zh' ? '保存成功' : 'Saved successfully'}
                 </p>

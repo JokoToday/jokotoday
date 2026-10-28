@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
 import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, LINE_PROVIDER, hasLinkedLINE, lineRedirectTo } from '../lib/lineAuth';
-import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { hasVerifiedEmail, lineDisplayName, fillMissingLINEProfileName } from '../lib/lineProfile';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 import type { CustomerDeliveryAddress } from '../lib/deliveryAddress';
@@ -13,6 +13,7 @@ export interface UserProfile {
   id: string;
   email?: string;
   name: string;
+  public_nickname?: string | null;
   phone: string;
   line_id?: string;
   whatsapp?: string;
@@ -32,6 +33,7 @@ export interface UserProfile {
 
 type ProfileDetails = {
   name: string;
+  public_nickname?: string | null;
   phone: string;
   line_id?: string;
   notification_email_enabled: boolean;
@@ -46,6 +48,7 @@ function isSupportedLanguage(value: unknown): value is Language {
 function hasRequiredProfileDetails(data: ProfileDetails, lineConnected: boolean, emailVerified: boolean): boolean {
   return Boolean(
     data.name.trim() &&
+    Boolean(data.public_nickname?.trim()) &&
     data.phone.trim() &&
     emailVerified &&
     (lineConnected || data.line_id?.trim())
@@ -70,6 +73,7 @@ interface AuthContextType {
   completeProfile: (data: ProfileDetails) => Promise<void>;
   updateProfileDetails: (data: ProfileDetails) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshAuthUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,9 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!identityError && identityData.user?.id === userId) {
             const suggestedName = lineDisplayName(identityData.user);
             if (suggestedName) {
-              const { error: nameError } = await supabase.from('user_profiles')
-                .update({ name: suggestedName }).eq('id', userId);
-              if (!nameError) data.name = suggestedName;
+              const filledName = await fillMissingLINEProfileName(supabase, userId, data, suggestedName);
+              if (filledName !== null) data.name = filledName;
             }
           }
         }
@@ -324,6 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
+        ...(data.public_nickname !== undefined ? { public_nickname: data.public_nickname?.trim() || null } : {}),
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
@@ -334,14 +338,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         qr_token: qrToken,
         short_code: shortCode,
         preferred_language: language,
-        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
+        profile_completed: hasRequiredProfileDetails({ ...data, public_nickname: data.public_nickname === undefined ? userProfile?.public_nickname : data.public_nickname }, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!profile) throw new Error('Your profile could not be found or updated. Please sign out and sign in again. If this continues, contact JOKO support.');
 
     setUserProfile(profile);
   };
@@ -353,6 +358,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('user_profiles')
       .update({
         name: data.name,
+        ...(data.public_nickname !== undefined ? { public_nickname: data.public_nickname?.trim() || null } : {}),
         phone: data.phone,
         line_id: data.line_id || null,
         notification_email_enabled: data.notification_email_enabled,
@@ -360,16 +366,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...(data.default_delivery_address !== undefined
           ? { default_delivery_address: data.default_delivery_address }
           : {}),
-        profile_completed: hasRequiredProfileDetails(data, hasLinkedLINE(user), hasVerifiedEmail(user)),
+        profile_completed: hasRequiredProfileDetails({ ...data, public_nickname: data.public_nickname === undefined ? userProfile?.public_nickname : data.public_nickname }, hasLinkedLINE(user), hasVerifiedEmail(user)),
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!profile) throw new Error('Your profile could not be found or updated. Please sign out and sign in again. If this continues, contact JOKO support.');
 
     setUserProfile(profile);
+  };
+
+  const refreshAuthUser = async (): Promise<void> => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (!data.user || data.user.id !== user?.id) throw new Error('Sign-in session changed');
+    setUser(data.user);
   };
 
   const refreshProfile = async (): Promise<void> => {
@@ -411,6 +425,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         completeProfile,
         updateProfileDetails,
         refreshProfile,
+        refreshAuthUser,
       }}
     >
       {children}

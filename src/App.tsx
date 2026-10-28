@@ -7,6 +7,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { LINEFriendInvite } from './components/LINEFriendInvite';
+import { LINEIdentityCompletion } from './components/LINEIdentityCompletion';
 import { HomepageRendererGate } from './app/joko-today/builder/HomepageRendererGate';
 import { homepageRendererMode } from './app/joko-today/builder/homepageFeatureFlags';
 import JokoShell from './app/joko-today/shell/JokoShell';
@@ -602,6 +603,7 @@ function AppContent() {
         <Suspense fallback={null}><AssistantWidget onNavigate={handleNavigate} /></Suspense>
       )}
       <LINEFriendInvite />
+      <LINEIdentityCompletion enabled={currentPage !== 'auth-callback'} />
     </div>
   );
 }
