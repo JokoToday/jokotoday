@@ -58,7 +58,7 @@ assert.equal(accountURL,'https://line.me/R/ti/p/%40jokotoday','Use the account-s
 const bindings={
  useState(initial){const i=hookIndex++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=value}]},
  supabase:client,hasVerifiedEmail:u=>Boolean(u?.email&&u?.email_confirmed_at),
- LINE_OFFICIAL_ACCOUNT_URL:accountURL,
+ LINE_OFFICIAL_ACCOUNT_URL:accountURL,LINE_DESKTOP_SETUP_URL:officialModule.exports.LINE_DESKTOP_SETUP_URL,
  ...helpers,
  ui:(type,props,...children)=>({type,props:props??{},children}),Fragment:'fragment',
 };

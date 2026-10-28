@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import type { Language } from '../translations';
 import { supabase } from '../lib/supabase';
 import { hasVerifiedEmail } from '../lib/lineProfile';
-import { LINE_OFFICIAL_ACCOUNT_URL } from '../lib/lineOfficialAccount';
+import { LINE_OFFICIAL_ACCOUNT_URL, LINE_DESKTOP_SETUP_URL } from '../lib/lineOfficialAccount';
 import { disconnectLINELogin, stopLINENotifications, hasEmailLogin, LINEAccountActionError } from '../lib/lineAccountManagement';
 
 const text = {
@@ -18,6 +18,7 @@ const text = {
     stopped: 'LINE notifications stopped. Email notifications are enabled.',
     disconnected: 'LINE login disconnected. Use email to sign in to this JOKO account.',
     refresh: 'LINE login disconnected. Refresh this page to update its status.',
+    desktop: 'Get LINE for desktop', desktopHint: 'Official download and sign-in instructions from LINE. Already installed? Open LINE on your computer and find JOKO in Friends or Chats.',
     manage: 'View JOKO Official Account', friendshipHint: 'View JOKO’s Official Account in LINE. On a computer, LINE shows an “Add friend” QR page; scan it with LINE on your phone. If you are already friends, it opens the existing chat. Use LINE’s Block option there to stop Official Account messages. This does not disconnect LINE login or change your saved notification preferences.',
     failed: 'Could not complete this change. Please try again.', profileUnavailable: 'Your profile could not be updated. Please sign out and sign in again.',
     sessionChanged: 'Your sign-in session changed. Refresh this page before trying again.', busy: 'Updating…',
@@ -33,6 +34,7 @@ const text = {
     stopped: 'หยุดการแจ้งเตือนทาง LINE แล้ว และเปิดการแจ้งเตือนทางอีเมลแล้ว',
     disconnected: 'ยกเลิก LINE Login แล้ว ใช้อีเมลเพื่อเข้าสู่บัญชี JOKO นี้',
     refresh: 'ยกเลิก LINE Login แล้ว กรุณารีเฟรชหน้าเพื่ออัปเดตสถานะ',
+    desktop: 'ดาวน์โหลด LINE สำหรับคอมพิวเตอร์', desktopHint: 'คำแนะนำการดาวน์โหลดและเข้าสู่ระบบอย่างเป็นทางการจาก LINE หากติดตั้งแล้ว ให้เปิด LINE บนคอมพิวเตอร์และค้นหา JOKO ในรายชื่อเพื่อนหรือแชท',
     manage: 'ดูบัญชีทางการ JOKO', friendshipHint: 'ดูบัญชีทางการ JOKO ใน LINE บนคอมพิวเตอร์ LINE จะแสดงหน้า QR สำหรับเพิ่มเพื่อน ให้สแกนด้วย LINE บนโทรศัพท์ หากเป็นเพื่อนอยู่แล้ว ระบบจะเปิดแชทเดิม ใช้ตัวเลือกบล็อกใน LINE เพื่อหยุดข้อความจากบัญชีทางการ การดำเนินการนี้ไม่ยกเลิก LINE Login หรือเปลี่ยนการตั้งค่าการแจ้งเตือนที่บันทึกไว้',
     failed: 'เปลี่ยนแปลงไม่สำเร็จ กรุณาลองอีกครั้ง', profileUnavailable: 'อัปเดตโปรไฟล์ไม่สำเร็จ กรุณาออกจากระบบแล้วเข้าสู่ระบบอีกครั้ง',
     sessionChanged: 'เซสชันการเข้าสู่ระบบเปลี่ยนไป กรุณารีเฟรชหน้าก่อนลองอีกครั้ง', busy: 'กำลังอัปเดต…',
@@ -48,6 +50,7 @@ const text = {
     stopped: 'LINE 通知已停止，邮箱通知已开启。',
     disconnected: 'LINE 登录已断开。请使用邮箱登录此 JOKO 账号。',
     refresh: 'LINE 登录已断开。请刷新页面以更新状态。',
+    desktop: '获取电脑版 LINE', desktopHint: 'LINE 官方下载及登录说明。如果已安装，请在电脑上打开 LINE，并在好友或聊天中查找 JOKO。',
     manage: '查看 JOKO 官方账号', friendshipHint: '在 LINE 查看 JOKO 官方账号。电脑上会显示添加好友的二维码页面，请用手机上的 LINE 扫描。如果已是好友，将打开现有聊天。您可在 LINE 中使用屏蔽选项停止官方账号消息。此操作不会断开 LINE 登录或更改已保存的通知偏好。',
     failed: '无法完成更改，请重试。', profileUnavailable: '无法更新个人资料，请退出后重新登录。',
     sessionChanged: '登录会话已改变，请刷新页面后重试。', busy: '更新中…',
@@ -110,7 +113,11 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
     </div>
     <div className="space-y-2">
       <p className="text-sm text-gray-600">{copy.friendshipHint}</p>
-      <a href={LINE_OFFICIAL_ACCOUNT_URL} target="_blank" rel="noreferrer" className="inline-flex rounded-xl border border-[#06C755]/40 px-4 py-2 text-sm font-semibold text-[#285A39]">{copy.manage}</a>
+      <div className="flex flex-wrap gap-3">
+        <a href={LINE_OFFICIAL_ACCOUNT_URL} target="_blank" rel="noreferrer" className="inline-flex rounded-xl border border-[#06C755]/40 px-4 py-2 text-sm font-semibold text-[#285A39]">{copy.manage}</a>
+        <a href={LINE_DESKTOP_SETUP_URL} target="_blank" rel="noreferrer" className="inline-flex rounded-xl border border-[#55766F]/30 px-4 py-2 text-sm font-semibold text-[#304B45]">{copy.desktop}</a>
+      </div>
+      <p className="text-xs text-gray-600">{copy.desktopHint}</p>
     </div>
   </div>;
 }
