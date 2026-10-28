@@ -5,7 +5,7 @@ import { generateQRToken } from '../lib/qrTokenGenerator';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { LINE_OAUTH_DESTINATION_KEY } from '../lib/lineAuth';
-import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { hasVerifiedEmail, lineDisplayName, fillMissingLINEProfileName } from '../lib/lineProfile';
 import { queueLINEFriendInvite, refreshLINEFriendshipStatus } from '../lib/lineOfficialAccount';
 
 type CallbackType = 'pkce' | 'implicit' | 'none';
@@ -206,9 +206,9 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
           // A profile can already exist before OAuth returns (e.g. from a
           // database trigger). Fill LINE's name only if the user has not yet
           // completed their profile and has not chosen a name of their own.
-          const updates: { name?: string; email?: string } = {};
+          const updates: { email?: string } = {};
           if (!existingProfile.profile_completed && !existingProfile.name?.trim() && importedLINEName) {
-            updates.name = importedLINEName;
+            await fillMissingLINEProfileName(supabase, userId, existingProfile, importedLINEName);
           }
           if (hasVerifiedEmail(session.user) && userEmail && existingProfile.email !== userEmail) {
             updates.email = userEmail;

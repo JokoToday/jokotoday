@@ -630,9 +630,9 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     : language === 'zh' ? '已关联的账号' : 'Connected Accounts'}
                 </h3>
                 <p className="mb-4 text-sm text-gray-600">
-                  {language === 'th' ? 'ใช้บัญชีเหล่านี้เข้าสู่ระบบ JOKO โดยไม่สร้างบัญชีลูกค้าใหม่'
-                    : language === 'zh' ? '将登录方式关联到同一个 JOKO 客户账号'
-                      : 'Link sign-in methods to your existing JOKO customer account.'}
+                  {language === 'th' ? 'เชื่อมต่อ LINE เพื่อเข้าสู่ระบบบัญชี JOKO เดิม ชื่อจริงและชื่อเล่นสาธารณะที่บันทึกไว้จะไม่เปลี่ยน แม้ชื่อใน LINE จะแตกต่างกัน'
+                    : language === 'zh' ? '关联 LINE 后可登录同一个 JOKO 账号。即使 LINE 显示名称不同，已保存的真实姓名和公开昵称也不会改变。'
+                      : 'Connect LINE to sign in to this same JOKO account. Your saved real name and public nickname stay unchanged, even if your LINE display name is different.'}
                 </p>
                 {lineLinked === true ? (
                   <div className="rounded-xl border border-[#06C755]/30 bg-[#E9F8EE] p-4 text-sm text-[#285A39]">

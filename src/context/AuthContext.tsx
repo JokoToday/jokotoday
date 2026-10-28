@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { UserRole } from '../lib/rolePermissions';
 import { getPublicAppUrl } from '../lib/appUrl';
 import { LINE_LINKING_ENABLED, LINE_LOGIN_ENABLED, LINE_OAUTH_DESTINATION_KEY, LINE_PROVIDER, hasLinkedLINE, lineRedirectTo } from '../lib/lineAuth';
-import { hasVerifiedEmail, lineDisplayName } from '../lib/lineProfile';
+import { hasVerifiedEmail, lineDisplayName, fillMissingLINEProfileName } from '../lib/lineProfile';
 import { useLanguage } from './LanguageContext';
 import type { Language } from '../translations';
 import type { CustomerDeliveryAddress } from '../lib/deliveryAddress';
@@ -105,9 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!identityError && identityData.user?.id === userId) {
             const suggestedName = lineDisplayName(identityData.user);
             if (suggestedName) {
-              const { error: nameError } = await supabase.from('user_profiles')
-                .update({ name: suggestedName }).eq('id', userId);
-              if (!nameError) data.name = suggestedName;
+              const filledName = await fillMissingLINEProfileName(supabase, userId, data, suggestedName);
+              if (filledName !== null) data.name = filledName;
             }
           }
         }

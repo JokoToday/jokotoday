@@ -22,10 +22,10 @@ export function LINEIdentityCompletion({ enabled }: { enabled: boolean }) {
 
   if (!show || !user || !userProfile) return null;
   const copy = language === 'th'
-    ? { title: 'ตั้งชื่อสำหรับบัญชี JOKO', name: 'ชื่อจริง', nickname: 'ชื่อเล่นสาธารณะ', hint: 'สมาชิกคนอื่นจะเห็นชื่อเล่นนี้ ชื่อจริงใช้สำหรับคำสั่งซื้อ', save: 'บันทึก', signout: 'ออกจากระบบ', invalid: 'กรุณากรอกชื่อจริงและชื่อเล่น 3–30 ตัวอักษรภาษาอังกฤษ ตัวเลข หรือ _', duplicate: 'ชื่อเล่นนี้มีคนใช้แล้ว', failed: 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }
+    ? { title: 'ตั้งชื่อสำหรับบัญชี JOKO', name: 'ชื่อจริง', nickname: 'ชื่อเล่นสาธารณะ', hint: 'ชื่อจริงเป็นข้อมูลส่วนตัว ใช้สำหรับคำสั่งซื้อ สมาชิกคนอื่นจะไม่เห็น ชื่อเล่นสาธารณะจะแสดงในคอลเลกชันที่แชร์และโพสต์ชุมชน คุณเปลี่ยนทั้งสองชื่อได้ภายหลังในโปรไฟล์ หากระบบกรอกชื่อจาก LINE โปรดตรวจสอบก่อนบันทึก', save: 'บันทึก', signout: 'ออกจากระบบ', invalid: 'กรุณากรอกชื่อจริงและชื่อเล่น 3–30 ตัวอักษรภาษาอังกฤษ ตัวเลข หรือ _', duplicate: 'ชื่อเล่นนี้มีคนใช้แล้ว', failed: 'บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง' }
     : language === 'zh'
-      ? { title: '设置您的 JOKO 名称', name: '真实姓名', nickname: '公开昵称', hint: '其他会员会看到您的昵称；真实姓名用于订单。', save: '保存', signout: '退出登录', invalid: '请输入真实姓名和 3–30 位英文字母、数字或下划线组成的昵称。', duplicate: '此昵称已被使用。', failed: '保存失败，请重试。' }
-      : { title: 'Choose your JOKO names', name: 'Real name', nickname: 'Public nickname', hint: 'Other members will see your nickname. Your real name is used for orders.', save: 'Save', signout: 'Sign out', invalid: 'Enter your real name and a nickname of 3–30 letters, numbers or underscores.', duplicate: 'This nickname is already taken.', failed: 'Could not save your names. Please try again.' };
+      ? { title: '设置您的 JOKO 名称', name: '真实姓名', nickname: '公开昵称', hint: '真实姓名仅用于订单，不向其他会员公开。公开昵称将显示在分享合集和社区帖子中。您以后可在个人资料中修改这两个名称。如果姓名由 LINE 预填，请在保存前确认。', save: '保存', signout: '退出登录', invalid: '请输入真实姓名和 3–30 位英文字母、数字或下划线组成的昵称。', duplicate: '此昵称已被使用。', failed: '保存失败，请重试。' }
+      : { title: 'Choose your JOKO names', name: 'Real name', nickname: 'Public nickname', hint: 'Your real name is private and used for orders; other members cannot see it. Your public nickname appears on shared collections and community posts. You can change both later in My Profile. If your name was prefilled from LINE, please check it before saving.', save: 'Save', signout: 'Sign out', invalid: 'Enter your real name and a nickname of 3–30 letters, numbers or underscores.', duplicate: 'This nickname is already taken.', failed: 'Could not save your names. Please try again.' };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
