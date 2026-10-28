@@ -782,7 +782,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 {loading ? getLabel('profile_page.saving', language, 'Saving...') : getLabel('profile_page.save_changes', language, 'Save Changes')}
               </button>
               {profileSaved && (
-                <p role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#55766F]/25 bg-[#E2ECE6] px-4 py-3 text-sm font-semibold text-[#304B45]">
+                <p role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#A7D8AF] bg-[#E6F5E8] px-4 py-3 text-sm font-semibold text-[#245B32]">
                   <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
                   {language === 'th' ? 'บันทึกสำเร็จ' : language === 'zh' ? '保存成功' : 'Saved successfully'}
                 </p>
