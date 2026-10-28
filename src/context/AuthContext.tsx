@@ -342,9 +342,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .eq('id', user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!profile) throw new Error('Your profile could not be found or updated. Please sign out and sign in again. If this continues, contact JOKO support.');
 
     setUserProfile(profile);
   };
@@ -369,9 +370,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .eq('id', user.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!profile) throw new Error('Your profile could not be found or updated. Please sign out and sign in again. If this continues, contact JOKO support.');
 
     setUserProfile(profile);
   };
