@@ -73,6 +73,7 @@ interface AuthContextType {
   completeProfile: (data: ProfileDetails) => Promise<void>;
   updateProfileDetails: (data: ProfileDetails) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshAuthUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -378,6 +379,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile(profile);
   };
 
+  const refreshAuthUser = async (): Promise<void> => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (!data.user || data.user.id !== user?.id) throw new Error('Sign-in session changed');
+    setUser(data.user);
+  };
+
   const refreshProfile = async (): Promise<void> => {
     // On redirect the React user state may lag the newly created session.
     const { data, error } = await supabase.auth.getUser();
@@ -417,6 +425,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         completeProfile,
         updateProfileDetails,
         refreshProfile,
+        refreshAuthUser,
       }}
     >
       {children}

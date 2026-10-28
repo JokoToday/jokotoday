@@ -5,6 +5,9 @@ export const LINE_OFFICIAL_ACCOUNT_ID = '@jokotoday';
 export const LINE_OFFICIAL_ACCOUNT_URL =
   `https://line.me/R/ti/p/${encodeURIComponent(LINE_OFFICIAL_ACCOUNT_ID)}`;
 
+export const LINE_OFFICIAL_ACCOUNT_CHAT_URL =
+  `https://line.me/R/oaMessage/${encodeURIComponent(LINE_OFFICIAL_ACCOUNT_ID)}`;
+
 const FRIENDSHIP_ENDPOINT = 'https://api.line.me/friendship/v1/status';
 const STATUS_PREFIX = 'jt_line_oa_friendship_';
 const DISMISSED_PREFIX = 'jt_line_oa_friend_prompt_dismissed_';

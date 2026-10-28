@@ -1,3 +1,4 @@
+import { LINEAccountManagement } from '../components/LINEAccountManagement';
 import { lineIdentityConflictMessage } from '../lib/authCallbackErrors';
 import { LINEIdHelp } from '../components/LINEIdHelp';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
@@ -31,7 +32,7 @@ interface MyProfilePageProps {
 }
 
 export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
-  const { user, userProfile, updateProfileDetails, refreshProfile, linkLINE } = useAuth();
+  const { user, userProfile, updateProfileDetails, refreshProfile, refreshAuthUser, linkLINE } = useAuth();
   const { language, setLanguage } = useLanguage();
   const { getLabel } = useCMSLabels();
 
@@ -75,7 +76,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
       },
     });
     setProfilePicture(userProfile.profile_picture_url || null);
-  }, [userProfile, user]);
+  }, [userProfile, user?.id, user?.email]);
 
   useEffect(() => {
     let cancelled = false;
@@ -727,6 +728,18 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                       : language === 'zh' ? '正在检查已关联的账号…' : 'Checking linked accounts…'}
                   </p>
                 )}
+                <LINEAccountManagement
+                  user={user} linked={lineLinked} language={language} disabled={loading}
+                  onBusyChange={setLoading}
+                  onDisconnected={async () => {
+                    setLineLinked(false); setLineFriendship('unknown');
+                    await refreshAuthUser();
+                  }}
+                  onNotificationsStopped={() => {
+                    setFormData(current => ({ ...current, notification_email_enabled: true, notification_line_enabled: false }));
+                    setNotificationChannelError(''); setProfileSaved(false);
+                  }}
+                />
               </section>
             )}
 
