@@ -763,6 +763,11 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                 onFriendshipChange={setLineFriendship}
                 validationError={notificationChannelError}
               />
+              <button type="button" onClick={() => onNavigate('notifications')}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#55766F]/20 bg-white/60 px-4 py-2.5 text-sm font-semibold text-[#46635C] transition hover:bg-[#E7EEE8]">
+                {language === 'th' ? 'เปิดกล่องข้อความแจ้งเตือน'
+                  : language === 'zh' ? '查看通知收件箱' : 'Open notification inbox'}
+              </button>
             </div>
 
             <section className="border-t border-[#55766F]/14 pt-7">
