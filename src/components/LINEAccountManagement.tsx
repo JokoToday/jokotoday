@@ -67,17 +67,18 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [messageAction, setMessageAction] = useState<'disconnect' | 'stop' | null>(null);
   const canDisconnect = hasEmailLogin(user);
   const run = async (action: 'disconnect' | 'stop') => {
     if (busy || disabled) return;
-    setBusy(true); onBusyChange(true); setError(''); setMessage('');
+    setBusy(true); onBusyChange(true); setError(''); setMessage(''); setMessageAction(null);
     try {
       if (action === 'stop') {
         await stopLINENotifications(supabase, user.id);
-        onNotificationsStopped(); setMessage(copy.stopped);
+        onNotificationsStopped(); setMessage(copy.stopped); setMessageAction('stop');
       } else {
         await disconnectLINELogin(supabase, user.id);
-        setConfirming(false); setMessage(copy.disconnected);
+        setConfirming(false); setMessage(copy.disconnected); setMessageAction('disconnect');
         try { await onDisconnected(); } catch { setMessage(copy.refresh); }
       }
     } catch (failure) {
@@ -87,7 +88,7 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
   return <div className="mt-5 space-y-5 rounded-xl border border-[#55766F]/20 bg-white/60 p-4">
     <h4 className="font-semibold text-[#303532]">{copy.heading}</h4>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {message && <p role="status" className="text-sm text-[#285A39]">{message}</p>}
+    {message && messageAction === 'disconnect' && <p role="status" aria-live="polite" className="rounded-xl border border-[#55766F]/30 bg-[#E2ECE6] p-3 text-sm font-semibold text-[#285A39]">{message}</p>}
     {linked === true && <div className="space-y-2">
       <p className="text-sm text-gray-600">{copy.disconnectHint}</p>
       {!canDisconnect && <p className="text-sm text-amber-800">{copy.emailRequired}</p>}
@@ -103,6 +104,9 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
       <p className="text-sm text-gray-600">{copy.stopHint}</p>
       {!hasVerifiedEmail(user) && <p className="text-sm text-amber-800">{copy.verifyEmail}</p>}
       <button type="button" disabled={disabled || busy || !hasVerifiedEmail(user)} onClick={() => void run('stop')} className="rounded-xl border border-[#55766F]/30 px-4 py-2 text-sm font-semibold disabled:opacity-50">{busy ? copy.busy : copy.stop}</button>
+      {message && messageAction === 'stop' && <p role="status" aria-live="polite" className="flex items-start gap-2 rounded-xl border border-[#55766F]/30 bg-[#E2ECE6] p-3 text-sm font-semibold text-[#285A39]">
+        <span aria-hidden="true">✓</span><span>{message}</span>
+      </p>}
     </div>
     <div className="space-y-2">
       <p className="text-sm text-gray-600">{copy.friendshipHint}</p>

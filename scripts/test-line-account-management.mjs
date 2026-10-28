@@ -77,4 +77,5 @@ state=[];tree=render({...props,user:{...user,identities:[line]}});
 assert.equal(button(tree,'Disconnect LINE login').props.disabled,true,'LINE-only account has no disconnect action');
 const link=nodes(tree,n=>n.type==='a')[0];assert.equal(link.props.href,bindings.LINE_OFFICIAL_ACCOUNT_URL);assert.equal(link.props.target,'_blank');
 reset();state=[];tree=render();button(tree,'Stop LINE notifications').props.onClick();await new Promise(setImmediate);assert.equal(stopped,1);assert.equal(unlinked,0);
+const stopConfirmation=nodes(render(),n=>n.props.role==='status')[0];assert.ok(stopConfirmation,'Show a visible saved confirmation after stopping notifications');assert.equal(stopConfirmation.props['aria-live'],'polite');
 console.log('Real component interaction tests passed: confirmation, cancel, disconnect, LINE-only gate, separate notifications and external friendship link.');
