@@ -1,3 +1,4 @@
+import { LINEIdHelp } from '../components/LINEIdHelp';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -600,6 +601,9 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                   <input
                     type="text"
                     name="line_id"
+                      aria-describedby="profile-line-id-help"
+                      autoCapitalize="none"
+                      spellCheck={false}
                     value={formData.line_id}
                     onChange={handleChange}
                     className="mt-1 w-full rounded-xl border border-[#55766F]/20 bg-white/72 px-4 py-2.5 text-[#303532] outline-none transition focus:border-[#55766F]/45 focus:ring-2 focus:ring-[#55766F]/16"
@@ -607,6 +611,7 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
                     required={!isLINEConnected}
                   />
                 </label>
+                <LINEIdHelp language={language} id="profile-line-id-help" />
                 <p className="text-xs text-gray-500">
                   {isLINEConnected
                     ? (language === 'th'

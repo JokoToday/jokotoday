@@ -1,3 +1,4 @@
+import { LINEIdHelp } from './LINEIdHelp';
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -394,6 +395,9 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
                     <input
                       type="text"
                       name="line_id"
+                      aria-describedby="completion-line-id-help"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       value={formData.line_id}
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -401,6 +405,7 @@ export function ProfileCompletionModal({ isOpen, onClose, onComplete, showCelebr
                       disabled={loading}
                       required={!hasLinkedLINE(user)}
                     />
+                    <LINEIdHelp language={language} id="completion-line-id-help" />
                   </div>
                 </div>
               </div>
