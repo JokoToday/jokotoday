@@ -40,6 +40,7 @@ const MyProfilePage = lazy(() => import('./pages/MyProfilePage').then(({ MyProfi
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage').then(({ MyOrdersPage }) => ({ default: MyOrdersPage })));
 const MyLikesPage = lazy(() => import('./pages/MyLikesPage').then(({ MyLikesPage }) => ({ default: MyLikesPage })));
 const MyCollectionsPage = lazy(() => import('./pages/MyCollectionsPage'));
+const SharedCollectionPage = lazy(() => import('./pages/SharedCollectionPage'));
 const ScanPage = lazy(() => import('./pages/ScanPage').then(({ ScanPage }) => ({ default: ScanPage })));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage').then(({ AuthCallbackPage }) => ({ default: AuthCallbackPage })));
 const QRResolverPage = lazy(() => import('./pages/QRResolverPage'));
@@ -107,6 +108,7 @@ const NOTEBOOK_PAGE_PATHS: Record<string, string> = {
 
 
 function AppContent() {
+  const [shareToken, setShareToken] = useState('');
   const [currentPage, setCurrentPage] = useState('home');
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [paymentHandoffToken, setPaymentHandoffToken] = useState<string | null>(null);
@@ -244,6 +246,8 @@ function AppContent() {
         return;
       }
 
+      const shareMatch = path.match(/^\/shared\/([a-f0-9]{64})$/);
+      if (shareMatch) { setShareToken(shareMatch[1]); setCurrentPage('shared-collection'); return; }
       const makerMatch = path.match(/^\/makers\/([^/]+)$/);
       if (makerMatch) {
         try { setMakerSlug(decodeURIComponent(makerMatch[1])); } catch { setMakerSlug(''); }
@@ -525,6 +529,7 @@ function AppContent() {
         return <MyLikesPage onNavigate={handleNavigate} />;
       case 'collections':
         return <MyCollectionsPage onNavigate={handleNavigate} />;
+      case 'shared-collection': return <SharedCollectionPage token={shareToken} />;
       case 'scan':
         return <ScanPage />;
       default:
@@ -539,7 +544,7 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'collections' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'collections' || currentPage === 'shared-collection' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
   const jokoShellSection: JokoShellSection | null = currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
