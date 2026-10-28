@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import type { Language } from '../translations';
 import { supabase } from '../lib/supabase';
 import { hasVerifiedEmail } from '../lib/lineProfile';
-import { LINE_OFFICIAL_ACCOUNT_CHAT_URL } from '../lib/lineOfficialAccount';
+import { LINE_OFFICIAL_ACCOUNT_URL } from '../lib/lineOfficialAccount';
 import { disconnectLINELogin, stopLINENotifications, hasEmailLogin, LINEAccountActionError } from '../lib/lineAccountManagement';
 
 const text = {
@@ -18,7 +18,7 @@ const text = {
     stopped: 'LINE notifications stopped. Email notifications are enabled.',
     disconnected: 'LINE login disconnected. Use email to sign in to this JOKO account.',
     refresh: 'LINE login disconnected. Refresh this page to update its status.',
-    manage: 'Manage friendship in LINE', friendshipHint: 'Open our chat in LINE and use LINE’s Block option to stop Official Account messages. You can remove the account in LINE too. JOKO cannot do this for you. This does not disconnect LINE login or change your saved notification preferences.',
+    manage: 'Open JOKO in LINE', friendshipHint: 'On a computer, scan the QR code with LINE on your phone. Then open the JOKO chat and use LINE’s Block option to stop Official Account messages. You can remove the account in LINE too. This does not disconnect LINE login or change your saved notification preferences.',
     failed: 'Could not complete this change. Please try again.', profileUnavailable: 'Your profile could not be updated. Please sign out and sign in again.',
     sessionChanged: 'Your sign-in session changed. Refresh this page before trying again.', busy: 'Updating…',
   },
@@ -33,7 +33,7 @@ const text = {
     stopped: 'หยุดการแจ้งเตือนทาง LINE แล้ว และเปิดการแจ้งเตือนทางอีเมลแล้ว',
     disconnected: 'ยกเลิก LINE Login แล้ว ใช้อีเมลเพื่อเข้าสู่บัญชี JOKO นี้',
     refresh: 'ยกเลิก LINE Login แล้ว กรุณารีเฟรชหน้าเพื่ออัปเดตสถานะ',
-    manage: 'จัดการสถานะเพื่อนใน LINE', friendshipHint: 'เปิดแชทของเราใน LINE แล้วใช้ตัวเลือกบล็อกเพื่อหยุดข้อความจากบัญชีทางการ คุณสามารถลบบัญชีใน LINE ได้เช่นกัน JOKO ดำเนินการแทนคุณไม่ได้ การดำเนินการนี้ไม่ยกเลิก LINE Login หรือเปลี่ยนการตั้งค่าการแจ้งเตือนที่บันทึกไว้',
+    manage: 'เปิด JOKO ใน LINE', friendshipHint: 'หากใช้คอมพิวเตอร์ ให้สแกน QR ด้วย LINE บนโทรศัพท์ จากนั้นเปิดแชท JOKO และใช้ตัวเลือกบล็อกเพื่อหยุดข้อความจากบัญชีทางการ คุณสามารถลบบัญชีใน LINE ได้เช่นกัน การดำเนินการนี้ไม่ยกเลิก LINE Login หรือเปลี่ยนการตั้งค่าการแจ้งเตือนที่บันทึกไว้',
     failed: 'เปลี่ยนแปลงไม่สำเร็จ กรุณาลองอีกครั้ง', profileUnavailable: 'อัปเดตโปรไฟล์ไม่สำเร็จ กรุณาออกจากระบบแล้วเข้าสู่ระบบอีกครั้ง',
     sessionChanged: 'เซสชันการเข้าสู่ระบบเปลี่ยนไป กรุณารีเฟรชหน้าก่อนลองอีกครั้ง', busy: 'กำลังอัปเดต…',
   },
@@ -48,7 +48,7 @@ const text = {
     stopped: 'LINE 通知已停止，邮箱通知已开启。',
     disconnected: 'LINE 登录已断开。请使用邮箱登录此 JOKO 账号。',
     refresh: 'LINE 登录已断开。请刷新页面以更新状态。',
-    manage: '在 LINE 管理好友关系', friendshipHint: '在 LINE 打开我们的聊天，并使用屏蔽选项停止官方账号消息。您也可在 LINE 中删除该账号。JOKO 无法代您操作。此操作不会断开 LINE 登录或更改已保存的通知偏好。',
+    manage: '在 LINE 打开 JOKO', friendshipHint: '使用电脑时，请用手机上的 LINE 扫描二维码，然后打开 JOKO 聊天并使用屏蔽选项停止官方账号消息。您也可在 LINE 中删除该账号。此操作不会断开 LINE 登录或更改已保存的通知偏好。',
     failed: '无法完成更改，请重试。', profileUnavailable: '无法更新个人资料，请退出后重新登录。',
     sessionChanged: '登录会话已改变，请刷新页面后重试。', busy: '更新中…',
   },
@@ -106,7 +106,7 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
     </div>
     <div className="space-y-2">
       <p className="text-sm text-gray-600">{copy.friendshipHint}</p>
-      <a href={LINE_OFFICIAL_ACCOUNT_CHAT_URL} target="_blank" rel="noreferrer" className="inline-flex rounded-xl border border-[#06C755]/40 px-4 py-2 text-sm font-semibold text-[#285A39]">{copy.manage}</a>
+      <a href={LINE_OFFICIAL_ACCOUNT_URL} target="_blank" rel="noreferrer" className="inline-flex rounded-xl border border-[#06C755]/40 px-4 py-2 text-sm font-semibold text-[#285A39]">{copy.manage}</a>
     </div>
   </div>;
 }

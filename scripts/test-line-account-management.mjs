@@ -49,10 +49,16 @@ const source=(await readFile('src/components/LINEAccountManagement.tsx','utf8'))
 const js=(await transform(source,{loader:'tsx',format:'cjs',jsxFactory:'ui',jsxFragment:'Fragment'})).code;
 let hookIndex=0,state=[],disconnected=0,stopped=0;const busyChanges=[];
 const helpers=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const officialSource=(await readFile('src/lib/lineOfficialAccount.ts','utf8')).replace(/^import .*;\n/gm,'');
+const officialJS=(await transform(officialSource,{loader:'ts',format:'cjs'})).code;
+const officialModule={exports:{}};
+new Function('module','exports',officialJS)(officialModule,officialModule.exports);
+const accountURL=officialModule.exports.LINE_OFFICIAL_ACCOUNT_URL;
+assert.equal(accountURL,'https://line.me/R/ti/p/%40jokotoday','Use the account-specific desktop QR/mobile profile route, not oaMessage');
 const bindings={
  useState(initial){const i=hookIndex++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=value}]},
  supabase:client,hasVerifiedEmail:u=>Boolean(u?.email&&u?.email_confirmed_at),
- LINE_OFFICIAL_ACCOUNT_CHAT_URL:'https://line.me/R/oaMessage/%40jokotoday',
+ LINE_OFFICIAL_ACCOUNT_URL:accountURL,
  ...helpers,
  ui:(type,props,...children)=>({type,props:props??{},children}),Fragment:'fragment',
 };
@@ -69,6 +75,6 @@ assert.equal(unlinked,1);assert.equal(disconnected,1);assert.deepEqual(busyChang
 assert.ok(nodes(render(),n=>n.props.role==='status').length);
 state=[];tree=render({...props,user:{...user,identities:[line]}});
 assert.equal(button(tree,'Disconnect LINE login').props.disabled,true,'LINE-only account has no disconnect action');
-const link=nodes(tree,n=>n.type==='a')[0];assert.equal(link.props.href,bindings.LINE_OFFICIAL_ACCOUNT_CHAT_URL);assert.equal(link.props.target,'_blank');
+const link=nodes(tree,n=>n.type==='a')[0];assert.equal(link.props.href,bindings.LINE_OFFICIAL_ACCOUNT_URL);assert.equal(link.props.target,'_blank');
 reset();state=[];tree=render();button(tree,'Stop LINE notifications').props.onClick();await new Promise(setImmediate);assert.equal(stopped,1);assert.equal(unlinked,0);
 console.log('Real component interaction tests passed: confirmation, cancel, disconnect, LINE-only gate, separate notifications and external friendship link.');
