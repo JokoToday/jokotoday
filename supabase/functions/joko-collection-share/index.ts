@@ -22,7 +22,7 @@ serve(async(request)=>{
   const {data:link,error:linkError}=await db.from('joko_collection_share_links').select('collection_id,revoked_at,expires_at').eq('token_hash',hash).maybeSingle();
   if(linkError)return respond({error:'Sharing temporarily unavailable'},503);
   if(!link||link.revoked_at||(link.expires_at&&new Date(link.expires_at).getTime()<=Date.now()))return respond({error:'Share link expired or revoked'},404);
-  const {data:collection}=await db.from('joko_collections').select('id,title,description').eq('id',link.collection_id).maybeSingle();
+  const {data:collection}=await db.from('joko_collections').select('id,title,description,owner_user_id').eq('id',link.collection_id).maybeSingle();
   if(!collection)return respond({error:'Collection unavailable'},404);
   const {data:items,error:itemsError}=await db.from('joko_collection_items').select('item_type,item_id,position').eq('collection_id',link.collection_id).order('position').limit(100);
   if(itemsError)return respond({error:'Collection unavailable'},503);
@@ -36,7 +36,12 @@ serve(async(request)=>{
     if(m)visible.push({type:'creator',name_en:m.name_en,name_th:m.name_th,name_zh:m.name_zh,image:m.hero_image,url:`/makers/${encodeURIComponent(m.slug)}`});
    }
   }
-  return respond({title:collection.title,description:collection.description,items:visible});
+  // The share token grants access to the collection, not to a private profile.
+  // Return only the current public nickname; never fall back to real name.
+  const {data:profile,error:profileError}=await db.from('user_profiles').select('public_nickname').eq('id',collection.owner_user_id).maybeSingle();
+  if(profileError)return respond({error:'Sharing temporarily unavailable'},503);
+  const nickname=typeof profile?.public_nickname==='string'&&/^[A-Za-z0-9_]{3,30}$/.test(profile.public_nickname)?profile.public_nickname:null;
+  return respond({title:collection.title,description:collection.description,collector_nickname:nickname,items:visible});
  }
  if(action!=='create'&&action!=='revoke')return respond({error:'Unknown action'},400);
  if(typeof data.collectionId!=='string'||!(/^[0-9a-f-]{36}$/i).test(data.collectionId))return respond({error:'Invalid collection'},400);

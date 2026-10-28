@@ -13,5 +13,5 @@ async function call(action:'create'|'revoke'|'read',details:Record<string,string
 }
 export async function createShareLink(collectionId:string):Promise<string>{const result=await call('create',{collectionId});return `${window.location.origin}/shared/${result.token}`;}
 export async function revokeShareLink(collectionId:string):Promise<void>{await call('revoke',{collectionId});}
-export interface SharedCollection {title:string;description:string;items:{type:'product'|'creator';name_en:string;name_th:string;name_zh:string|null;image:string|null;url:string}[]}
+export interface SharedCollection {collector_nickname?:string|null;title:string;description:string;items:{type:'product'|'creator';name_en:string;name_th:string;name_zh:string|null;image:string|null;url:string}[]}
 export async function readShareLink(token:string):Promise<SharedCollection>{return call('read',{token});}
