@@ -1,3 +1,4 @@
+import { oauthCallbackFailure, lineIdentityConflictMessage } from '../lib/authCallbackErrors';
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -55,7 +56,7 @@ const callbackText = {
 };
 
 export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
-  const [errorKind, setErrorKind] = useState<'failed' | 'unexpected' | null>(null);
+  const [errorKind, setErrorKind] = useState<'failed' | 'unexpected' | 'lineAlreadyLinked' | null>(null);
   const callbackStartedRef = useRef(false);
   const navigateRef = useRef(onNavigate);
   const { language, setLanguage } = useLanguage();
@@ -72,12 +73,14 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
     const abortController = new AbortController();
     let redirectTimer: number | undefined;
 
-    const failAndRedirect = (kind: 'failed' | 'unexpected') => {
+    const failAndRedirect = (kind: 'failed' | 'unexpected' | 'lineAlreadyLinked') => {
       if (abortController.signal.aborted) return;
       sessionStorage.removeItem(AUTH_LANGUAGE_STORAGE_KEY);
       sessionStorage.removeItem(LINE_OAUTH_DESTINATION_KEY);
       clearCallbackParameters();
       setErrorKind(kind);
+      // Keep the actionable linking explanation visible until the member continues.
+      if (kind === 'lineAlreadyLinked') return;
       redirectTimer = window.setTimeout(() => navigateRef.current('home'), 3000);
     };
 
@@ -119,8 +122,9 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
       }
 
       // Failed or cancelled OAuth must not fall through to an existing session.
-      if (searchParams.has('error') || hashParams.has('error')) {
-        failAndRedirect('failed');
+      const callbackFailure = oauthCallbackFailure(searchParams, hashParams, isRecentLINELink);
+      if (callbackFailure) {
+        failAndRedirect(callbackFailure);
         return;
       }
 
@@ -260,7 +264,12 @@ export function AuthCallbackPage({ onNavigate }: AuthCallbackPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
       {errorKind ? (
-        <p className="text-red-600 text-lg">{text[errorKind]}</p>
+        <div className="max-w-md space-y-4 p-6">
+          <p role="alert" className="text-red-600 text-lg">{errorKind === 'lineAlreadyLinked' ? lineIdentityConflictMessage(language) : text[errorKind]}</p>
+          {errorKind === 'lineAlreadyLinked' && <button type="button" onClick={() => navigateRef.current('profile')} className="w-full rounded-xl bg-amber-600 px-4 py-3 font-semibold text-white">
+            {language === 'th' ? 'กลับไปที่โปรไฟล์' : language === 'zh' ? '返回个人资料' : 'Return to My Profile'}
+          </button>}
+        </div>
       ) : (
         <p className="text-gray-600 text-lg">{text.signingIn}</p>
       )}

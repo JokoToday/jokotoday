@@ -1,3 +1,4 @@
+import { lineIdentityConflictMessage } from '../lib/authCallbackErrors';
 import { LINEIdHelp } from '../components/LINEIdHelp';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, QrCode, Camera, Upload, X, MessageCircle } from 'lucide-react';
@@ -122,7 +123,8 @@ export function MyProfilePage({ onNavigate }: MyProfilePageProps) {
     try {
       await linkLINE();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not link LINE');
+      const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : null;
+      setError(code === 'identity_already_exists' ? lineIdentityConflictMessage(language) : err instanceof Error ? err.message : 'Could not link LINE');
       setLoading(false);
     }
   };
