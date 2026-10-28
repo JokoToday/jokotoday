@@ -68,8 +68,8 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
   const copy = text[language];
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState<keyof typeof text.en | ''>('');
+  const [message, setMessage] = useState<keyof typeof text.en | ''>('');
   const [messageAction, setMessageAction] = useState<'disconnect' | 'stop' | null>(null);
   const canDisconnect = hasEmailLogin(user);
   const run = async (action: 'disconnect' | 'stop') => {
@@ -78,20 +78,20 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
     try {
       if (action === 'stop') {
         await stopLINENotifications(supabase, user.id);
-        onNotificationsStopped(); setMessage(copy.stopped); setMessageAction('stop');
+        onNotificationsStopped(); setMessage('stopped'); setMessageAction('stop');
       } else {
         await disconnectLINELogin(supabase, user.id);
-        setConfirming(false); setMessage(copy.disconnected); setMessageAction('disconnect');
-        try { await onDisconnected(); } catch { setMessage(copy.refresh); }
+        setConfirming(false); setMessage('disconnected'); setMessageAction('disconnect');
+        try { await onDisconnected(); } catch { setMessage('refresh'); }
       }
     } catch (failure) {
-      setError(failure instanceof LINEAccountActionError ? failure.code === 'emailRequired' && action === 'stop' ? copy.verifyEmail : copy[failure.code] : copy.failed);
+      setError(failure instanceof LINEAccountActionError ? failure.code === 'emailRequired' && action === 'stop' ? 'verifyEmail' : failure.code : 'failed');
     } finally { setBusy(false); onBusyChange(false); }
   };
   return <div className="mt-5 space-y-5 rounded-xl border border-[#55766F]/20 bg-white/60 p-4">
     <h4 className="font-semibold text-[#303532]">{copy.heading}</h4>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {message && messageAction === 'disconnect' && <p role="status" aria-live="polite" className="rounded-xl border border-[#55766F]/30 bg-[#E2ECE6] p-3 text-sm font-semibold text-[#285A39]">{message}</p>}
+    {error && <p role="alert" className="text-sm text-red-700">{copy[error]}</p>}
+    {message && messageAction === 'disconnect' && <p role="status" aria-live="polite" className="rounded-xl border border-[#55766F]/30 bg-[#E2ECE6] p-3 text-sm font-semibold text-[#285A39]">{copy[message]}</p>}
     {linked === true && <div className="space-y-2">
       <p className="text-sm text-gray-600">{copy.disconnectHint}</p>
       {!canDisconnect && <p className="text-sm text-amber-800">{copy.emailRequired}</p>}
@@ -108,7 +108,7 @@ export function LINEAccountManagement({ user, linked, language, disabled, onBusy
       {!hasVerifiedEmail(user) && <p className="text-sm text-amber-800">{copy.verifyEmail}</p>}
       <button type="button" disabled={disabled || busy || !hasVerifiedEmail(user)} onClick={() => void run('stop')} className="rounded-xl border border-[#55766F]/30 px-4 py-2 text-sm font-semibold disabled:opacity-50">{busy ? copy.busy : copy.stop}</button>
       {message && messageAction === 'stop' && <p role="status" aria-live="polite" className="flex items-start gap-2 rounded-xl border border-[#55766F]/30 bg-[#E2ECE6] p-3 text-sm font-semibold text-[#285A39]">
-        <span aria-hidden="true">✓</span><span>{message}</span>
+        <span aria-hidden="true">✓</span><span>{copy[message]}</span>
       </p>}
     </div>
     <div className="space-y-2">

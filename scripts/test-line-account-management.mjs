@@ -79,3 +79,13 @@ const link=nodes(tree,n=>n.type==='a')[0];assert.equal(link.props.href,bindings.
 reset();state=[];tree=render();button(tree,'Stop LINE notifications').props.onClick();await new Promise(setImmediate);assert.equal(stopped,1);assert.equal(unlinked,0);
 const stopConfirmation=nodes(render(),n=>n.props.role==='status')[0];assert.ok(stopConfirmation,'Show a visible saved confirmation after stopping notifications');assert.equal(stopConfirmation.props['aria-live'],'polite');
 console.log('Real component interaction tests passed: confirmation, cancel, disconnect, LINE-only gate, separate notifications and external friendship link.');
+
+for (const [language, expected] of [
+ ['en','LINE notifications stopped. Email notifications are enabled.'],
+ ['th','หยุดการแจ้งเตือนทาง LINE แล้ว และเปิดการแจ้งเตือนทางอีเมลแล้ว'],
+ ['zh','LINE 通知已停止，邮箱通知已开启。'],
+]) {
+ const confirmation=nodes(render({...props,language}),node=>node.props.role==='status')[0];
+ assert.ok(JSON.stringify(confirmation).includes(expected),'Saved confirmation must follow the current language: '+language);
+}
+console.log('Saved LINE notification confirmation follows EN/TH/ZH after a language switch without another save.');
