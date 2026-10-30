@@ -158,12 +158,12 @@ export default function SmilePage() {
   const selectedText = selected ? smileText(selected, language) : null;
 
   const watchLink = (episode: SmileEpisode, hero = false) => {
-    if (sampleMode) return <span className="smile-card-link">{extra.preview}</span>;
+    if (sampleMode) return hero ? <span className="smile-film-demo" title={extra.preview} aria-label={extra.preview}><Play size={23} fill="currentColor"/></span> : <span className="smile-card-link">{extra.preview}</span>;
     const video = smileVideoSource(episode.media_url);
     const text = smileText(episode, language);
     return video?.kind === 'external'
-      ? <a className={hero ? 'smile-watch' : 'smile-card-link'} href={video.url} target="_blank" rel="noreferrer">{copy.watch}<ArrowUpRight size={17}/></a>
-      : <button type="button" className={hero ? 'smile-watch' : 'smile-card-link'} onClick={event => watch(episode, event.currentTarget)} aria-label={copy.watch + ': ' + text.title}>{hero ? <Play size={16} fill="currentColor"/> : null}{copy.watch}{hero ? null : <ArrowUpRight size={17}/>}</button>;
+      ? <a className={hero ? 'smile-watch' : 'smile-card-link'} href={video.url} target="_blank" rel="noreferrer" aria-label={copy.watch + ": " + text.title}>{hero ? <Play size={23} fill="currentColor"/> : <>{copy.watch}<ArrowUpRight size={17}/></>}</a>
+      : <button type="button" className={hero ? 'smile-watch' : 'smile-card-link'} onClick={event => watch(episode, event.currentTarget)} aria-label={copy.watch + ': ' + text.title}>{hero ? <Play size={23} fill="currentColor"/> : <>{copy.watch}<ArrowUpRight size={17}/></>}</button>;
   };
 
   return <div className="smile-page">

@@ -23,3 +23,7 @@
 .smile-film .smile-poster{background:transparent;object-fit:contain}
 .smile-feature-film .smile-feature-caption{padding-top:5px}
 @media(max-width:800px){.smile-film .smile-feature-note{font-size:clamp(8px,1.7vw,13px)}.smile-film .smile-screen-empty p{font-size:14px}}
+
+.smile-film .smile-watch,.smile-film-demo{display:grid;place-items:center;width:58px;height:58px;padding:0;border:0;border-radius:50%;background:#C76624;color:#fffaf0;box-shadow:0 3px 8px #633c1e30}
+.smile-film .smile-watch:hover{background:#a95120}.smile-film .smile-watch svg,.smile-film-demo svg{margin-left:3px}
+@media(max-width:480px){.smile-film .smile-watch,.smile-film-demo{width:40px;height:40px}.smile-film .smile-watch svg,.smile-film-demo svg{width:18px}}
