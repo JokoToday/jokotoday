@@ -48,3 +48,21 @@ export async function getSmileEpisodes(): Promise<SmileEpisode[]> {
   if (error) throw error;
   return publishedSmileEpisodes((data || []) as SmileEpisode[]);
 }
+
+export function filterSmileEpisodes(episodes: SmileEpisode[], options: {
+  language: Language; search: string; month: string; sort: string; counts: Record<string, number>;
+}): SmileEpisode[] {
+  const query = options.search.trim().toLocaleLowerCase();
+  return episodes.filter(episode => {
+    const text = smileText(episode, options.language);
+    return (text.title + ' ' + text.caption).toLocaleLowerCase().includes(query)
+      && (!options.month || episode.created_at.slice(0, 7) === options.month);
+  }).sort((a, b) => {
+    if (options.sort === 'likes') {
+      const difference = (options.counts[b.id] || 0) - (options.counts[a.id] || 0);
+      if (difference) return difference;
+    }
+    const date = a.created_at.localeCompare(b.created_at);
+    return options.sort === 'oldest' ? date : -date;
+  });
+}

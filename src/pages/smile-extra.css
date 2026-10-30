@@ -1,0 +1,11 @@
+.smile-sample-banner{padding:14px 24px;background:#f3e2bb;color:#55452e;font-size:13px;line-height:1.7;text-align:center}.smile-sample-banner a{font-weight:700;text-decoration:underline;white-space:nowrap;margin-left:10px}
+.smile-page{--smile-orange:#C76624}.smile-feature-note{background:#C76624}
+.smile-like{display:inline-flex;align-items:center;gap:7px;border:1px solid #c5cbbc;border-radius:30px;background:#fffaf0;color:#58705b;padding:8px 11px;font-size:12px;white-space:nowrap}
+.smile-like[aria-pressed=true]{color:#aa4f1e;background:#f8e7d8;border-color:#d99d72}.smile-like:disabled{opacity:.55;cursor:wait}.smile-like span{border-left:1px solid #c5cbbc;padding-left:8px;font-variant-numeric:tabular-nums}
+.smile-like-hint{font-size:13px;color:#64735e;margin:12px 0}.smile-like-error{padding:12px;background:#fff1e5;color:#944623;border-radius:8px;font-size:13px}
+.smile-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#68745e;font-size:11px;margin-top:15px}
+.smile-card-meta span{border:1px solid #c2cdb7;border-radius:20px;padding:2px 9px}.smile-card-body h3{margin-top:10px}
+.smile-card-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px}.smile-feature-caption .smile-like{margin-top:12px}
+.smile-feature-caption .smile-like span{display:inline;font-size:12px}
+.smile-toolbar{flex-wrap:wrap}.smile-toolbar .smile-search{min-width:180px}
+@media(max-width:480px){.smile-toolbar label{width:100%}.smile-sample-banner{padding:12px 16px}}

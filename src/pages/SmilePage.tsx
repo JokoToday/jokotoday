@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUpRight, Play, Search, Smile, X } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Play, Search, Smile, X, Heart } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { Container } from '../platform/design-system';
-import { getSmileEpisodes, safeSmileUrl, smileText, smileVideoSource, type SmileEpisode } from '../lib/smileCatalog';
+import { filterSmileEpisodes, getSmileEpisodes, safeSmileUrl, smileText, smileVideoSource, type SmileEpisode } from '../lib/smileCatalog';
+import { useAuth } from '../context/AuthContext';
+import { AuthModal } from '../components/AuthModal';
+import { getSmileLikeCounts, getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
+import { smileSamples, sampleLikeCounts } from '../lib/smileSamples';
 import './smile.css';
+import './smile-extra.css';
 
+const extraWords = {
+  en: { likes: 'Most liked', like: 'Like', liked: 'Liked', allDates: 'All dates', month: 'Episode month', sample: 'Sample catalog — illustrative titles, dates and likes. No finished videos are published here. Demo likes are not saved to your account.', preview: 'Sample artwork', likeError: 'Likes are temporarily unavailable. Please try again.', likeHint: 'Like an episode to save it to My Favorites.', samples: 'View sample catalog', live: 'View published catalog', sampleTag: 'Sample', date: 'Date', saved: 'Saved to My Favorites', removed: 'Removed from My Favorites', demoLiked: 'Demo like added', demoRemoved: 'Demo like removed' },
+  th: { likes: 'ถูกใจมากที่สุด', like: 'ถูกใจ', liked: 'ถูกใจแล้ว', allDates: 'ทุกวันที่', month: 'เดือนของตอน', sample: 'แคตตาล็อกตัวอย่าง — ชื่อ วันที่ และยอดถูกใจเป็นเพียงตัวอย่าง ยังไม่มีวิดีโอที่เสร็จสมบูรณ์ การกดถูกใจตัวอย่างจะไม่บันทึกในบัญชี', preview: 'ภาพตัวอย่าง', likeError: 'ใช้การกดถูกใจไม่ได้ชั่วคราว กรุณาลองอีกครั้ง', likeHint: 'กดถูกใจเพื่อบันทึกตอนนี้ในรายการโปรด', samples: 'ดูแคตตาล็อกตัวอย่าง', live: 'ดูตอนที่เผยแพร่แล้ว', sampleTag: 'ตัวอย่าง', date: 'วันที่', saved: 'บันทึกในรายการโปรดแล้ว', removed: 'นำออกจากรายการโปรดแล้ว', demoLiked: 'เพิ่มการถูกใจตัวอย่างแล้ว', demoRemoved: 'นำการถูกใจตัวอย่างออกแล้ว' },
+  zh: { likes: '最多点赞', like: '点赞', liked: '已点赞', allDates: '所有日期', month: '短片月份', sample: '示例目录：标题、日期和点赞数均为展示示例，尚无成片。示例点赞不会保存到您的账户。', preview: '示例插画', likeError: '暂时无法点赞，请重试。', likeHint: '点赞即可将短片保存到我的收藏。', samples: '查看示例目录', live: '查看已发布短片', sampleTag: '示例', date: '日期', saved: '已保存到我的收藏', removed: '已从我的收藏中移除', demoLiked: '已添加示例点赞', demoRemoved: '已取消示例点赞' },
+};
 const words = {
   en: {
     eyebrow: 'A little joy, from JOKO', title: 'A little moment of happy.',
@@ -59,6 +69,20 @@ function CookieSketch() {
 export default function SmilePage() {
   const { language } = useLanguage();
   const copy = words[language];
+  const extra = extraWords[language];
+  const { user } = useAuth();
+  const userId = user?.id;
+  const sampleMode = new URLSearchParams(window.location.search).get('sample') === '1';
+  const [showAuth, setShowAuth] = useState(false);
+  const [month, setMonth] = useState('');
+  const [counts, setCounts] = useState<Record<string, number>>(sampleMode ? sampleLikeCounts : {});
+  const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [likesReady, setLikesReady] = useState(sampleMode);
+  const [likeError, setLikeError] = useState(false);
+  const [likeNotice, setLikeNotice] = useState('');
+  const [pendingIds, setPendingIds] = useState<string[]>([]);
+  const accountVersion = useRef(0);
+  const pendingLikes = useRef(new Set<string>());
   const [episodes, setEpisodes] = useState<SmileEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -72,11 +96,45 @@ export default function SmilePage() {
 
   useEffect(() => {
     let active = true; setLoading(true); setFailed(false);
-    getSmileEpisodes().then(items => { if (active) setEpisodes(items); })
+    (sampleMode ? Promise.resolve(smileSamples) : getSmileEpisodes()).then(items => { if (active) setEpisodes(items); })
       .catch(() => { if (active) setFailed(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [attempt]);
+  }, [attempt, sampleMode]);
+  useEffect(() => {
+    const version = ++accountVersion.current;
+    if (sampleMode) return;
+    setLikedIds([]); setLikesReady(false); setLikeError(false); setLikeNotice('');
+    Promise.all([getSmileLikeCounts(), userId ? getLikedSmileIds(userId) : Promise.resolve([])])
+      .then(([totals, ids]) => { if (version === accountVersion.current) { setCounts(totals); setLikedIds(ids); setLikesReady(true); } })
+      .catch(() => { if (version === accountVersion.current) setLikeError(true); });
+    return () => { accountVersion.current = version + 1; };
+  }, [userId, sampleMode, attempt]);
+  const toggleLike = async (episode: SmileEpisode) => {
+    if (!sampleMode && !user) { setShowAuth(true); return; }
+    if (pendingLikes.current.has(episode.id)) return;
+    const version = accountVersion.current;
+    const next = !likedIds.includes(episode.id);
+    pendingLikes.current.add(episode.id); setPendingIds([...pendingLikes.current]); setLikeError(false);
+    try {
+      if (!sampleMode) await setSmileLike(user!.id, episode.id, next);
+      if (version !== accountVersion.current) return;
+      setLikedIds(ids => next ? [...ids, episode.id] : ids.filter(id => id !== episode.id));
+      setCounts(previous => ({...previous, [episode.id]: Math.max(0, (previous[episode.id] || 0) + (next ? 1 : -1))}));
+      setLikeNotice(sampleMode ? (next ? extra.demoLiked : extra.demoRemoved) : (next ? extra.saved : extra.removed));
+    } catch { if (version === accountVersion.current) setLikeError(true); }
+    finally { pendingLikes.current.delete(episode.id); setPendingIds([...pendingLikes.current]); }
+  };
+  const likeButton = (episode: SmileEpisode) => <button type="button" className="smile-like"
+    aria-pressed={likedIds.includes(episode.id)} disabled={pendingIds.includes(episode.id) || (!sampleMode && !!user && !likesReady)}
+    aria-label={(likedIds.includes(episode.id) ? extra.liked : extra.like) + ': ' + smileText(episode, language).title}
+    onClick={() => void toggleLike(episode)}>
+    <Heart size={17} fill={likedIds.includes(episode.id) ? 'currentColor' : 'none'}/>
+    {likedIds.includes(episode.id) ? extra.liked : extra.like}
+    <span>{likesReady ? (counts[episode.id] || 0).toLocaleString() : '—'}</span>
+  </button>;
+  const dateLabel = (date: string) => new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB', {year:'numeric', month:'short', day:'numeric', timeZone:'UTC'}).format(new Date(date));
+
   useEffect(() => {
     if (selected) { setVideoFailed(false); dialog.current?.showModal(); }
   }, [selected]);
@@ -85,14 +143,14 @@ export default function SmilePage() {
     return () => { document.title = before; };
   }, [copy.titleLabel]);
 
-  const visible = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    const result = episodes.filter(episode => {
-      const text = smileText(episode, language);
-      return (text.title + ' ' + text.caption).toLocaleLowerCase().includes(query);
-    });
-    return [...result].sort((a, b) => sort === 'oldest' ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at));
-  }, [episodes, search, sort, language]);
+  const visible = useMemo(() => filterSmileEpisodes(episodes, {language, search, month, sort, counts}), [episodes, search, month, sort, language, counts]);
+  const months = [...new Set(episodes.map(episode => episode.created_at.slice(0, 7)))].sort().reverse();
+  useEffect(() => {
+    if (sampleMode) return;
+    const id = new URLSearchParams(window.location.search).get('episode');
+    const episode = episodes.find(item => item.id === id);
+    if (episode) setSelected(episode);
+  }, [episodes, sampleMode]);
   const latest = episodes[0];
   const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element; setSelected(episode); };
   const close = () => { dialog.current?.close(); setSelected(null); trigger.current?.focus(); };
@@ -100,6 +158,7 @@ export default function SmilePage() {
   const selectedText = selected ? smileText(selected, language) : null;
 
   const watchLink = (episode: SmileEpisode, hero = false) => {
+    if (sampleMode) return <span className="smile-card-link">{extra.preview}</span>;
     const video = smileVideoSource(episode.media_url);
     const text = smileText(episode, language);
     return video?.kind === 'external'
@@ -108,6 +167,7 @@ export default function SmilePage() {
   };
 
   return <div className="smile-page">
+    {sampleMode && <div className="smile-sample-banner" role="note">{extra.sample} <a href="/smile">{extra.live} →</a></div>}
     <section className="smile-hero" aria-labelledby="smile-heading">
       <Container width="wide">
         <div className="smile-hero-grid">
@@ -129,7 +189,7 @@ export default function SmilePage() {
                 </> : <div className="smile-screen-empty"><CookieSketch/><span className="smile-tiny-stars" aria-hidden="true">✦</span><p>{copy.emptyTitle}</p></div>}
             </div>
             <div className="smile-feature-caption">
-              <span className="smile-reel-dot" aria-hidden="true"/><div><p>{latest ? smileText(latest, language).title : copy.short}</p><span>{latest ? smileText(latest, language).caption : copy.empty}</span></div>
+              <span className="smile-reel-dot" aria-hidden="true"/><div><p>{latest ? smileText(latest, language).title : copy.short}</p><span>{latest ? smileText(latest, language).caption : copy.empty}</span>{latest && likeButton(latest)}</div>
             </div>
           </div>
         </div>
@@ -142,24 +202,29 @@ export default function SmilePage() {
         <div className="smile-archive-top"><div><p className="smile-eyebrow">JOKO SMILE</p><h2 id="smile-archive-heading">{copy.archive}</h2><p>{copy.archiveIntro}</p></div>
           {!loading && !failed && <span className="smile-count">{episodes.length} {copy.episodes}</span>}
         </div>
+        <p className="smile-like-hint">{extra.likeHint}</p>
+        {likeError && <p className="smile-like-error" role="alert">{extra.likeError} <button className="smile-retry" onClick={() => setAttempt(value => value + 1)}>{copy.retry}</button></p>}
+        <p className="sr-only" role="status">{likeNotice}</p>
         {episodes.length > 0 && <div className="smile-toolbar">
           <label className="smile-search"><Search size={18}/><span className="sr-only">{copy.search}</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={copy.search}/></label>
-          <label><span className="sr-only">{copy.newest} / {copy.oldest}</span><select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">{copy.newest}</option><option value="oldest">{copy.oldest}</option></select></label>
+          <label><span className="sr-only">{extra.month}</span><select aria-label={extra.month} value={month} onChange={event => setMonth(event.target.value)}><option value="">{extra.allDates}</option>{months.map(value => <option key={value} value={value}>{new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB', {year:'numeric', month:'long',timeZone:'UTC'}).format(new Date(value + '-01T12:00:00Z'))}</option>)}</select></label>
+          <label><span className="sr-only">{copy.newest} / {copy.oldest}</span><select value={sort} onChange={event => setSort(event.target.value)}><option value="newest">{copy.newest}</option><option value="oldest">{copy.oldest}</option><option value="likes" disabled={!likesReady}>{extra.likes}</option></select></label>
         </div>}
         {!loading && !failed && (episodes.length === 0
-          ? <div className="smile-archive-empty"><span className="smile-empty-mark" aria-hidden="true">:)</span><h3>{copy.archiveEmpty}</h3><p>{copy.archiveEmptyBody}</p></div>
-          : visible.length === 0 ? <div className="smile-archive-empty"><h3>{copy.noResults}</h3><button type="button" className="smile-retry" onClick={() => setSearch('')}>{copy.clear}</button></div>
+          ? <div className="smile-archive-empty"><span className="smile-empty-mark" aria-hidden="true">:)</span><h3>{copy.archiveEmpty}</h3><p>{copy.archiveEmptyBody}</p><a className="smile-retry" href="/smile?sample=1">{extra.samples} →</a></div>
+          : visible.length === 0 ? <div className="smile-archive-empty"><h3>{copy.noResults}</h3><button type="button" className="smile-retry" onClick={() => { setSearch(''); setMonth(''); }}>{copy.clear}</button></div>
           : <div className="smile-grid">{visible.map(episode => {
             const text = smileText(episode, language); const poster = safeSmileUrl(episode.thumbnail_url);
             return <article key={episode.id} className="smile-card">
               <div className="smile-card-image">{poster ? <img src={poster} alt={text.alt} loading="lazy"/> : <CookieSketch/>}<span className="smile-card-badge"><Play size={12} fill="currentColor"/>JOKO SMILE</span></div>
-              <div className="smile-card-body"><h3>{text.title}</h3>{text.caption && <p>{text.caption}</p>}{watchLink(episode)}</div>
+              <div className="smile-card-body"><div className="smile-card-meta"><time dateTime={episode.created_at}>{dateLabel(episode.created_at)}</time>{sampleMode && <span>{extra.sampleTag}</span>}</div><h3>{text.title}</h3>{text.caption && <p>{text.caption}</p>}<div className="smile-card-actions">{watchLink(episode)}{likeButton(episode)}</div></div>
             </article>;
           })}</div>)}
         <p className="smile-signoff">{copy.footer} <span aria-hidden="true">⌣</span></p>
       </Container>
     </section>
 
+    <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)}/>
     <dialog ref={dialog} className="smile-dialog" onClose={() => { setSelected(null); trigger.current?.focus(); }} onClick={event => { if (event.target === event.currentTarget) close(); }}>
       {selected && <div className="smile-player">
         <div className="smile-player-heading"><h2>{selectedText?.title}</h2><button type="button" onClick={close} aria-label={copy.close} autoFocus><X size={22}/></button></div>

@@ -32,3 +32,15 @@ const {validateBuilderDocument}=await bundle('src/platform/builder/validation.ts
 const result=validateBuilderDocument({schemaVersion:1,registryVersion:1,pageKey:'home',branding:{topMenu:upgraded},sections:[]});
 assert.deepEqual(result.ok?[]:result.issues.filter(issue=>issue.path.startsWith('branding.topMenu')),[]);
 console.log('JOKO SMILE passed: published-only/site/category filtering, localization, URL/embed safety, read failures, legacy menu preservation and admin menu validation.');
+
+const samples = await bundle('src/lib/smileSamples.ts');
+assert.equal(samples.smileSamples.length, 6);
+assert.ok(samples.smileSamples.every(item => !item.is_published && !item.media_url && item.id.startsWith('sample-')));
+const options = {language:'en', search:'', month:'', sort:'newest', counts:samples.sampleLikeCounts};
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, options)[0].id, 'sample-cookie');
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, sort:'oldest'})[0].id, 'sample-crumb');
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, sort:'likes'})[0].id, 'sample-balloon');
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, month:'2026-09'}).length, 3);
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, month:'2026-10', search:'cookie'}).length, 1);
+assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, month:'2026-09', search:'cookie'}).length, 0);
+console.log('Sample isolation and combined search/month/date/likes sorting passed.');

@@ -28,3 +28,15 @@ JOKO SMILE is available in Explore on desktop/mobile and the legacy header. Exis
 Run npm run audit:smile, npm run typecheck, npm run build and npm run audit:tailwind-compat. The focused catalog/navigation checks are also part of CI.
 
 Production publication is a separate merge/deployment decision.
+
+
+## Sample catalog and likes (October 30)
+- Open `/smile?sample=1` for six clearly labeled design examples. Titles, dates, artwork and counts are mock data, never written to Supabase. No fake finished videos. Demo hearts are session-only and never go to My Favorites.
+- Date month filter, newest/oldest date sort and most-liked sort apply together with search. Dates currently use CMS created_at (publication-date editing is not added).
+- Published episode hearts require sign-in, persist in smile_episode_likes, and appear under My Favorites → JOKO SMILE. Unliking removes the favorite. Only currently published JOKO SMILE videos are displayed.
+- Apply the reviewed migration before enabling persistent likes. If absent, totals display a dash and a retryable error; no successful save is claimed.
+- Public totals contain only episode IDs and counts. Individual likes are owner-only under RLS, with one like per user/episode. No UPDATE grant. Insert checks the published episode scope. Aggregate definer is in a non-exposed schema with a fixed search_path and no identity output.
+- No production migration has been applied by this change. Before production release: test database migration, two-account RLS/duplicate/unpublish checks, authenticated like → refresh → My Favorites → unlike roundtrip.
+- Rollback frontend first; retain likes table for recovery. No existing product/recipe/creator favorites schema or rows are changed.
+
+Validation: migration and two-account RLS checks passed in a disposable local Postgres database (removed after test). Re-run with `bash scripts/test-smile-likes-rls.sh`. No hosted test or production schema changed. Authenticated browser roundtrip remains a release check.
