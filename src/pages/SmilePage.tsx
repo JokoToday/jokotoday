@@ -17,7 +17,7 @@ const extraWords = {
 };
 const words = {
   en: {
-    eyebrow: 'A little joy, from JOKO', title: 'A little moment of happy.',
+    eyebrow: 'A little joy, from JOKO', title: 'A little moment.\nA little smile.',
     intro: 'Small adventures. Unexpected turns. A smile worth taking a break for.',
     latest: 'Your next little smile', watch: 'Watch episode', browse: 'Explore the episodes',
     archive: 'The smile collection', archiveIntro: 'A few seconds away from the everyday. Pick a little story and press play.',
@@ -30,7 +30,7 @@ const words = {
     titleLabel: 'JOKO SMILE — short animated stories', footer: 'Little films. Lovely little pauses.', loading: 'Finding a little smile…',
   },
   th: {
-    eyebrow: 'ความสุขเล็ก ๆ จาก JOKO', title: 'ช่วงเวลาเล็ก ๆ ที่ทำให้ยิ้ม',
+    eyebrow: 'ความสุขเล็ก ๆ จาก JOKO', title: 'ช่วงเวลาเล็ก ๆ\nรอยยิ้มเล็ก ๆ',
     intro: 'การผจญภัยเล็ก ๆ เรื่องพลิกผันน่ารัก ๆ และรอยยิ้มที่คุ้มค่ากับการพักสักครู่',
     latest: 'รอยยิ้มเล็ก ๆ ถัดไปของคุณ', watch: 'ดูตอนนี้', browse: 'ดูทุกตอน',
     archive: 'คอลเลกชันรอยยิ้ม', archiveIntro: 'พักจากวันธรรมดาสักไม่กี่วินาที เลือกเรื่องเล็ก ๆ แล้วกดเล่น',
@@ -43,7 +43,7 @@ const words = {
     titleLabel: 'JOKO SMILE — เรื่องสั้นแอนิเมชัน', footer: 'หนังสั้น ๆ กับช่วงพักน่ารัก ๆ', loading: 'กำลังหารอยยิ้มเล็ก ๆ…',
   },
   zh: {
-    eyebrow: '来自 JOKO 的一点小快乐', title: '留一点时间给微笑。',
+    eyebrow: '来自 JOKO 的一点小快乐', title: '片刻小憩。\n一点微笑。',
     intro: '小小的冒险，意想不到的转折，值得停下来享受的一个微笑。',
     latest: '下一个小小微笑', watch: '观看本集', browse: '浏览全部短片',
     archive: '微笑收藏夹', archiveIntro: '暂别日常几秒钟，选一个小故事，按下播放。',
@@ -174,7 +174,7 @@ export default function SmilePage() {
           <div className="smile-intro">
             <p className="smile-eyebrow"><span aria-hidden="true"/> {copy.eyebrow}</p>
             <h1 id="smile-heading"><img className="smile-logo" src="/assets/smile/joko-smile-logo.webp" width="900" height="592" alt="JOKO SMILE"/></h1>
-            <h2>{copy.title}</h2>
+            <h2>{copy.title.split('\n').map(line => <span key={line} className="block">{line}</span>)}</h2>
             <p className="smile-description">{copy.intro}</p>
             <a href="#smile-episodes" className="smile-browse">{copy.browse}<ArrowDown size={17}/></a>
           </div>
