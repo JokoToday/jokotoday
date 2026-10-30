@@ -178,15 +178,18 @@ export default function SmilePage() {
             <p className="smile-description">{copy.intro}</p>
             <a href="#smile-episodes" className="smile-browse">{copy.browse}<ArrowDown size={17}/></a>
           </div>
-          <div className="smile-feature">
+          <div className="smile-feature smile-feature-film">
+            <div className="smile-film">
+            <img className="smile-film-art" src="/assets/smile/film-frame-vintage.webp" width="1672" height="941" alt="" aria-hidden="true"/>
             <span className="smile-feature-note">{copy.latest}</span>
             <div className="smile-screen">
               {loading ? <p role="status" className="smile-screen-message">{copy.loading}</p>
                 : failed ? <div className="smile-screen-message" role="alert"><p>{copy.loadError}</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="smile-retry">{copy.retry}</button></div>
                 : latest ? <>
-                  {safeSmileUrl(latest.thumbnail_url) ? <img className="smile-poster" src={safeSmileUrl(latest.thumbnail_url)!} alt={smileText(latest, language).alt}/> : <CookieSketch/>}
+                  {!sampleMode && safeSmileUrl(latest.thumbnail_url) ? <img className="smile-poster" src={safeSmileUrl(latest.thumbnail_url)!} alt={smileText(latest, language).alt}/> : <CookieSketch/>}
                   <div className="smile-screen-overlay">{watchLink(latest, true)}</div>
                 </> : <div className="smile-screen-empty"><CookieSketch/><span className="smile-tiny-stars" aria-hidden="true">✦</span><p>{copy.emptyTitle}</p></div>}
+            </div>
             </div>
             <div className="smile-feature-caption">
               <span className="smile-reel-dot" aria-hidden="true"/><div><p>{latest ? smileText(latest, language).title : copy.short}</p><span>{latest ? smileText(latest, language).caption : copy.empty}</span>{latest && likeButton(latest)}</div>

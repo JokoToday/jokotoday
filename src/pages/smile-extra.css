@@ -9,3 +9,17 @@
 .smile-feature-caption .smile-like span{display:inline;font-size:12px}
 .smile-toolbar{flex-wrap:wrap}.smile-toolbar .smile-search{min-width:180px}
 @media(max-width:480px){.smile-toolbar label{width:100%}.smile-sample-banner{padding:12px 16px}}
+
+/* The approved vintage artwork surrounds a real, independently interactive screen. */
+.smile-feature-film{padding-top:0}.smile-feature-film:before{display:none}
+.smile-film{position:relative;aspect-ratio:1672/941;isolation:isolate}
+.smile-film-art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
+.smile-film .smile-feature-note{top:6.5%;left:11%;width:19.5%;height:8%;padding:0;background:transparent;color:#633c1e;box-shadow:none;transform:rotate(-6deg);display:flex;align-items:center;justify-content:center;text-align:center;font-family:Georgia,serif;font-size:clamp(8px,1vw,13px);line-height:1.1;font-weight:600}
+.smile-film .smile-screen{position:absolute;inset:17.5% 8% 22%;aspect-ratio:auto;border:0;border-radius:12px;background:transparent;box-shadow:none}
+.smile-film .smile-screen:after{display:none}.smile-film .smile-screen-overlay{background:transparent}
+.smile-film .smile-cookie{width:36%;max-width:150px}.smile-film .smile-screen-empty{padding:10px}.smile-film .smile-screen-empty .smile-cookie{width:105px}
+.smile-film .smile-screen-empty p{font-size:clamp(12px,1.4vw,19px);margin:0}.smile-film .smile-tiny-stars{display:none}
+.smile-film .smile-screen-message{font-size:12px;padding:8px;line-height:1.4}
+.smile-film .smile-poster{background:transparent;object-fit:contain}
+.smile-feature-film .smile-feature-caption{padding-top:5px}
+@media(max-width:800px){.smile-film .smile-feature-note{font-size:clamp(8px,1.7vw,13px)}.smile-film .smile-screen-empty p{font-size:14px}}
