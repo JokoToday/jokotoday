@@ -11,9 +11,9 @@ import './smile.css';
 import './smile-extra.css';
 
 const extraWords = {
-  en: { likes: 'Most liked', like: 'Like', liked: 'Liked', allDates: 'All dates', month: 'Episode month', sample: 'Sample catalog — illustrative titles, dates and likes. No finished videos are published here. Demo likes are not saved to your account.', preview: 'Sample artwork', likeError: 'Likes are temporarily unavailable. Please try again.', likeHint: 'Like an episode to save it to My Favorites.', samples: 'View sample catalog', live: 'View published catalog', sampleTag: 'Sample', date: 'Date', saved: 'Saved to My Favorites', removed: 'Removed from My Favorites', demoLiked: 'Demo like added', demoRemoved: 'Demo like removed' },
-  th: { likes: 'ถูกใจมากที่สุด', like: 'ถูกใจ', liked: 'ถูกใจแล้ว', allDates: 'ทุกวันที่', month: 'เดือนของตอน', sample: 'แคตตาล็อกตัวอย่าง — ชื่อ วันที่ และยอดถูกใจเป็นเพียงตัวอย่าง ยังไม่มีวิดีโอที่เสร็จสมบูรณ์ การกดถูกใจตัวอย่างจะไม่บันทึกในบัญชี', preview: 'ภาพตัวอย่าง', likeError: 'ใช้การกดถูกใจไม่ได้ชั่วคราว กรุณาลองอีกครั้ง', likeHint: 'กดถูกใจเพื่อบันทึกตอนนี้ในรายการโปรด', samples: 'ดูแคตตาล็อกตัวอย่าง', live: 'ดูตอนที่เผยแพร่แล้ว', sampleTag: 'ตัวอย่าง', date: 'วันที่', saved: 'บันทึกในรายการโปรดแล้ว', removed: 'นำออกจากรายการโปรดแล้ว', demoLiked: 'เพิ่มการถูกใจตัวอย่างแล้ว', demoRemoved: 'นำการถูกใจตัวอย่างออกแล้ว' },
-  zh: { likes: '最多点赞', like: '点赞', liked: '已点赞', allDates: '所有日期', month: '短片月份', sample: '示例目录：标题、日期和点赞数均为展示示例，尚无成片。示例点赞不会保存到您的账户。', preview: '示例插画', likeError: '暂时无法点赞，请重试。', likeHint: '点赞即可将短片保存到我的收藏。', samples: '查看示例目录', live: '查看已发布短片', sampleTag: '示例', date: '日期', saved: '已保存到我的收藏', removed: '已从我的收藏中移除', demoLiked: '已添加示例点赞', demoRemoved: '已取消示例点赞' },
+  en: { demoHint: 'Try the hearts below. Demo likes reset when you refresh.', likes: 'Most liked', like: 'Like', liked: 'Liked', allDates: 'All dates', month: 'Episode month', sample: 'Sample catalog — illustrative titles, dates and likes. No finished videos are published here. Demo likes are not saved to your account.', preview: 'Sample artwork', likeError: 'Likes are temporarily unavailable. Please try again.', likeHint: 'Like an episode to save it to My Favorites.', samples: 'View sample catalog', live: 'View published catalog', sampleTag: 'Sample', date: 'Date', saved: 'Saved to My Favorites', removed: 'Removed from My Favorites', demoLiked: 'Demo like added', demoRemoved: 'Demo like removed' },
+  th: { demoHint: 'ลองกดหัวใจด้านล่าง การถูกใจตัวอย่างจะรีเซ็ตเมื่อรีเฟรช', likes: 'ถูกใจมากที่สุด', like: 'ถูกใจ', liked: 'ถูกใจแล้ว', allDates: 'ทุกวันที่', month: 'เดือนของตอน', sample: 'แคตตาล็อกตัวอย่าง — ชื่อ วันที่ และยอดถูกใจเป็นเพียงตัวอย่าง ยังไม่มีวิดีโอที่เสร็จสมบูรณ์ การกดถูกใจตัวอย่างจะไม่บันทึกในบัญชี', preview: 'ภาพตัวอย่าง', likeError: 'ใช้การกดถูกใจไม่ได้ชั่วคราว กรุณาลองอีกครั้ง', likeHint: 'กดถูกใจเพื่อบันทึกตอนนี้ในรายการโปรด', samples: 'ดูแคตตาล็อกตัวอย่าง', live: 'ดูตอนที่เผยแพร่แล้ว', sampleTag: 'ตัวอย่าง', date: 'วันที่', saved: 'บันทึกในรายการโปรดแล้ว', removed: 'นำออกจากรายการโปรดแล้ว', demoLiked: 'เพิ่มการถูกใจตัวอย่างแล้ว', demoRemoved: 'นำการถูกใจตัวอย่างออกแล้ว' },
+  zh: { demoHint: '试试下方的爱心。刷新后示例点赞将重置。', likes: '最多点赞', like: '点赞', liked: '已点赞', allDates: '所有日期', month: '短片月份', sample: '示例目录：标题、日期和点赞数均为展示示例，尚无成片。示例点赞不会保存到您的账户。', preview: '示例插画', likeError: '暂时无法点赞，请重试。', likeHint: '点赞即可将短片保存到我的收藏。', samples: '查看示例目录', live: '查看已发布短片', sampleTag: '示例', date: '日期', saved: '已保存到我的收藏', removed: '已从我的收藏中移除', demoLiked: '已添加示例点赞', demoRemoved: '已取消示例点赞' },
 };
 const words = {
   en: {
@@ -200,9 +200,9 @@ export default function SmilePage() {
     <section id="smile-episodes" className="smile-archive" aria-labelledby="smile-archive-heading">
       <Container width="wide">
         <div className="smile-archive-top"><div><p className="smile-eyebrow">JOKO SMILE</p><h2 id="smile-archive-heading">{copy.archive}</h2><p>{copy.archiveIntro}</p></div>
-          {!loading && !failed && <span className="smile-count">{episodes.length} {copy.episodes}</span>}
+          {!loading && !failed && <span className="smile-count">{visible.length !== episodes.length ? visible.length + " / " : ""}{episodes.length} {copy.episodes}</span>}
         </div>
-        <p className="smile-like-hint">{extra.likeHint}</p>
+        <p className="smile-like-hint">{sampleMode ? extra.demoHint : extra.likeHint}</p>
         {likeError && <p className="smile-like-error" role="alert">{extra.likeError} <button className="smile-retry" onClick={() => setAttempt(value => value + 1)}>{copy.retry}</button></p>}
         <p className="sr-only" role="status">{likeNotice}</p>
         {episodes.length > 0 && <div className="smile-toolbar">
