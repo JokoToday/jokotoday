@@ -14,6 +14,7 @@ import JokoShell from './app/joko-today/shell/JokoShell';
 import type { JokoShellSection } from './app/joko-today/shell/JokoShellHeader';
 import { getNotebookPath, parseNotebookPath, type NotebookRouteTarget } from './platform/notebook';
 
+const SmilePage = lazy(() => import('./pages/SmilePage'));
 const MakersPage = lazy(() => import('./pages/MakersPage'));
 const DiyPage = lazy(() => import('./app/joko-today/diy/DiyPageWithContent'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -67,6 +68,7 @@ const PRIMARY_PAGE_PATHS: Record<string, string> = {
   'what-people-say': '/what-people-say',
   'how-it-works': '/how-it-works',
   diy: '/diy',
+  smile: '/smile',
   terms: '/terms',
   privacy: '/privacy',
 };
@@ -495,6 +497,8 @@ function AppContent() {
         return <WhatPeopleSayPage onNavigate={handleNavigate} />;
       case 'how-it-works':
         return <HowItWorksPage onNavigate={handleNavigate} />;
+      case 'smile':
+        return <SmilePage />;
       case 'diy':
         return <DiyPage onNavigate={handleNavigate} />;
       case 'terms':
@@ -540,10 +544,10 @@ function AppContent() {
       && homepageRendererMode === 'experience'
       && !homepageExperienceFailed
     );
-  const isJokoShellPage = currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'collections' || currentPage === 'terms' || currentPage === 'privacy';
+  const isJokoShellPage = currentPage === 'smile' || currentPage === 'diy' || currentPage === 'store' || currentPage === 'makers' || currentPage === 'maker-detail' || isHomepageExperience || currentPage === 'meet-founders' || currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'specials' || currentPage === 'checkout' || currentPage === 'our-story' || currentPage === 'gallery' || currentPage === 'what-people-say' || currentPage === 'profile' || currentPage === 'orders' || currentPage === 'my-qr' || currentPage === 'favorites' || currentPage === 'collections' || currentPage === 'terms' || currentPage === 'privacy';
   const curiosityNotebookRoute = window.location.pathname.startsWith('/notebook/curiosities')
     || window.location.pathname.startsWith('/notebook/questions');
-  const jokoShellSection: JokoShellSection | null = currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
+  const jokoShellSection: JokoShellSection | null = currentPage === 'smile' ? 'smile' : currentPage === 'diy' ? 'diy' : curiosityNotebookRoute
     ? 'curiosities'
     : currentPage === 'makers' || currentPage === 'maker-detail' ? 'makers'
     : currentPage === 'products' || currentPage === 'product-detail' || currentPage === 'checkout'

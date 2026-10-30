@@ -84,7 +84,7 @@ export interface IllustratedCrewConfig {
 
 export type HomeAboutCardKey = 'bakery' | 'people' | 'story';
 
-export type TopMenuKey = 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy';
+export type TopMenuKey = 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy' | 'smile';
 export interface TopMenuItem {
   key: TopMenuKey;
   visible: boolean;

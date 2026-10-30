@@ -33,6 +33,7 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
     { label: copy.baked, value: 'products-bakery' },
     { label: copy.other, value: 'products-non-bakery' },
     { label: language === 'th' ? 'ผู้ผลิต' : language === 'zh' ? '制作人' : 'Makers', value: 'makers' },
+    { label: 'JOKO SMILE', value: 'smile' },
     { label: copy.how, value: 'how-it-works' },
     { label: copy.pickup, value: 'pickup' },
     { label: copy.about, value: 'about' },

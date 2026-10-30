@@ -47,9 +47,11 @@ function nullable(value: string) {
   return trimmed || null;
 }
 
-export function GalleryManagement() {
+export function GalleryManagement({ collection = 'gallery' }: { collection?: 'gallery' | 'smile' }) {
+  const smileMode = collection === 'smile';
+  const makeDraft = (): GalleryItemDraft => ({ ...emptyDraft(), ...(smileMode ? { category: 'joko-smile', media_type: 'video' as const } : {}) });
   const [items, setItems] = useState<GalleryItem[]>([]);
-  const [draft, setDraft] = useState<GalleryItemDraft>(emptyDraft);
+  const [draft, setDraft] = useState<GalleryItemDraft>(makeDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,7 +69,7 @@ export function GalleryManagement() {
     setLoading(true);
     setError('');
     try {
-      setItems(await adminListGalleryItems());
+      setItems((await adminListGalleryItems()).filter(item => smileMode ? item.category === 'joko-smile' : item.category !== 'joko-smile'));
     } catch (err) {
       console.error('Gallery Admin load failed', err);
       setError('Could not load Gallery items. Apply the latest Supabase migration first if this is a new deployment.');
@@ -82,7 +84,7 @@ export function GalleryManagement() {
 
   const reset = () => {
     setEditingId(null);
-    setDraft(emptyDraft());
+    setDraft(makeDraft());
     setError('');
     setNotice('');
     setUploadProgress(0);
@@ -121,13 +123,13 @@ export function GalleryManagement() {
     setError('');
     try {
       const ticket = await uploadGalleryImage({ file, gallerySlot: draft.category || 'around-joko' }, setUploadProgress);
-      setDraft((current) => ({
+      setDraft((current) => smileMode ? { ...current, thumbnail_url: ticket.publicUrl } : ({
         ...current,
         media_type: 'image',
         media_url: ticket.publicUrl,
         thumbnail_url: current.thumbnail_url || ticket.publicUrl,
       }));
-      setNotice('Image uploaded. Save the item to publish or keep it as a draft.');
+      setNotice(smileMode ? 'Poster uploaded. Save the episode to keep this change.' : 'Image uploaded. Save the item to publish or keep it as a draft.');
     } catch (err) {
       console.error('Gallery upload failed', err);
       setError(err instanceof Error ? err.message : 'Could not upload image.');
@@ -148,9 +150,10 @@ export function GalleryManagement() {
     try {
       const normalized: GalleryItemDraft = {
         ...draft,
+        ...(smileMode ? { media_type: 'video' as const, show_on_homepage: false } : {}),
         media_url: draft.media_url.trim(),
         thumbnail_url: nullable(draft.thumbnail_url || ''),
-        category: draft.category.trim() || 'around-joko',
+        category: smileMode ? 'joko-smile' : draft.category.trim() || 'around-joko',
         title_en: nullable(draft.title_en || ''),
         title_th: nullable(draft.title_th || ''),
         title_zh: nullable(draft.title_zh || ''),
@@ -165,7 +168,7 @@ export function GalleryManagement() {
       await adminSaveGalleryItem(normalized, editingId || undefined);
       await load();
       reset();
-      setNotice('Gallery item saved.');
+      setNotice(smileMode ? 'JOKO SMILE episode saved.' : 'Gallery item saved.');
     } catch (err) {
       console.error('Gallery save failed', err);
       setError(err instanceof Error ? err.message : 'Could not save Gallery item.');
@@ -193,9 +196,9 @@ export function GalleryManagement() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="joko-admin-eyebrow">{editingId ? 'Edit item' : 'New item'}</p>
-            <h2 className="joko-admin-title mt-1 text-2xl font-semibold">Gallery media</h2>
+            <h2 className="joko-admin-title mt-1 text-2xl font-semibold">{smileMode ? 'JOKO SMILE episodes' : 'Gallery media'}</h2>
             <p className="mt-2 text-sm leading-6 text-[#303532]/62">
-              Upload real JOKO photos or add a hosted video URL. Homepage selection is controlled independently from the full Gallery page.
+              {smileMode ? 'Add a finished short film and poster. Use a direct MP4/WebM or YouTube URL. Put the episode code in its title, e.g. JS 001 — That’s How the Cookie Rolls. Add EN/TH/ZH titles and descriptions; publish only when approved. Lowest sort order is featured first; equal values show newest first.' : 'Upload real JOKO photos or add a hosted video URL. Homepage selection is controlled independently from the full Gallery page.'}
             </p>
           </div>
           {editingId && (
@@ -210,6 +213,7 @@ export function GalleryManagement() {
             <label className="text-sm font-medium text-[#303532]">
               Media type
               <select
+                disabled={smileMode}
                 value={draft.media_type}
                 onChange={(event) => setDraft((current) => ({ ...current, media_type: event.target.value as GalleryMediaType }))}
                 className="joko-admin-field mt-1 w-full"
@@ -221,6 +225,7 @@ export function GalleryManagement() {
             <label className="text-sm font-medium text-[#303532]">
               Category
               <input
+                disabled={smileMode}
                 list="gallery-categories"
                 value={draft.category}
                 onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}
@@ -239,11 +244,11 @@ export function GalleryManagement() {
             </label>
           </div>
 
-          {draft.media_type === 'image' && (
+          {(draft.media_type === 'image' || smileMode) && (
             <div className="rounded-2xl border border-dashed border-[#55766F]/25 bg-[#DCE9EC]/28 p-4">
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-[#3F665E] transition hover:bg-white/35">
                 {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />}
-                {uploading ? `Uploading… ${uploadProgress}%` : 'Upload gallery image'}
+                {uploading ? `Uploading… ${uploadProgress}%` : smileMode ? 'Upload episode poster' : 'Upload gallery image'}
                 <input
                   type="file"
                   accept="image/jpeg,image/webp,image/png"
@@ -292,8 +297,8 @@ export function GalleryManagement() {
               />
             </label>
             <label className="flex items-center gap-2 self-end rounded-xl border border-[#55766F]/12 bg-white/35 px-3 py-2.5 text-sm">
-              <input type="checkbox" checked={draft.show_on_homepage} onChange={(event) => setDraft((current) => ({ ...current, show_on_homepage: event.target.checked }))} />
-              Homepage
+              <input type="checkbox" disabled={smileMode} checked={!smileMode && draft.show_on_homepage} onChange={(event) => setDraft((current) => ({ ...current, show_on_homepage: event.target.checked }))} />
+              {smileMode ? 'Dedicated SMILE catalog' : 'Homepage'}
             </label>
             <label className="flex items-center gap-2 self-end rounded-xl border border-[#55766F]/12 bg-white/35 px-3 py-2.5 text-sm">
               <input type="checkbox" checked={draft.is_published} onChange={(event) => setDraft((current) => ({ ...current, is_published: event.target.checked }))} />
@@ -306,14 +311,14 @@ export function GalleryManagement() {
 
           <button type="button" onClick={() => void save()} disabled={saving || uploading} className="joko-admin-primary-button inline-flex w-full items-center justify-center gap-2 px-4 py-3 disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {saving ? 'Saving…' : editingId ? 'Update Gallery item' : 'Add Gallery item'}
+            {saving ? 'Saving…' : editingId ? 'Update item' : smileMode ? 'Add episode' : 'Add Gallery item'}
           </button>
         </div>
       </section>
 
       <section className="joko-admin-paper-card overflow-hidden">
         <div className="border-b border-[#55766F]/12 px-5 py-4 sm:px-6">
-          <p className="joko-admin-eyebrow">Gallery page</p>
+          <p className="joko-admin-eyebrow">{smileMode ? 'JOKO SMILE catalog' : 'Gallery page'}</p>
           <h2 className="joko-admin-title mt-1 text-2xl font-semibold">Published & draft media</h2>
         </div>
         {loading ? (
@@ -352,7 +357,7 @@ export function GalleryManagement() {
         ) : (
           <div className="flex min-h-56 flex-col items-center justify-center px-6 text-center">
             <ImageIcon className="h-9 w-9 text-[#55766F]/35" />
-            <p className="mt-3 text-sm text-[#303532]/58">No Gallery media yet. Add the first real JOKO moment on the left.</p>
+            <p className="mt-3 text-sm text-[#303532]/58">{smileMode ? 'No episodes yet. Add the first finished JOKO SMILE film on the left.' : 'No Gallery media yet. Add the first real JOKO moment on the left.'}</p>
           </div>
         )}
       </section>

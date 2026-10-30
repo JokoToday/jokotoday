@@ -60,6 +60,7 @@ type WorkspaceTab =
   | 'makers'
   | 'non-bakery'
   | 'gallery'
+  | 'smile'
   | 'what-people-say'
   | 'curiosities'
   | 'notebook-content'
@@ -81,6 +82,7 @@ function workspaceTabFromLocation(): WorkspaceTab {
   if (path.startsWith('/admin/page-accents') || path.startsWith('/admin/joko-notes')) return 'joko-notes';
   if (path.startsWith('/admin/makers')) return 'makers';
   if (path.startsWith('/admin/non-bakery')) return 'non-bakery';
+  if (path.startsWith('/admin/smile')) return 'smile';
   if (path.startsWith('/admin/gallery')) return 'gallery';
   if (path.startsWith('/admin/what-people-say')) return 'what-people-say';
   if (path.startsWith('/admin/curiosities')) return 'curiosities';
@@ -105,6 +107,7 @@ function workspacePath(tab: WorkspaceTab): string {
     case 'joko-notes': return '/admin/page-accents';
     case 'makers': return '/admin/makers';
     case 'non-bakery': return '/admin/non-bakery';
+    case 'smile': return '/admin/smile';
     case 'gallery': return '/admin/gallery';
     case 'what-people-say': return '/admin/what-people-say';
     case 'curiosities': return '/admin/curiosities';
@@ -204,6 +207,7 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
                   <ShoppingBasket className="h-4 w-4" />
                   Not Bread
                 </button>
+                <button type="button" onClick={() => selectWorkspaceTab('smile')} className={tabClass('smile')}>JOKO SMILE</button>
                 <button type="button" onClick={() => selectWorkspaceTab('gallery')} className={tabClass('gallery')}>
                   <Images className="h-4 w-4" />
                   Gallery
@@ -292,13 +296,19 @@ export function AdminWorkspace({ onNavigate }: AdminWorkspaceProps) {
           </AdminSection>
         )}
 
+        {activeTab === 'smile' && (
+          <AdminSection eyebrow="JOKO SMILE" title="Short films & little smiles" description="Manage episode videos, posters, translated titles and captions. Drafts stay private until published.">
+            <GalleryManagement key="smile" collection="smile" />
+          </AdminSection>
+        )}
+
         {activeTab === 'gallery' && (
           <AdminSection
             eyebrow="About JOKO"
             title="Gallery"
             description="Curate the real photos and videos used on the Gallery page and select a small number for the homepage. This content is managed independently from the Homepage Builder."
           >
-            <GalleryManagement />
+            <GalleryManagement key="gallery" />
           </AdminSection>
         )}
 

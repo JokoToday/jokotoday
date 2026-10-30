@@ -1,0 +1,30 @@
+.smile-sample-banner{padding:14px 24px;background:#f3e2bb;color:#55452e;font-size:13px;line-height:1.7;text-align:center}.smile-sample-banner a{font-weight:700;text-decoration:underline;white-space:nowrap;margin-left:10px}
+.smile-page{--smile-orange:#C76624}.smile-feature-note{background:#C76624}
+.smile-like{display:inline-flex;align-items:center;gap:7px;border:1px solid #c5cbbc;border-radius:30px;background:#fffaf0;color:#58705b;padding:8px 11px;font-size:12px;white-space:nowrap}
+.smile-like[aria-pressed=true]{color:#aa4f1e;background:#f8e7d8;border-color:#d99d72}.smile-like:disabled{opacity:.55;cursor:wait}.smile-like span{border-left:1px solid #c5cbbc;padding-left:8px;font-variant-numeric:tabular-nums}
+.smile-like-hint{font-size:13px;color:#64735e;margin:12px 0}.smile-like-error{padding:12px;background:#fff1e5;color:#944623;border-radius:8px;font-size:13px}
+.smile-card-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#68745e;font-size:11px;margin-top:15px}
+.smile-card-meta span{border:1px solid #c2cdb7;border-radius:20px;padding:2px 9px}.smile-card-body h3{margin-top:10px}
+.smile-card-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px}.smile-feature-caption .smile-like{margin-top:12px}
+.smile-feature-caption .smile-like span{display:inline;font-size:12px}
+.smile-toolbar{flex-wrap:wrap}.smile-toolbar .smile-search{min-width:180px}
+@media(max-width:480px){.smile-toolbar label{width:100%}.smile-sample-banner{padding:12px 16px}}
+
+/* The approved vintage artwork surrounds a real, independently interactive screen. */
+.smile-feature-film{padding-top:0}.smile-feature-film:before{display:none}
+.smile-film{position:relative;aspect-ratio:1672/941;isolation:isolate}
+.smile-film-art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
+.smile-film .smile-feature-note{top:6.5%;left:11%;width:19.5%;height:8%;padding:0;background:transparent;color:#633c1e;box-shadow:none;transform:rotate(-6deg);display:flex;align-items:center;justify-content:center;text-align:center;font-family:Georgia,serif;font-size:clamp(8px,1vw,13px);line-height:1.1;font-weight:600}
+.smile-film .smile-screen{position:absolute;inset:17.5% 8% 22%;aspect-ratio:auto;border:0;border-radius:12px;background:transparent;box-shadow:none}
+.smile-film .smile-screen:after{display:none}.smile-film .smile-screen-overlay{background:transparent}
+.smile-film .smile-cookie{width:36%;max-width:150px}.smile-film .smile-screen-empty{padding:10px}.smile-film .smile-screen-empty .smile-cookie{width:105px}
+.smile-film .smile-screen-empty p{font-size:clamp(12px,1.4vw,19px);margin:0}.smile-film .smile-tiny-stars{display:none}
+.smile-film .smile-screen-message{font-size:12px;padding:8px;line-height:1.4}
+.smile-film .smile-poster{background:transparent;object-fit:contain}
+.smile-feature-film .smile-feature-caption{padding-top:5px}
+@media(max-width:800px){.smile-film .smile-feature-note{font-size:clamp(8px,1.7vw,13px)}.smile-film .smile-screen-empty p{font-size:14px}}
+
+.smile-film .smile-watch,.smile-film-demo{display:grid;place-items:center;width:58px;height:58px;padding:0;border:0;border-radius:50%;background:#C76624;color:#fffaf0;box-shadow:0 3px 8px #633c1e30}
+.smile-film .smile-watch:hover{background:#a95120}.smile-film .smile-watch svg,.smile-film-demo svg{margin-left:3px}
+@media(max-width:480px){.smile-film .smile-watch,.smile-film-demo{width:40px;height:40px}.smile-film .smile-watch svg,.smile-film-demo svg{width:18px}}
+.smile-player-external{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px;background:#f5eedf}.smile-player-external img{max-height:50dvh;max-width:100%;object-fit:contain}.smile-player-external .smile-watch{text-align:center}

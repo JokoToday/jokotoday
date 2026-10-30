@@ -6,6 +6,8 @@ import { fetchLikedProducts } from '../lib/likesService';
 import { CMSProduct } from '../lib/cmsService';
 import { getMakers, makerText, type Maker } from '../lib/makersService';
 import { getSavedItems, setSavedItem, type SavedItem } from '../lib/accountFavoritesService';
+import { getSmileEpisodes, smileText, safeSmileUrl, type SmileEpisode } from '../lib/smileCatalog';
+import { getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
 import { diyRecipes } from '../app/joko-today/diy/recipes';
 import ProductCard from '../components/ProductCard';
 import { AuthModal } from '../components/AuthModal';
@@ -27,7 +29,10 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   const { user, loading: authLoading } = useAuth();
   const { language } = useLanguage();
   const [likedProducts, setLikedProducts] = useState<CMSProduct[]>([]);
-  const [tab,setTab]=useState<'all'|'bakery'|'store'|'creators'|'recipes'>('all');
+  const [tab,setTab]=useState<'all'|'bakery'|'store'|'creators'|'recipes'|'smile'>('all');
+  const [smileEpisodes, setSmileEpisodes] = useState<SmileEpisode[]>([]);
+  const [smileFavoritesError, setSmileFavoritesError] = useState(false);
+  const [removingSmile, setRemovingSmile] = useState<string[]>([]);
   const [savedItems,setSavedItems]=useState<SavedItem[]>([]);
   const [creators,setCreators]=useState<Maker[]>([]);
   const [favoritesError,setFavoritesError]=useState('');
@@ -39,7 +44,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   const labels = {
     en: {
-      tabs: ['All','JOKO Bakery','JOKO Store','Creators','Recipes'], emptyTab: 'Nothing saved here yet.', remove: 'Remove favorite', intro: 'Your collection of good things.',
+      tabs: ['All','JOKO Bakery','JOKO Store','Creators','Recipes','JOKO SMILE'], emptyTab: 'Nothing saved here yet.', remove: 'Remove favorite', intro: 'Your collection of good things.',
       myLikes: 'My Favorites',
       empty: "You haven't liked any products yet",
       emptyHint: 'Browse our products and tap the heart to save your favorites!',
@@ -50,7 +55,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       signIn: 'Sign In',
     },
     th: {
-      tabs: ['ทั้งหมด','JOKO Bakery','JOKO Store','ครีเอเตอร์','สูตรอาหาร'], emptyTab: 'ยังไม่มีรายการโปรดในหมวดนี้', remove: 'นำออกจากรายการโปรด', intro: 'รวบรวมสิ่งดี ๆ ที่คุณชื่นชอบ',
+      tabs: ['ทั้งหมด','JOKO Bakery','JOKO Store','ครีเอเตอร์','สูตรอาหาร','JOKO SMILE'], emptyTab: 'ยังไม่มีรายการโปรดในหมวดนี้', remove: 'นำออกจากรายการโปรด', intro: 'รวบรวมสิ่งดี ๆ ที่คุณชื่นชอบ',
       myLikes: 'รายการที่ถูกใจ',
       empty: 'คุณยังไม่ได้กดถูกใจสินค้าใดเลย',
       emptyHint: 'เลือกดูสินค้าของเราและกดรูปหัวใจเพื่อบันทึกรายการที่ชอบ',
@@ -61,7 +66,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
       signIn: 'เข้าสู่ระบบ',
     },
     zh: {
-      tabs: ['全部','JOKO 烘焙','JOKO 商店','创作者','食谱'], emptyTab: '这里还没有收藏。', remove: '取消收藏', intro: '您喜爱的好东西，都在这里。',
+      tabs: ['全部','JOKO 烘焙','JOKO 商店','创作者','食谱','JOKO SMILE'], emptyTab: '这里还没有收藏。', remove: '取消收藏', intro: '您喜爱的好东西，都在这里。',
       myLikes: '我的收藏',
       empty: '您还没有收藏任何商品',
       emptyHint: '浏览我们的商品，点击爱心收藏您喜欢的商品！',
@@ -77,6 +82,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   useEffect(() => {
     const version=++requestVersion.current;
+    setSmileEpisodes([]); setSmileFavoritesError(false);
     if (user) {
       setLikedProducts([]);setSavedItems([]);setCreators([]);setFavoritesError('');
       void loadLikedProducts(user.id,version);
@@ -91,6 +97,9 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
 
   const loadLikedProducts = async (userId:string,version:number) => {
     setLoading(true);
+    const smiles = Promise.all([getSmileEpisodes(), getLikedSmileIds(userId)])
+      .then(([episodes, ids]) => { if (version === requestVersion.current) setSmileEpisodes(episodes.filter(episode => ids.includes(episode.id))); })
+      .catch(() => { if (version === requestVersion.current) setSmileFavoritesError(true); });
     try {
       const products = await fetchLikedProducts(userId);
       if (version!==requestVersion.current) return;
@@ -117,6 +126,7 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
     } catch (error) {
       console.error('Error loading liked products:', error);
     } finally {
+      await smiles;
       if(version===requestVersion.current)setLoading(false);
     }
   };
@@ -127,8 +137,17 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
   });
   const savedCreators=creators.filter(creator => savedItems.some(item=>item.item_type==='creator' && item.item_id===creator.id));
   const savedRecipes=diyRecipes.filter(recipe=>savedItems.some(item=>item.item_type==='recipe' && item.item_id===recipe.id));
-  const visibleCount=filteredProducts.length+((tab==='all'||tab==='creators')?savedCreators.length:0)+((tab==='all'||tab==='recipes')?savedRecipes.length:0);
+  const visibleCount=filteredProducts.length+((tab==='all'||tab==='creators')?savedCreators.length:0)+((tab==='all'||tab==='recipes')?savedRecipes.length:0)+((tab==='all'||tab==='smile')?smileEpisodes.length:0);
   const removeItem=async (type: 'creator'|'recipe',id:string)=> { if(!user)return; try { await setSavedItem(user.id,type,id,false); setSavedItems(items=>items.filter(item=>!(item.item_type===type&&item.item_id===id))); } catch { setFavoritesError(language==='th'?'อัปเดตรายการโปรดไม่สำเร็จ กรุณาลองใหม่':language==='zh'?'更新收藏失败，请重试':'Could not update favorites. Please try again.'); } };
+
+  const removeSmile = async (id: string) => {
+    if (!user || removingSmile.includes(id)) return;
+    const version = requestVersion.current;
+    setRemovingSmile(ids => [...ids, id]);
+    try { await setSmileLike(user.id, id, false); if (version === requestVersion.current) setSmileEpisodes(items => items.filter(item => item.id !== id)); }
+    catch { if (version === requestVersion.current) setSmileFavoritesError(true); }
+    finally { setRemovingSmile(ids => ids.filter(item => item !== id)); }
+  };
 
   const v2RowsByProduct = useMemo(() => {
     const map = new Map<string, PickupAvailabilityRow[]>();
@@ -223,15 +242,16 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
             {t.myLikes}
           </h1>
           <p className="text-[#303532]/65">{t.intro}</p>
-          {likedProducts.length+savedItems.length > 0 && (
+          {likedProducts.length+savedItems.length+smileEpisodes.length > 0 && (
             <p className="text-[#303532]/65">
-              {likedProducts.length+savedItems.length} ❤
+              {likedProducts.length+savedItems.length+smileEpisodes.length} ❤
             </p>
           )}
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t.myLikes}>{(['all','bakery','store','creators','recipes'] as const).map((name,i)=><button type="button" key={name} aria-pressed={tab===name} onClick={()=>setTab(name)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${tab===name?'border-[#55766F] bg-[#55766F] text-white':'border-[#55766F]/25 bg-white/80 text-[#303532]'}`}>{t.tabs[i]}</button>)}</div>
+        <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t.myLikes}>{(['all','bakery','store','creators','recipes','smile'] as const).map((name,i)=><button type="button" key={name} aria-pressed={tab===name} onClick={()=>setTab(name)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${tab===name?'border-[#55766F] bg-[#55766F] text-white':'border-[#55766F]/25 bg-white/80 text-[#303532]'}`}>{t.tabs[i]}</button>)}</div>
         <button type="button" onClick={()=>onNavigate('collections')} className="mb-5 rounded-xl bg-[#55766F] px-5 py-3 font-semibold text-white">{language==='th'?'คอลเลกชันของฉัน':language==='zh'?'我的合集':'My Collections'} →</button>
+        {smileFavoritesError && <p role="alert" className="mb-4 text-sm text-red-700">{language === 'th' ? 'โหลดรายการโปรด JOKO SMILE ไม่สำเร็จ กรุณาลองใหม่' : language === 'zh' ? '无法加载 JOKO SMILE 收藏，请重试。' : 'JOKO SMILE favorites are temporarily unavailable. Please try again.'}</p>}
         {favoritesError && <p role="alert" className="mb-4 text-sm text-red-700">{favoritesError}</p>}
         {loading ? (
           <div className="text-center py-20">
@@ -255,6 +275,10 @@ export function MyLikesPage({ onNavigate }: MyLikesPageProps) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {(tab==='all'||tab==='smile')&&smileEpisodes.map(episode=><article key={episode.id} className="overflow-hidden rounded-2xl border border-[#55766F]/20 bg-[#FFF9EE]">
+              {safeSmileUrl(episode.thumbnail_url)&&<img src={safeSmileUrl(episode.thumbnail_url)!} alt="" className="aspect-[2/1] w-full object-contain"/>}
+              <div className="p-4"><p className="text-xs uppercase text-[#55766F]">JOKO SMILE</p><h2 className="mt-1 text-lg font-semibold">{smileText(episode,language).title}</h2>
+              <div className="mt-3 flex items-center justify-between"><a className="text-sm underline" href={'/smile?episode='+encodeURIComponent(episode.id)}>JOKO SMILE →</a><button type="button" disabled={removingSmile.includes(episode.id)} aria-label={t.remove+': '+smileText(episode,language).title} onClick={()=>void removeSmile(episode.id)}><Heart className="fill-[#C76624] text-[#C76624]"/></button></div></div></article>)}
             {filteredProducts.map((product) => {
               const v2State = pickupV2Enabled ? getV2LikedProductState(product.id) : null;
               return (

@@ -1,3 +1,4 @@
+import { TOP_MENU_KEYS } from './topMenu';
 import {
   BUILDER_REGISTRY_VERSION,
   BUILDER_SCHEMA_VERSION,
@@ -315,11 +316,11 @@ function validateBranding(value: unknown, issues: BuilderValidationIssue[]) {
   }
 
   if (value.topMenu !== undefined) {
-    if (!Array.isArray(value.topMenu) || ![6, 7, 8, 9].includes(value.topMenu.length)) {
-      pushIssue(issues, 'branding.topMenu', 'Top menu must preserve the original destinations and may include Specials, Makers and DIY.');
+    if (!Array.isArray(value.topMenu) || (value.topMenu.length < 6 || value.topMenu.length > TOP_MENU_KEYS.length)) {
+      pushIssue(issues, 'branding.topMenu', 'Top menu must preserve the original destinations and may include Specials, Makers, DIY and JOKO SMILE.');
     } else {
       const required = ['home', 'products', 'other-products', 'how-it-works', 'pickup', 'about'];
-      const allowed = [...required, 'specials', 'makers', 'diy'];
+      const allowed: readonly string[] = TOP_MENU_KEYS;
       const keys = new Set<string>();
       const menu = value.topMenu;
       if (required.some((key) => !menu.some((item: unknown) => isRecord(item) && item.key === key))) {

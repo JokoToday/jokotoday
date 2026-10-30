@@ -79,6 +79,7 @@ export async function getPublishedGalleryItems(
     .select('*')
     .eq('site_key', siteKey)
     .eq('is_published', true)
+    .neq('category', 'joko-smile')
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
