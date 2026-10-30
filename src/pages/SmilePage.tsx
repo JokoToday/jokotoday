@@ -5,6 +5,7 @@ import { Container } from '../platform/design-system';
 import { filterSmileEpisodes, getSmileEpisodes, safeSmileUrl, smileText, smileVideoSource, type SmileEpisode } from '../lib/smileCatalog';
 import { useAuth } from '../context/AuthContext';
 import { AuthModal } from '../components/AuthModal';
+import { SmilePlayerMedia } from '../components/SmilePlayerMedia';
 import { getSmileLikeCounts, getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
 import { smileSamples, sampleLikeCounts } from '../lib/smileSamples';
 import './smile.css';
@@ -154,7 +155,6 @@ export default function SmilePage() {
   const latest = episodes[0];
   const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element; setSelected(episode); };
   const close = () => { dialog.current?.close(); setSelected(null); trigger.current?.focus(); };
-  const source = selected ? smileVideoSource(selected.media_url) : null;
   const selectedText = selected ? smileText(selected, language) : null;
 
   const watchLink = (episode: SmileEpisode, hero = false) => {
@@ -231,10 +231,9 @@ export default function SmilePage() {
     <dialog ref={dialog} className="smile-dialog" onClose={() => { setSelected(null); trigger.current?.focus(); }} onClick={event => { if (event.target === event.currentTarget) close(); }}>
       {selected && <div className="smile-player">
         <div className="smile-player-heading"><h2>{selectedText?.title}</h2><button type="button" onClick={close} aria-label={copy.close} autoFocus><X size={22}/></button></div>
-        {videoFailed ? <p role="alert" className="smile-player-error">{copy.videoError}</p>
-          : source?.kind === 'file' ? <video key={selected.id} src={source.url} poster={safeSmileUrl(selected.thumbnail_url) || undefined} controls playsInline preload="metadata" onError={() => setVideoFailed(true)} aria-label={selectedText?.alt}/>
-          : source?.kind === 'youtube' ? <iframe key={selected.id} src={source.url} title={selectedText?.title} allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>
-          : null}
+        <SmilePlayerMedia key={selected.id} mediaUrl={selected.media_url} poster={selected.thumbnail_url}
+          title={selectedText!.title} alt={selectedText!.alt} externalLabel={copy.external}
+          errorLabel={copy.videoError} failed={videoFailed} onError={() => setVideoFailed(true)}/>
         {selectedText?.caption && <p className="smile-player-description">{selectedText.caption}</p>}
       </div>}
     </dialog>

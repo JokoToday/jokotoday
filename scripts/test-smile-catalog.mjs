@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 async function bundle(entry, plugins=[]) {
-  const result=await build({entryPoints:[entry],bundle:true,write:false,platform:'node',format:'esm',plugins});
+  const result=await build({entryPoints:[entry],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',plugins});
   return import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
 }
 const calls=[];let dbError=null;
@@ -44,3 +44,18 @@ assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, mont
 assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, month:'2026-10', search:'cookie'}).length, 1);
 assert.equal(catalog.filterSmileEpisodes(samples.smileSamples, {...options, month:'2026-09', search:'cookie'}).length, 0);
 console.log('Sample isolation and combined search/month/date/likes sorting passed.');
+// Regression: Favorites deep links must render useful media for each supported source.
+const {createElement} = await import('react');
+const {renderToStaticMarkup} = await import('react-dom/server');
+const {SmilePlayerMedia} = await bundle('src/components/SmilePlayerMedia.tsx', [{name:'no-live-db',setup(b){b.onResolve({filter:/^\.\/supabase$/},()=>({path:'supabase',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export const supabase = {}',loader:'js'}))}}]);
+const mediaProps = {poster:null,title:'An episode',alt:'Episode poster',externalLabel:'Watch on the original video site',errorLabel:'Cannot play',failed:false,onError(){}};
+const renderMedia = mediaUrl => renderToStaticMarkup(createElement(SmilePlayerMedia,{...mediaProps,mediaUrl}));
+const externalHtml = renderMedia('https://vimeo.com/123456789');
+assert.ok(externalHtml.includes('href="https://vimeo.com/123456789"'));
+assert.ok(externalHtml.includes('Watch on the original video site'));
+assert.ok(externalHtml.includes('target="_blank"') && externalHtml.includes('noopener noreferrer'));
+assert.ok(!externalHtml.includes('<iframe') && !externalHtml.includes('<video'));
+assert.ok(renderMedia('/film.mp4').includes('<video'));
+assert.ok(renderMedia('https://youtu.be/ABCDEFGHIJK').includes('https://www.youtube-nocookie.com/embed/ABCDEFGHIJK'));
+assert.ok(renderMedia('javascript:alert(1)').includes('Cannot play'));
+console.log('Favorites player regression passed: external link, direct video, YouTube and unsafe URL fallback.');
