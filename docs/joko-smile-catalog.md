@@ -19,7 +19,7 @@ Video files are hosted separately; this initial editor supports video URLs, not 
 
 The editor reuses site_gallery_items with category joko-smile and media_type video. Existing admin-only writes and published-only public RLS remain unchanged. SMILE records are separated from the general Gallery and its homepage selection.
 
-There is no new table, migration, permission grant, storage policy or public profile API. No account data is used. The page explicitly filters site key, category, media type and published status. Direct videos load only when selected; YouTube uses the privacy-enhanced embed host after a watch action. Other providers open in a new tab. No background autoplay.
+The catalog reuses existing gallery permissions and storage. Episode hearts add the dedicated smile_episode_likes table and aggregate API described below; individual liker identities remain private. No public profile API is added. The page explicitly filters site key, category, media type and published status. Direct videos load only when selected; YouTube uses the privacy-enhanced embed host after a watch action. Other providers open in a new tab. No background autoplay.
 
 ## Navigation and validation
 
@@ -39,4 +39,12 @@ Production publication is a separate merge/deployment decision.
 - No production migration has been applied by this change. Before production release: test database migration, two-account RLS/duplicate/unpublish checks, authenticated like → refresh → My Favorites → unlike roundtrip.
 - Rollback frontend first; retain likes table for recovery. No existing product/recipe/creator favorites schema or rows are changed.
 
-Validation: migration and two-account RLS checks passed in a disposable local Postgres database (removed after test). Re-run with `bash scripts/test-smile-likes-rls.sh`. No hosted test or production schema changed. Authenticated browser roundtrip remains a release check.
+Validation: migration and two-account RLS checks passed in a disposable local Postgres database (removed after test). Re-run with `bash scripts/test-smile-likes-rls.sh`. The migration is also applied to JOKO Specials Test (szijiljpasxddzgzckra). Live authenticated API tests passed with disposable accounts: like, duplicate no-op, public count, cross-account isolation, new-session persistence, Favorites episode resolution, unlike and unpublished protection. Fixtures were removed. No new SMILE security-advisor findings. Production schema remains unchanged. A manual signed-in browser check with a finished episode is still recommended before launch; API persistence has been verified.
+
+
+## Live test and release status
+Run `node scripts/test-smile-likes-live.mjs` from nerd-server to repeat the isolated hosted API test. The script is pinned to the test project, reads existing management credentials in memory, creates random disposable fixture IDs, and removes only its own fixtures. It must not be repointed at production.
+
+The approved vintage filmstrip artwork wraps the real feature screen. Its static cookie and wording were removed with ImageGen; the real episode poster/play controls and translated ticket wording render separately. The optimized asset is `public/assets/smile/film-frame-vintage.webp` (86 KB). Headline: “A little moment.” / “A little smile.”
+
+Before release: apply the reviewed migration to production with authorization, merge PR #329, deploy the immutable release and verify `/smile` plus My Favorites. No finished episode is seeded by this PR. Keep sample-mode likes isolated from real accounts.
