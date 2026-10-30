@@ -56,6 +56,9 @@ jobs:
       - name: Payment confirmation email regression
         run: node scripts/test-payment-confirmation-email.mjs
 
+      - name: JOKO SMILE catalog and navigation
+        run: npm run audit:smile
+
       - name: Typecheck
         run: npm run typecheck
 

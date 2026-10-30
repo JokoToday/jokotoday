@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "audit:smile": "node scripts/test-smile-catalog.mjs",
     "audit:line-auth": "node scripts/audit-line-auth.mjs",
     "audit:line-onboarding": "node scripts/audit-line-onboarding.mjs",
     "audit:auth-email-hook": "node scripts/audit-auth-email-hook.mjs",

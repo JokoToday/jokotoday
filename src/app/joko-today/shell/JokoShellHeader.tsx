@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Menu, ShoppingCart, UserRound, X, Home, ShoppingBasket, Compass, ChevronDown, Croissant, Package, Users, Tag, CookingPot, Signpost, Building2 } from 'lucide-react';
+import { Menu, ShoppingCart, UserRound, X, Home, ShoppingBasket, Compass, ChevronDown, Croissant, Package, Users, Tag, CookingPot, Signpost, Building2, Smile } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -11,7 +11,7 @@ import './jokoNavPencil.css';
 
 const AuthModal = lazy(() => import('../../../components/AuthModal').then(({ AuthModal }) => ({ default: AuthModal })));
 
-export type JokoShellSection = 'today' | 'curiosities' | 'makers' | 'bakery' | 'about' | 'gallery' | 'what-people-say' | 'diy';
+export type JokoShellSection = 'today' | 'curiosities' | 'makers' | 'bakery' | 'about' | 'gallery' | 'what-people-say' | 'diy' | 'smile';
 
 type JokoShellHeaderProps = {
   onNavigate: (page: string) => void;
@@ -19,7 +19,7 @@ type JokoShellHeaderProps = {
 };
 
 type NavItem = {
-  key: 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy';
+  key: 'home' | 'products' | 'other-products' | 'store' | 'specials' | 'makers' | 'how-it-works' | 'pickup' | 'about' | 'diy' | 'smile';
   label: string;
   page?: string;
   targetId?: string;
@@ -111,6 +111,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
     pickup: { targetId: 'pickup' },
     about: { targetId: 'about', activeKey: 'about' },
     diy: { page: 'diy', activeKey: 'diy' },
+    smile: { page: 'smile', activeKey: 'smile' },
   };
   const navItems: NavItem[] = resolveTopMenu(branding.topMenu)
     .filter((item) => item.visible)
@@ -215,14 +216,15 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
               {(['shopping', 'explore'] as const).map((group) => {
                 const groupItems = navItems.filter((item) => (group === 'shopping'
                   ? ['products', 'other-products', 'makers', 'specials']
-                  : ['diy', 'how-it-works', 'about']).includes(item.key));
+                  : ['diy', 'smile', 'how-it-works', 'about']).includes(item.key));
                 const iconMap = { products: Croissant, 'other-products': Package, makers: Users, specials: Tag,
-                  diy: CookingPot, 'how-it-works': Signpost, about: Building2 } as const;
+                  diy: CookingPot, smile: Smile, 'how-it-works': Signpost, about: Building2 } as const;
                 const descriptions: Record<string, Record<string, string>> = {
                   products: { en: 'Pre-order our bakery favourites', th: 'สั่งขนมอบล่วงหน้า', zh: '预订我们的烘焙精选' },
                   'other-products': { en: 'Ingredients and special finds', th: 'วัตถุดิบและของดี', zh: '食材与精选好物' },
                   makers: { en: 'Discover independent creators', th: 'พบผู้สร้างสรรค์อิสระ', zh: '发现独立创作者' },
                   specials: { en: 'Limited-time offers', th: 'ข้อเสนอพิเศษจำกัดเวลา', zh: '限时优惠' },
+                  smile: { en: 'Short films. Small joys.', th: 'เรื่องสั้นกับความสุขเล็ก ๆ', zh: '小小短片，点滴快乐' },
                   diy: { en: 'Recipes, videos and baking ideas', th: 'สูตรอาหาร วิดีโอ และไอเดีย', zh: '食谱、视频与烘焙创意' },
                   'how-it-works': { en: 'Ordering, pickup and more', th: 'การสั่งซื้อและรับสินค้า', zh: '订购、取货与更多' },
                   about: { en: 'Our story, community and gallery', th: 'เรื่องราวและภาพของเรา', zh: '我们的故事与图库' },
@@ -349,7 +351,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
                     );
                   })}
                 </ul>
-                <p className="mt-4 mb-2 font-semibold">Explore</p><div className="grid grid-cols-2 gap-2">{navItems.filter((item) => ["diy","how-it-works","about"].includes(item.key)).map((item) => <button key={item.key} type="button" onClick={() => handleNav(item)} className="rounded-lg bg-[#FFFCF6] px-3 py-3 text-left">{item.label}</button>)}</div>
+                <p className="mt-4 mb-2 font-semibold">Explore</p><div className="grid grid-cols-2 gap-2">{navItems.filter((item) => ["diy","smile","how-it-works","about"].includes(item.key)).map((item) => <button key={item.key} type="button" onClick={() => handleNav(item)} className="rounded-lg bg-[#FFFCF6] px-3 py-3 text-left">{item.label}</button>)}</div>
 
               </nav>
 
