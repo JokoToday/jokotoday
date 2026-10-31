@@ -180,8 +180,8 @@ export default function SmilePage() {
           </div>
           <div className="smile-feature smile-feature-film">
             <div className="smile-film">
-            <img className="smile-film-art" src="/assets/smile/film-frame-vintage.webp" width="1672" height="941" alt="" aria-hidden="true"/>
-            <span className="smile-feature-note">{copy.latest}</span>
+            <div className="smile-film-perforations smile-film-perforations-left" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}/>)}</div>
+            <div className="smile-film-perforations smile-film-perforations-right" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}/>)}</div>
             <div className="smile-screen">
               {loading ? <p role="status" className="smile-screen-message">{copy.loading}</p>
                 : failed ? <div className="smile-screen-message" role="alert"><p>{copy.loadError}</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="smile-retry">{copy.retry}</button></div>
