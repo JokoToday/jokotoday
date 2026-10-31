@@ -156,3 +156,11 @@ The model's prose is AI-generated: tool grounding and instructions reduce errors
 Before production: supply the selected provider's private API key, test actual model English/Thai/date/tool behavior and response latency, verify cost ceilings and usage accounting against provider billing, review privacy/abuse configuration, prepare deployment, then approve rollout. Adapter tests use synthetic provider responses; no live paid-model capability is claimed. Current FAQ coverage is limited to inventory facts; approved opening hours, policy and allergen knowledge are not fabricated.
 
 LINE is a later adapter. Preserve the existing webhook/notification flow, validate signatures, deduplicate events, respect reply timing, and verify messaging costs before connecting it.
+
+
+## Temporary operational pause — October 31, 2026
+The public header button and widget are gated off by `src/app/joko-today/assistant/availability.ts`, including builds with the old enable flag still set. Code, editorial content, provider configuration and budget ledger are retained. Deployment of the frontend is required for this pause to appear publicly.
+
+On the production server, pause only `joko-assistant.service` using `sudo systemctl disable --now joko-assistant.service`, then verify inactive/disabled and no listener on its configured port. Do not stop the independent inventory MCP service, notifications, nginx or Cloudflare Tunnel. Existing browser tabs may retain the old button until refreshed. Direct assistant requests should not reach a paid provider while the backend is stopped.
+
+Restore only after explicit approval: fix crash-safe lock ownership, validate availability queries end to end, enable/start the service, restore the frontend availability gate and build flag, deploy and verify. Never remove the budget ledger or bypass spending safeguards.
