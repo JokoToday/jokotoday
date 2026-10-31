@@ -10,21 +10,22 @@
 .smile-toolbar{flex-wrap:wrap}.smile-toolbar .smile-search{min-width:180px}
 @media(max-width:480px){.smile-toolbar label{width:100%}.smile-sample-banner{padding:12px 16px}}
 
-/* The approved vintage artwork surrounds a real, independently interactive screen. */
+/* Responsive film frame: decoration stays outside the uncropped episode poster. */
 .smile-feature-film{padding-top:0}.smile-feature-film:before{display:none}
-.smile-film{position:relative;aspect-ratio:1672/941;isolation:isolate}
-.smile-film-art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
-.smile-film .smile-feature-note{top:6.5%;left:11%;width:19.5%;height:8%;padding:0;background:transparent;color:#633c1e;box-shadow:none;transform:rotate(-6deg);display:flex;align-items:center;justify-content:center;text-align:center;font-family:Georgia,serif;font-size:clamp(8px,1vw,13px);line-height:1.1;font-weight:600}
-.smile-film .smile-screen{position:absolute;inset:17.5% 8% 22%;aspect-ratio:auto;border:0;border-radius:12px;background:transparent;box-shadow:none}
+.smile-film{position:relative;isolation:isolate;padding:1.7% 8.5%;border:1px solid #747a7d;border-radius:11px;background:linear-gradient(120deg,#61676a,#454b4e 45%,#555b5e);box-shadow:inset 0 0 0 2px #a3a8aa,inset 0 0 0 4px #343a3d,0 5px 12px #242a2526}
+.smile-film-perforations{position:absolute;top:5%;bottom:5%;width:4.6%;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.smile-film-perforations-left{left:2%}.smile-film-perforations-right{right:2%}
+.smile-film-perforations span{height:8.6%;border-radius:3px;background:#fffdf5;box-shadow:inset 0 1px 2px #171c1e80,0 1px 0 #a1a6a7}
+.smile-film .smile-screen{position:relative;aspect-ratio:16/9;border:2px solid #252a2c;border-radius:5px;background:#fffdf5;box-shadow:0 0 0 3px #363c3f,inset 0 1px 3px #0003}
 .smile-film .smile-screen:after{display:none}.smile-film .smile-screen-overlay{background:transparent}
 .smile-film .smile-cookie{width:36%;max-width:150px}.smile-film .smile-screen-empty{padding:10px}.smile-film .smile-screen-empty .smile-cookie{width:105px}
 .smile-film .smile-screen-empty p{font-size:clamp(12px,1.4vw,19px);margin:0}.smile-film .smile-tiny-stars{display:none}
 .smile-film .smile-screen-message{font-size:12px;padding:8px;line-height:1.4}
-.smile-film .smile-poster{background:transparent;object-fit:contain}
-.smile-feature-film .smile-feature-caption{padding-top:5px}
-@media(max-width:800px){.smile-film .smile-feature-note{font-size:clamp(8px,1.7vw,13px)}.smile-film .smile-screen-empty p{font-size:14px}}
+.smile-film .smile-poster{background:#fffdf5;object-fit:contain}
+.smile-feature-film .smile-feature-caption{padding-top:23px}
+@media(max-width:800px){.smile-film .smile-screen-empty p{font-size:14px}}
 
-.smile-film .smile-watch,.smile-film-demo{display:grid;place-items:center;width:58px;height:58px;padding:0;border:0;border-radius:50%;background:#C76624;color:#fffaf0;box-shadow:0 3px 8px #633c1e30}
-.smile-film .smile-watch:hover{background:#a95120}.smile-film .smile-watch svg,.smile-film-demo svg{margin-left:3px}
-@media(max-width:480px){.smile-film .smile-watch,.smile-film-demo{width:40px;height:40px}.smile-film .smile-watch svg,.smile-film-demo svg{width:18px}}
+.smile-film .smile-watch,.smile-film-demo{display:grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:0;border-radius:50%;background:#C76624;color:#fffaf0;box-shadow:0 2px 6px #633c1e30}
+.smile-film .smile-watch:hover{background:#a95120}.smile-film .smile-watch svg,.smile-film-demo svg{width:19px;height:19px;margin-left:2px}
+.smile-film .smile-watch:focus-visible{outline:3px solid #fffdf5;outline-offset:3px;box-shadow:0 0 0 6px #354b43}
 .smile-player-external{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px;background:#f5eedf}.smile-player-external img{max-height:50dvh;max-width:100%;object-fit:contain}.smile-player-external .smile-watch{text-align:center}

@@ -48,3 +48,9 @@ Run `node scripts/test-smile-likes-live.mjs` from nerd-server to repeat the isol
 The approved vintage filmstrip artwork wraps the real feature screen. Its static cookie and wording were removed with ImageGen; the real episode poster/play controls and translated ticket wording render separately. The optimized asset is `public/assets/smile/film-frame-vintage.webp` (86 KB). Headline: “A little moment.” / “A little smile.”
 
 Before release: apply the reviewed migration to production with authorization, merge PR #329, deploy the immutable release and verify `/smile` plus My Favorites. No finished episode is seeded by this PR. Keep sample-mode likes isolated from real accounts.
+
+
+## Clean filmstrip frame (October 31)
+The featured poster now sits inside a responsive charcoal CSS frame, with vertical side perforations and no antique texture or ticket. The poster uses contain fitting inside a 16:9 aperture, so opening artwork is not cropped (other aspect ratios are letterboxed). The 44 px play button is smaller while retaining a touch target of at least 44 px.
+
+The frame is webpage decoration, not part of the video file. Direct-file and YouTube watch actions still open the existing unframed dialog player; external video sites open separately. Opening/end cards remain part of the supplied film. Set the episode poster in Admin to use the approved opening artwork; this frontend change does not publish or modify episode records.
