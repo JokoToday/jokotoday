@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Budget } from './budget.mjs';
+import { chatRequest } from './providers.mjs';
 import { createEngine, createOpenAI, TURN_RESERVE_MICROS } from './engine.mjs';
-import { projectSnapshot, validateArguments, createInventory } from './inventory.mjs';
+import { compactSnapshot, projectSnapshot, validateArguments, createInventory } from './inventory.mjs';
 import { createAssistantServer } from './server.mjs';
 
 const id = '00000000-0000-4000-8000-000000000001';
@@ -135,4 +136,50 @@ test('OpenAI transport uses fixed server key endpoint and no retries', async () 
     assert.equal(options.headers.Authorization, 'Bearer test-only'); return { ok: false };
   });
   await assert.rejects(provider({})); assert.equal(calls, 1);
+});
+
+
+test('shared schedules preserve each product quantity and all pickup details', () => {
+  const raw = snapshot();
+  raw.results.push({ ...structuredClone(raw.results[0]), id: '00000000-0000-4000-8000-000000000002' });
+  raw.results[1].pickups[0].remaining_quantity = 3;
+  const full = projectSnapshot(raw);
+  const compact = compactSnapshot(full);
+  assert.equal(compact.schedules.length, 1);
+  assert.equal(Object.keys(compact.locations).length, 1);
+  for (const [index, product] of compact.results.entries()) {
+    const restored = product.pickups.map(({ schedule_index, remaining_quantity }) => {
+      const { location_ids, ...schedule } = compact.schedules[schedule_index];
+      return { ...schedule, remaining_quantity, locations: location_ids.map(id => ({ id, name: compact.locations[id] })) };
+    });
+    assert.deepEqual(restored, full.results[index].pickups);
+  }
+  assert.deepEqual(compactSnapshot({ ...full, results: [] }).results, []);
+});
+
+test('large live-style catalog fits two tool rounds with full card data', async t => {
+  const { budget } = budgetFor(t);
+  const raw = snapshot(); raw.truncated = true;
+  raw.results = Array.from({ length: 6 }, (_, productIndex) => ({
+    ...structuredClone(raw.results[0]),
+    id: `00000000-0000-4000-8000-${String(productIndex + 1).padStart(12, '0')}`,
+    pickups: Array.from({ length: 12 }, (_, day) => ({
+      ...structuredClone(raw.results[0].pickups[0]),
+      pickup_date: `2030-10-${String(day + 19).padStart(2, '0')}`,
+      order_cutoff_at: `2030-10-${String(day + 18).padStart(2, '0')}T10:00:00Z`,
+      remaining_quantity: productIndex + day,
+      locations: [{ id, name_en: 'Mae Rim', name_th: 'แม่ริม' }, { id: '00000000-0000-4000-8000-000000000009', name_en: 'In-Town', name_th: 'ในเมือง' }],
+    })),
+  }));
+  assert.ok(Buffer.byteLength(JSON.stringify(projectSnapshot(raw))) > 18000);
+  let step = 0;
+  const engine = createEngine({ budget, inventory: async () => raw, provider: async body => {
+    assert.ok(Buffer.byteLength(JSON.stringify(body)) <= 18000);
+    assert.ok(Buffer.byteLength(JSON.stringify(chatRequest(body, { provider: 'openrouter', model: 'openai/gpt-5.4-mini', providers: ['OpenAI'], inputRate: 0.75, outputRate: 4.5 }))) <= 18000);
+    if (step++ < 2) return { ...toolResponse, output: [{ ...toolResponse.output[0], call_id: `call${step}` }] };
+    return answerResponse;
+  }});
+  const result = await engine({ message: 'What days can I order?', history: Array.from({ length: 6 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(3500) })) });
+  assert.equal(step, 3);
+  assert.deepEqual(result.products, projectSnapshot(raw).results);
 });

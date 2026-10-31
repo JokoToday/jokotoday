@@ -84,7 +84,7 @@ export function createProvider(profile, fetcher = fetch) {
   return async body => {
     const request = profile.provider === 'openai' ? { ...body, model: profile.model } : chatRequest(body, profile);
     // Recheck translated body because replay and schema conversion add bytes.
-    if (Buffer.byteLength(JSON.stringify(request)) > 18000) throw Error('Provider context too large');
+    if (Buffer.byteLength(JSON.stringify(request)) > 18000) throw Object.assign(Error('Provider context too large'), { code: 'context_limit' });
     const response = await fetcher(destinations[profile.provider], {
       method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${profile.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(request), signal: AbortSignal.timeout(20000),
