@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { askJokoAvailable } from './app/joko-today/assistant/availability';
 // Deployment marker: pickup-location-photo Admin rollout.
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
@@ -603,7 +604,7 @@ function AppContent() {
           onStartShopping={() => handleNavigate('products')}
         />
       )}
-      {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && ['home', 'products', 'product-detail', 'makers', 'maker-detail', 'our-story', 'how-it-works', 'diy', 'about'].includes(currentPage) && (
+      {askJokoAvailable && import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && ['home', 'products', 'product-detail', 'makers', 'maker-detail', 'our-story', 'how-it-works', 'diy', 'about'].includes(currentPage) && (
         <Suspense fallback={null}><AssistantWidget onNavigate={handleNavigate} /></Suspense>
       )}
       <LINEFriendInvite />

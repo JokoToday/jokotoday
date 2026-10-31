@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { askJokoAvailable } from '../assistant/availability';
 import { Menu, ShoppingCart, UserRound, X, Home, ShoppingBasket, Compass, ChevronDown, Croissant, Package, Users, Tag, CookingPot, Signpost, Building2, Smile } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
@@ -261,7 +262,7 @@ export function JokoShellHeader({ onNavigate, activeSection = null }: JokoShellH
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && !/^\/(checkout|admin|my-|staff|pickup|walk-in)/.test(window.location.pathname) && (
+              {askJokoAvailable && import.meta.env.VITE_JOKO_ASSISTANT_ENABLED === 'true' && !/^\/(checkout|admin|my-|staff|pickup|walk-in)/.test(window.location.pathname) && (
                 <button type="button" data-joko-ask-launcher onClick={() => window.dispatchEvent(new Event('joko-ask-open'))}
                   aria-label="Ask JOKO" title="Ask JOKO"
                   className="group inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-[#A44F1D]/30 bg-[#F4EFE5]/90 p-1.5 text-[#8B471F] shadow-sm transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#55766F] sm:pr-3">
