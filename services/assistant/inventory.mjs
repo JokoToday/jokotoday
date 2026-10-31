@@ -67,3 +67,25 @@ export const functionTools = toolNames.map(name => {
   else properties.product_id = { type: 'string', description: 'Product UUID returned by search' };
   return { type: 'function', name, strict: true, description: name === toolNames[0] ? 'Search live public JOKO regular preorders. Stock is shared across locations per date; never add it twice.' : 'Recheck live public product availability; no reservation or payment.', parameters: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } };
 });
+
+// Model-only representation: preserve every date and quantity, but send shared
+// schedules once. Full projected data still drives cards and cutoff checks.
+export function compactSnapshot(snapshot) {
+  const locations = {};
+  const schedules = [];
+  const indexes = new Map();
+  const results = snapshot.results.map(product => ({ ...product,
+    pickups: product.pickups.map(pickup => {
+      const { remaining_quantity, locations: entries, ...schedule } = pickup;
+      const location_ids = entries.map(location => {
+        locations[location.id] = location.name;
+        return location.id;
+      });
+      const value = { ...schedule, location_ids };
+      const key = JSON.stringify(value);
+      if (!indexes.has(key)) { indexes.set(key, schedules.length); schedules.push(value); }
+      return { schedule_index: indexes.get(key), remaining_quantity };
+    }),
+  }));
+  return { ...snapshot, locations, schedules, results };
+}
