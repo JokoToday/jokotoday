@@ -50,3 +50,12 @@
 .smile-inline-error{position:absolute;inset:20%;display:grid;place-items:center;text-align:center;background:#fefdf6;color:#8c352c}
 .smile-dialog{width:min(1400px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
 .smile-player video{height:calc(100dvh - 150px);max-height:none;object-fit:contain;background:#fefdf6}
+
+.smile-localized-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.smile-player-languages{position:absolute;right:58px;top:8px;display:flex;gap:2px;padding:2px;border-radius:18px;background:#fefdf6ed;box-shadow:0 1px 5px #30352e20}
+.smile-player-languages button{min-height:32px;min-width:34px;padding:4px 7px;border-radius:15px;font-size:11px;color:#52665e;font-weight:650}
+.smile-player-languages button[aria-pressed=true]{background:#c76624;color:#fff}
+.smile-inline-player:modal .smile-player-languages{right:12px}
+.smile-inline-player:modal .smile-player-languages button{min-height:44px;min-width:44px;font-size:13px}
+
+@media(max-width:480px){.smile-inline-player:not(:modal) .smile-inline-replay span{display:none}.smile-inline-player:not(:modal) .smile-inline-replay{padding:8px;min-width:34px;min-height:34px}}
