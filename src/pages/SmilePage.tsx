@@ -5,6 +5,7 @@ import { Container } from '../platform/design-system';
 import { filterSmileEpisodes, getSmileEpisodes, safeSmileUrl, smileText, smileVideoSource, type SmileEpisode } from '../lib/smileCatalog';
 import { useAuth } from '../context/AuthContext';
 import { AuthModal } from '../components/AuthModal';
+import { localizedSmileMedia } from '../lib/smileLocalization';
 import { SmileInlinePlayer, type SmileInlineHandle } from '../components/SmileInlinePlayer';
 import { SmilePlayerMedia } from '../components/SmilePlayerMedia';
 import { getSmileLikeCounts, getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
@@ -75,7 +76,7 @@ function CookieSketch() {
 }
 
 export default function SmilePage() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const copy = words[language];
   const extra = extraWords[language];
   const { user } = useAuth();
@@ -160,7 +161,12 @@ export default function SmilePage() {
     if (sampleMode) return;
     const id = new URLSearchParams(window.location.search).get('episode');
     const episode = episodes.find(item => item.id === id);
-    if (episode) { setVideoFailed(false); setSelectedAutoPlay(false); setSelected(episode); }
+    if (episode) {
+      if (episode.id === episodes[0]?.id && smileVideoSource(episode.media_url)?.kind === 'file') {
+        feature.current?.scrollIntoView({ block: 'nearest' }); return;
+      }
+      setVideoFailed(false); setSelectedAutoPlay(false); setSelected(episode);
+    }
   }, [episodes, sampleMode]);
   const latest = episodes[0];
   const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element;
@@ -200,7 +206,9 @@ export default function SmilePage() {
               {loading ? <p role="status" className="smile-screen-message">{copy.loading}</p>
                 : failed ? <div className="smile-screen-message" role="alert"><p>{copy.loadError}</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="smile-retry">{copy.retry}</button></div>
                 : latest && !sampleMode && smileVideoSource(latest.media_url)?.kind === 'file' ? <SmileInlinePlayer key={latest.id} ref={inlinePlayer}
-                  src={smileVideoSource(latest.media_url)!.url} poster={safeSmileUrl(latest.thumbnail_url) || undefined}
+                  src={localizedSmileMedia(latest.media_url, language)?.src || smileVideoSource(latest.media_url)!.url}
+                  poster={localizedSmileMedia(latest.media_url, language)?.poster || safeSmileUrl(latest.thumbnail_url) || undefined}
+                  localization={localizedSmileMedia(latest.media_url, language) ? { language, setLanguage } : undefined}
                   title={smileText(latest, language).title} alt={smileText(latest, language).alt}
                   labels={{ ...playerWords[language], watch: copy.watch, error: copy.videoError }}/>
                 : latest ? <>

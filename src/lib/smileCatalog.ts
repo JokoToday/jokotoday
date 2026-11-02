@@ -1,3 +1,4 @@
+import { EP001_ENGLISH_MEDIA, smilePilotCopy } from './smileLocalization';
 import { supabase } from './supabase';
 import type { GalleryItem } from './aboutMediaService';
 import type { Language } from '../translations';
@@ -28,8 +29,8 @@ export function smileVideoSource(value: string): { kind: 'file' | 'youtube' | 'e
 
 export function smileText(episode: SmileEpisode, language: Language) {
   return {
-    title: episode[`title_${language}`] || episode.title_en || 'JOKO SMILE',
-    caption: episode[`caption_${language}`] || episode.caption_en || '',
+    title: episode[`title_${language}`] || (episode.media_url === EP001_ENGLISH_MEDIA ? smilePilotCopy[language].title : null) || episode.title_en || 'JOKO SMILE',
+    caption: episode[`caption_${language}`] || (episode.media_url === EP001_ENGLISH_MEDIA ? smilePilotCopy[language].caption : null) || episode.caption_en || '',
     alt: episode[`alt_${language}`] || episode.alt_en || episode[`title_${language}`] || episode.title_en || 'JOKO SMILE',
   };
 }
