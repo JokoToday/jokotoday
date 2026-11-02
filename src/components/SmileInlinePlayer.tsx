@@ -24,6 +24,12 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
   const wasExpanded = useRef(false);
   const hasLocalization = !!props.localization;
   useEffect(() => {
+    if (!hasLocalization) return;
+    for (const language of ['en', 'th', 'zh']) for (const kind of ['opening', 'ending', 'poster']) {
+      const image = new Image(); image.src = `/assets/smile/ep001-i18n/${kind}-${language}.png`;
+    }
+  }, [hasLocalization]);
+  useEffect(() => {
     const media = video.current;
     if (!media || !hasLocalization || !started) return;
     let frame = 0;
@@ -69,7 +75,7 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
       <video ref={video} src={props.src} poster={props.poster} playsInline preload="none"
         controls={started} controlsList={hasLocalization ? "nofullscreen nodownload" : undefined}
         disablePictureInPicture={hasLocalization} aria-label={props.alt} onTimeUpdate={event => setTime(event.currentTarget.currentTime)}
-        onSeeked={event => setTime(event.currentTarget.currentTime)} onEnded={() => { setEnded(true); setTime(video.current?.duration || 26.1); }}
+        onSeeked={event => { setTime(event.currentTarget.currentTime); setEnded(event.currentTarget.ended); }} onEnded={() => { setEnded(true); setTime(video.current?.duration || 26.1); }}
         onPlay={() => { setStarted(true); setEnded(false); }} onError={() => setFailed(true)}/>
       {props.localization && started && <SmileLocalizedCards language={props.localization.language} time={time}/>}
       {props.localization && <div className="smile-player-languages" role="group" aria-label="Language / ภาษา / 语言">
