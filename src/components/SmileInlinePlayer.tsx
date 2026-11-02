@@ -17,6 +17,11 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
   const [ended, setEnded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const wasExpanded = useRef(false);
+  useEffect(() => {
+    if (wasExpanded.current && !expanded) expandButton.current?.focus();
+    wasExpanded.current = expanded;
+  }, [expanded]);
   useEffect(() => {
     if (!expanded) return;
     const previous = document.body.style.overflow;
@@ -40,7 +45,6 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
   };
   const shrink = () => {
     panel.current?.close(); panel.current?.show(); setExpanded(false);
-    expandButton.current?.focus();
   };
   return <dialog ref={panel} open className="smile-inline-player" aria-label={props.title}
     role={expanded ? 'dialog' : 'region'} aria-modal={expanded || undefined}
