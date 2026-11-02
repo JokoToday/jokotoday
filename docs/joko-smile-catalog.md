@@ -72,3 +72,9 @@ The in-frame language buttons call the existing LanguageContext setter. Header, 
 Custom Expand keeps the SVG layer visible; native video-only fullscreen/PiP controls are disabled for this localized plate because native video-only surfaces cannot contain the HTML/SVG artwork. Mobile Safari behavior still needs device verification. Reusable animation timing, poster/card assets and the exact shared plate require QA together when introducing another episode.
 
 Checks: unchanged AAC stream hash; full shared-video decode; typecheck, SMILE audit, build, Tailwind guard and focused ESLint; mocked component test confirmed language changes keep the same video/time/volume and controls route to the site setter. Chrome preview verified the in-frame selector updates the header/page/poster, TH→ZH during playback preserves the source and clock, translated closing cards contain no English slogan, and Thai pencil tip tracks the revealed outlines at a paused seek. Preloaded color plates avoid a language-image fetch delay; seeking away from the end clears Replay. Production activation remains a separate release check.
+
+
+## Episode sharing
+Share appears beside Like on published episode feature/archive entries, with EN/TH/ZH labels. A click uses the device Web Share API where available; unsupported/failed sharing copies the canonical `https://joko.today/smile?episode=<id>` link. Native cancellation is silent and does not copy. If clipboard access fails, show a selectable readonly URL for manual copy. No login, tracking, schema change, social auto-posting or MP4 edit. Sample records have no Share button. Shared links reuse the existing published-episode deep-link route and the viewer's own language preference.
+
+The SMILE audit tests canonical URL encoding, native success, cancellation without copying, clipboard fallback, and manual recovery. Native mobile share sheets still require device verification.

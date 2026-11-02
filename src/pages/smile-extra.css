@@ -59,3 +59,9 @@
 .smile-inline-player:modal .smile-player-languages button{min-height:44px;min-width:44px;font-size:13px}
 
 @media(max-width:480px){.smile-inline-player:not(:modal) .smile-inline-replay span{display:none}.smile-inline-player:not(:modal) .smile-inline-replay{padding:8px;min-width:34px;min-height:34px}}
+
+.smile-episode-social{display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap}
+.smile-feature-caption .smile-episode-social{margin-top:12px}.smile-feature-caption .smile-episode-social .smile-like{margin-top:0}
+.smile-share{position:relative;max-width:100%}.smile-share-button{display:inline-flex;align-items:center;gap:7px;border:1px solid #c5cbbc;border-radius:30px;background:#fffaf0;color:#58705b;padding:8px 11px;font-size:12px;white-space:nowrap}
+.smile-share-button:hover{background:#f8e7d8}.smile-share-feedback{display:block;font-size:11px;color:#3f665e;margin-top:4px}
+.smile-share-manual{display:block;max-width:260px;margin-top:7px;font-size:12px;color:#405f54}.smile-share-manual input{display:block;width:100%;border:1px solid #a7b8ac;border-radius:5px;background:#fffdf6;padding:6px;margin-top:3px}
