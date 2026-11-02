@@ -29,3 +29,24 @@
 .smile-film .smile-watch:hover{background:#a95120}.smile-film .smile-watch svg,.smile-film-demo svg{width:19px;height:19px;margin-left:2px}
 .smile-film .smile-watch:focus-visible{outline:3px solid #fffdf5;outline-offset:3px;box-shadow:0 0 0 6px #354b43}
 .smile-player-external{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px;background:#f5eedf}.smile-player-external img{max-height:50dvh;max-width:100%;object-fit:contain}.smile-player-external .smile-watch{text-align:center}
+
+/* The same video element stays mounted when its dialog enters the top layer. */
+.smile-inline-player{color:#30352e;background:#fefdf6;border:0;padding:0;max-width:none;max-height:none}
+.smile-inline-player:not(:modal){position:relative;inset:auto;margin:0;width:100%;height:100%;display:block}
+.smile-inline-player:modal{position:fixed;inset:0;margin:auto;width:100vw;height:100dvh;display:flex;flex-direction:column;border-radius:0}
+.smile-inline-player::backdrop{background:#fefdf6}
+.smile-inline-heading{display:none;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;font-size:14px;font-weight:650}
+.smile-inline-player:modal .smile-inline-heading{display:flex}
+.smile-inline-heading button,.smile-inline-expand{display:grid;place-items:center;min-width:44px;min-height:44px;border-radius:50%;background:#fefdf6e8;color:#30352e}
+.smile-inline-stage{position:relative;width:100%;height:100%;min-height:0;background:#fefdf6}
+.smile-inline-player:modal .smile-inline-stage{flex:1}
+.smile-inline-stage video{display:block;width:100%;height:100%;object-fit:contain;background:#fefdf6}
+.smile-inline-stage video:fullscreen{object-fit:contain;background:#fefdf6}
+.smile-inline-start{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.smile-inline-start button{pointer-events:auto}
+.smile-inline-expand{position:absolute;top:6px;right:6px;box-shadow:0 1px 5px #30352e25}
+.smile-inline-expand[hidden]{display:none}
+.smile-inline-replay{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:8px;padding:9px 16px;border:1px solid #c76624;border-radius:24px;background:#fefdf6;color:#914615;font-size:14px;font-weight:650}
+.smile-inline-error{position:absolute;inset:20%;display:grid;place-items:center;text-align:center;background:#fefdf6;color:#8c352c}
+.smile-dialog{width:min(1400px,calc(100% - 24px));max-height:calc(100dvh - 24px)}
+.smile-player video{height:calc(100dvh - 150px);max-height:none;object-fit:contain;background:#fefdf6}

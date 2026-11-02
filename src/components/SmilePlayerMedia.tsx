@@ -9,13 +9,14 @@ interface SmilePlayerMediaProps {
   externalLabel: string;
   errorLabel: string;
   failed: boolean;
+  autoPlay?: boolean;
   onError: () => void;
 }
 
 export function SmilePlayerMedia(props: SmilePlayerMediaProps) {
   const source = smileVideoSource(props.mediaUrl);
   if (props.failed || !source) return <p role="alert" className="smile-player-error">{props.errorLabel}</p>;
-  if (source.kind === 'file') return <video src={source.url} poster={safeSmileUrl(props.poster) || undefined} controls playsInline preload="metadata" onError={props.onError} aria-label={props.alt}/>;
+  if (source.kind === 'file') return <video src={source.url} poster={safeSmileUrl(props.poster) || undefined} controls playsInline autoPlay={props.autoPlay} preload="metadata" onError={props.onError} aria-label={props.alt}/>;
   if (source.kind === 'youtube') return <iframe src={source.url} title={props.title} allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>;
   return <div className="smile-player-external">
     {safeSmileUrl(props.poster) && <img src={safeSmileUrl(props.poster)!} alt={props.alt}/>}

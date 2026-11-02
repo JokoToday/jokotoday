@@ -5,11 +5,18 @@ import { Container } from '../platform/design-system';
 import { filterSmileEpisodes, getSmileEpisodes, safeSmileUrl, smileText, smileVideoSource, type SmileEpisode } from '../lib/smileCatalog';
 import { useAuth } from '../context/AuthContext';
 import { AuthModal } from '../components/AuthModal';
+import { SmileInlinePlayer, type SmileInlineHandle } from '../components/SmileInlinePlayer';
 import { SmilePlayerMedia } from '../components/SmilePlayerMedia';
 import { getSmileLikeCounts, getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
 import { smileSamples, sampleLikeCounts } from '../lib/smileSamples';
 import './smile.css';
 import './smile-extra.css';
+
+const playerWords = {
+  en: { expand: 'Expand episode', close: 'Return to filmstrip', replay: 'Replay' },
+  th: { expand: 'ขยายวิดีโอ', close: 'กลับไปที่กรอบฟิล์ม', replay: 'เล่นอีกครั้ง' },
+  zh: { expand: '放大短片', close: '返回胶片框', replay: '重播' },
+};
 
 const extraWords = {
   en: { demoHint: 'Try the hearts below. Demo likes reset when you refresh.', likes: 'Most liked', like: 'Like', liked: 'Liked', allDates: 'All dates', month: 'Episode month', sample: 'Sample catalog — illustrative titles, dates and likes. No finished videos are published here. Demo likes are not saved to your account.', preview: 'Sample artwork', likeError: 'Likes are temporarily unavailable. Please try again.', likeHint: 'Like an episode to save it to My Favorites.', samples: 'View sample catalog', live: 'View published catalog', sampleTag: 'Sample', date: 'Date', saved: 'Saved to My Favorites', removed: 'Removed from My Favorites', demoLiked: 'Demo like added', demoRemoved: 'Demo like removed' },
@@ -91,8 +98,11 @@ export default function SmilePage() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('newest');
   const [selected, setSelected] = useState<SmileEpisode | null>(null);
+  const [selectedAutoPlay, setSelectedAutoPlay] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const inlinePlayer = useRef<SmileInlineHandle>(null);
+  const feature = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -137,7 +147,7 @@ export default function SmilePage() {
   const dateLabel = (date: string) => new Intl.DateTimeFormat(language === 'th' ? 'th-TH' : language === 'zh' ? 'zh-CN' : 'en-GB', {year:'numeric', month:'short', day:'numeric', timeZone:'UTC'}).format(new Date(date));
 
   useEffect(() => {
-    if (selected) { setVideoFailed(false); dialog.current?.showModal(); }
+    if (selected) { inlinePlayer.current?.pause(); dialog.current?.showModal(); }
   }, [selected]);
   useEffect(() => {
     const before = document.title; document.title = copy.titleLabel + ' | JOKO TODAY';
@@ -150,10 +160,14 @@ export default function SmilePage() {
     if (sampleMode) return;
     const id = new URLSearchParams(window.location.search).get('episode');
     const episode = episodes.find(item => item.id === id);
-    if (episode) setSelected(episode);
+    if (episode) { setVideoFailed(false); setSelectedAutoPlay(false); setSelected(episode); }
   }, [episodes, sampleMode]);
   const latest = episodes[0];
-  const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element; setSelected(episode); };
+  const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element;
+    if (episode.id === latest?.id && smileVideoSource(episode.media_url)?.kind === 'file') {
+      inlinePlayer.current?.play(); feature.current?.scrollIntoView({ block: 'nearest' }); return;
+    }
+    inlinePlayer.current?.pause(); setVideoFailed(false); setSelectedAutoPlay(true); setSelected(episode); };
   const close = () => { dialog.current?.close(); setSelected(null); trigger.current?.focus(); };
   const selectedText = selected ? smileText(selected, language) : null;
 
@@ -178,13 +192,17 @@ export default function SmilePage() {
             <p className="smile-description">{copy.intro}</p>
             <a href="#smile-episodes" className="smile-browse">{copy.browse}<ArrowDown size={17}/></a>
           </div>
-          <div className="smile-feature smile-feature-film">
+          <div ref={feature} className="smile-feature smile-feature-film">
             <div className="smile-film">
             <div className="smile-film-perforations smile-film-perforations-left" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}/>)}</div>
             <div className="smile-film-perforations smile-film-perforations-right" aria-hidden="true">{Array.from({ length: 7 }, (_, index) => <span key={index}/>)}</div>
             <div className="smile-screen">
               {loading ? <p role="status" className="smile-screen-message">{copy.loading}</p>
                 : failed ? <div className="smile-screen-message" role="alert"><p>{copy.loadError}</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="smile-retry">{copy.retry}</button></div>
+                : latest && !sampleMode && smileVideoSource(latest.media_url)?.kind === 'file' ? <SmileInlinePlayer key={latest.id} ref={inlinePlayer}
+                  src={smileVideoSource(latest.media_url)!.url} poster={safeSmileUrl(latest.thumbnail_url) || undefined}
+                  title={smileText(latest, language).title} alt={smileText(latest, language).alt}
+                  labels={{ ...playerWords[language], watch: copy.watch, error: copy.videoError }}/>
                 : latest ? <>
                   {!sampleMode && safeSmileUrl(latest.thumbnail_url) ? <img className="smile-poster" src={safeSmileUrl(latest.thumbnail_url)!} alt={smileText(latest, language).alt}/> : <CookieSketch/>}
                   <div className="smile-screen-overlay">{watchLink(latest, true)}</div>
@@ -233,7 +251,7 @@ export default function SmilePage() {
         <div className="smile-player-heading"><h2>{selectedText?.title}</h2><button type="button" onClick={close} aria-label={copy.close} autoFocus><X size={22}/></button></div>
         <SmilePlayerMedia key={selected.id} mediaUrl={selected.media_url} poster={selected.thumbnail_url}
           title={selectedText!.title} alt={selectedText!.alt} externalLabel={copy.external}
-          errorLabel={copy.videoError} failed={videoFailed} onError={() => setVideoFailed(true)}/>
+          errorLabel={copy.videoError} autoPlay={selectedAutoPlay} failed={videoFailed} onError={() => setVideoFailed(true)}/>
         {selectedText?.caption && <p className="smile-player-description">{selectedText.caption}</p>}
       </div>}
     </dialog>

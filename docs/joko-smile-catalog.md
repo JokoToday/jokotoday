@@ -54,3 +54,11 @@ Before release: apply the reviewed migration to production with authorization, m
 The featured poster now sits inside a responsive charcoal CSS frame, with vertical side perforations and no antique texture or ticket. The poster uses contain fitting inside a 16:9 aperture, so opening artwork is not cropped (other aspect ratios are letterboxed). The 44 px play button is smaller while retaining a touch target of at least 44 px.
 
 The frame is webpage decoration, not part of the video file. Direct-file and YouTube watch actions still open the existing unframed dialog player; external video sites open separately. Opening/end cards remain part of the supplied film. Set the episode poster in Admin to use the approved opening artwork; this frontend change does not publish or modify episode records.
+
+
+## Inline playback (November 2)
+Direct-file featured episodes now play within the filmstrip. Page arrival remains a silent poster (`preload=none`, no autoplay); one click calls play with user activation. The expand button promotes the same video DOM element into a full-viewport native dialog with a cream background and contain fitting. Time, volume and play/pause state are retained. Escape/Return restores the inline view, focus and page scrolling. Ending holds the supplied final frame and offers Replay without covering the central branding. No looping or media edits.
+
+The featured episode's archive Watch action starts that inline player. Other episodes retain the dialog player; click-opened direct files request immediate playback, while Favorites deep links do not autoplay on page arrival. YouTube/external provider handling and sample catalog isolation remain unchanged. EN/TH/ZH labels are supplied for the new controls.
+
+Validation: typecheck, SMILE regression checks, production build and Tailwind compatibility checks passed. Focused component tests covered no initial autoplay, user-gesture play, DOM/time/volume preservation, Escape/focus/scroll restoration, Replay and media errors with mocked dialog/media APIs. Real browser playback and responsive expansion require release smoke verification; mocked tests do not establish browser autoplay permission or layout behavior.
