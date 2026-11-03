@@ -8,9 +8,11 @@ import {
 } from "../_shared/auth-email-routing.ts";
 import {
   buildTransactionalEmailShell,
+  DEFAULT_JOKO_EMAIL_WAVE_URL,
   escapeHtml,
   JOKO_EMAIL_THEME,
   jokoEmailLogoAttachment,
+  jokoEmailWaveAttachment,
   renderPrimaryButton,
   type TransactionalEmailLanguage,
 } from "../_shared/transactional-email.ts";
@@ -136,6 +138,8 @@ function buildAuthEmail(
       contentHtml,
       footerText: c.footer,
       maxWidth: 520,
+      heroImageUrl: DEFAULT_JOKO_EMAIL_WAVE_URL,
+      heroImageWidth: 58,
     });
 
     const text = [
@@ -299,13 +303,17 @@ Deno.serve(async (req: Request) => {
       const email = buildAuthEmail(
         email_action_type, recipient.token, confirmUrl, language, recipient.audience,
       );
+      const attachments = [jokoEmailLogoAttachment()];
+      if (email_action_type === "signup" || email_action_type === "magiclink") {
+        attachments.push(jokoEmailWaveAttachment());
+      }
       const { error: emailError } = await resend.emails.send({
         from: "JOKO TODAY <noreply@joko.today>",
         to: recipient.address,
         subject: email.subject,
         html: email.html,
         text: email.text,
-        attachments: [jokoEmailLogoAttachment()],
+        attachments,
       });
       if (emailError) {
         console.error("Auth email delivery failed", {
