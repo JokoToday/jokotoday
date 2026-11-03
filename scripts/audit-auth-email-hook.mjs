@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { build } from 'esbuild';
 
 const bundled = await build({
@@ -76,6 +76,13 @@ for (const invalid of [
 }
 
 const hook = readFileSync('supabase/functions/send-auth-email/index.ts', 'utf8');
+const emailShell = readFileSync('supabase/functions/_shared/transactional-email.ts', 'utf8');
+assert.equal(existsSync('public/JOKO_email_wave.png'), true);
+assert.match(emailShell, /JOKO_EMAIL_WAVE_ASSET_URL/);
+assert.match(emailShell, /heroImageUrl/);
+assert.match(hook, /DEFAULT_JOKO_EMAIL_WAVE_URL/);
+assert.match(hook, /jokoEmailWaveAttachment/);
+assert.match(hook, /email_action_type === "signup" \|\| email_action_type === "magiclink"/);
 assert.match(hook, /wh\.verify\(rawBody, headers\)/);
 assert.match(hook, /recipientsForAuthEmail\(payload\)/);
 assert.match(hook, /recipient\.tokenHash/);
