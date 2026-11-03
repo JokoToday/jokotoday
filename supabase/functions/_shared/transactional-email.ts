@@ -4,23 +4,11 @@ export const JOKO_SITE_URL = "https://joko.today";
 export const JOKO_EMAIL_LOGO_ASSET_URL = `${JOKO_SITE_URL}/JOKO.TODAY_email_logo.png`;
 export const JOKO_EMAIL_LOGO_CONTENT_ID = "joko-today-logo";
 export const DEFAULT_JOKO_EMAIL_LOGO_URL = `cid:${JOKO_EMAIL_LOGO_CONTENT_ID}`;
-export const JOKO_EMAIL_WAVE_ASSET_URL = `${JOKO_SITE_URL}/JOKO_email_wave.png`;
-export const JOKO_EMAIL_WAVE_CONTENT_ID = "joko-email-wave";
-export const DEFAULT_JOKO_EMAIL_WAVE_URL = `cid:${JOKO_EMAIL_WAVE_CONTENT_ID}`;
-
 export function jokoEmailLogoAttachment() {
   return {
     path: JOKO_EMAIL_LOGO_ASSET_URL,
     filename: "JOKO.TODAY_email_logo.png",
     contentId: JOKO_EMAIL_LOGO_CONTENT_ID,
-  };
-}
-
-export function jokoEmailWaveAttachment() {
-  return {
-    path: JOKO_EMAIL_WAVE_ASSET_URL,
-    filename: "JOKO_email_wave.png",
-    contentId: JOKO_EMAIL_WAVE_CONTENT_ID,
   };
 }
 
