@@ -4,7 +4,6 @@ export const JOKO_SITE_URL = "https://joko.today";
 export const JOKO_EMAIL_LOGO_ASSET_URL = `${JOKO_SITE_URL}/JOKO.TODAY_email_logo.png`;
 export const JOKO_EMAIL_LOGO_CONTENT_ID = "joko-today-logo";
 export const DEFAULT_JOKO_EMAIL_LOGO_URL = `cid:${JOKO_EMAIL_LOGO_CONTENT_ID}`;
-
 export function jokoEmailLogoAttachment() {
   return {
     path: JOKO_EMAIL_LOGO_ASSET_URL,
@@ -88,6 +87,9 @@ interface TransactionalEmailShellOptions {
   logoUrl?: string;
   logoAlt?: string;
   brandText?: string;
+  heroImageUrl?: string;
+  heroImageAlt?: string;
+  heroImageWidth?: number;
 }
 
 export function buildTransactionalEmailShell(options: TransactionalEmailShellOptions): string {
@@ -103,10 +105,18 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
     logoUrl = DEFAULT_JOKO_EMAIL_LOGO_URL,
     logoAlt = "",
     brandText = "JOKO TODAY",
+    heroImageUrl,
+    heroImageAlt = "",
+    heroImageWidth = 58,
   } = options;
   const theme = JOKO_EMAIL_THEME;
   const fontFamily = emailFontFamily(language);
   const displayFontFamily = emailDisplayFontFamily(language);
+  const heroImageHtml = heroImageUrl
+    ? `<div style="margin:0 0 14px;line-height:0;font-size:0;text-align:left;">
+              <img src="${escapeHtml(heroImageUrl)}" width="${heroImageWidth}" alt="${escapeHtml(heroImageAlt)}" role="presentation" aria-hidden="true" style="display:block;width:${heroImageWidth}px;max-width:22%;height:auto;margin:0;border:0;outline:none;text-decoration:none;color:transparent;font-size:0;line-height:0;" />
+            </div>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="${languageAttribute(language)}">
@@ -148,6 +158,7 @@ export function buildTransactionalEmailShell(options: TransactionalEmailShellOpt
           </tr>
           <tr>
             <td style="padding:24px 34px 32px;">
+              ${heroImageHtml}
               <h1 style="margin:0 0 24px;font-size:27px;line-height:1.28;font-weight:600;letter-spacing:0.1px;color:${theme.charcoal};font-family:${displayFontFamily};">${escapeHtml(heading)}</h1>
               ${contentHtml}
             </td>

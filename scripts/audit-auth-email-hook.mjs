@@ -76,6 +76,14 @@ for (const invalid of [
 }
 
 const hook = readFileSync('supabase/functions/send-auth-email/index.ts', 'utf8');
+const emailShell = readFileSync('supabase/functions/_shared/transactional-email.ts', 'utf8');
+const waveAsset = readFileSync('supabase/functions/_shared/joko-email-wave.ts', 'utf8');
+assert.match(emailShell, /heroImageUrl/);
+assert.match(waveAsset, /JOKO_EMAIL_WAVE_BASE64/);
+assert.match(waveAsset, /contentId: JOKO_EMAIL_WAVE_CONTENT_ID/);
+assert.match(hook, /DEFAULT_JOKO_EMAIL_WAVE_URL/);
+assert.match(hook, /jokoEmailWaveAttachment/);
+assert.match(hook, /email_action_type === "signup" \|\| email_action_type === "magiclink"/);
 assert.match(hook, /wh\.verify\(rawBody, headers\)/);
 assert.match(hook, /recipientsForAuthEmail\(payload\)/);
 assert.match(hook, /recipient\.tokenHash/);
