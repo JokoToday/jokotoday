@@ -305,10 +305,12 @@ Deno.serve(async (req: Request) => {
       const email = buildAuthEmail(
         email_action_type, recipient.token, confirmUrl, language, recipient.audience,
       );
-      const attachments = [jokoEmailLogoAttachment()];
-      if (email_action_type === "signup" || email_action_type === "magiclink") {
-        attachments.push(jokoEmailWaveAttachment());
-      }
+      const attachments = [
+        jokoEmailLogoAttachment(),
+        ...(email_action_type === "signup" || email_action_type === "magiclink"
+          ? [jokoEmailWaveAttachment()]
+          : []),
+      ];
       const { error: emailError } = await resend.emails.send({
         from: "JOKO TODAY <noreply@joko.today>",
         to: recipient.address,
