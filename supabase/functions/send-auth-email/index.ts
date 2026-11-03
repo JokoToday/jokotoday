@@ -8,14 +8,16 @@ import {
 } from "../_shared/auth-email-routing.ts";
 import {
   buildTransactionalEmailShell,
-  DEFAULT_JOKO_EMAIL_WAVE_URL,
   escapeHtml,
   JOKO_EMAIL_THEME,
   jokoEmailLogoAttachment,
-  jokoEmailWaveAttachment,
   renderPrimaryButton,
   type TransactionalEmailLanguage,
 } from "../_shared/transactional-email.ts";
+import {
+  DEFAULT_JOKO_EMAIL_WAVE_URL,
+  jokoEmailWaveAttachment,
+} from "../_shared/joko-email-wave.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
