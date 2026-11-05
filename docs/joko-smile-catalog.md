@@ -72,3 +72,19 @@ The in-frame language buttons call the existing LanguageContext setter. Header, 
 Custom Expand keeps the SVG layer visible; native video-only fullscreen/PiP controls are disabled for this localized plate because native video-only surfaces cannot contain the HTML/SVG artwork. Mobile Safari behavior still needs device verification. Reusable animation timing, poster/card assets and the exact shared plate require QA together when introducing another episode.
 
 Checks: unchanged AAC stream hash; full shared-video decode; typecheck, SMILE audit, build, Tailwind guard and focused ESLint; mocked component test confirmed language changes keep the same video/time/volume and controls route to the site setter. Chrome preview verified the in-frame selector updates the header/page/poster, TH→ZH during playback preserves the source and clock, translated closing cards contain no English slogan, and Thai pencil tip tracks the revealed outlines at a paused seek. Preloaded color plates avoid a language-image fetch delay; seeking away from the end clears Replay. Production activation remains a separate release check.
+
+
+## Episode sharing
+Share appears beside Like on published episode feature/archive entries, with EN/TH/ZH labels. A click uses the device Web Share API where available; unsupported/failed sharing copies the canonical `https://joko.today/smile?episode=<id>` link. Native cancellation is silent and does not copy. If clipboard access fails, show a selectable readonly URL for manual copy. No login, tracking, schema change, social auto-posting or MP4 edit. Sample records have no Share button. Shared links reuse the existing published-episode deep-link route and the viewer's own language preference.
+
+The SMILE audit tests canonical URL encoding, native success, cancellation without copying, clipboard fallback, and manual recovery. Native mobile share sheets still require device verification.
+
+### Approved Ep001 acting revision
+
+The catalog's existing Ep001 record now opts into the approved 27.7-second acting edition without modifying database rows. The shared website plate and complete English native-player fallback are versioned together under `public/assets/smile/ep001-acting-v02/`; its manifest records hashes and the locked edition URLs. Both previous v2.1 English and web-v1 shared files remain unchanged at their original URLs.
+
+Existing EN/TH/ZH posters, title/slogan artwork, local stroke schedules and pencil-tip data are unchanged. `smilePlayback.ts` supplies edition-specific timing: closing 19.7s for the acting revision versus 18.1s for an explicit locked shared source. Opening timing is unchanged; overlays remain hidden throughout the action, 6.5–19.7s. The revised closing's local trace and color times are unchanged. The same video element and source survive language switches, pause, seeks and expansion; Replay uses the actual 27.7s duration. Generic/Favorites native playback uses the complete revised English file, avoiding a text-free shared plate.
+
+This release also includes Share beside Like on published featured/archive entries (the implementation from PR #335). Native share, quiet cancellation, clipboard fallback and selectable manual URL remain localized in EN/TH/ZH. No login, automatic posting, schema or permission change is introduced. Native mobile share-sheet behavior needs a real device check.
+
+Validation covers edition timing, all three language mappings, hidden action overlays, preservation of old timing, packaged files, English fallback and Share outcomes. Browser verification and deployment state are recorded in the integration PR; a passing build alone does not mean the release is live.

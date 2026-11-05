@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { AuthModal } from '../components/AuthModal';
 import { localizedSmileMedia } from '../lib/smileLocalization';
 import { SmileInlinePlayer, type SmileInlineHandle } from '../components/SmileInlinePlayer';
+import { SmileShareButton } from '../components/SmileShareButton';
 import { SmilePlayerMedia } from '../components/SmilePlayerMedia';
 import { getSmileLikeCounts, getLikedSmileIds, setSmileLike } from '../lib/smileLikesService';
 import { smileSamples, sampleLikeCounts } from '../lib/smileSamples';
@@ -169,6 +170,7 @@ export default function SmilePage() {
     }
   }, [episodes, sampleMode]);
   const latest = episodes[0];
+  const latestMedia = latest ? localizedSmileMedia(latest.media_url, language) : null;
   const watch = (episode: SmileEpisode, element: HTMLElement) => { trigger.current = element;
     if (episode.id === latest?.id && smileVideoSource(episode.media_url)?.kind === 'file') {
       inlinePlayer.current?.play(); feature.current?.scrollIntoView({ block: 'nearest' }); return;
@@ -206,9 +208,9 @@ export default function SmilePage() {
               {loading ? <p role="status" className="smile-screen-message">{copy.loading}</p>
                 : failed ? <div className="smile-screen-message" role="alert"><p>{copy.loadError}</p><button type="button" onClick={() => setAttempt(value => value + 1)} className="smile-retry">{copy.retry}</button></div>
                 : latest && !sampleMode && smileVideoSource(latest.media_url)?.kind === 'file' ? <SmileInlinePlayer key={latest.id} ref={inlinePlayer}
-                  src={localizedSmileMedia(latest.media_url, language)?.src || smileVideoSource(latest.media_url)!.url}
-                  poster={localizedSmileMedia(latest.media_url, language)?.poster || safeSmileUrl(latest.thumbnail_url) || undefined}
-                  localization={localizedSmileMedia(latest.media_url, language) ? { language, setLanguage } : undefined}
+                  src={latestMedia?.src || smileVideoSource(latest.media_url)!.url}
+                  poster={latestMedia?.poster || safeSmileUrl(latest.thumbnail_url) || undefined}
+                  localization={latestMedia ? { language, setLanguage, timing: latestMedia.timing } : undefined}
                   title={smileText(latest, language).title} alt={smileText(latest, language).alt}
                   labels={{ ...playerWords[language], watch: copy.watch, error: copy.videoError }}/>
                 : latest ? <>
@@ -218,7 +220,7 @@ export default function SmilePage() {
             </div>
             </div>
             <div className="smile-feature-caption">
-              <span className="smile-reel-dot" aria-hidden="true"/><div><p>{latest ? smileText(latest, language).title : copy.short}</p><span>{latest ? smileText(latest, language).caption : copy.empty}</span>{latest && likeButton(latest)}</div>
+              <span className="smile-reel-dot" aria-hidden="true"/><div><p>{latest ? smileText(latest, language).title : copy.short}</p><span>{latest ? smileText(latest, language).caption : copy.empty}</span>{latest && <div className="smile-episode-social">{likeButton(latest)}{!sampleMode && <SmileShareButton id={latest.id} title={smileText(latest, language).title} language={language}/>}</div>}</div>
             </div>
           </div>
         </div>
@@ -246,7 +248,7 @@ export default function SmilePage() {
             const text = smileText(episode, language); const poster = safeSmileUrl(episode.thumbnail_url);
             return <article key={episode.id} className="smile-card">
               <div className="smile-card-image">{poster ? <img src={poster} alt={text.alt} loading="lazy"/> : <CookieSketch/>}<span className="smile-card-badge"><Play size={12} fill="currentColor"/>JOKO SMILE</span></div>
-              <div className="smile-card-body"><div className="smile-card-meta"><time dateTime={episode.created_at}>{dateLabel(episode.created_at)}</time>{sampleMode && <span>{extra.sampleTag}</span>}</div><h3>{text.title}</h3>{text.caption && <p>{text.caption}</p>}<div className="smile-card-actions">{watchLink(episode)}{likeButton(episode)}</div></div>
+              <div className="smile-card-body"><div className="smile-card-meta"><time dateTime={episode.created_at}>{dateLabel(episode.created_at)}</time>{sampleMode && <span>{extra.sampleTag}</span>}</div><h3>{text.title}</h3>{text.caption && <p>{text.caption}</p>}<div className="smile-card-actions">{watchLink(episode)}<div className="smile-episode-social">{likeButton(episode)}{!sampleMode && <SmileShareButton id={episode.id} title={text.title} language={language}/>}</div></div></div>
             </article>;
           })}</div>)}
         <p className="smile-signoff">{copy.footer} <span aria-hidden="true">⌣</span></p>

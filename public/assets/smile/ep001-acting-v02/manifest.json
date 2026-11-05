@@ -1,0 +1,24 @@
+{
+  "edition": "Approved acting v0.2 + fitted original music",
+  "duration": 27.7,
+  "fps": 30,
+  "width": 1200,
+  "height": 760,
+  "closing_start": 19.7,
+  "locked_edition": {
+    "english": "https://media.joko.today/smile/ep001/v2.1/JOKO_SMILE_Ep001_Complete_v2.1.mp4",
+    "shared": "https://media.joko.today/smile/ep001/web-v1/Ep001_Web_Shared_v1.mp4",
+    "duration": 26.1,
+    "closing_start": 18.1
+  },
+  "files": {
+    "Ep001_Web_Shared_Acting_v0.2.mp4": {
+      "sha256": "fc9fd25dca1da57d54cebd312a73199dd158d6c5a0d7ef919a507800c3c7906a",
+      "bytes": 1353387
+    },
+    "JOKO_SMILE_Ep001_Acting_v0.2.mp4": {
+      "sha256": "521385bdae214a52a2651d5ad2644276c106a6b51bedd85cde7267e6a9862cdb",
+      "bytes": 1520648
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
 import { safeSmileUrl, smileVideoSource } from '../lib/smileCatalog';
+import { standaloneSmileMedia } from '../lib/smileLocalization';
 
 interface SmilePlayerMediaProps {
   mediaUrl: string;
@@ -14,7 +15,7 @@ interface SmilePlayerMediaProps {
 }
 
 export function SmilePlayerMedia(props: SmilePlayerMediaProps) {
-  const source = smileVideoSource(props.mediaUrl);
+  const source = smileVideoSource(standaloneSmileMedia(props.mediaUrl));
   if (props.failed || !source) return <p role="alert" className="smile-player-error">{props.errorLabel}</p>;
   if (source.kind === 'file') return <video src={source.url} poster={safeSmileUrl(props.poster) || undefined} controls playsInline autoPlay={props.autoPlay} preload="metadata" onError={props.onError} aria-label={props.alt}/>;
   if (source.kind === 'youtube') return <iframe src={source.url} title={props.title} allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>;
