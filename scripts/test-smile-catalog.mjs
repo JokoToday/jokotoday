@@ -59,3 +59,53 @@ assert.ok(renderMedia('/film.mp4').includes('<video'));
 assert.ok(renderMedia('https://youtu.be/ABCDEFGHIJK').includes('https://www.youtube-nocookie.com/embed/ABCDEFGHIJK'));
 assert.ok(renderMedia('javascript:alert(1)').includes('Cannot play'));
 console.log('Favorites player regression passed: external link, direct video, YouTube and unsafe URL fallback.');
+
+const sharing = await bundle('src/lib/smileShare.ts');
+const shareUrl = sharing.smileEpisodeShareUrl('episode / ?');
+assert.equal(new URL(shareUrl).origin, 'https://joko.today');
+assert.equal(new URL(shareUrl).pathname, '/smile');
+assert.equal(new URL(shareUrl).searchParams.get('episode'), 'episode / ?');
+let copied = '', nativeData = null;
+const clipboard = {writeText: async value => { copied = value; }};
+assert.equal(await sharing.shareSmileEpisode({share:async data => {nativeData=data;},clipboard}, 'one', 'Title'), 'shared');
+assert.equal(nativeData.url, 'https://joko.today/smile?episode=one'); assert.equal(copied, '');
+assert.equal(await sharing.shareSmileEpisode({share:async()=>{throw Object.assign(new Error(),{name:'AbortError'});},clipboard}, 'one', 'Title'), 'cancelled');
+assert.equal(copied, '');
+assert.equal(await sharing.shareSmileEpisode({clipboard}, 'two', 'Title'), 'copied');
+assert.equal(copied, 'https://joko.today/smile?episode=two');
+assert.equal(await sharing.shareSmileEpisode({share:async()=>{throw new Error('unavailable');},clipboard}, 'three', 'Title'), 'copied');
+assert.equal(await sharing.shareSmileEpisode({}, 'one', 'Title'), 'manual');
+assert.equal(await sharing.shareSmileEpisode({clipboard:{writeText:async()=>{throw new Error('denied');}}}, 'one', 'Title'), 'manual');
+console.log('SMILE sharing passed: canonical deep links, native share, cancellation without copy, clipboard fallback and manual-copy recovery.');
+
+const localization = await bundle('src/lib/smileLocalization.ts');
+const playback = await bundle('src/lib/smilePlayback.ts');
+const {readFileSync,existsSync} = await import('node:fs');
+const cardData = (await bundle('src/lib/smileCardData.ts')).default;
+for (const language of ['en','th','zh']) {
+  const current = localization.localizedSmileMedia(localization.EP001_ENGLISH_MEDIA, language);
+  assert.equal(current.src, localization.EP001_ACTING_WEB_MEDIA);
+  assert.equal(current.timing.endingStart, 19.7); assert.equal(current.timing.duration, 27.7);
+  assert.equal(current.poster, localization.SMILE_CARD_ASSETS + `poster-${language}.png`);
+  const locked = localization.localizedSmileMedia(localization.EP001_WEB_MEDIA, language);
+  assert.equal(locked.src, localization.EP001_WEB_MEDIA); assert.equal(locked.timing.endingStart,18.1);
+  assert.equal(locked.timing.duration,26.1);
+  for (const time of [6.5,12,18.1,19.69]) assert.equal(playback.smileCardPhase(time,current.timing),null);
+  const shifted = playback.smileCardPhase(23,current.timing);
+  assert.equal(shifted.kind,'ending');assert.ok(Math.abs(shifted.local-3.3)<1e-9);
+  const a=cardData[language].ending;
+  assert.ok(Math.abs((current.timing.endingStart+a.paths[0].start)-(locked.timing.endingStart+a.paths[0].start)-1.6)<1e-9);
+  assert.equal(playback.smileCardPhase(3.9,current.timing).local,3.9);
+  assert.ok(Math.abs(current.timing.endingStart+a.paintStart-26.2)<1e-9);
+  assert.ok(existsSync('public'+current.src));assert.ok(existsSync('public'+current.poster));
+}
+assert.equal(playback.smileCardPhase(18.2).kind,'ending'); // Legacy default remains valid.
+assert.equal(localization.localizedSmileMedia('/unrelated.mp4','en'),null);
+assert.equal(localization.standaloneSmileMedia(localization.EP001_ENGLISH_MEDIA),localization.EP001_ACTING_ENGLISH_MEDIA);
+assert.equal(localization.standaloneSmileMedia(localization.EP001_ACTING_WEB_MEDIA),localization.EP001_ACTING_ENGLISH_MEDIA);
+assert.equal(localization.standaloneSmileMedia(localization.EP001_WEB_MEDIA),localization.EP001_ENGLISH_MEDIA);
+assert.equal(localization.standaloneSmileMedia('/unrelated.mp4'),'/unrelated.mp4');
+assert.ok(existsSync('public'+localization.EP001_ACTING_ENGLISH_MEDIA));
+const phaseAtEnd=playback.smileCardPhase(27.7,playback.SMILE_ACTING_TIMING);assert.equal(phaseAtEnd.kind,'ending');assert.equal(phaseAtEnd.opacity,1);
+assert.ok(readFileSync('src/components/SmileInlinePlayer.tsx','utf8').includes('timing={props.localization.timing}'));
+console.log('SMILE acting/localization passed: all three languages, +1.6s closing shift, no action overlays, legacy timing, replay end phase, packaged media and complete-English native fallback.');

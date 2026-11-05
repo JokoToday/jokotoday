@@ -1,12 +1,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { SmileLocalizedCards } from './SmileLocalizedCards';
 import type { Language } from '../translations';
+import type { SmilePlaybackTiming } from '../lib/smilePlayback';
 import { Expand, Play, RotateCcw, X } from 'lucide-react';
 
 export interface SmileInlineHandle { play: () => void; pause: () => void }
 interface Props {
   src: string; poster?: string; title: string; alt: string;
-  localization?: { language: Language; setLanguage: (language: Language) => void };
+  localization?: { language: Language; setLanguage: (language: Language) => void; timing: SmilePlaybackTiming };
   labels: { watch: string; expand: string; close: string; replay: string; error: string };
 }
 
@@ -75,9 +76,9 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
       <video ref={video} src={props.src} poster={props.poster} playsInline preload="none"
         controls={started} controlsList={hasLocalization ? "nofullscreen nodownload" : undefined}
         disablePictureInPicture={hasLocalization} aria-label={props.alt} onTimeUpdate={event => setTime(event.currentTarget.currentTime)}
-        onSeeked={event => { setTime(event.currentTarget.currentTime); setEnded(event.currentTarget.ended); }} onEnded={() => { setEnded(true); setTime(video.current?.duration || 26.1); }}
+        onSeeked={event => { setTime(event.currentTarget.currentTime); setEnded(event.currentTarget.ended); }} onEnded={() => { setEnded(true); setTime(video.current?.duration || props.localization?.timing.duration || 0); }}
         onPlay={() => { setStarted(true); setEnded(false); }} onError={() => setFailed(true)}/>
-      {props.localization && started && <SmileLocalizedCards language={props.localization.language} time={time}/>}
+      {props.localization && started && <SmileLocalizedCards language={props.localization.language} time={time} timing={props.localization.timing}/>}
       {props.localization && <div className="smile-player-languages" role="group" aria-label="Language / ภาษา / 语言">
         {(['en', 'th', 'zh'] as const).map(lang => <button key={lang} type="button" lang={lang}
           aria-pressed={props.localization!.language === lang} onClick={() => props.localization!.setLanguage(lang)}>
