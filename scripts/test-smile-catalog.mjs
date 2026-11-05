@@ -109,3 +109,15 @@ assert.ok(existsSync('public'+localization.EP001_ACTING_ENGLISH_MEDIA));
 const phaseAtEnd=playback.smileCardPhase(27.7,playback.SMILE_ACTING_TIMING);assert.equal(phaseAtEnd.kind,'ending');assert.equal(phaseAtEnd.opacity,1);
 assert.ok(readFileSync('src/components/SmileInlinePlayer.tsx','utf8').includes('timing={props.localization.timing}'));
 console.log('SMILE acting/localization passed: all three languages, +1.6s closing shift, no action overlays, legacy timing, replay end phase, packaged media and complete-English native fallback.');
+
+// Explicit LINE sharing must work independently of native share availability.
+for (const title of ['Ep. 001 — How the Cookies Roll','ตอน 001 — คุกกี้กลิ้งไป… กลิ้งมา','第001集 — 饼干滚呀滚']) {
+  const line = new URL(sharing.smileLineShareUrl('episode / ?&=#', title));
+  assert.equal(line.origin,'https://social-plugins.line.me');
+  assert.equal(line.pathname,'/lineit/share');
+  assert.equal(line.searchParams.get('url'),sharing.smileEpisodeShareUrl('episode / ?&=#'));
+  assert.equal(line.searchParams.get('text'),title);
+  assert.equal(new URL(line.searchParams.get('url')).searchParams.get('episode'),'episode / ?&=#');
+  assert.equal([...line.searchParams].length,2);
+}
+console.log('LINE sharing passed: fixed official destination, encoded episode deep link and EN/TH/ZH titles, no native-share dependency.');

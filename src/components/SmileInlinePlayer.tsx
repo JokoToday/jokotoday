@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { SmileLocalizedCards } from './SmileLocalizedCards';
+import { SmileShareButton } from './SmileShareButton';
 import type { Language } from '../translations';
 import type { SmilePlaybackTiming } from '../lib/smilePlayback';
 import { Expand, Play, RotateCcw, X } from 'lucide-react';
@@ -8,6 +9,7 @@ export interface SmileInlineHandle { play: () => void; pause: () => void }
 interface Props {
   src: string; poster?: string; title: string; alt: string;
   localization?: { language: Language; setLanguage: (language: Language) => void; timing: SmilePlaybackTiming };
+  share?: { id: string; language: Language };
   labels: { watch: string; expand: string; close: string; replay: string; error: string };
 }
 
@@ -70,7 +72,10 @@ export const SmileInlinePlayer = forwardRef<SmileInlineHandle, Props>(function S
     role={expanded ? 'dialog' : 'region'} aria-modal={expanded || undefined}
     onCancel={event => { event.preventDefault(); shrink(); }}>
     <div className="smile-inline-heading"><span>{props.title}</span>
-      <button type="button" onClick={shrink} aria-label={props.labels.close}><X size={22}/></button>
+      <div className="smile-inline-tools">
+        {expanded && props.share && <SmileShareButton id={props.share.id} title={props.title} language={props.share.language}/>}
+        <button type="button" className="smile-inline-close" onClick={shrink} aria-label={props.labels.close}><X size={22}/></button>
+      </div>
     </div>
     <div className="smile-inline-stage">
       <video ref={video} src={props.src} poster={props.poster} playsInline preload="none"
