@@ -37,7 +37,9 @@
 .smile-inline-player::backdrop{background:#fefdf6}
 .smile-inline-heading{display:none;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;font-size:14px;font-weight:650}
 .smile-inline-player:modal .smile-inline-heading{display:flex}
-.smile-inline-heading button,.smile-inline-expand{display:grid;place-items:center;min-width:44px;min-height:44px;border-radius:50%;background:#fefdf6e8;color:#30352e}
+.smile-inline-close,.smile-inline-expand{display:grid;place-items:center;min-width:44px;min-height:44px;border-radius:50%;background:#fefdf6e8;color:#30352e}
+.smile-inline-heading>span{min-width:0;overflow-wrap:anywhere}.smile-inline-tools{display:flex;align-items:flex-start;gap:10px;flex-shrink:0}.smile-inline-tools .smile-share-button,.smile-inline-tools .smile-line-share{min-height:44px}
+@media(max-width:480px){.smile-inline-heading{flex-wrap:wrap;gap:6px;padding:8px 12px}.smile-inline-heading>span{width:100%}.smile-inline-tools{margin-left:auto}}
 .smile-inline-stage{position:relative;width:100%;height:100%;min-height:0;background:#fefdf6}
 .smile-inline-player:modal .smile-inline-stage{flex:1}
 .smile-inline-stage video{display:block;width:100%;height:100%;object-fit:contain;background:#fefdf6}
@@ -64,4 +66,5 @@
 .smile-feature-caption .smile-episode-social{margin-top:12px}.smile-feature-caption .smile-episode-social .smile-like{margin-top:0}
 .smile-share{position:relative;max-width:100%}.smile-share-button{display:inline-flex;align-items:center;gap:7px;border:1px solid #c5cbbc;border-radius:30px;background:#fffaf0;color:#58705b;padding:8px 11px;font-size:12px;white-space:nowrap}
 .smile-share-button:hover{background:#f8e7d8}.smile-share-feedback{display:block;font-size:11px;color:#3f665e;margin-top:4px}
+.smile-share-buttons{display:flex;align-items:center;gap:6px}.smile-line-share{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:8px 11px;border:1px solid #087d37;border-radius:30px;background:#087d37;color:white;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.smile-line-share:hover{background:#06652c}.smile-line-share:focus-visible,.smile-share-button:focus-visible{outline:3px solid #c76624;outline-offset:3px}
 .smile-share-manual{display:block;max-width:260px;margin-top:7px;font-size:12px;color:#405f54}.smile-share-manual input{display:block;width:100%;border:1px solid #a7b8ac;border-radius:5px;background:#fffdf6;padding:6px;margin-top:3px}

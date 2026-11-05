@@ -211,6 +211,7 @@ export default function SmilePage() {
                   src={latestMedia?.src || smileVideoSource(latest.media_url)!.url}
                   poster={latestMedia?.poster || safeSmileUrl(latest.thumbnail_url) || undefined}
                   localization={latestMedia ? { language, setLanguage, timing: latestMedia.timing } : undefined}
+                  share={{ id: latest.id, language }}
                   title={smileText(latest, language).title} alt={smileText(latest, language).alt}
                   labels={{ ...playerWords[language], watch: copy.watch, error: copy.videoError }}/>
                 : latest ? <>

@@ -3,6 +3,12 @@ export function smileEpisodeShareUrl(id: string): string {
   url.searchParams.set('episode', id);
   return url.href;
 }
+export function smileLineShareUrl(id: string, title: string): string {
+  const url = new URL('https://social-plugins.line.me/lineit/share');
+  url.searchParams.set('url', smileEpisodeShareUrl(id));
+  url.searchParams.set('text', title);
+  return url.href;
+}
 interface ShareCapabilities {
   share?: (data: ShareData) => Promise<void>;
   clipboard?: { writeText: (text: string) => Promise<void> };

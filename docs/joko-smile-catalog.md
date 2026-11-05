@@ -88,3 +88,12 @@ Existing EN/TH/ZH posters, title/slogan artwork, local stroke schedules and penc
 This release also includes Share beside Like on published featured/archive entries (the implementation from PR #335). Native share, quiet cancellation, clipboard fallback and selectable manual URL remain localized in EN/TH/ZH. No login, automatic posting, schema or permission change is introduced. Native mobile share-sheet behavior needs a real device check.
 
 Validation covers edition timing, all three language mappings, hidden action overlays, preservation of old timing, packaged files, English fallback and Share outcomes. Browser verification and deployment state are recorded in the integration PR; a passing build alone does not mean the release is live.
+
+
+### Explicit LINE and expanded-player sharing
+
+A plain-text LINE link is displayed next to Share on published featured/archive episodes. It uses the official `https://social-plugins.line.me/lineit/share` URL with the canonical episode deep link and localized public title, UTF-8 encoded by URLSearchParams. No SDK, remote tracking script, contacts access or automatic send is added. The viewer chooses the destination and sends in LINE, which may require login or an installed app. Source: https://developers.line.biz/en/docs/line-social-plugins/install-guide/using-line-share-buttons/ .
+
+The expanded player's header now contains the same Share/LINE controls, away from Pip, native video controls, Replay and language selection. The same video remains mounted, and sharing does not change its source or time. Existing device share, cancellation and copy/manual fallbacks remain. Copy feedback is derived from the active language so it updates when EN/TH/ZH changes. Smaller layouts allow the title and tools to wrap.
+
+LINE URL encoding is regression-tested across EN/TH/ZH. Browser verification covers visible expanded controls and paused media-state preservation. Sending a LINE message and real mobile app handoff remain user/device checks; automated verification does not send a message.
